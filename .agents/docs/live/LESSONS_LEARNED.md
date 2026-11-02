@@ -12799,3 +12799,19 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Correction and proof**: Installed the branch's locked packages in isolation, switched the worktree to that install after browser tests completed, and reran `npm run check` successfully.
 
 **Rule**: Before treating TypeScript errors in an isolated worktree as source regressions, compare the installed package version with that worktree's lockfile. Run the final check with lock-matched dependencies without mutating another checkout's install.
+
+### 2026-11-01 — Tutorial recordings must prove the visible player result
+
+**What happened**: First-pass Paul recordings showed an admin wallet in a contestant lesson, an empty Desktop Items shelf that contradicted a read-only live check, a cursor stranded when actions entered game and art iframes, and a side-quest success notice beside an unchanged claim state and zero reward balance. A browser assertion also expected Help to unmount after Show Desktop, though wtfOS keeps minimized windows mounted.
+
+**Correction and proof**: Used a contestant with no wallet, labeled recorder-only catalog examples, made the isolated claim fixture return the claimed quest and updated WTF balance, positioned the guide cursor across iframe boundaries, and parked Paul away from targets and results. The desktop test now asserts Help is hidden and the desktop is visible. All ten final walkthrough frames were reviewed against the spoken steps; the media validator passed every MP4, caption cue, poster, audio stream, catalog entry, and checksum; the focused browser spec passed all four cases.
+
+**Rule**: For instructional media, verify the action and its final visible result, not just a toast or a scripted click. Compare recording fixtures with the live product before describing availability, label synthetic examples, keep cursor and character overlays clear across iframes, and test OS window visibility according to minimize semantics. Review rerendered screenshots under a new filename when image viewers cache an older file at the same path.
+
+### 2026-11-01 — Mobile help needs a visible path between lessons
+
+**What happened**: The first narrow-screen Paul Help view displayed the current video and steps, but the episode cards began below the initial viewport. A player could reach Help from the welcome and still miss that more lessons existed. Reggie's fixed assistant also covered part of the lesson on the right.
+
+**Correction and proof**: Added a labeled episode chooser above the video at narrow widths while retaining the full cards below, and hid Reggie only on narrow `/faq` views. The focused browser test at 390 × 844 verifies the chooser is inside the initial viewport, can select the last episode, and Reggie returns after following Try this in wtfOS.
+
+**Rule**: On small screens, make the next meaningful choice visible before scrolling through the current lesson, and verify persistent assistants cannot obscure instructional controls or results.

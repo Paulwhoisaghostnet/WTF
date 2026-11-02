@@ -74,12 +74,16 @@ const assistantIdle = keyframes`
   50% { transform: translateY(-3px); }
 `;
 
-const ReggieRoot = styled.div`
+const ReggieRoot = styled.div<{ $hideOnNarrowHelp: boolean }>`
   position: fixed;
   z-index: ${REGGIE_Z_INDEX};
   transition: left 1.4s ease-in-out, top 1.4s ease-in-out;
   pointer-events: none;
   animation: ${assistantPopIn} 0.28s ease-out;
+
+  @media (max-width: 520px) {
+    ${({ $hideOnNarrowHelp }) => $hideOnNarrowHelp && "display: none;"}
+  }
 
   @media (prefers-reduced-motion: reduce) {
     transition: none;
@@ -821,7 +825,11 @@ export function ReggieAssistant() {
   const open = availableSteps(quest ?? { questComplete: false, completedCount: 0, totalCount: 0, steps: [], finale: null });
 
   return (
-    <ReggieRoot style={{ left: position.x, top: position.y }} data-reggie-assistant="true">
+    <ReggieRoot
+      $hideOnNarrowHelp={locationPath === "/faq"}
+      style={{ left: position.x, top: position.y }}
+      data-reggie-assistant="true"
+    >
       {bubbleOpen ? (
         <Bubble $side={bubbleSide} role="dialog" aria-label="Reggie the wtfOS assistant">
           <BubbleHeader>

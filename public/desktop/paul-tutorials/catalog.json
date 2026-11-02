@@ -1,0 +1,194 @@
+[
+  {
+    "slug": "desktop-basics",
+    "title": "Find your way around the desktop",
+    "summary": "Open Mission Control, use window controls, and find the Stuffs menu.",
+    "category": "Getting started",
+    "route": "/",
+    "steps": [
+      "Find the Mission Control icon on your desktop.",
+      "Open Mission Control to see your next move.",
+      "Minimize its window without losing your place.",
+      "Bring Mission Control back from the taskbar.",
+      "Open Stuffs to find the rest of your apps."
+    ],
+    "transcript": "Hey, I'm Paul. This desktop is your game world. Find the Mission Control icon near the top left. Click Mission Control. This window shows a next move and paths into challenges, side quests, and rewards. Need the desktop again? Click the little minimize button in this window's title bar. Your window is still running. Click Mission Control on the taskbar to bring it back. Now click Stuffs at the bottom left. This menu is where you find more apps whenever you want to explore.",
+    "durationSeconds": 31.216,
+    "videoUrl": "/desktop/paul-tutorials/desktop-basics.mp4",
+    "captionsUrl": "/desktop/paul-tutorials/desktop-basics.vtt",
+    "posterUrl": "/desktop/paul-tutorials/desktop-basics-poster.jpg",
+    "sha256": "5fb0967f8a0b12049fa3c0297430d271ea684efcb7cc1f8d2a3e079a356faea0"
+  },
+  {
+    "slug": "mission-control",
+    "title": "Find a mission",
+    "summary": "Use Mission Control to find available challenges and inspect their details.",
+    "category": "Progress",
+    "route": "/mission-control",
+    "steps": [
+      "Read your next move in Mission Control.",
+      "Open challenges to see what is available.",
+      "Inspect a challenge's description, reward, and response fields."
+    ],
+    "transcript": "Wondering what to do? Mission Control shows your account, system status, and a next move. Choose Open challenges. The list shows the challenges available to your account. Read the challenge description and listed reward. View Details reveals the response fields. Rewards depend on completing the challenge conditions.",
+    "durationSeconds": 20.637667,
+    "videoUrl": "/desktop/paul-tutorials/mission-control.mp4",
+    "captionsUrl": "/desktop/paul-tutorials/mission-control.vtt",
+    "posterUrl": "/desktop/paul-tutorials/mission-control-poster.jpg",
+    "sha256": "fe37d7f583661ae961a86eca8e1b8957850a614f44db4243c748b6cca375d6de"
+  },
+  {
+    "slug": "side-quest-reward",
+    "title": "Claim a side quest reward",
+    "summary": "Inspect an already verified daily quest, claim it, and find the Market link.",
+    "category": "Progress",
+    "route": "/side-quests",
+    "steps": [
+      "Open Today in Side Quests.",
+      "Read the task and its verified, ready to claim state.",
+      "Click Claim on the ready side quest.",
+      "Find the reward confirmation and Market link."
+    ],
+    "transcript": "Side Quests lists small daily tasks. Open Today to see the tasks available to you. First do the activity on a card and let wtfOS verify it. This example is already verified and ready to claim. Click Claim. This ready task lists fifteen XP and one WTF; wait for the reward confirmation before moving on. The confirmation links to Market, where you can inspect eligible live items. A single claim does not automatically unlock every app or guarantee a tier change.",
+    "durationSeconds": 34.059,
+    "videoUrl": "/desktop/paul-tutorials/side-quest-reward.mp4",
+    "captionsUrl": "/desktop/paul-tutorials/side-quest-reward.vtt",
+    "posterUrl": "/desktop/paul-tutorials/side-quest-reward-poster.jpg",
+    "sha256": "6605b6a7220d3850fcebc58b9dfb15e8b733a68fa828baf284ea2a1108f28fa2"
+  },
+  {
+    "slug": "play-arcade",
+    "title": "Browse WTF Arcade",
+    "summary": "Search the game shelf and check a cartridge's play requirements.",
+    "category": "Play",
+    "route": "/arcade",
+    "steps": [
+      "Find the game search in WTF Arcade.",
+      "Search for the tutorial sample cartridge.",
+      "Check the sample cartridge's play cost before launching."
+    ],
+    "transcript": "WTF Arcade is the game shelf. Use Search games to narrow the cartridges you see. I'll search for Gamma Sample, a tutorial cartridge. The matching card appears below. Read a cartridge's badge before playing. This sample shows two arcade credits; live games can differ, so I stop before launch.",
+    "durationSeconds": 20.178646,
+    "videoUrl": "/desktop/paul-tutorials/play-arcade.mp4",
+    "captionsUrl": "/desktop/paul-tutorials/play-arcade.vtt",
+    "posterUrl": "/desktop/paul-tutorials/play-arcade-poster.jpg",
+    "sha256": "7276c600488b54cb8a36dccfcd92d6af897028802846201acbf5a5b812f4f929"
+  },
+  {
+    "slug": "play-guided-round",
+    "title": "Play a guided coLILseum round",
+    "summary": "Choose Learn, recruit and place a hero, inspect the team, and battle.",
+    "category": "Play",
+    "route": "/colilseum",
+    "steps": [
+      "Choose Learn from the coLILseum game menu.",
+      "Start the guided round and preview your first hero.",
+      "Recruit the hero from the shop.",
+      "Place the hero on a board tile.",
+      "Inspect team bonuses, hero details, and items.",
+      "Start the battle and finish the first lesson."
+    ],
+    "transcript": "For a first game, open coLILseum and choose Learn. It guides you through a real round. Begin the lesson, then point at a shop hero to preview what you can recruit. Now recruit that hero. The guide moves on when your first unit joins the bench. Place your hero on an open board tile. Your team is ready to inspect. The guide shows team bonuses, hero details, and items. These help you decide how to build your team. Return to the arena and start the battle. When the guide says you know the basics, the first round is complete.",
+    "durationSeconds": 34.486,
+    "videoUrl": "/desktop/paul-tutorials/play-guided-round.mp4",
+    "captionsUrl": "/desktop/paul-tutorials/play-guided-round.vtt",
+    "posterUrl": "/desktop/paul-tutorials/play-guided-round-poster.jpg",
+    "sha256": "086d92fa1899eaef66ac39d02cfb09d73f6c71dfdead397bcb7077a0afc3eb7e"
+  },
+  {
+    "slug": "create-something",
+    "title": "Make and export pixel art",
+    "summary": "Open PixAlerce, create a canvas, paint a mark, and export a PNG.",
+    "category": "Create",
+    "route": "/create",
+    "steps": [
+      "Choose an outcome and open PixAlerce.",
+      "Start a blank 32 by 32 canvas.",
+      "Pick a color and draw with Brush.",
+      "Open the export menu and choose PNG.",
+      "Export the PNG to your device."
+    ],
+    "transcript": "Create starts with the kind of thing you want to make. I'll open PixAlerce for pixel art. Choose Blank canvas, select thirty two by thirty two, and press Create. Pick a color and the Brush tool. Drag across the canvas to make your first mark. Open App Menu, choose Export Animation, and select PNG for a still image. Choose Device download and Export PNG. The file is now yours to keep or use elsewhere.",
+    "durationSeconds": 27.941,
+    "videoUrl": "/desktop/paul-tutorials/create-something.mp4",
+    "captionsUrl": "/desktop/paul-tutorials/create-something.vtt",
+    "posterUrl": "/desktop/paul-tutorials/create-something-poster.jpg",
+    "sha256": "860012f580ab0d719f0fb80b17de293b8d5cb14b8e602a243545d7c81defe4e5"
+  },
+  {
+    "slug": "events",
+    "title": "Find an event and make a plan",
+    "summary": "Browse the calendar, open an event, and save it to My plans.",
+    "category": "Events",
+    "route": "/calendar",
+    "steps": [
+      "Switch Browse to Agenda to scan upcoming events.",
+      "Open the tutorial sample event to read its details.",
+      "Mark Going when you plan to attend.",
+      "Open My plans and find your saved event."
+    ],
+    "transcript": "Events lives in Calendar. Under Browse, choose Agenda to scan upcoming events by date. I'll open a tutorial sample event to read its time, description, and room link before making a plan. If you plan to attend, choose Going. Calendar confirms the plan and turns on a task tray reminder. Open My plans to find the event again. This is where your calendar choices collect.",
+    "durationSeconds": 25.085351,
+    "videoUrl": "/desktop/paul-tutorials/events.mp4",
+    "captionsUrl": "/desktop/paul-tutorials/events.vtt",
+    "posterUrl": "/desktop/paul-tutorials/events-poster.jpg",
+    "sha256": "f6d8a14315844ea595fae2eb43ce7b16aef7cb328e6612e6c6fee587e409a9ab"
+  },
+  {
+    "slug": "talk",
+    "title": "Send a message",
+    "summary": "Choose a WTF user, write a WIM message, and confirm it sent.",
+    "category": "Talk",
+    "route": "/mail",
+    "steps": [
+      "Open New message from the Inbox.",
+      "Choose WTF user through WIM and a recipient.",
+      "Write your message in the body field.",
+      "Press Send message and check the confirmation."
+    ],
+    "transcript": "Inbox brings mail and messages together. WIM can send while external mailbox setup is pending. Click New message to start a WIM note. Choose WTF user through WIM, then select the person you want to reach. Write your note in Message body. You can add a subject, but a WIM message does not need one. Click Send message. The Message sent confirmation tells you this note went through.",
+    "durationSeconds": 27.991,
+    "videoUrl": "/desktop/paul-tutorials/talk.mp4",
+    "captionsUrl": "/desktop/paul-tutorials/talk.vtt",
+    "posterUrl": "/desktop/paul-tutorials/talk-poster.jpg",
+    "sha256": "fb3fe7571bea6aa4c5337971f70687c6ace2f618358550ccffee4e861a5150db"
+  },
+  {
+    "slug": "shop-safely",
+    "title": "Read the marketplace",
+    "summary": "Browse Desktop Items, read a sample listing, and identify staged previews.",
+    "category": "Shop",
+    "route": "/wtfiam",
+    "steps": [
+      "Open Apps to find live listings.",
+      "Switch to Desktop Items to browse accessories.",
+      "Read a sample card's status, stock, ownership, and price.",
+      "Open System Appearance and spot coming soon items."
+    ],
+    "transcript": "The WTF In App Marketplace has categories for apps, desktop items, and appearance. Start with Apps and look for live listings. Choose Desktop Items. This recording uses a clearly marked sample accessory so you can see how a listing works; live offers may differ. Check the card's live status, stock, Owned count, and WTF price. Always read the current listing in your own account before choosing anything. System Appearance shows staged previews marked Coming Soon. Staged items cannot be purchased until they become live and available.",
+    "durationSeconds": 36.741,
+    "videoUrl": "/desktop/paul-tutorials/shop-safely.mp4",
+    "captionsUrl": "/desktop/paul-tutorials/shop-safely.vtt",
+    "posterUrl": "/desktop/paul-tutorials/shop-safely-poster.jpg",
+    "sha256": "c935c88861994de8f3d91c94abaa32da751672dfcba4f9591774c04837a2a4ca"
+  },
+  {
+    "slug": "personalize",
+    "title": "Make the desktop yours",
+    "summary": "Choose an appearance in Theme Builder and save it.",
+    "category": "Personalize",
+    "route": "/desktop-settings",
+    "steps": [
+      "Open Appearance in Theme Builder.",
+      "Choose a different desktop style.",
+      "Press Save to keep your selection.",
+      "Check the green Save button to confirm the change."
+    ],
+    "transcript": "Theme Builder controls how your desktop looks. Open the Appearance tab to see the style choices. Choose a style that feels like yours. The preview updates before you commit it. Press Save when you like what you see. The Save button turns green when Theme Builder records the change. You can return any time to try another style or background.",
+    "durationSeconds": 22.557667,
+    "videoUrl": "/desktop/paul-tutorials/personalize.mp4",
+    "captionsUrl": "/desktop/paul-tutorials/personalize.vtt",
+    "posterUrl": "/desktop/paul-tutorials/personalize-poster.jpg",
+    "sha256": "f969ac1c69d855f32044bde4e5d629995981cadfb38b157b8b8c05336dee8512"
+  }
+]

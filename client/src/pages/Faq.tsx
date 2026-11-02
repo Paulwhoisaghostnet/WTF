@@ -10,6 +10,7 @@ import { api } from "../lib/api";
 import { logClientSystemEvent } from "../lib/system-log";
 import { FaqTutorials } from "../features/faq/FaqTutorials";
 import { FaqPromos } from "../features/faq/FaqPromos";
+import { PaulTutorialSeries } from "../features/faq/PaulTutorialSeries";
 
 const StartPanel = styled.section`
   margin-bottom: 16px;
@@ -146,6 +147,7 @@ export function Faq() {
           {showWelcomeVideo && <PaulWelcomeVideo />}
         </div>
       </WelcomeReplay>
+      <PaulTutorialSeries />
       <StartPanel aria-labelledby="start-here-title">
         <h2 id="start-here-title">What do you want to do?</h2>
         <p>Choose a task. The same five choices stay in the Stuffs menu on the taskbar.</p>

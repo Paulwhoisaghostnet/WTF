@@ -184,6 +184,18 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "The checked-in catalog binds each tutorial to private S3 object keys while the public API exposes only same-origin streaming routes; the browser harness proves all eight guides, English captions, transcripts, selection behavior, and mobile containment.",
   },
   {
+    id: "faq.paul-tutorial-series",
+    domain: "Entry, Authentication, and Account Identity",
+    platformOwner: "faq",
+    ownerSpec: "tests/playwright/inventory/paul-tutorial-series.spec.mjs",
+    verificationCommand:
+      "npm run build && npx playwright test tests/playwright/inventory/paul-tutorial-series.spec.mjs",
+    userVisibleAssertion:
+      "The first-entry welcome links directly to Help & Start Here's Paul-led, captioned, step-by-step videos for desktop navigation, mission discovery, a ready side quest claim, games, creation, messaging, marketplace, events, and appearance; selecting an episode shows one player, transcript, written steps, and a Try this in wtfOS action at desktop and narrow widths. A labeled episode chooser is within the first narrow-screen viewport, and Reggie does not cover the Help content there.",
+    durableSideEffectAssertion:
+      "The browser harness loads every checked-in episode asset and verifies selected, played, and completed events retain the tutorial slug and paulwhoisaclippy series identity; Try this in wtfOS follows the episode's registered route without granting rewards or changing account state.",
+  },
+  {
     id: "wtfos.guide-promo-channel",
     domain: "WTF TV, Playback, Channels, and Embeds",
     platformOwner: "faq-tv",

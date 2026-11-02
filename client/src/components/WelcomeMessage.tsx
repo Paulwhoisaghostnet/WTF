@@ -219,6 +219,14 @@ export function WelcomeMessage() {
                   paulwhoisaclippy—he will show you around.
                 </Intro>
                 <PaulWelcomeVideo autoPlay />
+                <Button
+                  type="button"
+                  onClick={() => acknowledge("/faq")}
+                  disabled={saving}
+                  style={{ minHeight: 40, whiteSpace: "normal" }}
+                >
+                  Watch Paul's step-by-step videos
+                </Button>
                 <MorePlaces>
                   <summary>More places to go</summary>
                   <TaskGrid aria-label="Choose your first task">
