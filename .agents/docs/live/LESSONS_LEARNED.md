@@ -12813,3 +12813,13 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: An all-at-once push could regress access controls or publish restricted assets. Leaving the changes uncommitted also made the requested clean checkout impossible without risking work loss.
 
 **Correction and rule**: Commit the full state to a local rescue ref and verify a private, self-contained Git bundle before switching the original checkout to current `main`. Keep unfinished or rights-sensitive assets off the public remote. Port each release candidate from a fresh `main` checkout and verify its own behavior before production promotion.
+
+---
+
+## 2026-11-02 — Name-based secret inventories must recognize keyring material
+
+**What happened**: The environment inventory marked `WTF_PLATFORM_KEYRING_MASTER_KEY` as non-secret because its name did not match the existing secret-name pattern, despite the signer using its value as encryption key material.
+
+**Why it mattered**: The generated governance table gave operators the wrong handling signal. The inventory records names and metadata only, so this did not expose a key value.
+
+**Rule**: Match keyring master keys and serialized keyrings explicitly, then assert the generated row for a key that already exists in the runtime configuration. Regenerate the inventory and verify its checked-in copy before relying on the secret column.

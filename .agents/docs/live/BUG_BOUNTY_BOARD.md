@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **695** · Open: **4** · Claimed: **41** · In Progress: **15** · Blocked: **3** · Fixed: **124** · Verified: **504** · Archived: **4**
+Total: **696** · Open: **4** · Claimed: **41** · In Progress: **15** · Blocked: **3** · Fixed: **124** · Verified: **505** · Archived: **4**
 
 ## Canonical Board
 
@@ -684,6 +684,7 @@ Total: **695** · Open: **4** · Claimed: **41** · In Progress: **15** · Block
 | WTF-BB-096 | Verified | Codex in-app market cart pass | 2026-05-05 | In-app market / listing IDs | P2 | 8 | 613 | 1 | 3 | 1 | Seeded item listing id collides with cart router sentinel |
 | WTF-BB-079 | Verified | Codex deploy hardening pass | 2026-05-03 | Deploy / release metadata | P2 | 8 | 613 | 2 | 3 | 0 | `server-deploy.sh` can inherit a stale `COMMIT_SHA` and mislabel the live revision |
 | WTF-BB-043 | Verified | Codex TV refresh query reconciliation | 2026-09-02 | TV microapp / refresh scale | P2 | 8 | 613 | 2 | 2 | 1 | WTF TV refresh currently sorts all wallet rows randomly |
+| WTF-BB-751 | Verified | Codex rescue-resolution keyring inventory pass | 2026-11-02 | Release governance / secret inventory classification | P2 | 7 | 661 | 1 | 2 | 1 | Environment inventory marks the platform keyring master key as non-secret |
 | WTF-BB-722 | Verified | Codex October 28 security full send | 2026-10-28 | E2E / release inventory compatibility | P2 | 7 | 661 | 2 | 2 | 0 | Funding menu fixtures and overlapping mobile controls block security release validation |
 | WTF-BB-589 | Verified | Codex full-send dirty-worktree integration | 2026-08-08 | Frontend security / tabnabbing link safety | P2 | 7 | 661 | 1 | 2 | 1 | Admin Inbox attachment links now use the canonical explicit `noopener noreferrer` boundary and the external-link gate passes |
 | WTF-BB-567 | Verified | Codex dirty-worktree shipping repair | 2026-08-08 | Pasta Protocol / exported-page test determinism | P2 | 7 | 661 | 1 | 3 | 0 | Macaroni UI-live fixtures now create UTC stage starts that match the proof browser; both actual-Studio collectors and the complete 14-test suite pass under Dublin daylight time |
@@ -705,20 +706,20 @@ Total: **695** · Open: **4** · Claimed: **41** · In Progress: **15** · Block
 | WTF-BB-121 | Verified | Codex release-readiness pass | 2026-05-08 | Deploy / DB migrations | P2 | 7 | 661 | 1 | 3 | 0 | Arcade migrations reused existing migration numbers |
 | WTF-BB-118 | Verified | Codex arcade/console split pass | 2026-05-08 | Console catalog / dedupe | P2 | 7 | 661 | 1 | 3 | 0 | DB-backed stock rows duplicated installed Console cartridges |
 | WTF-BB-114 | Verified | Codex arcade/console split pass | 2026-05-08 | Console catalog / manifest parity | P2 | 7 | 661 | 1 | 3 | 0 | Console stock classifier and installed manifest drifted |
-| WTF-BB-685 | Verified | Codex WTFIAP-v0.01 publication | 2026-10-19 | Game rendering / artwork readiness | P2 | 6 | 684 | 1 | 2 | 0 | Queued pointer events draw WTFIAP heroes before artwork decoding completes |
-| WTF-BB-590 | Verified | Codex full-send dirty-worktree integration | 2026-08-08 | Release hygiene / generated assets | P2 | 6 | 684 | 1 | 2 | 0 | Git preserves the exact clean-built Particle Painter wallet chunk while narrowly excluding that generated pattern from whitespace diagnostics |
-| WTF-BB-440 | Verified | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / static policy drift | P2 | 6 | 684 | 1 | 2 | 0 | The aggregate publisher policy still required the obsolete `CAP_BELOW_MINTED` guard after Gnocchi strengthened cap safety to `CAP_BELOW_COMMITTED`, which includes outstanding Ravioli reservations; the expectation now follows the compiled source invariant and the complete 15-test static policy passes |
-| WTF-BB-385 | Verified | Codex full-send cleanup pass | 2026-07-15 | E2E / Gamma Colander selector ownership | P2 | 6 | 684 | 1 | 2 | 0 | Gamma presentation proof targets the canonical contract-address test id while retaining the control-panel and placeholder assertions; the focused Gamma Pasta/Colander story passes |
-| WTF-BB-382 | Verified | Codex full-send cleanup pass | 2026-07-15 | Developer experience / generated configuration docs | P2 | 6 | 684 | 1 | 2 | 0 | The release unit gate caught a stale checked-in environment inventory after final env-reading edits; deterministic regeneration and the inventory check now agree on 1,076 variables across 2,149 source files |
-| WTF-BB-301 | Verified | Codex live user-story gap loop | 2026-06-22 | Public site / SEO and installability | P2 | 6 | 684 | 1 | 2 | 0 | SEO/PWA static discovery paths fell through to SPA HTML; fixed in `6fb5351` with explicit typed robots, sitemap, and web manifest handlers plus inventory-owned regression coverage, then verified live on `https://wtfos.app` |
-| WTF-BB-695 | Verified | Codex October desktop security activation | 2026-10-22 | Desktop release verification / legacy manifest compatibility | P2 | 5 | 691 | 1 | 1 | 0 | Macaroni live verifier incorrectly requires a product field absent from the established direct manifest |
+| WTF-BB-685 | Verified | Codex WTFIAP-v0.01 publication | 2026-10-19 | Game rendering / artwork readiness | P2 | 6 | 685 | 1 | 2 | 0 | Queued pointer events draw WTFIAP heroes before artwork decoding completes |
+| WTF-BB-590 | Verified | Codex full-send dirty-worktree integration | 2026-08-08 | Release hygiene / generated assets | P2 | 6 | 685 | 1 | 2 | 0 | Git preserves the exact clean-built Particle Painter wallet chunk while narrowly excluding that generated pattern from whitespace diagnostics |
+| WTF-BB-440 | Verified | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / static policy drift | P2 | 6 | 685 | 1 | 2 | 0 | The aggregate publisher policy still required the obsolete `CAP_BELOW_MINTED` guard after Gnocchi strengthened cap safety to `CAP_BELOW_COMMITTED`, which includes outstanding Ravioli reservations; the expectation now follows the compiled source invariant and the complete 15-test static policy passes |
+| WTF-BB-385 | Verified | Codex full-send cleanup pass | 2026-07-15 | E2E / Gamma Colander selector ownership | P2 | 6 | 685 | 1 | 2 | 0 | Gamma presentation proof targets the canonical contract-address test id while retaining the control-panel and placeholder assertions; the focused Gamma Pasta/Colander story passes |
+| WTF-BB-382 | Verified | Codex full-send cleanup pass | 2026-07-15 | Developer experience / generated configuration docs | P2 | 6 | 685 | 1 | 2 | 0 | The release unit gate caught a stale checked-in environment inventory after final env-reading edits; deterministic regeneration and the inventory check now agree on 1,076 variables across 2,149 source files |
+| WTF-BB-301 | Verified | Codex live user-story gap loop | 2026-06-22 | Public site / SEO and installability | P2 | 6 | 685 | 1 | 2 | 0 | SEO/PWA static discovery paths fell through to SPA HTML; fixed in `6fb5351` with explicit typed robots, sitemap, and web manifest handlers plus inventory-owned regression coverage, then verified live on `https://wtfos.app` |
+| WTF-BB-695 | Verified | Codex October desktop security activation | 2026-10-22 | Desktop release verification / legacy manifest compatibility | P2 | 5 | 692 | 1 | 1 | 0 | Macaroni live verifier incorrectly requires a product field absent from the established direct manifest |
 | WTF-BB-511 | Verified | Codex wtfOS contract release | - | Rewards / in-app market reconciliation | P3 | 11 | 387 | 3 | 3 | 3 | Numeric TzKT transaction ids were queried as operation hashes |
 | WTF-BB-317 | Verified | Codex challenge automation harness parity verification | 2026-09-02 | E2E / Playwright harness parity | P3 | 7 | 661 | 2 | 3 | 0 | Local Playwright harness returns `/api/admin/challenge-automation/registry` with legacy `actions` instead of production-shaped `rewardActions`, so direct Automation tab proofs need local route stubs or can crash the admin UI under harness data despite the real server route returning `rewardActions`; likely correction is to align `tests/playwright/harness.mjs` with `server/challenges/routes/admin.ts` and add a focused harness contract assertion |
-| WTF-BB-230 | Verified | Codex WTF LIVE chat toolbox pass | 2026-06-09 | WTF LIVE / room chat style controls | P3 | 6 | 684 | 2 | 2 | 0 | WTF LIVE chat now has a compact one-row style toolbox with bounded font, color, 8-14 size, bold/italic, and reset controls, plus sanitized realtime style relay |
-| WTF-BB-721 | Verified | Codex October 28 security full send | 2026-10-28 | Dependencies / conditional and build-only leaf advisories | P3 | 5 | 691 | 1 | 1 | 1 | New qs and desktop fast-uri advisory matches have compatible leaf patches |
-| WTF-BB-672 | Verified | Codex profile picture preview repair | 2026-09-03 | Profile / IPFS preview reliability | P3 | 5 | 691 | 1 | 2 | 0 | Profile picture picker bypassed FileShip and had no alternate gateway recovery |
-| WTF-BB-120 | Verified | Codex arcade/console boundary pass | 2026-05-08 | SDK / domain boundaries | P3 | 5 | 691 | 1 | 2 | 0 | Regular Console SDK exposed source compatibility alias |
-| WTF-BB-117 | Verified | Codex arcade/console split pass | 2026-05-08 | Game Studio / domain boundaries | P3 | 5 | 691 | 1 | 2 | 0 | Studio publish handoff leaked Console ownership after Arcade split |
+| WTF-BB-230 | Verified | Codex WTF LIVE chat toolbox pass | 2026-06-09 | WTF LIVE / room chat style controls | P3 | 6 | 685 | 2 | 2 | 0 | WTF LIVE chat now has a compact one-row style toolbox with bounded font, color, 8-14 size, bold/italic, and reset controls, plus sanitized realtime style relay |
+| WTF-BB-721 | Verified | Codex October 28 security full send | 2026-10-28 | Dependencies / conditional and build-only leaf advisories | P3 | 5 | 692 | 1 | 1 | 1 | New qs and desktop fast-uri advisory matches have compatible leaf patches |
+| WTF-BB-672 | Verified | Codex profile picture preview repair | 2026-09-03 | Profile / IPFS preview reliability | P3 | 5 | 692 | 1 | 2 | 0 | Profile picture picker bypassed FileShip and had no alternate gateway recovery |
+| WTF-BB-120 | Verified | Codex arcade/console boundary pass | 2026-05-08 | SDK / domain boundaries | P3 | 5 | 692 | 1 | 2 | 0 | Regular Console SDK exposed source compatibility alias |
+| WTF-BB-117 | Verified | Codex arcade/console split pass | 2026-05-08 | Game Studio / domain boundaries | P3 | 5 | 692 | 1 | 2 | 0 | Studio publish handoff leaked Console ownership after Arcade split |
 | WTF-BB-513 | Verified | Codex wtfOS contract release | - | Club Dues / contract authority | P4 | 13 | 190 | 4 | 4 | 4 | Club Dues V1 had immutable legacy authority and payable admin traps |
 | WTF-BB-154 | Archived | Codex dirty-worktree duplicate reconciliation | 2026-09-01 | Build / dirty worktree isolation | P1 | 12 | 281 | 3 | 4 | 1 | Unrelated dirty Mastodon/Subdomains work can block scoped W verification |
 | WTF-BB-386 | Archived | Codex full-send cleanup pass | 2026-07-15 | Pasta Suite Desktop / native Colander | P1 | 11 | 387 | 3 | 4 | 0 | A failure captured while the same generated source was still changing could not reproduce on the settled tree; fresh asset preparation proves native project persistence, contract detection, sale configuration, and attachment, with runtime-error monitoring added |
@@ -15050,6 +15051,21 @@ Copy this when adding a new issue:
 - Verification (2026-09-02):
   - Focused policy suite passes 2/2, proving the refresh source contains no SQL `RANDOM()`, the deterministic order is present, and migration/schema index definitions agree. `1ac70168` is an ancestor of live production commit `1238a78d`; public health is alive.
   - The unbounded random-sort condition described by this record is absent, so WTF-BB-043 is Verified.
+
+### WTF-BB-751 - Environment inventory marks the platform keyring master key as non-secret
+
+- Category: Release governance / secret inventory classification
+- Priority: P2
+- Status: Verified
+- Owner/Session: Codex rescue-resolution keyring inventory pass
+- Last touched: 2026-11-02
+- Score: C1 + F2 + S1 + P2(3) = 7
+- Evidence (2026-11-02): Generated `docs/reference/environment-variables.md` labels `WTF_PLATFORM_KEYRING_MASTER_KEY` as `Secret: no`, while `scripts/platform-wallets.ts` consumes its value as the encryption master key. The classifier recognizes `PRIVATE_KEY` and `SECRET` but not `KEYRING_MASTER_KEY`; the rescue snapshot contains a narrower regex correction.
+- Why it matters: Operators and tooling relying on the generated inventory receive an incorrect handling signal for live key material. The generator records names and metadata only; no value exposure was observed.
+- Correction direction: Recognize keyring master-key and JSON keyring names as secret, add a policy assertion for the existing platform master key, and regenerate the inventory.
+- Verification idea: Run the focused environment inventory policy test and `npm run env:inventory:check`; confirm the generated row says `yes` and no runtime values appear.
+- Score: P2(3)+C1/F2/S1=7; a small metadata correction with conditional secret-handling risk.
+- Correction and verification (2026-11-02): Secret-name detection now includes `KEYRING_MASTER_KEY` and `KEYRING_JSON`. The existing platform master-key row and file-path row regenerate as `Secret: yes` with omitted defaults; no value is read into the inventory. The focused environment inventory policy suite passed 3/3, `npm run env:inventory:check`, `npm run bounty:board:check`, and `git diff --check` passed.
 
 ### WTF-BB-722 - Funding menu fixtures and overlapping mobile controls block security release validation
 
