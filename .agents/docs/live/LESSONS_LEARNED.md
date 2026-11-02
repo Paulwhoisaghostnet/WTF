@@ -12813,3 +12813,13 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: An all-at-once push could regress access controls or publish restricted assets. Leaving the changes uncommitted also made the requested clean checkout impossible without risking work loss.
 
 **Correction and rule**: Commit the full state to a local rescue ref and verify a private, self-contained Git bundle before switching the original checkout to current `main`. Keep unfinished or rights-sensitive assets off the public remote. Port each release candidate from a fresh `main` checkout and verify its own behavior before production promotion.
+
+---
+
+## 2026-11-02 — Provider release provenance includes shared signer modules
+
+**What happened**: Importing the installed Aleatory provider directory onto current `main` preserved every provider file from its deployed source commit, but two modules used by the release assembler outside that directory had changed for WTFIAP. Reassembling from current `HEAD` would therefore create a different release artifact.
+
+**Why it mattered**: A matching provider directory alone does not prove that an archive assembled from a later repository commit matches the installed Mainnet daemon.
+
+**Rule**: Compare every release-assembler input with the installed commit, preserve that commit with a durable release tag, and use the pinned commit for exact source reconstruction until a separately verified upgrade is intended.

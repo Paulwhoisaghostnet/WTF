@@ -1,0 +1,93 @@
+{
+  "repository": "https://github.com/skullzarmy/aleatory",
+  "commit": "82bea97b21bd477f3bd66cb4e189c0f1627c9654",
+  "files": [
+    {
+      "path": "LICENSE",
+      "upstreamSha256": "6b0382b16279f26ff69014300541967a356a666eb0b91b422f6862f6b7dad17e",
+      "vendoredSha256": "6b0382b16279f26ff69014300541967a356a666eb0b91b422f6862f6b7dad17e",
+      "modified": false
+    },
+    {
+      "path": "provider/daemon.mts",
+      "upstreamSha256": "95b0bdc05d1f6f7fdd55b1ab48d579e493dd9746d4b544e2911d2796c89b4030",
+      "vendoredSha256": "b37fade553ac263216240da390e3d6adfcaa946576c169a61ca3615d96749551",
+      "modified": true
+    },
+    {
+      "path": "provider/fees.ts",
+      "upstreamSha256": "240ddce1f284872b1ba31da0bbcf2ee6e984fdc034fb3a35a42d7421dbbaa270",
+      "vendoredSha256": "240ddce1f284872b1ba31da0bbcf2ee6e984fdc034fb3a35a42d7421dbbaa270",
+      "modified": false
+    },
+    {
+      "path": "provider/heartbeat.ts",
+      "upstreamSha256": "a6803e4cc21bef7490c0dc906bca3ca929e715ccc92908df4407c5c2faf83298",
+      "vendoredSha256": "63b751dac3365f6c3b511e94813a8e4cd0e56ee01db7e44416f03d559ef20110",
+      "modified": true
+    },
+    {
+      "path": "provider/libraries.mts",
+      "upstreamSha256": "f13c72757dc260771928c13a3c486122f97dce9794a8c0b9c34ecbb8407005ce",
+      "vendoredSha256": "f13c72757dc260771928c13a3c486122f97dce9794a8c0b9c34ecbb8407005ce",
+      "modified": false
+    },
+    {
+      "path": "provider/metadata.test.ts",
+      "upstreamSha256": "561261dde635f65829ae202eb9595b6ecfccc0595eddab52e6644667492f88d8",
+      "vendoredSha256": "561261dde635f65829ae202eb9595b6ecfccc0595eddab52e6644667492f88d8",
+      "modified": false
+    },
+    {
+      "path": "provider/metadata.ts",
+      "upstreamSha256": "d1a652229593929f63851b20e9f0cbcfac520fb67934d05ce384ead08d2fbdc3",
+      "vendoredSha256": "d1a652229593929f63851b20e9f0cbcfac520fb67934d05ce384ead08d2fbdc3",
+      "modified": false
+    },
+    {
+      "path": "provider/provider.mts",
+      "upstreamSha256": "431920f6ad75dd4f6fc6679c7f2918d6fa50615787e8ecf03d68aa50dd820d95",
+      "vendoredSha256": "0e3b1d5015f2ead956928d2c1c914d8941b0cf669d8a4fee1e0acc29362213e5",
+      "modified": true
+    },
+    {
+      "path": "provider/render.mts",
+      "upstreamSha256": "141d61e9e37bd5bea71a36be8f5cc56c94b257a1b09363cbd200aea4f2b5225f",
+      "vendoredSha256": "331ded99feb9f131e09b0d815276e5745fcb668363a6e60f408e5e34057679de",
+      "modified": true
+    },
+    {
+      "path": "provider/retry.mts",
+      "upstreamSha256": "961527d5afc91502d3061290d3a172a35d9a7aab6c78198ad1c4a6cdbd84a047",
+      "vendoredSha256": "961527d5afc91502d3061290d3a172a35d9a7aab6c78198ad1c4a6cdbd84a047",
+      "modified": false
+    },
+    {
+      "path": "provider/run.mts",
+      "upstreamSha256": "c7bac236b8f5a8d45f1bc85c203974804c908d7164582f401c294edb2610e581",
+      "vendoredSha256": "786de1d2680f5062e8c84d25f52244748e99c52f8b1fe13431170a04c0c641c8",
+      "modified": true
+    },
+    {
+      "path": "provider/stuck.mts",
+      "upstreamSha256": "e1a45a39955d8a9c48b2b1aa10fdf5d22a5b6bafdf127693885e56b5272246fb",
+      "vendoredSha256": "358687faf802f262ed99c96a755ff0e9b59665bc66c3a129945cfd47613fd03b",
+      "modified": true
+    },
+    {
+      "path": "src/lib/harness-core.js",
+      "upstreamSha256": "8d263f3c63a66d26a528b7a1c82e6607337630d6de9f5e222d01f090627d60b3",
+      "vendoredSha256": "8d263f3c63a66d26a528b7a1c82e6607337630d6de9f5e222d01f090627d60b3",
+      "modified": false
+    },
+    {
+      "path": "src/lib/params.ts",
+      "upstreamSha256": "64052e46e55fd58074766db3d53a6c5c2ca0ba3af26b92f5f00e146cd408f73f",
+      "vendoredSha256": "64052e46e55fd58074766db3d53a6c5c2ca0ba3af26b92f5f00e146cd408f73f",
+      "modified": false
+    }
+  ],
+  "localFiles": [
+    "provider/runtime.test.mts"
+  ]
+}
