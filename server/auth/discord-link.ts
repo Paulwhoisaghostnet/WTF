@@ -1,9 +1,19 @@
 /** The Profile link uses Discord only to prove which account approved it. */
 export const DISCORD_PROFILE_SCOPES = ["identify"] as const;
 
+export type DiscordLinkSnapshot = {
+  discordId: string | null;
+  discordHandle: string | null;
+  discordVerified: boolean;
+};
+
 export type DiscordLinkIntent = {
+  intentVersion: 2;
   userId: number;
-  expectedHandle: string;
+  expectedHandle: string | null;
+  priorId: string | null;
+  allowAccountChange: boolean;
+  snapshot: DiscordLinkSnapshot;
 };
 
 export type DiscordLinkErrorCode =
@@ -11,6 +21,7 @@ export type DiscordLinkErrorCode =
   | "discord_session"
   | "discord_profile"
   | "discord_already_linked"
+  | "discord_link_changed"
   | "discord_account_mismatch";
 
 export class DiscordLinkError extends Error {
@@ -38,6 +49,43 @@ export function normalizeDiscordExpectedHandle(raw: unknown): string | null {
   return legacy ? `${legacy[1]}#${legacy[2]}` : null;
 }
 
+export function resolveDiscordLinkIntent(
+  rawExpectedHandle: unknown,
+  current: {
+    id?: number | null;
+    discordId?: string | null;
+    discordHandle?: string | null;
+    discordVerified?: boolean | null;
+  }
+): DiscordLinkIntent | null {
+  if (!Number.isInteger(current.id)) return null;
+  if (rawExpectedHandle != null && typeof rawExpectedHandle !== "string") return null;
+  const supplied = typeof rawExpectedHandle === "string" ? rawExpectedHandle.trim() : "";
+  const requestedHandle = supplied ? normalizeDiscordExpectedHandle(supplied) : null;
+  if (supplied && !requestedHandle) return null;
+
+  const snapshot: DiscordLinkSnapshot = {
+    discordId: current.discordId ?? null,
+    discordHandle: current.discordHandle ?? null,
+    discordVerified: current.discordVerified === true,
+  };
+  const priorId = snapshot.discordVerified ? snapshot.discordId : null;
+  if (snapshot.discordVerified && !priorId && !requestedHandle) return null;
+  const currentHandle = normalizeDiscordExpectedHandle(snapshot.discordHandle);
+  const allowAccountChange = !snapshot.discordVerified || Boolean(
+    requestedHandle && requestedHandle !== currentHandle
+  );
+
+  return {
+    intentVersion: 2,
+    userId: current.id!,
+    expectedHandle: requestedHandle,
+    priorId,
+    allowAccountChange,
+    snapshot,
+  };
+}
+
 export function resolveDiscordLinkIdentity(
   intent: DiscordLinkIntent | null | undefined,
   currentUserId: number,
@@ -45,9 +93,11 @@ export function resolveDiscordLinkIdentity(
 ): { id: string; handle: string } {
   if (
     !intent ||
+    intent.intentVersion !== 2 ||
     !Number.isInteger(currentUserId) ||
     intent.userId !== currentUserId ||
-    !normalizeDiscordExpectedHandle(intent.expectedHandle)
+    (intent.expectedHandle !== null && !normalizeDiscordExpectedHandle(intent.expectedHandle)) ||
+    !intent.snapshot
   ) {
     throw new DiscordLinkError("discord_session");
   }
@@ -65,7 +115,10 @@ export function resolveDiscordLinkIdentity(
     throw new DiscordLinkError("discord_profile");
   }
 
-  if (normalizeDiscordExpectedHandle(intent.expectedHandle) !== handle) {
+  if (intent.expectedHandle && normalizeDiscordExpectedHandle(intent.expectedHandle) !== handle) {
+    throw new DiscordLinkError("discord_account_mismatch");
+  }
+  if (intent.priorId && !intent.allowAccountChange && intent.priorId !== id) {
     throw new DiscordLinkError("discord_account_mismatch");
   }
   return { id, handle };

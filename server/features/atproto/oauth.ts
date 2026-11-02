@@ -14,6 +14,7 @@ import {
   resolveCanonicalPublicOrigin,
 } from "../../lib/canonical-domain";
 import {
+  ATPROTO_BASE_SCOPE,
   ATPROTO_CHAT_SCOPE,
   ATPROTO_TRANSITION_GENERIC_SCOPE,
   buildSkywireAtprotoMaxScope,
@@ -29,6 +30,7 @@ const stateStore = new Map<string, NodeSavedState>();
 const pendingOAuthSessions = new Map<string, NodeSavedSession>();
 const callbackOAuthSessions = new AsyncLocalStorage<Map<string, NodeSavedSession>>();
 let oauthClient: NodeOAuthClient | null = null;
+let profileProofOAuthClient: NodeOAuthClient | null = null;
 
 export const ATPROTO_OAUTH_STATE_TTL_MS = 15 * 60 * 1000;
 export const ATPROTO_SCOPE = buildSkywireAtprotoScope("be-bold", false);
@@ -148,6 +150,10 @@ export function atprotoClientIdUrl(): string {
     canonicalizePlatformUrl(process.env.ATPROTO_CLIENT_ID_URL) ||
     `${publicBaseUrl()}/.well-known/oauth-client-metadata.json`
   );
+}
+
+export function atprotoProfileClientIdUrl(): string {
+  return `${publicBaseUrl()}/.well-known/oauth-client-metadata-profile.json`;
 }
 
 export function atprotoRedirectUri(): string {
@@ -565,6 +571,48 @@ export async function getAtprotoOAuthClient(): Promise<NodeOAuthClient> {
     },
   });
   return oauthClient;
+}
+
+export async function getAtprotoProfileProofOAuthClient(): Promise<NodeOAuthClient> {
+  if (profileProofOAuthClient) return profileProofOAuthClient;
+  const skywireClient = await getAtprotoOAuthClient();
+  profileProofOAuthClient = new NodeOAuthClient({
+    clientMetadata: {
+      ...skywireClient.clientMetadata,
+      client_id: atprotoProfileClientIdUrl(),
+      client_name: "wtfOS Social Proof",
+      scope: ATPROTO_BASE_SCOPE,
+    },
+    allowHttp: process.env.NODE_ENV !== "production",
+    responseMode: "query",
+    stateStore: {
+      async get(key: string) {
+        return loadAtprotoOAuthSdkState(key);
+      },
+      async set(key: string, value: NodeSavedState) {
+        await rememberAtprotoOAuthSdkState(key, value);
+      },
+      async del(key: string) {
+        await deleteAtprotoOAuthSdkState(key);
+      },
+    },
+    sessionStore: {
+      async get(_key: string) {
+        // Profile proof has its own OAuth client grant. It must never restore
+        // or revoke the separate Skywire session stored on the account row.
+        return undefined;
+      },
+      async set(key: string, value: NodeSavedSession) {
+        const callbackSessions = callbackOAuthSessions.getStore();
+        if (!callbackSessions) throw new Error("Profile proof OAuth session escaped callback capture");
+        callbackSessions.set(key, value);
+      },
+      async del(key: string) {
+        callbackOAuthSessions.getStore()?.delete(key);
+      },
+    },
+  });
+  return profileProofOAuthClient;
 }
 
 export async function getAtprotoAgentForDid(did: string): Promise<Agent> {

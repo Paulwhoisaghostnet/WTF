@@ -53,7 +53,7 @@ test("Profile keeps shared account, wallet, avatar, OAuth, and AT Protocol behav
   assert.match(profileSource, /\/api\/profile\/pfp-candidates\?\$\{pfpQueryParams\}/);
   assert.match(profileSource, /window\.location\.assign\(oauthStartUrl\(path\)\)/);
   assert.match(profileSource, /"\/api\/auth\/twitter-proof"/);
-  assert.match(profileSource, /oauthStartUrl\(`\/api\/auth\/discord\?\$\{params\.toString\(\)\}`\)/);
+  assert.match(profileSource, /\/api\/auth\/discord/);
   assert.match(profileSource, /oauthStartUrl\(`\/api\/atproto\/oauth\/start\?\$\{params\.toString\(\)\}`\)/);
   assert.doesNotMatch(profileSource, /\/api\/gamma/);
 });

@@ -16,11 +16,11 @@ import {
   atprotoAccountSessionSummary,
   captureAtprotoOAuthCallbackSessions,
   getAtprotoOAuthClient,
+  getAtprotoProfileProofOAuthClient,
   getPublicAtprotoAgent,
   isAtprotoEnabled,
   atprotoOAuthAppStateKeyForCallback,
   deleteAtprotoOAuthStateFamily,
-  encryptedSessionFields,
   loadAtprotoOAuthPendingState,
   persistCredentialSessionForDid,
   persistOAuthSessionForDid,
@@ -68,6 +68,8 @@ import {
   atprotoProofProfileData,
   isIdentityOnlyAtprotoGrant,
   profileProofIdentityError,
+  profileProofLinkChanged,
+  profileProofStartTarget,
   shouldPreserveAtprotoGrantOnProfileProof,
 } from "../features/atproto/profile-proof";
 
@@ -100,7 +102,7 @@ const phoneVerificationSchema = z.object({
 });
 
 const oauthStartSchema = z.object({
-  handle: z.string().trim().min(1),
+  handle: z.string().trim().optional(),
   returnTo: z.string().optional(),
   popup: z.string().optional(),
   app: z.enum(["skywire", "tz2at", "profile"]).optional(),
@@ -134,6 +136,9 @@ type AtprotoOAuthPendingState = {
   requestedScope: string;
   requestedHandle: string;
   requestedDid?: string | null;
+  linkedAccountIdAtStart?: number | null;
+  linkedDidAtStart?: string | null;
+  linkedHandleAtStart?: string | null;
   origin?: string;
   startedAt: number;
 };
@@ -225,7 +230,14 @@ function skywireStandaloneUsernameCandidates(handle: string, did: string): strin
 }
 
 function isUniqueViolation(err: unknown): boolean {
-  return String((err as any)?.code || "") === "23505";
+  let cause = err;
+  const seen = new Set<object>();
+  while (cause && typeof cause === "object" && !seen.has(cause)) {
+    seen.add(cause);
+    if (String((cause as any).code || "") === "23505") return true;
+    cause = (cause as any).cause;
+  }
+  return false;
 }
 
 async function linkedAccountForDid(did: string) {
@@ -712,6 +724,11 @@ router.get("/.well-known/oauth-client-metadata.json", async (_req, res) => {
   res.json(client.clientMetadata);
 });
 
+router.get("/.well-known/oauth-client-metadata-profile.json", async (_req, res) => {
+  const client = await getAtprotoProfileProofOAuthClient();
+  res.json(client.clientMetadata);
+});
+
 router.get("/api/atproto/me", isAuthenticated, async (req, res) => {
   const user = req.user as any;
   const account = await linkedAccountForUser(user.id);
@@ -960,9 +977,31 @@ router.get("/api/atproto/oauth/start", mutationLimiter, async (req, res) => {
       : appName === "tz2at"
       ? buildTz2atAtprotoScope(tz2atStep)
       : buildSkywireAtprotoScope(tier, chatEnabled);
-  const handle = normalizeAtprotoOAuthActor(parsed.data.handle, registrationHandleSuffix());
+  const linkedAtStart = appName === "profile" && sessionUser ? await linkedAccountForUser(sessionUser.id) : null;
+  let profileTarget: ReturnType<typeof profileProofStartTarget> | null = null;
+  if (appName === "profile") {
+    try {
+      profileTarget = profileProofStartTarget({
+        rawActor: parsed.data.handle,
+        linkedAccount: linkedAtStart,
+        defaultPds: process.env.ATPROTO_DEFAULT_PDS,
+      });
+    } catch {
+      return redirectAtprotoOAuthStartError(res, {
+        popup,
+        error: "atproto_oauth_start",
+        returnTo,
+        appName,
+        origin,
+      });
+    }
+  }
+  const handle = profileTarget && !profileTarget.requestedActor
+    ? ""
+    : normalizeAtprotoOAuthActor(parsed.data.handle || "", registrationHandleSuffix());
+  const oauthInput = profileTarget && !profileTarget.requestedActor ? profileTarget.oauthInput : handle;
   const handleIsDid = isAtprotoDid(handle);
-  if (!isValidAtprotoOAuthActor(handle)) {
+  if ((handle && !isValidAtprotoOAuthActor(handle)) || (!handle && appName !== "profile")) {
     return redirectAtprotoOAuthStartError(res, { popup, error: "atproto_handle", returnTo, appName, origin, handle });
   }
   if (appName !== "tz2at" && !handleIsDid && isReservedSkywirePlatformHandle(handle) && (appName === "profile" || !platformActorIntent)) {
@@ -975,8 +1014,8 @@ router.get("/api/atproto/oauth/start", mutationLimiter, async (req, res) => {
       handle,
     });
   }
-  let requestedDid: string | null = null;
-  if (appName !== "tz2at" && !handleIsDid) {
+  let requestedDid: string | null = profileTarget?.requestedDid ?? null;
+  if (appName !== "tz2at" && handle && !handleIsDid) {
     const resolvedHandle = await resolveAtprotoHandleViaPublicResolver(handle).catch(() => null);
     requestedDid = resolvedHandle?.did ?? null;
     if (resolvedHandle?.error === "unresolved") {
@@ -1048,14 +1087,17 @@ router.get("/api/atproto/oauth/start", mutationLimiter, async (req, res) => {
     requestedScope,
     requestedHandle: handle,
     requestedDid,
+    linkedAccountIdAtStart: linkedAtStart?.id ?? null,
+    linkedDidAtStart: linkedAtStart?.did ?? null,
+    linkedHandleAtStart: linkedAtStart?.handle ?? null,
     origin,
     startedAt: Date.now(),
   };
   (req.session as any).atprotoOAuth = oauthState;
   try {
     await rememberAtprotoOAuthState(oauthState);
-    const client = await getAtprotoOAuthClient();
-    const url = await client.authorize(handle, { scope: requestedScope, state });
+    const client = appName === "profile" ? await getAtprotoProfileProofOAuthClient() : await getAtprotoOAuthClient();
+    const url = await client.authorize(oauthInput, { scope: requestedScope, state });
     if (appName === "skywire" && sessionUser) {
       const localDid = `did:wtf:local-user-${sessionUser.id}`;
       await emitAtprotoSystemEvent({
@@ -1152,7 +1194,7 @@ router.get("/api/atproto/oauth/callback", async (req, res) => {
     return redirectWith("error=atproto_session");
   }
   try {
-    const client = await getAtprotoOAuthClient();
+    const client = appName === "profile" ? await getAtprotoProfileProofOAuthClient() : await getAtprotoOAuthClient();
     const captured = appName === "profile"
       ? await captureAtprotoOAuthCallbackSessions(() => client.callback(params))
       : null;
@@ -1171,27 +1213,40 @@ router.get("/api/atproto/oauth/callback", async (req, res) => {
     });
     const profile = {
       data: atprotoProofProfileData({
-        requestedActor,
+        requestedActor: requestedActor || (appName === "profile" ? sessionState.linkedHandleAtStart || "" : ""),
         verifiedDid: session.did,
         publicProfile: publicProfile?.data ?? null,
       }),
     };
     const tokenInfo = await session.getTokenInfo(false).catch(() => null);
+    const storedSession = appName === "profile"
+      ? captured?.sessions.get(session.did) ?? null
+      : takePendingOAuthSessionForDid(session.did);
+    if (!storedSession) {
+      throw new Error("AT Protocol OAuth callback is missing the SDK saved session");
+    }
     const sessionTokenScope =
       typeof (session as any)?.tokenSet?.scope === "string" ? String((session as any).tokenSet.scope) : null;
+    const capturedTokenScope = typeof storedSession.tokenSet?.scope === "string" ? storedSession.tokenSet.scope : null;
+    const observedProfileScopes = [tokenInfo?.scope, capturedTokenScope, sessionTokenScope]
+      .filter((scope): scope is string => typeof scope === "string" && scope.trim().length > 0);
+    const observedProfileScope = tokenInfo?.scope ?? capturedTokenScope ?? sessionTokenScope;
+    if (appName === "profile" && (
+      observedProfileScopes.length === 0 ||
+      observedProfileScopes.some((scope) => !isIdentityOnlyAtprotoGrant(scope))
+    )) {
+      await clearAtprotoOAuthState(req, sessionState.state);
+      return redirectWith("error=atproto_scope_mismatch");
+    }
     const grants = resolveAtprotoOAuthGrantState({
       appName,
-      tokenScope: tokenInfo?.scope ?? sessionTokenScope,
+      tokenScope: appName === "profile" ? observedProfileScope : tokenInfo?.scope ?? sessionTokenScope,
       requestedScope: sessionState.requestedScope,
       chatRequested: Boolean(sessionState.chatEnabled),
       fallbackScope: appName === "profile" ? AT_PROTO_PROFILE_SCOPE : ATPROTO_SCOPE,
     });
     const grantedScope = grants.grantedScope;
     const requestedScope = grants.requestedScope;
-    if (appName === "profile" && !isIdentityOnlyAtprotoGrant(grantedScope)) {
-      await clearAtprotoOAuthState(req, sessionState.state);
-      return redirectWith("error=atproto_scope_mismatch");
-    }
     const resolvedPermissionTier =
       appName === "profile"
         ? "be-safe"
@@ -1263,6 +1318,13 @@ router.get("/api/atproto/oauth/callback", async (req, res) => {
     }
     const existingForDid = await linkedAccountForUserDid(resolvedUserId, session.did);
     const existingForUser = await linkedAccountForUser(resolvedUserId);
+    if (appName === "profile" && profileProofLinkChanged({
+      id: sessionState.linkedAccountIdAtStart,
+      did: sessionState.linkedDidAtStart,
+    }, existingForUser)) {
+      await clearAtprotoOAuthState(req, sessionState.state);
+      return redirectWith("error=atproto_link_changed");
+    }
     if (appName === "skywire" && sessionState.chatEnabled) {
       if (!existingForUser) {
         return redirectWith("error=atproto_chat_account_required");
@@ -1279,50 +1341,41 @@ router.get("/api/atproto/oauth/callback", async (req, res) => {
       }
     }
 
-    const storedSession = appName === "profile"
-      ? captured?.sessions.get(session.did) ?? null
-      : takePendingOAuthSessionForDid(session.did);
-    if (!storedSession) {
-      throw new Error("AT Protocol OAuth callback is missing the SDK saved session");
-    }
     const preserveProfileGrant = appName === "profile" && shouldPreserveAtprotoGrantOnProfileProof(
       existingForUser?.did,
       session.did,
       Boolean(existingForUser?.encryptedAccessToken && existingForUser?.encryptedRefreshToken && existingForUser?.encryptedDpopKey),
     );
-    const profileSessionFields = appName === "profile" && !preserveProfileGrant
-      ? encryptedSessionFields(storedSession, { oauthScopes: grantedScope })
-      : null;
-
+    const accountHandle = appName === "profile" && !publicProfile?.data.handle && existingForUser?.did === session.did
+      ? existingForUser.handle
+      : profile.data.handle;
+    const tokenSet = storedSession.tokenSet as { aud?: string; iss?: string };
     const accountValues = {
       userId: resolvedUserId,
       did: session.did,
-      handle: profile.data.handle,
-      pdsUrl: tokenInfo?.aud ?? null,
+      handle: accountHandle,
+      pdsUrl: tokenInfo?.aud ?? tokenSet.aud ?? null,
       displayName: profile.data.displayName ?? null,
       avatarUrl: profile.data.avatar ?? null,
       description: profile.data.description ?? null,
       indexedAt: new Date(),
       lastSyncedAt: new Date(),
-      oauthIssuer: tokenInfo?.iss ?? null,
+      oauthIssuer: tokenInfo?.iss ?? tokenSet.iss ?? null,
       oauthScopes: grantedScope,
       oauthRequestedScopes: requestedScope,
       oauthPermissionTier: resolvedPermissionTier,
       oauthChatEnabled: resolvedChatEnabled,
-      tokenExpiresAt: tokenInfo?.expiresAt ?? null,
-      ...(profileSessionFields ? {
-        encryptedAccessToken: profileSessionFields.encryptedAccessToken,
-        encryptedRefreshToken: profileSessionFields.encryptedRefreshToken,
-        encryptedDpopKey: profileSessionFields.encryptedDpopKey,
-        tokenExpiresAt: profileSessionFields.tokenExpiresAt,
-        oauthIssuer: profileSessionFields.oauthIssuer,
-        pdsUrl: profileSessionFields.oauthAudience ?? tokenInfo?.aud ?? null,
+      tokenExpiresAt: appName === "profile" ? null : tokenInfo?.expiresAt ?? null,
+      ...(appName === "profile" ? {
+        encryptedAccessToken: null,
+        encryptedRefreshToken: null,
+        encryptedDpopKey: null,
       } : {}),
       disconnectedAt: null,
       updatedAt: new Date(),
     };
     const profileMetadataValues = {
-      handle: profile.data.handle,
+      handle: accountHandle,
       displayName: profile.data.displayName ?? null,
       avatarUrl: profile.data.avatar ?? null,
       description: profile.data.description ?? null,
@@ -1331,16 +1384,32 @@ router.get("/api/atproto/oauth/callback", async (req, res) => {
       updatedAt: new Date(),
     };
     const existingAccount = existingForDid ?? existingForUser;
-    const [account] = existingAccount
-      ? await db
-          .update(atprotoAccounts)
-          .set(preserveProfileGrant ? profileMetadataValues : accountValues)
-          .where(eq(atprotoAccounts.id, existingAccount.id))
-          .returning()
-      : await db
-          .insert(atprotoAccounts)
-          .values(accountValues)
-          .returning();
+    let account: typeof atprotoAccounts.$inferSelect | undefined;
+    try {
+      [account] = existingAccount
+        ? await db
+            .update(atprotoAccounts)
+            .set(preserveProfileGrant ? profileMetadataValues : accountValues)
+            .where(appName === "profile"
+              ? and(eq(atprotoAccounts.id, existingAccount.id), eq(atprotoAccounts.did, sessionState.linkedDidAtStart || ""), isNull(atprotoAccounts.disconnectedAt))
+              : eq(atprotoAccounts.id, existingAccount.id))
+            .returning()
+        : await db
+            .insert(atprotoAccounts)
+            .values(accountValues)
+            .returning();
+    } catch (err) {
+      if (appName === "profile" && isUniqueViolation(err)) {
+        await clearAtprotoOAuthState(req, sessionState.state);
+        const current = await linkedAccountForUser(resolvedUserId);
+        return redirectWith(`error=${current ? "atproto_link_changed" : "atproto_already_linked"}`);
+      }
+      throw err;
+    }
+    if (!account) {
+      await clearAtprotoOAuthState(req, sessionState.state);
+      return redirectWith("error=atproto_link_changed");
+    }
 
     if (appName !== "profile") {
       await persistOAuthSessionForDid(session.did, storedSession, {
@@ -1357,11 +1426,11 @@ router.get("/api/atproto/oauth/callback", async (req, res) => {
       eventType: "atproto.account.linked",
       userId: resolvedUserId,
       did: session.did,
-      handle: profile.data.handle,
+      handle: account.handle,
       rawRefType: "atproto_account",
       rawRefId: account.id,
       metadata: {
-        pdsUrl: tokenInfo?.aud ?? null,
+        pdsUrl: account.pdsUrl,
         permissionTier: resolvedPermissionTier,
         chatEnabled: resolvedChatEnabled,
         appName,
@@ -1380,7 +1449,7 @@ router.get("/api/atproto/oauth/callback", async (req, res) => {
     await clearAtprotoOAuthState(req, sessionState.state);
     const verifiedParams = new URLSearchParams({
       verified: "atproto",
-      handle: profile.data.handle,
+      handle: account.handle,
       accountId: String(account.id),
       permissionTier: String(sessionState.permissionTier || sessionState.tz2atStep || ""),
       chat: resolvedChatEnabled ? "1" : "0",

@@ -502,9 +502,9 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     verificationCommand:
       "npx tsx --test server/auth/discord-link.test.ts server/auth/discord-strategy.test.ts server/auth/discord-ownership.test.ts && npm run build && npx playwright test tests/playwright/inventory/profile-social-linking.spec.mjs --project=chromium --reporter=list",
     userVisibleAssertion:
-      "Profile groups X, Discord, and AT Protocol account proofs under Social network linking, requires the intended Discord username, and reports a different-account callback without replacing the displayed linked identity.",
+      "Profile groups X, Discord, and AT Protocol account proofs under Social network linking, lets a first-time Discord link open sign-in without a username, accepts an optional username for targeted account changes, and reports a different-account callback without replacing the displayed linked identity.",
     durableSideEffectAssertion:
-      "The Discord callback binds the intended username to the authenticated session and OAuth state, accepts only the matching provider identity, and leaves the previous durable link untouched on mismatch. Profile OAuth and bot proof serialize claims for one Discord ID and reject a different WTF owner before persistence. The browser story covers handoff and error presentation; external Discord consent and the actual database write require an account-backed live proof.",
+      "The Discord callback binds the signed-in WTF session and OAuth state, accepts the provider-signed identity for a blank first link, enforces an optional intended username, and pins an existing Discord ID on blank reverification so another account cannot replace it. Profile OAuth and bot proof serialize claims for one Discord ID and reject a different WTF owner before persistence. The browser stories cover blank and targeted handoffs plus error presentation; external Discord consent and the actual database write require an account-backed live proof.",
   },
   {
     id: "profile.atproto-expected-account",
@@ -515,9 +515,9 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     verificationCommand:
       "npx tsx --test server/features/atproto/profile-proof.test.ts server/features/atproto/oauth-session-restore.test.ts && npm run build && npx playwright test tests/playwright/inventory/profile-social-linking.spec.mjs --project=chromium --reporter=list",
     userVisibleAssertion:
-      "Profile asks for an AT Protocol handle and starts an identity-only account proof that returns to Profile; a different-account callback reports the mismatch and leaves the existing link visible.",
+      "Profile lets a first-time AT Protocol link open provider sign-in without a handle, accepts an optional handle for targeted account changes, and returns from the identity-only proof to Profile; a different-account callback reports the mismatch and leaves the existing link visible.",
     durableSideEffectAssertion:
-      "The AT Protocol callback compares the returned DID and handle with the intended identity before changing the durable account row, preserves existing grants when reverifying the same DID, and rejects a DID already linked to another WTF user. The browser story covers handoff and error presentation; external provider consent and the actual database write require an account-backed live proof.",
+      "The AT Protocol callback binds the provider-returned DID to the signed-in WTF session, accepts it for a blank first link, pins the existing DID on blank reverification, and enforces an optional intended actor before changing the durable account row. Profile proof advertises its own public OAuth client metadata and identity-only `atproto` scope, preserving richer Skywire grants when reverifying the same DID; it rejects a DID already linked to another WTF user. The browser stories cover blank and targeted handoffs plus error presentation; external provider consent and the actual database write require an account-backed live proof.",
   },
   {
     id: "profile.pfp-preview-gateway-fallback",
