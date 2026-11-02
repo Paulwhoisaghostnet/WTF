@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Button, GroupBox, Hourglass } from "react95";
 import styled from "styled-components";
 import { useLocation } from "wouter";
+import { paulAssetUrl } from "../../lib/paul-assets";
 import { logClientSystemEvent } from "../../lib/system-log";
 import { useWindowManager } from "../../lib/window-context";
 import { useRecordWatchedVideo } from "../video-history/video-history";
@@ -252,7 +253,7 @@ function formatDuration(seconds: number): string {
 }
 
 async function loadPaulTutorials(): Promise<PaulTutorial[]> {
-  const response = await fetch("/desktop/paul-tutorials/catalog.json");
+  const response = await fetch(paulAssetUrl("/desktop/paul-tutorials/catalog.json"));
   if (!response.ok) throw new Error("Paul's tutorial catalog could not load");
   const value: unknown = await response.json();
   if (!Array.isArray(value)) throw new Error("Paul's tutorial catalog is invalid");
@@ -348,7 +349,7 @@ export function PaulTutorialSeries() {
     <GroupBox label="Learn wtfOS with paulwhoisaclippy" style={{ marginBottom: 12 }}>
       <div data-paul-tutorial-series="true">
         <Intro>
-          <img src="/desktop/paulwhoisaclippy.svg" alt="" width="64" height="54" />
+          <img src={paulAssetUrl("/desktop/paulwhoisaclippy.svg")} alt="" width="64" height="54" />
           <div>
             <h2>Paul's step-by-step field guide</h2>
             <p>
@@ -390,7 +391,7 @@ export function PaulTutorialSeries() {
               playsInline
               tabIndex={0}
               preload="none"
-              poster={selected.posterUrl}
+              poster={paulAssetUrl(selected.posterUrl)}
               aria-label={`${selected.title} tutorial with paulwhoisaclippy`}
               onError={() => setPlaybackError(true)}
               onPlay={() => {
@@ -410,7 +411,7 @@ export function PaulTutorialSeries() {
                 void recordWatchedVideo(`paul/${selected.slug}`);
               }}
             >
-              <source src={selected.videoUrl} type="video/mp4" />
+              <source src={paulAssetUrl(selected.videoUrl)} type="video/mp4" />
               <track default kind="captions" src={selected.captionsUrl} srcLang="en" label="English" />
               Your browser does not support video. Read the steps beside the player.
             </Video>

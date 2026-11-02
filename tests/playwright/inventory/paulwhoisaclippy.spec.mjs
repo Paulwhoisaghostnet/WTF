@@ -20,6 +20,10 @@ test.describe("interaction inventory - paulwhoisaclippy", () => {
     });
     await expect(paul).toBeVisible();
     await expect(paul).toContainText("paulwhoisaclippy");
+    await expect(paul.locator("img")).toHaveAttribute(
+      "src",
+      "/desktop/paulwhoisaclippy.svg?v=ghost-red-glasses-20261102"
+    );
     await expect
       .poll(() => paul.locator("img").evaluate((image) => image.complete && image.naturalWidth > 0))
       .toBe(true);

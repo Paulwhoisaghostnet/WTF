@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import styled, { keyframes } from "styled-components";
+import { paulAssetUrl } from "../../lib/paul-assets";
 import type { DesktopObstacle } from "./DesktopPetModel";
 
 const GHOST_WIDTH = 112;
@@ -224,7 +225,7 @@ export function PaulWhoIsAClippy({
         }}
         onBlur={() => setWhisperIndex(null)}
       >
-        <img src="/desktop/paulwhoisaclippy.svg" alt="" draggable={false} />
+        <img src={paulAssetUrl("/desktop/paulwhoisaclippy.svg")} alt="" draggable={false} />
         <NameTag>paulwhoisaclippy</NameTag>
       </GhostButton>
     </GhostLayer>

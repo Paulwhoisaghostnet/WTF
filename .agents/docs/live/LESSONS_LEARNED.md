@@ -13256,3 +13256,13 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: A production-valid OAuth configuration appeared broken in the release gate because the test depended on local environment state.
 
 **Rule**: Set an explicit canonical HTTPS origin before constructing AT OAuth clients in tests that exercise public metadata. Reproduce those tests with public-origin environment variables cleared before accepting a local pass.
+
+---
+
+## 2026-11-02 — Character artwork must read at its actual desktop size and in recorded guides
+
+**What happened**: Paul was described as a red-glasses ghost in the interaction inventory, but his sprite was a round face with small wisps. The welcome and tutorial videos had baked in that earlier sprite, so updating only the SVG would leave the guide media inconsistent.
+
+**Why it mattered**: Paul did not look like the character users were promised, and the recorded introductions would continue showing the old design after a sprite change.
+
+**Rule**: Inspect character art at its rendered desktop size and in each shared placement. When a visual asset is baked into guide recordings, rebuild and validate those recordings and their posters from reusable narration in the same change. Version the public asset URLs when browser caching could keep showing the old art after deploy.
