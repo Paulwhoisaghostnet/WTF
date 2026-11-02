@@ -48,7 +48,11 @@ type SponsorRoom = {
   sponsorFunded: boolean; depositedCount: number; roster: Array<{ name: string; deposited: boolean; walletAddress: string | null }>;
   lotVerification?: { funded: number; verified: number; required: number; pending: boolean };
   config: { enabled: boolean; reason?: string | null };
-  self: { role: "sponsor" | "entrant" | "watcher"; walletAddress: string | null; canBind: boolean; canOpen: boolean; canStart: boolean; actions: SponsorActions };
+  self: { role: "sponsor" | "entrant" | "watcher"; walletAddress: string | null; canBind: boolean; canOpen: boolean; canStart: boolean; canPick: boolean; actions: SponsorActions };
+  prizeSelection: null | { nextPlace: number | null; nextPlayerId: string | null;
+    nextPlayerName: string | null; remainingForPlace: number;
+    chosen: Array<{ index: number; place: number; playerId: string }>;
+    availableLots: Array<{ index: number; contract: string; tokenId: string; amount: string }> };
   operations?: Array<{ operationHash?: string | null; status: string }>;
   error?: string | null;
 };
@@ -161,10 +165,26 @@ export function SponsorFundingPanel({ roomCode, onReturn }: { roomCode: string; 
         {atomic(place.wtfAtomic) > 0n && ` · ${formatFundingAmount(place.wtfAtomic, 8)} WTF`}
         {room.terms.tokens.filter(token => token.place === place.place).map(token => ` · FA2 ${token.contract} #${token.tokenId} ×${token.amount}`).join("")}
       </li>)}</ul>
-        {room.terms.mode !== "fixed" && <p>FA2 prizes use {room.terms.mode === "random" ? "a seeded random allocation" : "place-order picks"} when the match ends.</p>}
+        {room.terms.mode !== "fixed" && <p>FA2 prizes use {room.terms.mode === "random" ? "a seeded random allocation" : "finish-place picks"} when the match ends.</p>}
         {room.terms.tokens.length > 0 && <p><small>Token custody checks use <a href="https://tzkt.io" target="_blank" rel="noopener noreferrer">data provided by TzKT API</a>.</small></p>}
         <p>{entry?.currency === "FREE" ? "Free entry" : `Entry: ${formatFundingAmount(entry?.entryAtomic || "0", entry?.currency === "WTF" ? 8 : 6)} ${entry?.currency} per human`}. Sponsor prize funding is separate from entry payment.</p>
       </section>
+      {room.prizeSelection && <section className="step" aria-label="Finish-place FA2 prize picks">
+        <h3>Choose FA2 prizes</h3>
+        {room.prizeSelection.nextPlace === null
+          ? <p role="status">All finishers have chosen. The verified prize result is being submitted to escrow.</p>
+          : <p role="status">{room.prizeSelection.nextPlayerName || "The next finisher"} chooses for place {room.prizeSelection.nextPlace}. {room.prizeSelection.remainingForPlace} pick{room.prizeSelection.remainingForPlace === 1 ? " remains" : "s remain"} at this place.</p>}
+        {room.prizeSelection.chosen.length > 0 && <ul aria-label="Recorded prize choices">{room.prizeSelection.chosen.map(pick => {
+          const lot = room.terms.tokens[pick.index];
+          return <li key={pick.index}>Place {pick.place} chose FA2 {lot.contract} #{lot.tokenId} ×{lot.amount}</li>;
+        })}</ul>}
+        {room.self.canPick && <div className="actions">{room.prizeSelection.availableLots.map(lot =>
+          <button key={lot.index} className="primary" disabled={busy}
+            onClick={() => void run(async () => { await post("pick-lot", { index: lot.index });
+              setMessage("Your FA2 prize choice was recorded. The next finisher may choose when it is their turn."); })}>
+            Pick FA2 {lot.contract} #{lot.tokenId} ×{lot.amount}
+          </button>)}</div>}
+      </section>}
       <section className="step"><h3>Fund and enter</h3>
         <p>{room.sponsorFunded ? "Sponsor prizes verified in escrow." : "Waiting for sponsor prizes to be verified in escrow."} {room.depositedCount} entrant deposits verified.</p>
         {room.lotVerification?.pending && <p role="status">FA2 prize transfer seen on Tezos; token custody verification is pending. The room cannot start until the transfer and escrow balance are confirmed.</p>}

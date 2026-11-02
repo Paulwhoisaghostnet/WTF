@@ -140,7 +140,6 @@ function configuration(input, preserveItemVersion = false) {
     let sponsor;
     try { sponsor = SponsoredPrizes.normalize(sponsorInput); }
     catch (error) { requireThat(false, error.message); }
-    requireThat(preserveItemVersion || sponsor.mode !== 'pick', 'Place-order token picking is not available for new rooms yet. Choose fixed or random allocation.');
     requireThat(sponsor.entry.currency === 'FREE' || sponsor.minimumHumans >= 2, 'Paid prize rooms require at least two human entrants.');
     if (input.sponsorInput) requireThat(fingerprint(sponsor) === fingerprint(input.sponsor), 'Persisted sponsor terms changed.');
     config.roomType = roomType;

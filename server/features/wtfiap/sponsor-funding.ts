@@ -35,7 +35,7 @@ export type SponsorGame = FundingGame & {
 };
 type Binding = { userId: string; playerId: string; walletAddress: string; name: string };
 export type SponsorIntent = { id: string; kind: "create_room" | "register_entrant" | "start_room" |
-  "finalize_room" | "void_room"; key: string; params: any; status: "planned" | "submission-unknown" | "submitted" | "applied";
+  "finalize_room" | "void_room" | "claim_cash" | "claim_lot"; key: string; params: any; status: "planned" | "submission-unknown" | "submitted" | "applied";
   operationHash?: string; error?: string };
 export type SponsorChainRoom = {
   blockHash: string; level: number; status: "funding" | "active" | "settled" | "voided";
@@ -61,6 +61,7 @@ export type SponsorRecord = {
   lock: any | null; termsHash: string; startRequested: boolean;
   status: string; chain: SponsorChainRoom | null; intents: SponsorIntent[];
   observations: Array<{ userId: string; action: string; operationHash: string; observedAt: string }>;
+  prizePicks?: Array<{ index: number; place: number; playerId: string; walletAddress: string }>;
   finalResult: null | { completion: any; params: any; hash: string };
   technicalVoid: null | { operatorId: string; reasonHash: string; evidenceHash: string };
   error: string | null; lastReconciledAt: string | null;
@@ -167,6 +168,66 @@ export function createSponsorFundingService({ store, game, chain, configs, linke
         amount: lot.amount, fixed_place: lot.place || 0 })),
       pick_counts: p.pickCounts || [],
     };
+  }
+  function prizePickState(record: SponsorRecord) {
+    demand(record.plan.mode === "pick", "This room uses another prize assignment mode.", 400);
+    const result = game.result(record.roomCode);
+    demand(result && record.lock && result.matchId === "party:" + record.roomCode,
+      "Prize picks open when the match finishes.", 409);
+    const resolution = game.sponsorHumanRanks?.(record.roomCode);
+    demand(resolution && resolution.matchId === result.matchId &&
+      resolution.seedCommitment === record.lock.seedCommitment,
+      "A verified human finish order is required for prize picks.");
+    const ranked = resolution.rankedPlayerIds;
+    demand(ranked.length === record.bindings.length &&
+      new Set(ranked).size === ranked.length &&
+      ranked.every(id => record.bindings.some(binding => binding.playerId === id)),
+      "Prize picks require every funded human in the finish order.");
+    const picks = record.prizePicks || [];
+    const used = new Set<number>();
+    let cursor = 0;
+    for (let place = 1; place <= record.plan.places.length; place++) {
+      const expected = record.plan.pickCounts?.[place - 1] || 0;
+      const binding = record.bindings.find(row => row.playerId === ranked[place - 1]);
+      demand(binding, "Prize place has no funded human.");
+      for (let count = 0; count < expected && cursor < picks.length; count++) {
+        const pick = picks[cursor++];
+        demand(Number.isSafeInteger(pick.index) && pick.index >= 0 &&
+          pick.index < record.plan.tokens.length && !used.has(pick.index) &&
+          pick.place === place && pick.playerId === binding.playerId &&
+          pick.walletAddress === binding.walletAddress,
+          "Recorded prize picks do not match the verified finish order.");
+        used.add(pick.index);
+      }
+      const alreadyPickedHere = picks.filter(pick => pick.place === place).length;
+      if (cursor === picks.length && alreadyPickedHere < expected)
+        return { resolution, picks, used, nextPlace: place, nextBinding: binding,
+          remainingForPlace: expected - alreadyPickedHere };
+    }
+    demand(cursor === picks.length && picks.length === record.plan.tokens.length,
+      "Recorded prize picks do not allocate every FA2 lot exactly once.");
+    return { resolution, picks, used, nextPlace: null, nextBinding: null, remainingForPlace: 0 };
+  }
+  async function pickLot(code: string, userId: string, index: number) {
+    demand(Number.isSafeInteger(index) && index >= 0, "Choose an available FA2 prize.", 400);
+    const value = room(code);
+    await store.mutate(code, old => {
+      demand(old, "Prize escrow has not opened.", 409);
+      verifyLocal(old, value);
+      demand(old.chain?.status === "active" && value.phase === "finished",
+        "Prize picks open after the funded match finishes.", 409);
+      const state = prizePickState(old);
+      demand(state.nextBinding?.userId === userId,
+        "The next prize choice belongs to another finisher.", 403);
+      demand(index < old.plan.tokens.length && !state.used.has(index),
+        "Choose an available FA2 prize.", 409);
+      old.prizePicks ||= [];
+      old.prizePicks.push({ index, place: state.nextPlace!,
+        playerId: state.nextBinding.playerId, walletAddress: state.nextBinding.walletAddress });
+      return { record: old, value: undefined };
+    });
+    kick();
+    return view(code, userId);
   }
   async function bind(code: string, userId: string, walletAddress: string) {
     const value = room(code), account = sponsorAccount(value);
@@ -335,18 +396,24 @@ export function createSponsorFundingService({ store, game, chain, configs, linke
       const prizeModule = require(path.resolve("server/features/wtfiap/runtime/game/core/sponsored-prizes.cjs"));
       lotPlaces = prizeModule.randomAllocation(record.plan, seed).sort((a: any, b: any) => a.index - b.index).map((lot: any) => lot.place);
     } else {
-      // Place-order picks need each winning human's recorded choice. Never
-      // invent an allocation or send an NFT to an unintended winner.
-      return null;
+      const picks = prizePickState(record);
+      if (picks.nextPlace !== null) return null;
+      lotPlaces = record.plan.tokens.map((_, index) => {
+        const chosen = picks.picks.find(pick => pick.index === index);
+        demand(chosen, "An FA2 prize is missing its winner.");
+        return chosen.place;
+      });
     }
     const params = { room_id: record.roomId, match_id: record.lock.matchId,
       transcript_hash: result.receiptsHash,
       result_hash: commitment({ version: "wtfiap-sponsor-result-v1", roomId: record.roomId,
         matchId: record.lock.matchId, termsHash: record.termsHash,
         transcriptHash: result.receiptsHash, groups: result.groups,
-        humanRanking: resolution, humanRanks, lotPlaces }),
+        humanRanking: resolution, humanRanks, lotPlaces,
+        ...(record.plan.mode === "pick" ? { prizePicks: record.prizePicks || [] } : {}) }),
       human_ranks: humanRanks, lot_places: lotPlaces };
-    return { completion: { ...result, humanRanking: resolution }, params };
+    return { completion: { ...result, humanRanking: resolution,
+      ...(record.plan.mode === "pick" ? { prizePicks: record.prizePicks || [] } : {}) }, params };
   }
   async function reconcileRecord(code: string) {
     let record = await store.read(code);
@@ -356,6 +423,8 @@ export function createSponsorFundingService({ store, game, chain, configs, linke
     const chainRoom = await chain.read(record);
     if (chainRoom) verifyChain(record, chainRoom);
     const finished = chainRoom?.status === "active" ? resultParams(record, value) : null;
+    const prizePicksPending = chainRoom?.status === "active" &&
+      record.plan.mode === "pick" && !finished && Boolean(game.result(code));
     await store.mutate(code, old => {
       demand(old, "Sponsor funding record disappeared.");
       old.chain = chainRoom; old.error = null; old.lastReconciledAt = clock().toISOString();
@@ -366,7 +435,12 @@ export function createSponsorFundingService({ store, game, chain, configs, linke
           item.kind === "finalize_room" && chainRoom?.status === "settled" &&
             chainRoom.resultHash === item.params.result_hash ||
           item.kind === "void_room" && chainRoom?.status === "voided" &&
-            chainRoom.voidReasonHash === item.params.reason_hash;
+            chainRoom.voidReasonHash === item.params.reason_hash ||
+          item.kind === "claim_cash" && chainRoom?.status === "settled" &&
+            chainRoom.cashClaims[cashKey(item.params.recipient,
+              item.params.currency === 0 ? "XTZ" : "WTF")]?.claimed === true ||
+          item.kind === "claim_lot" && chainRoom?.status === "settled" &&
+            chainRoom.lotClaims[item.params.index]?.claimed === true;
         if (applied) item.status = "applied";
       }
       if (!chainRoom) old.status = "opening";
@@ -376,8 +450,31 @@ export function createSponsorFundingService({ store, game, chain, configs, linke
           chainRoom.transcriptHash === old.finalResult.params.transcript_hash,
           "The settled on-chain result differs from authoritative combat.");
         old.status = "settled";
+        // Claims are permissionless, but the contract pays only its recorded
+        // recipient. Check the finalized room before requesting each payout.
+        const recipients = new Set([old.sponsor.walletAddress, old.config.treasury,
+          old.plan.entry.designatedWallet || old.config.treasury,
+          ...old.bindings.map(binding => binding.walletAddress)]);
+        for (const [key, claim] of Object.entries(chainRoom.cashClaims)) {
+          if (claim.claimed || BigInt(claim.amount) === 0n) continue;
+          const separator = key.lastIndexOf(":");
+          const recipient = key.slice(0, separator);
+          const currency = key.slice(separator + 1);
+          demand(recipients.has(recipient) && (currency === "XTZ" || currency === "WTF"),
+            "Sponsor cash claim has an unexpected recipient or currency.");
+          planIntent(old, "claim_cash", "claim-cash:" + key,
+            { room_id: old.roomId, recipient, currency: currency === "XTZ" ? 0 : 1 });
+        }
+        for (const [textIndex, claim] of Object.entries(chainRoom.lotClaims)) {
+          if (claim.claimed) continue;
+          const index = Number(textIndex);
+          demand(Number.isSafeInteger(index) && index >= 0 && index < old.plan.tokens.length &&
+            recipients.has(claim.recipient), "Sponsor token claim has an unexpected recipient or lot.");
+          planIntent(old, "claim_lot", "claim-lot:" + index,
+            { room_id: old.roomId, index });
+        }
       } else if (chainRoom.status === "active") {
-        old.status = finished ? "settling" : "active";
+        old.status = finished ? "settling" : prizePicksPending ? "awaiting-prize-picks" : "active";
         if (finished && !old.finalResult) {
           old.finalResult = { completion: clone(finished.completion), params: clone(finished.params),
             hash: commitment(finished) };
@@ -472,6 +569,9 @@ export function createSponsorFundingService({ store, game, chain, configs, linke
     const wallet = sponsor ? record?.sponsor.walletAddress : binding?.walletAddress;
     const base = record && wallet ? { record, wallet } : null;
     const actions: any = { sponsorLots: [], refundSponsorLots: [], cashClaims: [], lotClaims: [] };
+    const selection = p.mode === "pick" && record && value.phase === "finished" &&
+      (chainRoom?.status === "active" || chainRoom?.status === "settled")
+      ? prizePickState(record) : null;
     if (base && chainRoom && !record?.error) {
       const hash = { room_id: record.roomId, expected_terms_hash: record.termsHash };
       if (sponsor && chainRoom.status === "funding") {
@@ -559,16 +659,29 @@ export function createSponsorFundingService({ store, game, chain, configs, linke
         operationHash: i.operationHash || null })) || [],
       self: { role: sponsor ? "sponsor" : player ? "entrant" : "watcher",
         playerId: player?.playerId || null, walletAddress: wallet || null,
+        canPick: Boolean(selection?.nextBinding?.userId === userId &&
+          chainRoom?.status === "active"),
         canBind: Boolean(userId && c.enabled && value.phase === "lobby" &&
           (sponsor || player) && (!record?.lock || Boolean(player))),
         canOpen: Boolean(sponsor && c.enabled && record && !record.lock),
         canStart: Boolean(sponsor && c.enabled && record && fullyFunded(record, value)),
         actions, pendingOperations: record?.observations.filter(o => o.userId === userId) || [] },
-      prizeSelectionPending: record?.chain?.status === "active" &&
-        p.mode === "pick" && Boolean(game.result(code)),
+      prizeSelectionPending: Boolean(selection?.nextPlace),
+      prizeSelection: selection ? {
+        nextPlace: selection.nextPlace,
+        nextPlayerId: selection.nextBinding?.playerId || null,
+        nextPlayerName: value.players.find(row =>
+          row.playerId === selection.nextBinding?.playerId)?.name || null,
+        remainingForPlace: selection.remainingForPlace,
+        chosen: selection.picks.map(pick => ({ index: pick.index, place: pick.place,
+          playerId: pick.playerId })),
+        availableLots: p.tokens.map((lot, index) => ({ index,
+          contract: lot.contract, tokenId: lot.tokenId, amount: lot.amount }))
+          .filter(lot => !selection.used.has(lot.index)),
+      } : null,
       error: record?.error || null, health: { ...health, error: record?.error || null } };
   }
-  return { bind, open, start, observe, view, drain, kick, health,
+  return { bind, open, start, pickLot, observe, view, drain, kick, health,
     config: (network: Network) => configs[network],
     close: async () => { closed = true; if (running) await running; } };
 }

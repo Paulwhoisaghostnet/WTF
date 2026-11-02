@@ -161,3 +161,99 @@ test("disabled sponsor deployment gives a readable non-payment state", async () 
   await assert.rejects(f.service.bind("sponsor-room", "1", sponsorWallet), /not been deployed/);
   await f.service.close();
 });
+
+test("settled sponsor prizes are claimed automatically and only once per recorded claim", async () => {
+  const plan: SponsorPlan = { ...clone(freePlan),
+    tokens: [{ contract: token, tokenId: "7", amount: "1", place: 1 }] };
+  const f = fixture(plan);
+  await f.service.bind("sponsor-room", "1", sponsorWallet);
+  await f.service.open("sponsor-room", "1");
+  await f.service.drain();
+  const record = f.rows.get("sponsor-room")!;
+  const resultHash = "d".repeat(64), transcriptHash = "e".repeat(64);
+  await f.store.mutate("sponsor-room", old => {
+    assert(old);
+    old.finalResult = { completion: { matchId: "party:sponsor-room" },
+      params: { result_hash: resultHash, transcript_hash: transcriptHash },
+      hash: "f".repeat(64) };
+    return { record: old, value: undefined };
+  });
+  const chain = observed(record);
+  chain.status = "settled";
+  chain.resultHash = resultHash;
+  chain.transcriptHash = transcriptHash;
+  chain.sponsorXtzFunded = true;
+  chain.heldXtz = "1000000";
+  chain.fundedLots = [0];
+  chain.verifiedLots = [0];
+  chain.cashClaims[sponsorWallet + ":XTZ"] = { amount: "1000000", claimed: false };
+  chain.lotClaims[0] = { recipient: sponsorWallet, claimed: false };
+  f.setChain(chain);
+  await f.service.drain();
+  assert.equal(f.submissions.at(-1), "claim_cash");
+  assert.equal(f.rows.get("sponsor-room")?.intents.filter(intent => intent.kind === "claim_cash").length, 1);
+
+  chain.cashClaims[sponsorWallet + ":XTZ"].claimed = true;
+  f.setChain(chain);
+  await f.service.drain();
+  assert.equal(f.submissions.at(-1), "claim_lot");
+
+  chain.lotClaims[0].claimed = true;
+  chain.fundedLots = [];
+  chain.verifiedLots = [];
+  f.setChain(chain);
+  await f.service.drain();
+  const count = f.submissions.length;
+  await f.service.drain();
+  assert.equal(f.submissions.length, count);
+  assert(f.rows.get("sponsor-room")?.intents.filter(intent =>
+    intent.kind === "claim_cash" || intent.kind === "claim_lot").every(intent => intent.status === "applied"));
+  await f.service.close();
+});
+
+test("finish-place FA2 picks are recorded in rank order before settlement", async () => {
+  const plan: SponsorPlan = { ...clone(freePlan), mode: "pick",
+    places: [
+      { place: 1, xtzAtomic: "1000000", wtfAtomic: "0", poolWeight: "0" },
+      { place: 2, xtzAtomic: "0", wtfAtomic: "0", poolWeight: "0" },
+    ],
+    tokens: [0, 1, 2].map(index => ({ contract: token, tokenId: String(index), amount: "1" })),
+    pickCounts: [2, 1] };
+  const f = fixture(plan);
+  await f.service.bind("sponsor-room", "1", sponsorWallet);
+  await f.service.open("sponsor-room", "1");
+  await f.service.drain();
+  f.saved.players.push({ playerId: "p2", accountId: "2", name: "Entrant", isAI: false });
+  await f.service.bind("sponsor-room", "2", entrantWallet);
+  const record = f.rows.get("sponsor-room")!;
+  const chain = observed(record);
+  chain.status = "active"; chain.matchId = record.lock.matchId;
+  chain.sponsorXtzFunded = true; chain.heldXtz = "1000000";
+  chain.entrants = [sponsorWallet, entrantWallet];
+  chain.paid = [sponsorWallet, entrantWallet];
+  chain.fundedLots = [0, 1, 2]; chain.verifiedLots = [0, 1, 2];
+  f.setChain(chain);
+  f.saved.phase = "finished";
+  (f.game as any).result = () => ({ matchId: "party:sponsor-room",
+    receiptsHash: "d".repeat(64), groups: ["p1", "p2", "a1", "a2", "a3", "a4", "a5", "a6"]
+      .map(playerId => ({ playerIds: [playerId] })) });
+  (f.game as any).sponsorHumanRanks = () => ({ matchId: "party:sponsor-room",
+    rankedPlayerIds: ["p1", "p2"], seedCommitment: record.lock.seedCommitment,
+    tieBreaks: [] });
+  await f.service.drain();
+  assert.equal(f.rows.get("sponsor-room")?.status, "awaiting-prize-picks");
+  assert.equal((await f.service.view("sponsor-room", "1")).self.canPick, true);
+  await assert.rejects(f.service.pickLot("sponsor-room", "2", 1), /another finisher/);
+  await f.service.pickLot("sponsor-room", "1", 2);
+  await assert.rejects(f.service.pickLot("sponsor-room", "1", 2), /available FA2 prize/);
+  await f.service.pickLot("sponsor-room", "1", 0);
+  assert.equal((await f.service.view("sponsor-room", "2")).self.canPick, true);
+  await assert.rejects(f.service.pickLot("sponsor-room", "1", 1), /another finisher/);
+  await f.service.pickLot("sponsor-room", "2", 1);
+  await f.service.drain();
+  const final = f.rows.get("sponsor-room")?.finalResult;
+  assert.deepEqual(final?.params.lot_places, [1, 2, 1]);
+  assert.equal(f.submissions.at(-1), "finalize_room");
+  assert.equal((await f.service.view("sponsor-room", "2")).prizeSelection?.nextPlace, null);
+  await f.service.close();
+});

@@ -58,9 +58,16 @@ test("sponsor escrow has its own typed intent and network contract allowlist", (
   assert.equal(enforceEnvelopePolicy({ ...lane, WTF_OPERATOR_SIGNER_WTFIAP_SPONSOR_CONTRACTS: [contract] }, envelope), null);
   assert.equal(policyCode({ ...lane, WTF_OPERATOR_SIGNER_WTFIAP_CONTRACTS: [contract] }, envelope), "WTFIAP_CONTRACT");
   assert.throws(() => operatorSignerEnvelopeSchema.parse({ ...envelope, intent: "wtfiap_escrow" }));
+  const cashClaim = operatorSignerEnvelopeSchema.parse({ ...envelope, payload: {
+    ...target, entrypoint: "claim_cash", args: { room_id: target.args.room_id,
+      recipient: wallet, currency: 0 } } });
+  assert.equal(enforceEnvelopePolicy({ ...lane, WTF_OPERATOR_SIGNER_WTFIAP_SPONSOR_CONTRACTS: [contract] }, cashClaim), null);
+  const lotClaim = operatorSignerEnvelopeSchema.parse({ ...envelope, payload: {
+    ...target, entrypoint: "claim_lot", args: { room_id: target.args.room_id, index: 0 } } });
+  assert.equal(enforceEnvelopePolicy({ ...lane, WTF_OPERATOR_SIGNER_WTFIAP_SPONSOR_CONTRACTS: [contract] }, lotClaim), null);
   assert.throws(() => operatorSignerEnvelopeSchema.parse({ ...envelope, payload: {
     ...target, entrypoint: "claim_cash", args: { room_id: target.args.room_id,
-      recipient: wallet, currency: 0 } } }));
+      recipient: wallet, currency: 2 } } }));
   assert.throws(() => operatorSignerEnvelopeSchema.parse({ ...envelope, payload: {
     ...target, args: { ...target.args, minimum_humans: 1, entry_currency: 1, entry_amount: "10000" } } }));
   const oldTarget = operatorSignerEnvelopeSchema.parse({ ...envelope, intent: "custom", payload: {

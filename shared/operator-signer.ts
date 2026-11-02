@@ -200,6 +200,12 @@ export const operatorSignerWtfIapSponsorPayloadSchema = z.discriminatedUnion("en
   z.object({ ...wtfiapTarget, entrypoint: z.literal("void_room"), args: z.object({
     room_id: wtfiapHash, reason_hash: wtfiapHash, evidence_hash: wtfiapHash,
   }).strict() }).strict(),
+  z.object({ ...wtfiapTarget, entrypoint: z.literal("claim_cash"), args: z.object({
+    room_id: wtfiapHash, recipient: wtfiapAddress, currency: z.number().int().min(0).max(1),
+  }).strict() }).strict(),
+  z.object({ ...wtfiapTarget, entrypoint: z.literal("claim_lot"), args: z.object({
+    room_id: wtfiapHash, index: z.number().int().min(0),
+  }).strict() }).strict(),
 ]);
 export type OperatorSignerWtfIapSponsorPayload = z.infer<typeof operatorSignerWtfIapSponsorPayloadSchema>;
 

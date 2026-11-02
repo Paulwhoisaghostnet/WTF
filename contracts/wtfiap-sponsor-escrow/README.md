@@ -60,7 +60,11 @@ sponsor-only prize rooms have no inferred house fee.
 
 Cash and FA2 claims are permissionless to trigger, but the destination is
 bound on chain. The server can automate disbursal without asking a winner to
-sign. There is no admin sweep. The sponsor can cancel before combat, and the
+sign. The hosted funding service now submits each unclaimed cash award and FA2
+lot after it verifies the settled result, and reconciles each submission with
+the on-chain claim flag before marking it paid. The recipient's claim control
+remains available if automated submission cannot complete. There is no admin
+sweep. The sponsor can cancel before combat, and the
 referee can record an evidence-bound technical void before or during combat;
 both make exact sponsor assets, entrants' entries, and the house fee refundable
 to their original funders. A rejecting destination rolls back only its own
@@ -107,6 +111,15 @@ storage, checked chain ID and fees, and verified the finalized script and
 storage after origination. A real Shadownet paid and free XTZ custody-to-claim
 lifecycle followed. WTF and arbitrary FA2 token custody still require their
 own live network receipts before those assets can be called live-tested.
+
+The Shadownet FA2 lot proof script uses the compiled `DummyPrizeFA2.py` fixture
+in `artifacts/dummy-prize-fa2-contract.json` and checks its SHA-256 before any
+origination. Run `test-shadownet-fa2.ts` with the signer environment file, a
+private proof directory, and `--preflight` first; use `--execute` only after
+reviewing the Shadownet fee and balance estimate. Its journal prevents a
+second send after an uncertain operation. It tests one NFT lot from sponsor
+custody through a winner claim; the proof does not stand in for a live WTF
+token transfer or for an arbitrary third-party FA2's TzKT classification.
 
 ## Trust boundary
 

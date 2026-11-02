@@ -15,7 +15,7 @@ export function createSponsorFundingHandler({ getService, canAccess }: {
       const service = getService(), endpoint = req.path.slice(prefix.length);
       if (endpoint === "/health" && req.method === "GET")
         return res.json({ ok: true, health: service.health });
-      const match = endpoint.match(/^\/rooms\/([A-Za-z0-9-]+)(?:\/(bind-wallet|open|start|observe|reconcile))?$/);
+      const match = endpoint.match(/^\/rooms\/([A-Za-z0-9-]+)(?:\/(bind-wallet|open|start|pick-lot|observe|reconcile))?$/);
       demand(match, "Unknown sponsored-room funding endpoint.", 404);
       const [, code, command] = match;
       const userId = req.user ? String((req.user as any).id) : null;
@@ -25,6 +25,7 @@ export function createSponsorFundingHandler({ getService, canAccess }: {
       demand(userId, "Sign in to manage sponsored-room funding.", 401);
       const body = req.body;
       const required = command === "bind-wallet" ? ["walletAddress"] :
+        command === "pick-lot" ? ["index"] :
         command === "observe" ? ["action", "operationHash"] : [];
       demand(body && typeof body === "object" && !Array.isArray(body) &&
         Object.keys(body).length === required.length &&
@@ -36,6 +37,7 @@ export function createSponsorFundingHandler({ getService, canAccess }: {
         room = await service.bind(code, userId, body.walletAddress);
       } else if (command === "open") room = await service.open(code, userId);
       else if (command === "start") room = await service.start(code, userId);
+      else if (command === "pick-lot") room = await service.pickLot(code, userId, body.index);
       else if (command === "observe") {
         demand(typeof body.action === "string" && typeof body.operationHash === "string",
           "Submitted wallet operation is required.", 400);

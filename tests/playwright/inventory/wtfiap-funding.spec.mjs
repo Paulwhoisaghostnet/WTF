@@ -104,6 +104,64 @@ test.describe("interaction inventory - WTFIAP funding safety", () => {
     await expect(panel.getByRole("button", { name: "Pay entry" })).toHaveCount(0);
   });
 
+  test("sponsored Party setup offers paid entry and ordered FA2 prize picks", async ({ page }) => {
+    await page.goto("/colilseum?mode=party", { waitUntil: "domcontentloaded" });
+    const frame = await partyFrame(page);
+    await frame.locator("#room-type").selectOption("party");
+    await frame.locator("#prize-source").selectOption("sponsor-paid");
+    await expect(frame.locator("#sponsor-entry-fields")).toBeVisible();
+    await frame.locator("#sponsor-mode").selectOption("pick");
+    await expect(frame.locator("#sponsor-picks-1")).toBeVisible();
+    await frame.locator("#sponsor-place-count").selectOption("2");
+    await frame.locator("#add-sponsor-token").click();
+    await frame.locator("#sponsor-picks-1").fill("1");
+    await frame.locator("#sponsor-picks-2").fill("0");
+    await frame.locator("#sponsor-designated-wallet").fill("tz1" + "1".repeat(33));
+    const token = frame.locator("#sponsor-token-list .sponsor-token-row");
+    await token.locator('input').nth(0).fill("KT1" + "1".repeat(33));
+    await token.locator('input').nth(1).fill("7");
+    await token.locator('input').nth(2).fill("1");
+    await expect(frame.locator("#sponsor-preview")).toContainText("finish-place pick order");
+    await expect(frame.locator("#create-room")).toHaveText("Create prize party");
+  });
+
+  test("a ranked finisher can choose an FA2 prize from the room funding panel", async ({ page }) => {
+    const roomCode = "99999999-9999-4999-8999-999999999999";
+    const lot = { index: 0, contract: "KT1" + "1".repeat(33), tokenId: "7", amount: "1" };
+    let selected = null;
+    const room = {
+      roomCode, status: "awaiting-prize-picks", network: "shadownet",
+      chainId: "NetXsqzbfFenSTS", escrowContract: "KT1ReadOnlySponsorFixture",
+      roomId: "c".repeat(64), termsHash: "d".repeat(64),
+      wtfToken: { contract: "KT1ReadOnlyFixtureWTF", tokenId: "0", decimals: 8 },
+      sponsorFunded: true, depositedCount: 2, roster: [], config: { enabled: true },
+      terms: { mode: "pick", minimumHumans: 2,
+        entry: { currency: "FREE", entryAtomic: "0", poolNumerator: "0", poolDenominator: "1", designatedWallet: null },
+        places: [{ place: 1, xtzAtomic: "0", wtfAtomic: "0", poolWeight: "0" }],
+        tokens: [lot], deposit: { xtzAtomic: "0", wtfAtomic: "0" } },
+      prizeSelection: { nextPlace: 1, nextPlayerId: "winner", nextPlayerName: "Winner",
+        remainingForPlace: 1, chosen: [], availableLots: [lot] },
+      self: { role: "entrant", canPick: true, walletAddress: "tz1ReadOnlyFixtureWallet",
+        canBind: false, canOpen: false, canStart: false,
+        actions: { sponsorLots: [], refundSponsorLots: [], cashClaims: [], lotClaims: [] } },
+    };
+    await page.route(`**/api/wtfiap/sponsor-funding/rooms/${roomCode}`, route =>
+      route.fulfill({ json: { ok: true, room } }));
+    await page.route(`**/api/wtfiap/sponsor-funding/rooms/${roomCode}/pick-lot`, route => {
+      selected = route.request().postDataJSON().index;
+      room.prizeSelection = { nextPlace: null, nextPlayerId: null, nextPlayerName: null,
+        remainingForPlace: 0, chosen: [{ index: 0, place: 1, playerId: "winner" }], availableLots: [] };
+      room.self.canPick = false;
+      return route.fulfill({ json: { ok: true, room } });
+    });
+    await page.goto(`/colilseum/${roomCode}?funding=1`);
+    const panel = surface(page).getByRole("region", { name: "Prize escrow" });
+    await expect(panel.getByRole("button", { name: /Pick FA2 .* #7 ×1/ })).toBeVisible();
+    await panel.getByRole("button", { name: /Pick FA2 .* #7 ×1/ }).click();
+    await expect.poll(() => selected).toBe(0);
+    await expect(panel).toContainText("All finishers have chosen");
+  });
+
   test("duel wagering stays optional and AI tournament quotes only paying humans", async ({ page }) => {
     const errors = []; page.on("pageerror", error => errors.push(error.message));
     await page.goto("/colilseum?mode=duel", { waitUntil: "domcontentloaded" });

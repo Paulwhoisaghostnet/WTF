@@ -13306,3 +13306,13 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: The full browser inventory found three regressions in existing room navigation and invitations.
 
 **Rule**: Compare both the game server and client against the hosted release before vendoring. Rebuild the host's public assets before browser testing; a stale build can falsely report the same failure after the source is fixed.
+
+---
+
+## 2026-11-02 — Wire prize selection through the game, host, and escrow result
+
+**What happened**: The sponsor escrow contract supported finish-place FA2 prize picks, but the game rejected that room mode and the host had no pick action or result mapping.
+
+**Why it mattered**: A sponsor could not offer ordered prize choice even though the contract had a settlement mode for it. A completed match could not settle until each lot was assigned to a verified human finisher.
+
+**Rule**: For every escrow prize mode, test the room creation UI, server acceptance, authenticated post-match action, persisted choice order, and exact result submitted to escrow. A contract entrypoint alone is not a finished game feature.
