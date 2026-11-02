@@ -1,12 +1,12 @@
 # wtfOS API reference
 
-This is the source-derived inventory of the main wtfOS HTTP API: **938 unique method/path operations**, grouped into **100 route families** and declared across **128 server modules**. It documents what each endpoint is for and the gate visible at its route declaration; handler code remains authoritative for payload schemas and conditional authorization.
+This is the source-derived inventory of the main wtfOS HTTP API: **958 unique method/path operations**, grouped into **100 route families** and declared across **128 server modules**. It documents what each endpoint is for and the gate visible at its route declaration; handler code remains authoritative for payload schemas and conditional authorization.
 
 > Evidence: `[source]`. Probe budget: zero-call pass. Actual spend: zero network calls, zero writes, and no production data access. The inventory was extracted from the local route AST, then deduplicated by method and path.
 
 ## Public platform surface
 
-wtfOS exposes 938 unique method/path declarations across production-reachable routers, four WebSocket transports, and a Streamable HTTP MCP server with 47 registered tools. Feature flags and runtime modes can disable or replace some declared routes.
+wtfOS exposes 958 unique method/path declarations across production-reachable routers, four WebSocket transports, and a Streamable HTTP MCP server with 47 registered tools. Feature flags and runtime modes can disable or replace some declared routes.
 
 The public developer boundary is additive: `/api/v1` aliases the established handlers behind paired bearer-token scopes, `/api/v1/openapi.json` serves OpenAPI 3.1, and `/api/v1/docs` serves the grouped human reference. The legacy `/api/*` surface remains unchanged for browser and internal callers.
 
@@ -146,7 +146,7 @@ The MCP transport is `GET/POST/DELETE /mcp`, authenticated exclusively with a pa
 | `lasagna` | 1 | Operations for the lasagna domain. |
 | `leaderboard` | 6 | Platform leaderboards and ranking data. |
 | `links` | 4 | User and platform link records. |
-| `macaroni` | 19 | Macaroni drop publishing, packages, installers, previews, and guarded IPFS uploads. |
+| `macaroni` | 39 | Macaroni drop publishing, packages, installers, previews, and guarded IPFS uploads. |
 | `mail` | 8 | Mailbox, aliases, messages, attachments, and delivery administration. |
 | `marketplace` | 10 | NFT marketplace listings, offers, purchases, and chain synchronization. |
 | `mastodon` | 6 | Mastodon connection, timelines, identity, and posting. |
@@ -197,7 +197,7 @@ The MCP transport is `GET/POST/DELETE /mcp`, authenticated exclusively with a pa
 
 ## Complete endpoint inventory
 
-Method totals: **ALL 13**, **DELETE 45**, **GET 455**, **PATCH 36**, **POST 324**, **PUT 65**. Declared-gate totals: **Admin 103**, **Internal 1**, **MCP bearer 1**, **Permission 142**, **Public/handler 216**, **Session 475**.
+Method totals: **ALL 13**, **DELETE 45**, **GET 460**, **PATCH 36**, **POST 339**, **PUT 65**. Declared-gate totals: **Admin 103**, **Internal 1**, **MCP bearer 1**, **Permission 142**, **Public/handler 222**, **Session 489**.
 
 <details>
 <summary><code>access</code> — 1 operations</summary>
@@ -1182,17 +1182,17 @@ User and platform link records.
 </details>
 
 <details>
-<summary><code>macaroni</code> — 19 operations</summary>
+<summary><code>macaroni</code> — 39 operations</summary>
 
 Macaroni drop publishing, packages, installers, previews, and guarded IPFS uploads.
 
 | Method | Path | Use | Access | Source |
 | --- | --- | --- | --- | --- |
-| GET | `/api/macaroni/installers` | Read or list macaroni installers. | Session | `server/routes/macaroni.ts:671` |
-| POST | `/api/macaroni/ipfs/pin` | Create, submit, or run macaroni ipfs pin. | Permission | `server/routes/macaroni.ts:607` |
-| POST | `/api/macaroni/ipfs/upload` | Create, submit, or run macaroni ipfs upload. | Public/handler | `server/routes/macaroni.ts:574` |
-| POST | `/api/macaroni/ipfs/upload-ticket` | Create, submit, or run macaroni ipfs upload ticket. | Permission | `server/routes/macaroni.ts:540` |
-| POST | `/api/macaroni/media-preview` | Create, submit, or run macaroni media preview. | Session | `server/routes/macaroni.ts:636` |
+| GET | `/api/macaroni/installers` | Read or list macaroni installers. | Session | `server/routes/macaroni.ts:994` |
+| POST | `/api/macaroni/ipfs/pin` | Create, submit, or run macaroni ipfs pin. | Permission | `server/routes/macaroni.ts:930` |
+| POST | `/api/macaroni/ipfs/upload` | Create, submit, or run macaroni ipfs upload. | Public/handler | `server/routes/macaroni.ts:897` |
+| POST | `/api/macaroni/ipfs/upload-ticket` | Create, submit, or run macaroni ipfs upload ticket. | Permission | `server/routes/macaroni.ts:863` |
+| POST | `/api/macaroni/media-preview` | Create, submit, or run macaroni media preview. | Session | `server/routes/macaroni.ts:959` |
 | GET | `/api/macaroni/packages` | Read or list macaroni packages. | Permission | `server/routes/macaroni-packages.ts:282` |
 | POST | `/api/macaroni/packages` | Create, submit, or run macaroni packages. | Permission | `server/routes/macaroni-packages.ts:305` |
 | GET | `/api/macaroni/packages/:packageId` | Read or list macaroni packages packageId. | Permission | `server/routes/macaroni-packages.ts:398` |
@@ -1202,11 +1202,31 @@ Macaroni drop publishing, packages, installers, previews, and guarded IPFS uploa
 | POST | `/api/macaroni/packages/:packageId/items` | Create, submit, or run macaroni packages packageId items. | Permission | `server/routes/macaroni-packages.ts:420` |
 | PATCH | `/api/macaroni/packages/:packageId/items/:itemId` | Partially update macaroni packages packageId items itemId. | Permission | `server/routes/macaroni-packages.ts:541` |
 | GET | `/api/macaroni/packages/:packageId/source` | Read or list macaroni packages packageId source. | Permission | `server/routes/macaroni-packages.ts:773` |
-| POST | `/api/macaroni/publish` | Create, submit, or run macaroni publish. | Permission | `server/routes/macaroni.ts:763` |
-| POST | `/api/macaroni/reveal-automation` | Create, submit, or run macaroni reveal automation. | Public/handler | `server/routes/macaroni.ts:717` |
-| POST | `/api/macaroni/reveal-automation/challenge` | Create, submit, or run macaroni reveal automation challenge. | Public/handler | `server/routes/macaroni.ts:703` |
-| GET | `/api/macaroni/reveal-operator` | Read or list macaroni reveal operator. | Public/handler | `server/routes/macaroni.ts:691` |
-| POST | `/api/macaroni/reveal-request` | Create, submit, or run macaroni reveal request. | Public/handler | `server/routes/macaroni.ts:751` |
+| POST | `/api/macaroni/publish` | Create, submit, or run macaroni publish. | Permission | `server/routes/macaroni.ts:1586` |
+| POST | `/api/macaroni/reveal-automation` | Create, submit, or run macaroni reveal automation. | Public/handler | `server/routes/macaroni.ts:1540` |
+| POST | `/api/macaroni/reveal-automation/challenge` | Create, submit, or run macaroni reveal automation challenge. | Public/handler | `server/routes/macaroni.ts:1526` |
+| GET | `/api/macaroni/reveal-operator` | Read or list macaroni reveal operator. | Public/handler | `server/routes/macaroni.ts:1514` |
+| POST | `/api/macaroni/reveal-request` | Create, submit, or run macaroni reveal request. | Public/handler | `server/routes/macaroni.ts:1574` |
+| GET | `/api/macaroni/v35/capabilities` | Read or list macaroni v35 capabilities. | Public/handler | `server/routes/macaroni.ts:1014` |
+| POST | `/api/macaroni/v35/drops` | Create, submit, or run macaroni v35 drops. | Session | `server/routes/macaroni.ts:1053` |
+| POST | `/api/macaroni/v35/drops/:dropId/attach` | Create, submit, or run macaroni v35 drops dropId attach. | Session | `server/routes/macaroni.ts:1254` |
+| POST | `/api/macaroni/v35/drops/:dropId/attempts` | Create, submit, or run macaroni v35 drops dropId attempts. | Session | `server/routes/macaroni.ts:1276` |
+| POST | `/api/macaroni/v35/drops/:dropId/attempts/:attemptId/reconcile` | Create, submit, or run macaroni v35 drops dropId attempts attemptId reconcile. | Session | `server/routes/macaroni.ts:1416` |
+| POST | `/api/macaroni/v35/drops/:dropId/attempts/:attemptId/submitted` | Create, submit, or run macaroni v35 drops dropId attempts attemptId submitted. | Session | `server/routes/macaroni.ts:1385` |
+| POST | `/api/macaroni/v35/drops/:dropId/attempts/:attemptId/wallet-prompt-aborted` | Create, submit, or run macaroni v35 drops dropId attempts attemptId wallet prompt aborted. | Session | `server/routes/macaroni.ts:1350` |
+| POST | `/api/macaroni/v35/drops/:dropId/attempts/:attemptId/wallet-prompt-started` | Create, submit, or run macaroni v35 drops dropId attempts attemptId wallet prompt started. | Session | `server/routes/macaroni.ts:1319` |
+| POST | `/api/macaroni/v35/drops/:dropId/attempts/:attemptId/wallet-rejected` | Create, submit, or run macaroni v35 drops dropId attempts attemptId wallet rejected. | Session | `server/routes/macaroni.ts:1293` |
+| POST | `/api/macaroni/v35/drops/:dropId/next-action` | Create, submit, or run macaroni v35 drops dropId next action. | Session | `server/routes/macaroni.ts:1151` |
+| POST | `/api/macaroni/v35/drops/:dropId/private-assets` | Create, submit, or run macaroni v35 drops dropId private assets. | Session | `server/routes/macaroni.ts:1238` |
+| POST | `/api/macaroni/v35/drops/:dropId/private-assets/upload-ticket` | Create, submit, or run macaroni v35 drops dropId private assets upload ticket. | Session | `server/routes/macaroni.ts:1177` |
+| POST | `/api/macaroni/v35/drops/:dropId/public-contract-metadata` | Create, submit, or run macaroni v35 drops dropId public contract metadata. | Session | `server/routes/macaroni.ts:1101` |
+| GET | `/api/macaroni/v35/drops/:dropId/setup` | Read or list macaroni v35 drops dropId setup. | Session | `server/routes/macaroni.ts:1134` |
+| POST | `/api/macaroni/v35/private-assets/upload` | Create, submit, or run macaroni v35 private assets upload. | Public/handler | `server/routes/macaroni.ts:1221` |
+| POST | `/api/macaroni/v35/registration/challenge` | Create, submit, or run macaroni v35 registration challenge. | Session | `server/routes/macaroni.ts:1034` |
+| GET | `/api/macaroni/v35/status/:network/:contract` | Read or list macaroni v35 status network contract. | Public/handler | `server/routes/macaroni.ts:1446` |
+| GET | `/api/macaroni/v35/status/:network/:contract/claims/:claimId` | Read or list macaroni v35 status network contract claims claimId. | Public/handler | `server/routes/macaroni.ts:1463` |
+| GET | `/api/macaroni/v35/status/:network/:contract/purchases/:operationHash` | Read or list macaroni v35 status network contract purchases operationHash. | Public/handler | `server/routes/macaroni.ts:1481` |
+| POST | `/api/macaroni/v35/wake/:network/:contract` | Create, submit, or run macaroni v35 wake network contract. | Public/handler | `server/routes/macaroni.ts:1499` |
 
 </details>
 

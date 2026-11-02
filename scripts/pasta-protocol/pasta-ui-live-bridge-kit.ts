@@ -35,6 +35,7 @@ const BRIDGE_ACTIONS = new Set([
   "connect",
   "contract_at",
   "estimate_call",
+  "estimate_origination",
   "execute_view",
   "originate",
   "pin_blob",
@@ -70,6 +71,7 @@ export type PastaUiLiveAction =
   | "connect"
   | "contract_at"
   | "estimate_call"
+  | "estimate_origination"
   | "execute_view"
   | "originate"
   | "pin_blob"
@@ -543,9 +545,11 @@ export async function startPastaUiLiveLoopbackServer(
 
 export function decodePastaUiLiveValue(value: unknown): unknown {
   let visited = 0;
+  // The reviewed Macaroni V3.5 Michelson artifact reaches depth 117.
+  const maximumDepth = 117;
   const decode = (current: unknown, depth: number): unknown => {
     visited += 1;
-    if (visited > 100_000 || depth > 64) fail("bridge payload is too deeply nested");
+    if (visited > 100_000 || depth > maximumDepth) fail("bridge payload is too deeply nested");
     if (current === null || typeof current === "string" || typeof current === "number" || typeof current === "boolean") {
       return current;
     }
@@ -1416,6 +1420,26 @@ export class TaquitoPastaUiLiveSession {
         },
       };
     }
+    if (request.action === "estimate_origination") {
+      const chainId = await this.assertAuthorizedAndFunded("before UI-live origination estimate");
+      const code = decodePastaUiLiveValue(payload.code);
+      const storage = decodePastaUiLiveValue(payload.storage);
+      await this.options.validateOrigination?.({ code, storage });
+      const estimate = await this.readOnly(
+        "UI-live origination estimate",
+        () => this.options.tezos.estimate.originate({ code, storage } as never),
+      );
+      return {
+        chainId,
+        estimate: {
+          gasLimit: requireSafeInteger(Number(estimate.gasLimit), "estimated gas limit", 1),
+          storageLimit: requireSafeInteger(Number(estimate.storageLimit), "estimated storage limit"),
+          suggestedFeeMutez: requireSafeInteger(Number(estimate.suggestedFeeMutez), "suggested fee"),
+          minimalFeeMutez: requireSafeInteger(Number(estimate.minimalFeeMutez), "minimal fee"),
+          burnFeeMutez: requireSafeInteger(Number(estimate.burnFeeMutez), "burn fee"),
+        },
+      };
+    }
     if (request.action === "batch") {
       const chainId = await this.assertAuthorizedAndFunded("before UI-live batch");
       if (!Array.isArray(payload.calls) || payload.calls.length === 0 || payload.calls.length > 50) {
@@ -1699,6 +1723,13 @@ export function buildPastaUiLiveProxyInstallerSource(
       },
     };
     toolkit.estimate = {
+      async originate(input) {
+        if (!input || typeof input !== "object" || !input.code || !input.storage) {
+          throw new Error("UI-live bridge origination estimate requires code and storage");
+        }
+        const result = await request("estimate_origination", { code: input.code, storage: input.storage });
+        return result.estimate;
+      },
       async transfer(params) {
         if (!params || typeof params !== "object" || !params.__pastaBridgeEstimateCall) {
           throw new Error("UI-live bridge estimate requires a bridge contract call");

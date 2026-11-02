@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -152,6 +153,15 @@ function fakeTezos() {
         },
       },
       estimate: {
+        async originate() {
+          return {
+            gasLimit: 50_000,
+            storageLimit: 1_000,
+            suggestedFeeMutez: 2_000,
+            minimalFeeMutez: 1_900,
+            burnFeeMutez: 250_000,
+          };
+        },
         async transfer() {
           return {
             gasLimit: 6_909,
@@ -2154,6 +2164,63 @@ test("bounded bridge estimation simulates only an authorized call and emits no r
   );
 });
 
+test("origination estimation is authorized, validated, read-only, and receipt-free", async () => {
+  const { tezos } = fakeTezos();
+  let validated = 0;
+  let estimated = 0;
+  let originated = 0;
+  tezos.estimate.originate = async ({ code, storage }: any) => {
+    estimated += 1;
+    assert.deepEqual(JSON.parse(JSON.stringify(code)), SCRIPT_CODE);
+    assert.deepEqual(JSON.parse(JSON.stringify(storage)), { prim: "Unit" });
+    return { gasLimit: 50_000, storageLimit: 1_000, suggestedFeeMutez: 2_000, minimalFeeMutez: 1_900, burnFeeMutez: 250_000 };
+  };
+  tezos.contract.originate = async () => {
+    originated += 1;
+    throw new Error("estimate must not originate");
+  };
+  const session = new TaquitoPastaUiLiveSession({
+    tezos,
+    signerAddress: CREATOR,
+    expectedChainId: CHAIN_ID,
+    allowedContractAddresses: new Set(),
+    allowedEntrypoints: new Set(),
+    assertExpectedChain: async () => CHAIN_ID,
+    validateOrigination: async ({ code, storage }) => {
+      validated += 1;
+      assert.deepEqual(JSON.parse(JSON.stringify(code)), SCRIPT_CODE);
+      assert.deepEqual(JSON.parse(JSON.stringify(storage)), { prim: "Unit" });
+    },
+    pinJson: async () => { throw new Error("not used"); },
+  });
+  await assert.rejects(
+    session.handle(createBridgeRequest("estimate_origination", { code: SCRIPT_CODE, storage: { prim: "Unit" } })),
+    /funding preflight has not authorized/,
+  );
+  session.authorizeAfterFundingPreflight({
+    balanceMutez: 5_000_000,
+    requiredBalanceMutez: 50_000,
+    estimatedOriginationMutez: 0,
+    operationReserveMutez: 50_000,
+  });
+  const result = await session.handle(createBridgeRequest("estimate_origination", {
+    code: SCRIPT_CODE,
+    storage: { prim: "Unit" },
+  })) as any;
+  assert.equal(result.chainId, CHAIN_ID);
+  assert.deepEqual(result.estimate, {
+    gasLimit: 50_000,
+    storageLimit: 1_000,
+    suggestedFeeMutez: 2_000,
+    minimalFeeMutez: 1_900,
+    burnFeeMutez: 250_000,
+  });
+  assert.equal(validated, 1);
+  assert.equal(estimated, 1);
+  assert.equal(originated, 0);
+  assert.equal(session.getReceipts().length, 0);
+});
+
 test("async storage projections serialize maps for reconstruction in the browser proxy", async () => {
   const contractAddress = "KT1E5mXCQNj9gsaw3ZYNg5fC8TLk4XHKeU6i";
   const sales = new MichelsonMap<string, unknown>();
@@ -2345,6 +2412,17 @@ test("bridge value decoder rebuilds Michelson maps and rejects prototype-polluti
     (error: unknown) => error instanceof PastaUiLiveBridgeError && /prohibited/.test(error.message),
   );
   assert.equal(({} as { polluted?: boolean }).polluted, undefined);
+});
+
+test("bridge decoder accepts the reviewed Macaroni V3.5 Michelson depth and rejects deeper payloads", () => {
+  const artifact = JSON.parse(readFileSync("public/creation-tools/macaroni/contract/macaroni-v35.contract.json", "utf8"));
+  assert.doesNotThrow(() => decodePastaUiLiveValue(artifact));
+  let beyondReviewedDepth: unknown = "nat";
+  for (let depth = 0; depth < 118; depth += 1) beyondReviewedDepth = [beyondReviewedDepth];
+  assert.throws(
+    () => decodePastaUiLiveValue(beyondReviewedDepth),
+    (error: unknown) => error instanceof PastaUiLiveBridgeError && /too deeply nested/.test(error.message),
+  );
 });
 
 test("generated browser proxy is standalone JavaScript and keeps its session nonce closure-only", () => {

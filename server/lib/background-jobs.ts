@@ -65,6 +65,10 @@ import {
   runMacaroniRevealAutomation,
 } from "../features/macaroni/reveal-automation";
 import {
+  macaroniV35ManagedWorkerPollIntervalMs,
+  runManagedMacaroniV35Worker,
+} from "../features/macaroni/v35-managed-worker";
+import {
   register as registerJob,
   reconcileAbandonedRuns,
   start as startScheduler,
@@ -186,6 +190,16 @@ export async function startBackgroundJobs(): Promise<void> {
       fn: runMacaroniRevealAutomation,
       intervalMs: macaroniRevealIntervalMs,
       scope: "macaroni-v3-automatic-reveal",
+    });
+  }
+
+  const macaroniV35IntervalMs = macaroniV35ManagedWorkerPollIntervalMs();
+  if (macaroniV35IntervalMs) {
+    registerJob({
+      name: "macaroni-v35-managed-fulfillment",
+      fn: runManagedMacaroniV35Worker,
+      intervalMs: macaroniV35IntervalMs,
+      scope: "macaroni-v35-secure-managed-fulfillment",
     });
   }
 

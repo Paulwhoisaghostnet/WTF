@@ -31,10 +31,11 @@ test("Pasta WTF.ME live inventory has package hooks and scoped credentials", () 
   assert.doesNotMatch(source, /E2E_PUPPET|LIVE_PUPPET|MACARONI_.*PASSWORD|PASTA_SUITE_.*PASSWORD/);
 });
 
-test("Pasta WTF.ME live inventory only reads site, admin inventory, and TLS state", () => {
+test("Pasta WTF.ME live inventory only reads site, PDS, admin inventory, and TLS state", () => {
   assert.match(source, /fetchWithCookies\("\/api\/auth\/user"\)/);
   assert.match(source, /fetchWithCookies\("\/api\/auth\/login", \{\s*method: "POST"/);
   assert.match(source, /fetchWithCookies\("\/api\/wtf-sites\/my"\)/);
+  assert.match(source, /fetchWithCookies\("\/api\/tz2at\/pds\/status"\)/);
   assert.match(source, /fetchWithCookies\(`\/api\/admin\/wtf-sites\?limit=\$\{numericLimit\(\)\}`\)/);
   assert.match(source, /new URL\("\/internal\/tls\/allow", baseUrl\(\)\)/);
   assert.match(source, /url\.searchParams\.set\("domain", host\)/);
@@ -60,6 +61,8 @@ test("Pasta WTF.ME live inventory reports the host facts needed for production u
   assert.match(source, /summarizeSite/);
   assert.match(source, /summarizeEligibility/);
   assert.match(source, /summarizePinRegistry/);
+  assert.match(source, /pdsProvisioning/);
+  assert.match(source, /WTFOS PDS provisioning is disabled for this account/);
   assert.match(source, /adminSites/);
   assert.match(source, /tlsAsk/);
   assert.match(source, /nextRequiredHost/);

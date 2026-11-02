@@ -132,6 +132,15 @@ upload.wtfos.app, upload.5-78-202-50.sslip.io {
 		}
 	}
 
+	handle /api/macaroni/v35/private-assets/upload {
+		reverse_proxy app:3000 {
+			header_up X-Real-IP {remote_host}
+			header_up X-Forwarded-For {remote_host}
+			header_up X-Forwarded-Proto {scheme}
+			header_up Host {host}
+		}
+	}
+
 	handle {
 		respond 404
 	}

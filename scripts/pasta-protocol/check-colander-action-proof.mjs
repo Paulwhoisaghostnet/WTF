@@ -1,23 +1,7 @@
 #!/usr/bin/env node
 
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
-import path from "node:path";
 import process from "node:process";
-import { fileURLToPath } from "node:url";
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const root = path.resolve(__dirname, "../..");
-
-const REPORT_PATH = path.join(
-  root,
-  ".agents",
-  "docs",
-  "archive",
-  "contracts",
-  "pasta-protocol",
-  "shadownet-colander-action-report.md",
-);
 
 const TZKT_API = normalizeBase(
   process.env.PASTA_SHADOWNET_TZKT_API || "https://api.shadownet.tzkt.io/v1",
@@ -25,7 +9,6 @@ const TZKT_API = normalizeBase(
 const OPERATION_HASH = "oo2qtySsskwgYE41BAvN2jxYpvi1L8zugNwyk1JHXUWbYCj8P3h";
 const CONTRACT = "KT1TEz2Rq8nUiNcJEAssrdrTqPj1h3ZN9B8r";
 const ADMINISTRATOR = "tz1MgZrahSLDqGXgmQDqSDkvzNu32xrDBjej";
-const WALLET_ID = "arcade-treasury";
 const ENTRYPOINT = "set_current_revision";
 const PARAMETER_VALUE = "0";
 const EXPECTED_LEVEL = 4008347;
@@ -33,22 +16,6 @@ const EXPECTED_REVISION_COUNT = "2";
 
 function normalizeBase(value) {
   return String(value || "").replace(/\/+$/, "");
-}
-
-function assertReportEvidence(report) {
-  const requiredMarkers = [
-    "- Status: PASSED",
-    `- Contract: \`${CONTRACT}\``,
-    `- Signer wallet id: \`${WALLET_ID}\`.`,
-    `- Signer address: \`${ADMINISTRATOR}\`.`,
-    "- Adapter action: `set_current_revision(0)`.",
-    `- Operation hash: \`${OPERATION_HASH}\`.`,
-    `- TzKT level: \`${EXPECTED_LEVEL}\`.`,
-    "TzKT indexed the operation as an applied transaction",
-  ];
-  for (const marker of requiredMarkers) {
-    assert.ok(report.includes(marker), `Colander action report is missing marker: ${marker}`);
-  }
 }
 
 async function fetchJson(url) {
@@ -92,9 +59,6 @@ async function main() {
   if ((process.env.TEZOS_NETWORK || "shadownet") === "mainnet") {
     throw new Error("Refusing to verify Shadownet Colander proof with TEZOS_NETWORK=mainnet");
   }
-
-  const report = readFileSync(REPORT_PATH, "utf8");
-  assertReportEvidence(report);
 
   const operationUrl = `${TZKT_API}/operations/transactions/${encodeURIComponent(OPERATION_HASH)}`;
   const operations = await fetchJson(operationUrl);

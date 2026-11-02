@@ -53,10 +53,12 @@ async function bootstrapActorSession(playwright, baseURL, actor) {
     if (cachedUserResponse?.ok()) {
       const user = await cachedUserResponse.json();
       await cachedRequest.dispose();
-      expect(user.username).toBe(actor.username);
-      return { actor, user, storageState };
+      if (user.username === actor.username && user.role === actor.role) {
+        return { actor, user, storageState };
+      }
+    } else {
+      await cachedRequest.dispose();
     }
-    await cachedRequest.dispose();
   }
 
   const request = await playwright.request.newContext({ baseURL });
@@ -344,15 +346,27 @@ test.describe("Macaroni Shadownet puppet confidence", () => {
       await expect(page.getByText("Blind-mint drop studio")).toBeVisible();
 
       let frame = await macaroniFrame(page);
-      await expect(frame.getByRole("link", { name: /Open Studio/ })).toBeVisible();
-      await frame.getByRole("link", { name: /Open Studio/ }).click();
+      await expect(frame.getByRole("link", { name: /Create a secure drop/ })).toBeVisible();
+      await frame.getByRole("link", { name: /Create a secure drop/ }).click();
 
       frame = await macaroniFrame(page);
       await waitForMacaroniStudio(frame);
       await expect(frame.locator("#network")).toHaveValue("shadownet");
-      await expect(frame.locator("#contractVersion")).toHaveValue("macaroni-v1");
+      await expect(frame.locator("#btnUseSecureProfile")).toHaveAttribute("aria-pressed", "true");
+      await expect(frame.locator("#secureOutcomeStrip")).toContainText("Private until assigned");
+      await expect(frame.locator("#secureOutcomeStrip")).toContainText("Cryptographically unpredictable to collectors");
+      await expect(frame.locator("#secureOutcomeStrip")).toContainText("Allocation locked and non-rerollable");
+      await expect(frame.locator("#secProfile .trust-note")).toContainText("not trustless");
+      await expect(frame.locator("#advancedOptions")).not.toHaveAttribute("open", "");
+      await expect(frame.locator("#contractVersion")).toHaveValue("macaroni-commitment-v3");
+      await expect(frame.locator('#contractVersion option[value="macaroni-v1"]')).toHaveCount(1);
       await expect(frame.locator('#contractVersion option[value="macaroni-editions-v2"]')).toHaveCount(1);
       await expect(frame.locator('#contractVersion option[value="macaroni-commitment-v3"]')).toHaveCount(1);
+      await expect(frame.locator("#simpleServiceOwner")).toContainText("wtfOS managed fulfillment selected automatically");
+      await expect(frame.locator("#managedAccessRecovery")).toBeHidden();
+      await expect(frame.locator("#infraManaged")).toBeChecked();
+      await expect(frame.locator("#infraManaged")).toBeEnabled();
+      await expect(frame.locator("#profileStatus")).toContainText("Secure launch blocked");
       await expect(frame.locator("#netLabel")).toContainText(SHADOWNET_RPC);
       await expect(frame.locator('#pinKind option[value="wtfos"]')).toHaveCount(1);
       await expect(frame.locator("#pinKind")).toHaveValue("pinata");
@@ -398,14 +412,22 @@ test.describe("Macaroni Shadownet puppet confidence", () => {
     const page = await context.newPage();
     try {
       await page.goto("/creation-tools/macaroni/studio.html", { waitUntil: "domcontentloaded" });
-      await page.waitForSelector("#contractVersion");
+      await page.waitForSelector("#contractVersion", { state: "attached" });
+      await expect(page.locator("#btnUseSecureProfile")).toHaveAttribute("aria-pressed", "true");
+      await expect(page.locator("#advancedOptions")).not.toHaveAttribute("open", "");
+      await page.locator("#advancedOptions summary").click();
+      await expect(page.locator("#advancedOptions")).toHaveAttribute("open", "");
       await expect(page.locator('#contractVersion option[value="macaroni-commitment-v3"]')).toHaveCount(1);
       await page.locator("#contractVersion").selectOption("macaroni-commitment-v3");
+      await page.locator("#btnUseCompatibilityProfile").click();
+      await expect(page.locator("#btnUseSecureProfile")).toHaveAttribute("aria-pressed", "false");
+      await expect(page.locator("#profileStatus")).toContainText("deterministic, not random");
       await page.locator("#revealMode").selectOption("instant");
-      await expect(page.locator("#contractVersionHint")).toContainText("reveals each token automatically after its mint confirms");
+      await expect(page.locator("#contractVersionHint")).toContainText("Sealed deterministic order — not random");
+      await expect(page.locator("#contractVersionHint")).toContainText("an edition after its final copy is allocated");
       await expect(page.locator("#contractVersionHint")).not.toHaveClass(/err/);
       await page.locator("#revealMode").selectOption("delayed");
-      await expect(page.locator("#contractVersionHint")).toContainText("reveals automatically when the configured delay expires");
+      await expect(page.locator("#contractVersionHint")).toContainText("display waits for the supported rolling delay after token sellout");
       await expect(page.locator("#btnReveal")).toBeHidden();
       await expect(page.locator('#pinKind option[value="wtfos"]')).toHaveCount(1);
       await page.locator("#tabPage").click();
@@ -431,10 +453,28 @@ test.describe("Macaroni Shadownet puppet confidence", () => {
     const page = await context.newPage();
     try {
       await page.goto("/creation-tools/macaroni/studio.html", { waitUntil: "domcontentloaded" });
-      await page.waitForSelector("#pinKind");
+      await page.waitForSelector("#pinKind", { state: "attached" });
+      await expect(page.locator("#btnUseSecureProfile")).toHaveAttribute("aria-pressed", "true");
+      await expect(page.locator("#profileStatus")).toContainText("Secure launch blocked");
+      await expect(page.locator("#managedAccessRecovery")).toBeVisible();
+      await expect(page.locator("#managedRequiredCapability")).toHaveText("use_managed_macaroni");
+      await expect(page.locator("#managedAccessReason")).toContainText("Open Admin Inbox");
+      await expect(page.locator("#managedAccessReason")).toContainText("grant the Managed Macaroni capability");
+      await expect(page.locator("#managedRequestTemplate")).toBeVisible();
+      await expect(page.locator("#managedRequestTemplate")).toContainText("Please grant me Managed Macaroni access");
+      await expect(page.locator("#requestManagedAccess")).toBeVisible();
+      await expect(page.locator("#requestManagedAccess")).toHaveAttribute("href", /\/admin-inbox\?template=/);
+      await expect(page.locator("#btnShowCompanionOption")).toBeVisible();
+      await expect(page.locator("#simpleServiceOwner")).toContainText("wtfOS managed fulfillment unavailable");
+      await expect(page.locator("#simpleServiceOwnerDetail")).toContainText("will not switch providers for you");
+      await expect(page.locator("#infraManaged")).toBeChecked();
+      await expect(page.locator("#infraManaged")).toBeDisabled();
+      await expect(page.locator("#infraCompanion")).not.toBeChecked();
+      await expect(page.locator("#advancedOptions")).not.toHaveAttribute("open", "");
       await expect(page.locator('#pinKind option[value="wtfos"]')).toHaveCount(0);
       await expect(page.locator("#pinKind")).toHaveValue("pinata");
-      await expect(page.locator("#pinJwtWrap")).toBeVisible();
+      await expect(page.locator("#secIpfs")).toBeHidden();
+      await expect(page.locator("#pinJwtWrap")).toBeHidden();
       await page.locator("#tabPage").click();
       const publishGate = page.locator("#publishWtfOSGate");
       const publishButton = page.locator("#btnPublishWtfOS");
@@ -644,7 +684,7 @@ test.describe("Macaroni Shadownet puppet confidence", () => {
       });
       await page.goto("/tools/macaroni", { waitUntil: "domcontentloaded" });
       let frame = await macaroniFrame(page);
-      await frame.getByRole("link", { name: /Open Studio/ }).click();
+      await frame.getByRole("link", { name: /Create a secure drop/ }).click();
 
       frame = await macaroniFrame(page);
       await waitForMacaroniStudio(frame);
@@ -682,7 +722,7 @@ test.describe("Macaroni Shadownet puppet confidence", () => {
       await expect(page.getByText("Blind-mint drop studio")).toBeVisible();
 
       let frame = await macaroniFrame(page);
-      await frame.getByRole("link", { name: /Open Studio/ }).click();
+      await frame.getByRole("link", { name: /Create a secure drop/ }).click();
 
       frame = await macaroniFrame(page);
       await waitForMacaroniStudio(frame);

@@ -821,6 +821,16 @@ export function macaroniCollectorStageStartUtc(nowMs = Date.now()): string {
   return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())}T${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}`;
 }
 
+async function selectLegacyCompatibilityProfile(
+  page: Page,
+  contractVersion: "macaroni-editions-v2" | "macaroni-v1",
+): Promise<void> {
+  await page.locator("#advancedOptions > summary").click();
+  await page.selectOption("#contractVersion", contractVersion);
+  await page.check("#legacyRiskAcknowledged");
+  await page.click("#btnUseCompatibilityProfile");
+}
+
 export async function configureMacaroniStudio(
   page: Page,
   kuboApiUrl: string,
@@ -828,7 +838,8 @@ export async function configureMacaroniStudio(
   publicGatewayUrl = "https://proof.invalid/ipfs",
 ): Promise<void> {
   await page.selectOption("#network", "shadownet");
-  await page.selectOption("#contractVersion", "macaroni-editions-v2");
+  await selectLegacyCompatibilityProfile(page, "macaroni-editions-v2");
+  await page.locator("details.technical-details:has(#log) > summary").click();
   await page.fill("#dropTitle", `Macaroni UI-LIVE ${runId}`);
   await page.fill("#dropSymbol", "MACUI");
   await page.fill("#dropDesc", "Actual Macaroni Studio blind-drop proof with an independently operated exported collector page.");
@@ -874,7 +885,8 @@ export async function configureMacaroniV1Studio(
   publicGatewayUrl = "https://proof.invalid/ipfs",
 ): Promise<void> {
   await page.selectOption("#network", "shadownet");
-  await page.selectOption("#contractVersion", "macaroni-v1");
+  await selectLegacyCompatibilityProfile(page, "macaroni-v1");
+  await page.locator("details.technical-details:has(#log) > summary").click();
   await page.fill("#dropTitle", `Macaroni V1 UI-LIVE ${runId}`);
   await page.fill("#dropSymbol", "MACV1");
   await page.fill("#dropDesc", "Actual Macaroni V1 Studio and independently operated exported collector-page proof.");

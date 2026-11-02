@@ -27,6 +27,25 @@
 
 <main class="wrap narrow" id="main">
 
+  <section class="notice warn legacy-collector-warning" id="legacyRiskBanner" role="alert" hidden></section>
+
+  <section class="panel secure-collector-promise" id="secureProfilePromise" hidden>
+    <strong>Secure Blind Mint</strong>
+    <div class="outcome-strip" aria-label="Secure blind mint outcomes">
+      <span>Private until assigned</span>
+      <span>Cryptographically unpredictable to collectors</span>
+      <span>Allocation locked and non-rerollable</span>
+      <span>Automatic fulfillment</span>
+      <span>Static page anywhere</span>
+    </div>
+    <p class="muted">Your paid claim is confirmed while the exact files remain private. The forced allocation and final NFT mint are confirmed before Macaroni publishes those same assigned files to IPFS.</p>
+    <p class="muted">This is secure against ordinary collectors, not trustless. The selected custodian holds the precommitted secret and may delay or stop fulfillment, but the contract prevents it from changing or skipping your confirmed allocation. A paid claim is not automatically refunded if both custody and recovery fail.</p>
+    <details class="technical-details">
+      <summary>Public-chain privacy boundary</summary>
+      <p class="muted">The artwork remains unavailable until the final mint confirms. Its metadata address and proof are visible to the Tezos node, transaction pool, and baker shortly before confirmation because Tezos transactions are public. The prior collection commitment and your locked claim prevent that data from being redirected or used to reroll your Macaroni purchase.</p>
+    </details>
+  </section>
+
   <section class="panel mint-box" id="mintPanel" aria-labelledby="mintHeading">
     <h2 class="sr-only" id="mintHeading">Mint this drop</h2>
     <div class="progress" id="supplyProgress" role="progressbar" aria-label="Minted supply" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" style="margin-bottom:14px"><div id="supplyBar"></div></div>
@@ -64,6 +83,22 @@
       </div>
       <div class="muted" id="revealOpStatus" role="status" aria-live="polite"></div>
     </div>
+  </section>
+
+  <section class="panel fulfillment-panel" id="secureFulfillmentTimeline" aria-labelledby="fulfillmentHeading" hidden>
+    <h2 id="fulfillmentHeading">Your NFT completes automatically</h2>
+    <p class="muted" id="fulfillmentSummary">After your purchase confirms, the assigned artwork is locked and the exact files are published to IPFS. A short metadata-loading gap is normal and recoverable.</p>
+    <ol class="fulfillment-timeline" aria-label="Purchase fulfillment progress">
+      <li data-fulfillment-step="purchase_confirmed"><span class="fulfillment-marker" aria-hidden="true"></span><div><strong>Purchase confirmed</strong><small>Your paid claim is confirmed and cannot be rerolled.</small></div></li>
+      <li data-fulfillment-step="artwork_secured"><span class="fulfillment-marker" aria-hidden="true"></span><div><strong>Artwork secured</strong><small>The forced allocation and final NFT mint are confirmed.</small></div></li>
+      <li data-fulfillment-step="publishing_ipfs"><span class="fulfillment-marker" aria-hidden="true"></span><div><strong>Publishing to IPFS</strong><small>Macaroni publishes the exact private CARs bound to your NFT.</small></div></li>
+      <li data-fulfillment-step="nft_ready"><span class="fulfillment-marker" aria-hidden="true"></span><div><strong>NFT ready</strong><small>Wallets and marketplaces can load the final metadata and artwork.</small></div></li>
+    </ol>
+    <details class="technical-details">
+      <summary>Technical details &amp; recovery status</summary>
+      <div class="muted" id="fulfillmentTechnicalStatus">No purchase recorded in this browser yet.</div>
+      <a id="fulfillmentOperationLink" target="_blank" rel="noopener" hidden>View purchase operation on TzKT</a>
+    </details>
   </section>
 
   <section id="revealSection" aria-labelledby="ownedMintsHeading" style="display:none">

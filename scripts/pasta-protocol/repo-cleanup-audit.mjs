@@ -55,7 +55,7 @@ const dirtyLaneMatchers = [
       [
         ".agents/docs/live/PASTA_LIVE_READINESS_MATRIX.md",
         ".agents/docs/live/PASTA_REPO_CLEANUP_AUDIT.md",
-        ".agents/docs/live/PASTA_WTFME_LIVE_PUBLISH_RUNBOOK.md",
+        "docs/runbooks/pasta-wtfme-live-publish.md",
         "PASTA_PROTOCOL_COVERAGE_REPORT.md",
       ].includes(path),
   },

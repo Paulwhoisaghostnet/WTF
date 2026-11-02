@@ -4,7 +4,14 @@ window.DROP_CONFIG = {
   network: "shadownet",
   rpc: "https://tezos-shadownet.octez.io/",
   contract: "",
-  contractVersion: "macaroni-v1",
+  contractVersion: "macaroni-secure-v35",
+  profile: {
+    id: "macaroni-secure-v35",
+    label: "Secure Blind Mint",
+    collectorUnpredictable: true,
+    allocationLockedAtPurchase: true,
+    trustlessRandomnessClaimed: false,
+  },
   title: "Your Drop Title",
   description: "Describe your blind drop for collectors.",
   cover: "",
@@ -24,8 +31,23 @@ window.DROP_CONFIG = {
   reveal: {
     mode: "instant",
     delayDays: 0,
+    policy: "immediate",
+    at: "",
+    allocationChangesAtDisplay: false,
     placeholderPool: [],
+    serviceUrl: "",
   },
+  service: {
+    schema: "wtfos.macaroni-v35-public-service.v1",
+    provider: "",
+    publicStatusUrl: "",
+    claimStatusUrlTemplate: "",
+    purchaseStatusUrlTemplate: "",
+    wakeUrl: "",
+    projectId: "",
+  },
+  assetStrategy: "pin_on_claim",
+  legacyRisk: null,
   minterRoyalties: {
     enabled: false,
     decimals: 4,
@@ -40,6 +62,6 @@ window.DROP_CONFIG = {
   },
   blocks: [
     { type: "h", value: "How it works" },
-    { type: "p", value: "Connect your wallet, pick a quantity, and mint from the contract's published allocation policy. No platform fee — mint payments go to the artist treasury." },
+    { type: "p", value: "Connect your wallet, choose a quantity, and make one purchase. Your artwork allocation is locked with the purchase, then Macaroni publishes the exact assigned files to IPFS automatically." },
   ],
 };

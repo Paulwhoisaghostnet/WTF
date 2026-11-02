@@ -1,0 +1,24 @@
+{
+  "name": "@wtf/macaroni-v35-companion",
+  "version": "3.5.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node --env-file-if-exists=.env src/index.mjs",
+    "doctor": "node --env-file-if-exists=.env src/doctor.mjs",
+    "test": "node --test test/*.test.mjs"
+  },
+  "dependencies": {
+    "@ipld/car": "5.4.7",
+    "@taquito/michel-codec": "25.0.0",
+    "@taquito/michelson-encoder": "25.0.0",
+    "@taquito/signer": "25.0.0",
+    "@taquito/taquito": "25.0.0",
+    "@taquito/utils": "25.0.0",
+    "ipfs-unixfs-importer": "17.0.1",
+    "multiformats": "14.0.5"
+  }
+}
