@@ -1,0 +1,37 @@
+[Unit]
+Description=wtfOS Aleatory render provider
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=wtf-aleatory-provider
+Group=wtf-aleatory-provider
+WorkingDirectory=/opt/wtf-aleatory-provider/current
+EnvironmentFile=/etc/wtf-aleatory-provider/provider.env
+Environment=NODE_ENV=production
+UnsetEnvironment=ALEA_AGENT_SK ALEA_PROVIDER_PUSH ALEA_PROVIDER_PORT ALEA_PROVIDER_BIND WTF_ALEATORY_ENV_FILE WTF_ALEATORY_OPERATOR_KEYRING WTF_ALEATORY_OPERATOR_MASTER_KEY_FILE WTF_ALEATORY_OPERATOR_WALLET_ID WTF_PLATFORM_KEYRING_PATH WTF_PLATFORM_KEYRING_MASTER_KEY WTF_PLATFORM_KEYRING_MASTER_KEY_FILE WTF_OPERATOR_SIGNER_SECRET WTF_OPERATOR_SIGNER_AUTH_TOKEN
+ExecStart=/usr/bin/node --import tsx extensions/aleatory-provider/src/daemon.mts
+Restart=on-failure
+UMask=0077
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictNamespaces=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+SystemCallArchitectures=native
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+CapabilityBoundingSet=
+AmbientCapabilities=
+ReadWritePaths=/var/lib/wtf-aleatory-provider/state
+ReadOnlyPaths=/var/lib/wtf-aleatory-provider/secrets
+InaccessiblePaths=-/etc/wtf -/etc/wtf-operator-signer.env -/var/lib/wtf -/run/wtf
+
+[Install]
+WantedBy=multi-user.target

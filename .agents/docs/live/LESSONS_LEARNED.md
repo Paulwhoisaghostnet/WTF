@@ -12823,3 +12823,13 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: The generated governance table gave operators the wrong handling signal. The inventory records names and metadata only, so this did not expose a key value.
 
 **Rule**: Match keyring master keys and serialized keyrings explicitly, then assert the generated row for a key that already exists in the runtime configuration. Regenerate the inventory and verify its checked-in copy before relying on the secret column.
+
+---
+
+## 2026-11-02 — Provider release provenance includes shared signer modules
+
+**What happened**: Importing the installed Aleatory provider directory onto current `main` preserved every provider file from its deployed source commit, but two modules used by the release assembler outside that directory had changed for WTFIAP. Reassembling from current `HEAD` would therefore create a different release artifact.
+
+**Why it mattered**: A matching provider directory alone does not prove that an archive assembled from a later repository commit matches the installed Mainnet daemon.
+
+**Rule**: Compare every release-assembler input with the installed commit, preserve that commit with a durable release tag, and use the pinned commit for exact source reconstruction until a separately verified upgrade is intended.
