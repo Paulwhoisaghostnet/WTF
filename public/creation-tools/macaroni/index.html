@@ -11,19 +11,33 @@
 <div class="wrap narrow">
   <div class="hero">
     <h1>⬤ Macaroni</h1>
-    <p class="muted">The creator studio for blind drops on Tezos. Build your drop, deploy <strong>your own FA2 contract</strong>, and export a ready-to-upload mint site — <strong>0% platform fee</strong>.</p>
+    <p class="muted">Create a secure blind mint on Tezos without turning the setup into a blockchain engineering project.</p>
   </div>
 
-  <div class="panel">
-    <h2>Studio</h2>
-    <p>Upload a CSV of token metadata and your artwork, pin to IPFS, deploy your contract (Shadownet to rehearse, mainnet to go live), configure sale stages, design your page, then export <code>macaroni-site.zip</code> (mint page + wallet connect). Trusted creators can also publish directly to their wtfOS site. Already deployed? Use <strong>Resume an existing drop</strong> in the studio.</p>
+  <div class="panel profile-entry-card">
+    <span class="pill ok">Recommended</span>
+    <h2>Secure Blind Mint</h2>
+    <p>Upload your artwork, choose whether collectors see it immediately or automatically later, set the sale, and follow a resumable launch checklist. The finished collector page stays a simple static website.</p>
+    <div class="outcome-strip" aria-label="Secure blind mint outcomes">
+      <span>Private until assigned</span>
+      <span>Cryptographically unpredictable to collectors</span>
+      <span>Allocation locked and non-rerollable</span>
+      <span>Automatic fulfillment</span>
+      <span>Static page anywhere</span>
+    </div>
+    <p class="muted">Secure means an ordinary collector without the private secret cannot predict, choose, or reroll an allocation. It is not trustless: the selected custodian holds the precommitted secret and is responsible for fulfillment and recovery.</p>
     <p id="packageSourceStatus" class="muted" aria-live="polite"></p>
-    <a class="btn" id="openStudio" href="studio.html">Open Studio →</a>
+    <a class="btn" id="openStudio" href="studio.html">Create a secure drop →</a>
   </div>
 
   <div class="panel">
-    <h3>What this app is (and isn't)</h3>
-    <p class="muted">Macaroni is a build tool for creator-owned drops. Nobody mints in the studio and nothing is listed here. Collectors mint on the page you publish to wtfOS or export for your own host. The <code>drop.html</code> page in this folder is just the live preview of your design.</p>
+    <h3>Need a specialist setup?</h3>
+    <p class="muted">Self-hosted Companion infrastructure, pre-pinned workflows, the sealed deterministic V3 contract, and Legacy V1/V2 compatibility remain available inside the Studio's collapsed <strong>Advanced</strong> area. Legacy is never selected as a fallback.</p>
+  </div>
+
+  <div class="panel">
+    <h3>What this app is</h3>
+    <p class="muted">Macaroni is a build tool for creator-owned drops. Nobody mints in the Studio and nothing is listed here. Collectors use the static page you publish through wtfOS or place on your own host. Already deployed? The Studio can resume the existing contract and checklist.</p>
   </div>
 
   <footer class="credits">FA2 / TZIP-12 · TZIP-16 · TZIP-21 compatible — collections appear on objkt.com automatically</footer>

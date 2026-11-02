@@ -12720,6 +12720,148 @@ When shop and board are visible together, contextual help must prioritize a sele
 
 **Rule**: Bind human seats to the authenticated WTF account ID, use the WTF username as the displayed commander name, personalize only that account's lobby response, and reissue a session only after server-side account verification. Retain local bearer recovery for guests, rotate account-bound tokens on cross-device recovery, and test both devices after rotation.
 
+## 2026-10-06 — Reviewer handoffs need an exact source and evidence boundary
+
+**What happened**: Pasta's source, installer definitions and historical alpha evidence were spread across the wtfOS repository. The September review referred to uncommitted V3.5 work; older installer versions and mocked readiness stories could be mistaken for proof of the current installed runtime.
+
+**Correction**: Added a Pasta-only review hub, preserved the relevant source on an isolated review branch, ignored generated Companion copies, and separated historical claims from installed-artifact evidence. The handoff labels unresolved findings and does not promote production or Mainnet readiness.
+
+**Rule**: Bind distributed installer bytes to a clean commit, checksums and exact-artifact receipts. A version string, UI simulation or dated readiness headline is not proof of a live funded lifecycle. Keep optional platform integration out of the reviewer's first-run path.
+
+**Fresh-checkout verification**: The first policy run exposed missing prepared Macaroni assets; hosted tests also needed a dummy database import URL and the existing Macaroni CORS/shared-gateway dependencies omitted from the initial source selection. Prepared both asset trees, documented the isolated test URL, and carried the required existing source changes without the unrelated shared-file edits. Root production build, focused tests and mocked browser stories then passed. Verify source snapshots in their own checkout instead of relying on generated output or environment from the author's dirty workspace.
+
+---
+
+## 2026-10-27 — A changed precondition does not resolve a signed finalizer operation
+
+**What happened**: The Companion classified a changed FIFO cursor or arm precondition as a failed signed attempt before proving canonical absence. That released the journal's signer-wide single-flight guard even though the exact signed bytes could still be in a mempool or later block. The desktop adapter also trusted a lookalike loopback health response before sending its admin token to the configured port.
+
+**Why it mattered**: A second finalizer signature could be issued while the first remained unresolved, and another local process could receive the private admin token. A parked `manual_review` work item had no supported way for an operator to inspect its exact attempt and safely retry.
+
+**Rule**: Keep an unresolved signed attempt in a guarded journal state until finalized exact-operation or branch-expiry plus canonical-absence evidence resolves it. Expose only redacted attempt identity and chain status to the operator; requeue only when the same bytes or a proven-safe linked replacement can run, including a successor after a finalized exact failure. Prove loopback service identity with a fresh challenge before any admin-token request, and require exact Origin/Host on local write routes. Test installed-source copies and browser recovery controls, since source-level tests alone cannot establish a packaged alpha boundary.
+
+---
+
+## 2026-10-27 — Keep inventory selectors aligned with current creator entry copy
+
+**What happened**: The broad inventory run timed out in the cobwebsaints to Macaroni handoff. The test searched for an `Open Studio` link while Macaroni's actual entry link had already changed to `Create a secure drop`. It also tried to use a compatibility selector inside collapsed Advanced options without explicitly selecting that profile and asserted obsolete reveal copy.
+
+**Why it mattered**: The stale selector hid downstream handoff assertions and made a broad test failure look like an alpha regression.
+
+**Rule**: When creator entry copy or profile flow changes, update domain-owned inventory selectors and assertions to the current accessible UI, perform the explicit profile choice, and rerun the affected browser story. Use the failing page snapshot to distinguish stale test expectations from an absent interaction.
+
+---
+
+## 2026-10-27 — Publication retries need a visible state without an arbitrary cap
+
+**What happened**: A broken pinner could leave Macaroni publication work retrying on each block interval while the operator panel listed only parked signed work. A failed provider credential or CAR-root mismatch would therefore repeat with no useful correction path.
+
+**Why it mattered**: An NFT could be settled while its assigned media remained unpublished, with the creator unable to see whether the pinner was still retrying or needed configuration repair.
+
+**Rule**: Park deterministic authorization, configuration, and CAR-integrity failures with a safe diagnostic and operator retry after correction. Show transient publication retries without exposing raw provider errors or inventing a retry-count threshold.
+
+**Verification note**: The first browser rerun served an older `dist/public` and therefore failed against stale Studio copy. Rebuild the root app before browser assertions when static creation-tool files change; the rebuilt Macaroni story passed.
+
+---
+
+## 2026-10-27 — Apply release boundaries to every installer that embeds the worker
+
+**What happened**: Suite hardening was tested while standalone Macaroni still copied Companion through a broad directory denylist, accepted local export writes without the exact installed Origin and Host, and exposed Mainnet in its alpha UI.
+
+**Why it mattered**: The same Companion runtime was distributed through two installers, so protecting only Suite left a second alpha path with a weaker boundary.
+
+**Rule**: When a shared worker is packaged by more than one shell, verify the same source allowlist, network gate, local write boundary, and artifact smoke for each shipping shell before alpha handoff.
+
+---
+
+## 2026-10-27 — Alpha review branches need current dependency and inventory gates
+
+**What happened**: The Pasta alpha PR targeted an older review branch whose root lockfile failed the production audit before CI reached TypeScript or browser coverage. The broad local inventory then passed 717 of 718 stories but timed out at a Gamma IPFS test that still clicked the retired `Own-node setup` label; the current action is `Connect Porcupin` and opens the same route. The generated environment inventory also lagged the added test sources. A local TypeScript invocation hit Node's default 4 GB heap ceiling before producing diagnostics.
+
+**Why it mattered**: A clean alpha implementation could not obtain an honest green quality signal while an inherited dependency graph, a stale cross-domain selector, generated metadata, and a smaller local compiler heap obscured the actual result.
+
+**Rule**: When a feature PR starts from an older review base, audit its exact root lockfile and apply patched compatible dependencies without dropping branch-specific packages. Diagnose broad browser failures from the failing page snapshot and current accessible control, then rerun the affected story and full gate. Regenerate source-scanned inventories after test changes. Run TypeScript with the repository CI heap setting and distinguish heap exhaustion from compiler errors.
+
+---
+
+## 2026-10-27 — Rehearse current Studio review steps and defer upload directories until use
+
+**What happened**: The Macaroni UI-live fixture still selected Legacy contracts through a collapsed control, omitted the current capabilities response, expected pinning to enable deploy without a checklist refresh, lacked read-only origination estimates, and waited through new transaction review dialogs without approving them. After the Multer security update, `dest` created the production private-upload directory while the route module loaded; local API and health tests failed before receiving a request. Other unit assertions expected a retired IPFS gateway and metadata shape.
+
+**Why it mattered**: A stale fixture could falsely portray a functioning creator flow as blocked. Eager creation of a production mount path made route registration depend on host filesystem permissions, hiding both genuine and unrelated test results.
+
+**Rule**: Run the actual Studio UI against the current workflow, including explicit compatibility acknowledgement, read-only estimates, and each wallet review. Refresh launch readiness after pin success. Create private-upload directories when handling uploads, not at module import, and derive test gateway expectations from the shared gateway policy.
+
+---
+
+## 2026-10-27 — Reconcile creator setup from canonical chain values and immutable milestones
+
+**What happened**: An installed Macaroni V3.5 alpha on Shadownet applied contract origination, token declaration, edition-slot loading, and sale-stage setup. The Companion falsely failed origination after comparing TzKT-normalized JSON to the authored Micheline; a repeated creator-key check conflicted with its previously saved finalized level; final-batch reconciliation and the next-action check wrote incompatible milestone digests; and stage reconciliation looked up a numeric key in a decoded `MichelsonMap` whose keys were strings and compared millisecond plan timestamps to Tezos second timestamps.
+
+**Why it mattered**: Real creator transactions succeeded on-chain while the setup journal refused to advance. Blindly retrying those signatures could duplicate or conflict with irreversible contract operations.
+
+**Rule**: Re-read exact finalized operations from canonical Tezos RPC, compare reviewed code after only protocol-invariant top-level section ordering, and verify the resulting storage at a finalized block. Record a logical milestone once; subsequent checks must accept the same complete evidence and reject conflicting evidence. For Tezos storage, use decoded map key types and chain timestamp precision, and verify all sale terms. Recover a known false failure only against its existing operation hash and only when no newer attempt exists; never resubmit it to repair a journal discrepancy.
+
+---
+
+## 2026-10-27 — Pace privacy-preserving public index scans
+
+**What happened**: The installed Macaroni V3.5 alpha reached activation, but its public-only Objkt duplicate-CID scan made back-to-back GraphQL page requests. The Shadownet endpoint served 500 rows per request even when asked for 1,000 and returned HTTP 429 with an HTML body after roughly 40 rapid pages, so the preflight stopped as unavailable.
+
+**Why it mattered**: The fail-closed gate correctly prevented activation, but the default private full-scan path could not finish against the live provider under its observed rate limit.
+
+**Rule**: Preserve the private-CID boundary by paging public index rows locally. Pace requests below the measured provider burst and retry a 429 at the same cursor, honoring Retry-After when present. Treat other malformed or failed responses as unavailable rather than pretending the index was exhausted.
+
+---
+
+## 2026-10-27 — Pin the CI browser runner to a Playwright-supported OS
+
+**What happened**: The Pasta alpha PR quality job passed audit and policy gates but stopped before tests when `ubuntu-latest` resolved to Ubuntu 26.04 and Playwright 1.59.1 refused to install Chromium on that image.
+
+**Why it mattered**: Local Mac results were green, but the required GitHub quality job could not reach its unit, typecheck, build, and inventory checks because the runner image changed underneath it.
+
+**Rule**: Pin browser-bearing CI jobs to an OS version supported by the repository's installed Playwright release. Read the exact failed CI step before changing application code for a red quality job.
+
+---
+
+## 2026-10-27 — Prepare copied desktop sources before parity tests in CI
+
+**What happened**: The GitHub quality job reached unit tests on the supported Ubuntu runner, but four tests failed because a fresh checkout lacked generated `apps/macaroni-desktop/macaroni` and `apps/pasta-suite-desktop/pasta` copies. The local checkout had those files from earlier desktop packaging, so local unit tests passed.
+
+**Why it mattered**: The unit job depended on ignored build outputs that were not created in its own workflow, hiding a CI-only failure behind a green local suite.
+
+**Rule**: If a test asserts packaged desktop parity, run the application's existing asset preparation script in that test job before the suite. Keep source allowlist and package policy enforcement in the preparation step.
+
+---
+
+## 2026-10-27 — Give OpenSSL fixture outputs separate temporary paths
+
+**What happened**: The full Ubuntu browser inventory completed 718 of 719 stories, then the Macaroni static collector story failed in its HTTPS fixture setup. It asked OpenSSL to write both a private key and certificate to `/dev/stdout`; that succeeded locally on macOS but failed on Linux.
+
+**Why it mattered**: The collector product flow itself was not reached on CI, and the final inventory gate stayed red after all other stories passed.
+
+**Rule**: Generate fixture keys and certificates into separate temporary files, read them into the local HTTPS server, and remove the files immediately. Keep platform-specific shell path behavior out of cross-platform browser fixtures.
+
+---
+
+## 2026-10-29 — Reconcile isolated Pasta records against current main
+
+**What happened**: The Pasta alpha branch had been isolated while current main reused several of the same bug bounty IDs for unrelated work. A direct merge also conflicted with later CORS extraction, generated inventories, and dependency locks.
+
+**Why it mattered**: Choosing one side of those conflicts would silently erase valid audit history or regress current main behavior, even if the Pasta tests passed on the older branch.
+
+**Rule**: Integrate against current main by semantic record identity, remap colliding bounty IDs without deleting either issue, preserve current main infrastructure refactors, and regenerate derived documentation and locks from the combined source before release verification.
+
+---
+
+## 2026-10-29 — Deduplicate shared permission definitions after branch integration
+
+**What happened**: Current main and the Pasta branch each defined `use_managed_macaroni` with different descriptions. Integrating both created two help topics with the same stable ID, and the aggregate unit suite found the collision.
+
+**Why it mattered**: Duplicate permission metadata makes administrative help and role displays ambiguous even though the TypeScript check passes.
+
+**Rule**: When merging shared role or permission catalogs, keep one canonical entry per key and run the catalog uniqueness tests before treating the integration as verified.
+
 ---
 
 ## 2026-10-29 — A blocked escrow intent is room state, not a failed worker
@@ -12729,6 +12871,39 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Correction and proof**: Removed only the two image IDs with no container references under the deployment lock, preserving running images, volumes, and build cache. The host gained about 5 GB of free space without a container restart. Funding now retains uncertain-submit errors in the affected durable room and keeps its submission blocked; focused tests prove the room warning, clean worker health across restart, and no duplicate signer request. Actual storage, chain, and reconciliation failures still set global worker errors.
 
 **Rule**: Distinguish a worker that cannot reconcile from a worker that correctly reports an unresolved room. Preserve uncertain-payment state and operator visibility without turning an isolated known room into a global deploy failure. Recover Docker space only from images proven unused by every container; do not prune volumes or replay escrow intents to make health green.
+
+
+---
+
+## 2026-10-29 — Live proof gates must survive archive cleanup
+
+**What happened**: Pasta live readiness called the Colander Shadownet proof verifier, which required a Markdown report deleted by the prior architecture cleanup. The on-chain operation and storage still existed and could be verified without that file. The gate threw before reporting its later blockers.
+
+**Why it mattered**: A valid, non-spending chain proof appeared broken because the verifier depended on removed local prose, and the readiness result did not provide a complete blocker list.
+
+**Rule**: Bind historical operation checks to canonical chain identity and storage, then report dependency failures as named readiness blockers. Keep archived notes as human context, not as a required runtime input after their removal.
+
+
+---
+
+## 2026-10-29 — Integration tests must follow moved middleware and exercise its HTTP boundary
+
+**What happened**: The Pasta branch asserted Macaroni collector CORS against `server/app.ts`, but current main had extracted the policy into `server/lib/cors-origins.ts`. The public V3.5 status and wake exception was lost in that move. Two Roger Radio source tests also looked for an old numbered comment after current main inserted a guide-channel section.
+
+**Why it mattered**: A static source assertion failed for the wrong file while a real separate-origin collector path had regressed; the stale TV marker hid otherwise intact seed behavior.
+
+**Rule**: After integrating a refactor, point source-policy checks at the active module and assert the browser-facing HTTP behavior, including private-route denial. For source sections, locate semantic markers instead of hard-coded numbering when intervening sections may be added.
+
+
+---
+
+## 2026-10-29 — Inventory labels must follow current UI copy after branch integration
+
+**What happened**: The integrated Gamma IPFS Pinning Manager rendered an `Own-node setup` button that still opened `/apps/porcupin-setup`, while an older inventory story waited for the removed `Connect Porcupin` label until its test timeout.
+
+**Why it mattered**: The full browser gate looked like a slow media-infrastructure failure even though the navigation action and destination still worked.
+
+**Rule**: When a branch merges current UI copy, assert the visible control label users actually see and preserve the destination assertion. Reproduce a full-suite timeout as a focused story before changing product behavior.
 
 ---
 
@@ -12759,6 +12934,44 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Correction and proof**: Recomputed only that file's packaged size and digest in the release manifest; the vendored package verifier and its test pass again. The upstream source digest remains the source project's historical value, while the packaged digest records this hosted correction.
 
 **Rule**: When changing a packaged coLILseum file in WTF, run `node scripts/vendor-wtfiap.mjs` before CI. If it reports a changed file, update the exact packaged bytes and hash while preserving the source digest; do not weaken the manifest check.
+
+### 2026-10-29 — Merge canonical bounty records before regenerating the board
+
+**What happened**: Bringing the ready WTFIAP repair from `main` into the Pasta alpha branch conflicted in the generated bounty board, its canonical JSON, and the append-only lessons file. The branches added different bounty IDs and updated the same escrow record at different verification stages.
+
+**Why it mattered**: Choosing either side wholesale would lose Pasta readiness findings or the verified production escrow history. Keeping a stale generated board would also fail the integrity gate.
+
+**Correction and proof**: Merged distinct canonical IDs, retained the newer Pasta lifecycle record, advanced the escrow record to its verified production state, recomputed derived ranks, preserved both sets of lesson insertions, and regenerated the board. `npm run bounty:board:check` and inventory coverage pass.
+
+**Rule**: For this repository, reconcile `docs/reference/bug-bounty-records.json` by record ID and verification history, then regenerate `.agents/docs/live/BUG_BOUNTY_BOARD.md`; preserve existing lesson entries from both branches before appending a new correction.
+
+### 2026-10-30 — A release gate's unblock path must exist in the shipped tree
+
+**What happened**: The Pasta live-readiness gate correctly named the missing WTF.ME account and host, then directed the operator to `.agents/docs/live/PASTA_WTFME_LIVE_PUBLISH_RUNBOOK.md`. That file was absent. A source policy test checked only that the string appeared in the gate, so the broken pointer passed CI. The first repair put the file there, but the public-release boundary correctly rejected tracking a new internal-agent document.
+
+**Why it mattered**: The production write sequence has distinct account, host, page, pin, TLS, and public verification states. Without the linked instructions, an operator could not follow the gate's own safe path or distinguish a partial page publish from a complete pin-discovery proof.
+
+**Correction and proof**: Added the runbook under `docs/runbooks/pasta-wtfme-live-publish.md`, moved the gate pointer, and added a policy test that reads the linked file and checks the required commands and partial-failure warning. The focused policy suites and public-release boundary pass; the live audit remains blocked on actual credentials and host proof.
+
+**Rule**: Whenever a release gate prints a local remediation path, assert that the file is tracked and present in a fresh checkout, and document each external write boundary and verification step it directs operators to perform.
+
+### 2026-10-30 — Restored Companion custody must be checked against persisted paths
+
+**What happened**: The Macaroni doctor proved it could encrypt and recover a newly generated entropy chain, but it did not test paths already stored in `companion.sqlite`. A stopped backup copied to a different absolute root could pass that check while its project entropy and unresolved signed operations still pointed to the old root.
+
+**Correction and proof**: Doctor now recovers each noncomplete project's stored entropy, checks the presence and location of its persisted uploads, manifests, and CARs, and decrypts and hashes every unresolved signed operation. An isolated stopped-snapshot test passes at the original root and fails on relocation, a missing signed file, or a missing staged CAR. The backup instructions specify the absolute-path requirement until an explicit migration exists and note that file presence is not CAR integrity proof.
+
+**Rule**: A recovery preflight must exercise persisted custody references with the restored key and actual runtime paths. A fresh cryptographic round trip alone does not prove that a stopped snapshot can resume paid work.
+
+### 2026-10-30 — WTF.ME pin recovery needs account-scoped repo provisioning
+
+**What happened**: The Pasta release gate reported missing publisher credentials and a host. A live authenticated PDS status probe also showed that the healthy WTFOS PDS had provisioning disabled. A dedicated account with a linked social DID could publish pages but could not create the active WTFOS repo required for pin recovery; the existing inventory only reported the missing repo.
+
+**Correction and proof**: Added an exact numeric user-ID allowlist for PDS provisioning while retaining the default-closed and existing global settings. The read-only Pasta publisher inventory now reports PDS provisioning status and names the disabled setting when a repo is missing. Focused tests prove the allowlist rejects other IDs and that the inventory adds no write method. The dedicated account and live pin publish still require separate identity and operator setup.
+
+**Rule**: Trace a release prerequisite through the live service capability that creates it. A healthy service is not enough when its creation path is disabled; use a scoped rollout and report the disabled capability before attempting publication.
+
+---
 
 ### 2026-10-30 — Publisher account setup must be verified as the actual account
 
@@ -12813,6 +13026,126 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: An all-at-once push could regress access controls or publish restricted assets. Leaving the changes uncommitted also made the requested clean checkout impossible without risking work loss.
 
 **Correction and rule**: Commit the full state to a local rescue ref and verify a private, self-contained Git bundle before switching the original checkout to current `main`. Keep unfinished or rights-sensitive assets off the public remote. Port each release candidate from a fresh `main` checkout and verify its own behavior before production promotion.
+
+---
+
+## 2026-11-02 — Name-based secret inventories must recognize keyring material
+
+**What happened**: The environment inventory marked `WTF_PLATFORM_KEYRING_MASTER_KEY` as non-secret because its name did not match the existing secret-name pattern, despite the signer using its value as encryption key material.
+
+**Why it mattered**: The generated governance table gave operators the wrong handling signal. The inventory records names and metadata only, so this did not expose a key value.
+
+**Rule**: Match keyring master keys and serialized keyrings explicitly, then assert the generated row for a key that already exists in the runtime configuration. Regenerate the inventory and verify its checked-in copy before relying on the secret column.
+
+---
+
+## 2026-11-02 — Provider release provenance includes shared signer modules
+
+**What happened**: Importing the installed Aleatory provider directory onto current `main` preserved every provider file from its deployed source commit, but two modules used by the release assembler outside that directory had changed for WTFIAP. Reassembling from current `HEAD` would therefore create a different release artifact.
+
+**Why it mattered**: A matching provider directory alone does not prove that an archive assembled from a later repository commit matches the installed Mainnet daemon.
+
+**Rule**: Compare every release-assembler input with the installed commit, preserve that commit with a durable release tag, and use the pinned commit for exact source reconstruction until a separately verified upgrade is intended.
+
+---
+
+### 2026-11-01 — Animated desktop characters need a stable click target
+
+**What happened**: paulwhoisaclippy floated by animating the entire button, so the browser interaction test could never find a stable point to click. After moving the animation, the next test still exercised an old bundle because the inventory harness serves `dist/public` rather than live source.
+
+**Correction and proof**: Kept the button's hit box fixed, animated only the ghost image, rebuilt the client, and verified pointer interaction, keyboard dismissal, event logging, mobile placement, and reduced-motion behavior in Playwright.
+
+**Rule**: Keep interactive hit boxes stationary when ambient characters move. Rebuild before running the static-dist Playwright harness after UI edits; otherwise a stale bundle can make a correct fix appear broken.
+
+### 2026-11-01 — A clean worktree needs its lockfile's dependencies for typecheck
+
+**What happened**: The first typecheck used `node_modules` symlinked from an older checkout. That install had MCP SDK 1.30.0 while this branch's lockfile specifies 1.32.0, producing two false errors in unchanged server routes.
+
+**Correction and proof**: Installed the branch's locked packages in isolation, switched the worktree to that install after browser tests completed, and reran `npm run check` successfully.
+
+**Rule**: Before treating TypeScript errors in an isolated worktree as source regressions, compare the installed package version with that worktree's lockfile. Run the final check with lock-matched dependencies without mutating another checkout's install.
+
+### 2026-11-01 — Tutorial recordings must prove the visible player result
+
+**What happened**: First-pass Paul recordings showed an admin wallet in a contestant lesson, an empty Desktop Items shelf that contradicted a read-only live check, a cursor stranded when actions entered game and art iframes, and a side-quest success notice beside an unchanged claim state and zero reward balance. A browser assertion also expected Help to unmount after Show Desktop, though wtfOS keeps minimized windows mounted.
+
+**Correction and proof**: Used a contestant with no wallet, labeled recorder-only catalog examples, made the isolated claim fixture return the claimed quest and updated WTF balance, positioned the guide cursor across iframe boundaries, and parked Paul away from targets and results. The desktop test now asserts Help is hidden and the desktop is visible. All ten final walkthrough frames were reviewed against the spoken steps; the media validator passed every MP4, caption cue, poster, audio stream, catalog entry, and checksum; the focused browser spec passed all four cases.
+
+**Rule**: For instructional media, verify the action and its final visible result, not just a toast or a scripted click. Compare recording fixtures with the live product before describing availability, label synthetic examples, keep cursor and character overlays clear across iframes, and test OS window visibility according to minimize semantics. Review rerendered screenshots under a new filename when image viewers cache an older file at the same path.
+
+### 2026-11-01 — Mobile help needs a visible path between lessons
+
+**What happened**: The first narrow-screen Paul Help view displayed the current video and steps, but the episode cards began below the initial viewport. A player could reach Help from the welcome and still miss that more lessons existed. Reggie's fixed assistant also covered part of the lesson on the right.
+
+**Correction and proof**: Added a labeled episode chooser above the video at narrow widths while retaining the full cards below, and hid Reggie only on narrow `/faq` views. The focused browser test at 390 × 844 verifies the chooser is inside the initial viewport, can select the last episode, and Reggie returns after following Try this in wtfOS.
+
+**Rule**: On small screens, make the next meaningful choice visible before scrolling through the current lesson, and verify persistent assistants cannot obscure instructional controls or results.
+
+### 2026-11-02 — Welcome acknowledgement is not a video watch receipt
+
+**What happened**: The existing `welcomedToWtfOs` flag was set when a player chose a destination or skipped Paul's intro. Treating that flag as proof of playback would have marked skipped videos as watched. Showing every unseen intro on auth hydration would also have interrupted a player again on a same-session refresh after Skip.
+
+**Correction and proof**: Added a unique account-and-video completion row written only after the player reaches `ended`, with a server-derived title and first-watch timestamp. The auth response derives intro history from that row. An explicit later login shows the intro again if it remains unseen or a brief boot screen if it was completed; ordinary hydration respects the current session's welcome acknowledgement. Focused browser coverage proved skip, partial play, completion, replay idempotency, profile ownership, roster permissions, and reduced-motion boot. A disposable local PostgreSQL run proved row uniqueness, user isolation, roster lookup, and cascade deletion.
+
+**Rule**: Keep welcome acknowledgement, video completion, and daily greeting state separate. Base the returning-login choice on a durable watch receipt, preserve the first completion on replay, and distinguish a new login from a page refresh.
+
+### 2026-11-02 — Keep the desktop teacher and quest guide in separate roles
+
+**What happened**: On the live desktop, clicking Reggie opened a generic greeting and a free-form "Ask Reggie a question" field, and an idle timer could produce nag speech. Paul was already responsible for teaching desktop controls and app use, so the two characters offered overlapping guidance. The first Paul desktop-lesson recording also lacked `/api/reggie/quest` fixture data; Reggie could only show a loading bubble and the promised "Take me there" action was absent.
+
+**Correction and proof**: Reggie now stays quiet during idle use and gives only current quest-path guidance when clicked or summoned. Removed his broad knowledge base, generic greeting, Ask form, and nag timer while keeping quest log, progress, destinations, checkpoints, WIM persistence, hide, and a silent ten-minute snooze wake. The OS Navigator quest now names its exact icon-open and Dashboard proof and sends control instruction to Paul. Paul's welcome and desktop lesson introduce Reggie's role; the recording seeds an available quest step and shows the real bubble and destination action. The welcome scene reuses the actual Reggie sprite. Focused Reggie tests passed 19/19, the browser role and behavior tests passed 3/3, the full inventory browser suite passed 810/810, and both narrated videos, captions, posters, and catalog entries passed media validation. The browser test clicks the animated sprite deliberately and asserts its resulting quest UI; it checks guidance and the quest-log title separately because authored speech does not repeat the API title verbatim.
+
+**Rule**: Give Paul the OS how-to and Reggie the player's current quest objective, proof, progress, and destination. Keep Reggie's idle presence silent. When recording or testing quest guidance, seed a real available quest state before entry and prove the visible destination action, not just the presence of the character.
+
+---
+
+## 2026-11-02 — Reconcile canonical IDs and generator order when integrating a stale branch
+
+**What happened**: Paul Ghost and current `main` had independently assigned different bug bounty findings to the same two canonical IDs. During the merge, environment inventory generation also ran alongside API reference generation, so the first inventory check saw a source-file set different from the one it scanned.
+
+**Why it mattered**: Keeping either side's generated board alone would silently discard findings. Running dependent generators concurrently made a valid merge appear stale.
+
+**Rule**: Preserve both sides' canonical records by assigning unique IDs and recomputing the generated board. Regenerate API sources before scanning them for the environment inventory, then run both `--check` gates against the final staged tree.
+
+---
+
+## 2026-11-02 — Keep Playwright runs serial within one checkout
+
+**What happened**: A focused Paul login-handoff browser test overlapped with the broad inventory run in the same worktree. Playwright reused `test-results` for both commands, deleting trace files during the focused run and causing one handoff assertion to time out amid runner interference. The same Reggie and watched-video tests passed 9/9 on a fresh harness after the broad run stopped, including the handoff case.
+
+**Why it mattered**: A shared runner output directory made a passing feature look unstable and destroyed the trace needed to diagnose the first failure.
+
+**Rule**: Run Playwright suites serially in one checkout, or give truly independent runs separate output directories and harness ports. Recheck an interrupted case alone before changing application code.
+
+---
+
+## 2026-11-02 — Alpha network restrictions must include the hosted service
+
+**What happened**: Macaroni V3.5 alpha desktop packaging disabled Mainnet in its copied Studio and Companion adapter, but the hosted Studio source still offered Mainnet and managed registration/worker code accepted it when separately configured.
+
+**Why it mattered**: A package-specific Shadownet guard did not enforce the documented alpha boundary on the public hosted path. A privileged creator and configured production signer could have started a Mainnet setup before the release review approved that path.
+
+**Rule**: Put alpha network guards in the authoritative server registration, creator action, publishing, and worker paths, and in the hosted UI. Test denial with otherwise complete Mainnet runtime configuration; keep compatibility-profile behavior explicit and separate.
+
+---
+
+## 2026-11-02 — Match local unit preflight to the CI packaging steps
+
+**What happened**: A direct `npm run test:unit` from the clean Pasta consolidation checkout failed a desktop package policy because its ignored `apps/pasta-suite-desktop/pasta/suite-manifest.json` had not been generated. The Quality Gates workflow already prepares both desktop asset trees before aggregate units, following the October 27 correction.
+
+**Why it mattered**: The missing generated file was a local test setup error, not a source-policy failure or a new CI defect. Running the aggregate alone obscured the actual gate state.
+
+**Rule**: Before local aggregate units that assert desktop bundle contents, run the same Macaroni and Pasta Suite asset preparation commands as Quality Gates. Confirm a clean-checkout failure against the workflow sequence before changing source or CI; targeted desktop policies should pass after that preparation.
+
+---
+
+## 2026-11-02 — Reserve bounty IDs across concurrent active checkouts
+
+**What happened**: The combined release branch carried an open progression finding as `WTF-BB-729` while a separate active X-linking checkout had independently claimed that ID for a different finding. Neither branch's board check could see the other uncommitted record.
+
+**Why it mattered**: Merging both later would make the canonical board ambiguous and could silently replace one finding during a conflict resolution.
+
+**Rule**: Before promoting parallel work, compare new canonical IDs with active checkout changes as well as merged branches. Renumber one record in the canonical JSON, regenerate the board, and verify uniqueness before pushing the combined result.
 
 ---
 
@@ -12876,6 +13209,16 @@ When shop and board are visible together, contextual help must prioritize a sele
 
 ---
 
+## 2026-11-02 — Merge Profile inventory by behavior ownership
+
+**What happened**: The current Profile pass moved X, Discord, and AT identity proof into a dedicated social-linking inventory row while the Paul branch added watched-video history to the older Profile identity row. A branch-side choice would have lost the social proof details; a main-side choice would have lost the video-history behavior. The same merge assigned social findings to IDs 730 and 731, which the Paul branch had already used for unrelated open findings.
+
+**Why it mattered**: The generated E2E registry would describe only part of the released Profile behavior, and conflicting bounty IDs could overwrite distinct findings.
+
+**Rule**: Keep each behavior in its owning inventory row, assign unique canonical IDs to every finding before regenerating the board, and run focused browser cases for both flows after the merge.
+
+---
+
 ## 2026-11-02 — Blank social sign-in still needs an explicit identity boundary
 
 **What happened**: Profile allowed X proof without a typed handle, but Discord and AT Protocol still disabled their Connect buttons until a username or handle was entered. Simply removing that UI requirement would have let a signed-in provider account replace an existing WTF link without an explicit change request.
@@ -12893,6 +13236,16 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: A social proof that asks only for identity must not break the user's separate Skywire permissions.
 
 **Rule**: Serve distinct identity-only Profile client metadata and use that client for both OAuth start and callback. Keep Skywire's grant and session independent, and verify the separate client IDs, granted scope, callback DID, and stored-session behavior before release.
+
+---
+
+## 2026-11-02 — OAuth metadata tests need a valid public client origin
+
+**What happened**: The new AT Profile metadata tests passed with a configured public URL but failed in a clean checkout. Without that URL, the local origin resolver returned `http://127.0.0.1:3000`; the AT OAuth SDK rejects an IP-based HTTP client ID before the assertions run.
+
+**Why it mattered**: The aggregate unit gate can fail before proving that the Profile and Skywire client grants remain separate.
+
+**Rule**: Set the canonical HTTPS origin inside the isolated OAuth metadata test before constructing its clients, then run the test without a public URL in the shell environment. Keep production origin selection unchanged.
 
 ---
 

@@ -10,6 +10,7 @@ import { validateOperation, ValidationResult } from "@taquito/utils";
 import BigNumber from "bignumber.js";
 import { unzipSync } from "fflate";
 import { chromium, type BrowserContext, type Page } from "playwright";
+import { buildMacaroniV35Capabilities } from "../../server/features/macaroni/v35-types";
 
 import {
   hashJsonForBridge,
@@ -286,6 +287,16 @@ function fakeEstimateForEntrypoint(entrypoint: string) {
   };
 }
 
+function fakeOriginationEstimate() {
+  return {
+    gasLimit: 50_000,
+    storageLimit: 1_000,
+    suggestedFeeMutez: 2_000,
+    minimalFeeMutez: 1_900,
+    burnFeeMutez: 250_000,
+  };
+}
+
 function base32(bytes: Uint8Array): string {
   const alphabet = "abcdefghijklmnopqrstuvwxyz234567";
   let buffer = 0;
@@ -494,6 +505,9 @@ function createFakeChain() {
         },
       },
       estimate: {
+        async originate() {
+          return fakeOriginationEstimate();
+        },
         async transfer(params: Record<string, any>) {
           const entrypoint = String(params?.parameter?.entrypoint || "");
           state.estimates.push(entrypoint);
@@ -668,6 +682,9 @@ function createFakeV1Chain() {
         },
       },
       estimate: {
+        async originate() {
+          return fakeOriginationEstimate();
+        },
         async transfer(params: Record<string, any>) {
           const entrypoint = String(params?.parameter?.entrypoint || "");
           state.estimates.push(entrypoint);
@@ -774,6 +791,11 @@ async function installProofGateway(
 
 async function installStudioRoutes(context: BrowserContext): Promise<void> {
   await context.route("**/api/profile/social", (route) => route.fulfill({ status: 200, contentType: "application/json", body: "{}" }));
+  await context.route("**/api/macaroni/v35/capabilities?network=shadownet", (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify(buildMacaroniV35Capabilities({ authenticated: true, allowed: false, roles: ["User"], network: "shadownet" })),
+  }));
   await context.route("**/api/macaroni/installers", (route) => route.fulfill({ status: 200, contentType: "application/json", body: '{"installers":[]}' }));
   await context.route("**/export", (route) => route.fulfill({ status: 200, contentType: "application/json", body: '{"ok":false,"error":"test ZIP fallback"}' }));
 }
@@ -784,6 +806,13 @@ async function waitForText(page: Page, selector: string, text: string, timeout =
     { target: selector, expected: text },
     { timeout },
   );
+}
+
+async function approveStudioReview(page: Page, expectedAction: string): Promise<void> {
+  await page.locator("#transactionReviewDialog[open]").waitFor({ state: "visible" });
+  assert.match(String(await page.textContent("#reviewAction")), new RegExp(expectedAction, "i"));
+  assert.doesNotMatch(String(await page.textContent("#reviewFee")), /pending/i);
+  await page.click("#btnApproveTransaction");
 }
 
 async function captureMock(
@@ -993,6 +1022,7 @@ test("Macaroni actual Studio exports an actual collector page that mints sealed,
       await waitForText(page, "#pinStatus", "all pinned ✓");
       assert.equal(pins.proofs.length, 5);
       await page.click("#btnDeploy");
+      await approveStudioReview(page, "Originate the selected Macaroni compatibility contract");
       try {
         await waitForText(page, "#deployStatus", "deployed ✓");
       } catch (error) {
@@ -1000,6 +1030,8 @@ test("Macaroni actual Studio exports an actual collector page that mints sealed,
       }
       assert.equal((await page.inputValue("#contractAddr")), CONTRACT);
       await page.click("#btnSync");
+      await approveStudioReview(page, "Add token records");
+      await approveStudioReview(page, "Set sale start times");
       await waitForMacaroniSyncOutcome(page, { timeout: 30_000, pollInterval: 10 });
       assert.equal(chain.state.supply, 2);
       assert.equal(Object.keys(chain.state.maps.stages).length, 1);
@@ -1404,10 +1436,17 @@ test("Macaroni V1 actual Studio exports an actual collector page that instant-mi
       await waitForText(page, "#pinStatus", "all pinned ✓");
       assert.deepEqual(pins.proofs.map((proof) => proof.fileName), ["macaroni-v1-cover.png", "1.png", "1.json"]);
       await page.click("#btnDeploy");
-      await waitForText(page, "#deployStatus", "deployed ✓");
+      await approveStudioReview(page, "Originate the selected Macaroni compatibility contract");
+      try {
+        await waitForText(page, "#deployStatus", "deployed ✓");
+      } catch (error) {
+        assert.fail(`V1 deploy did not complete: status=${await page.textContent("#deployStatus")} log=${await page.textContent("#log")} cause=${error instanceof Error ? error.message : String(error)}`);
+      }
       assert.equal(await page.inputValue("#contractAddr"), V1_CONTRACT);
       assert.equal(pins.proofs.at(-1)?.fileName, "contract_metadata.json");
       await page.click("#btnSync");
+      await approveStudioReview(page, "Add token records");
+      await approveStudioReview(page, "Set sale start times");
       await waitForMacaroniSyncOutcome(page, { timeout: 30_000, pollInterval: 10 });
       assert.equal(await page.locator("#viewDrop").isVisible(), true);
       captures.push(await captureMock(

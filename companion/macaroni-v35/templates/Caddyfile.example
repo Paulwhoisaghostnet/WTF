@@ -1,0 +1,15 @@
+companion.REPLACE.example {
+  encode zstd gzip
+
+  # Only buyer-safe JSON crosses the public reverse proxy. Keep /v1/admin,
+  # the Kubo API, and all secret/data directories local to the operator.
+  handle /v1/public/* {
+    reverse_proxy 127.0.0.1:47835
+  }
+
+  handle /health {
+    reverse_proxy 127.0.0.1:47835
+  }
+
+  respond 404
+}

@@ -2514,4 +2514,85 @@ test.describe("live E2E puppet orchestration", () => {
       }
     });
   }
+
+  test("watched guides persist per puppet account and the viewer roster requires user management", async ({
+    playwright,
+    baseURL,
+  }) => {
+    const contestant = actorByRole(puppetCredentials, "contestant");
+    const witness = actorByRole(puppetCredentials, "witness");
+    const admin = actorByRole(puppetCredentials, "admin");
+    const contestantRequest = await actorRequestContext(playwright, baseURL, contestant);
+    const witnessRequest = await actorRequestContext(playwright, baseURL, witness);
+    const adminRequest = await actorRequestContext(playwright, baseURL, admin);
+    const guestRequest = await playwright.request.newContext({ baseURL });
+
+    try {
+      const witnessBefore = await expectOkJson(
+        await witnessRequest.get("/api/profile/watched-videos"),
+        "witness watch history before contestant completion"
+      );
+      const headers = await csrfHeaders(contestantRequest);
+      const completed = await expectOkJson(
+        await contestantRequest.post("/api/profile/watched-videos", {
+          headers,
+          data: { videoId: "paul/intro" },
+        }),
+        "contestant intro completion"
+      );
+      expect(completed.videoId).toBe("paul/intro");
+      expect(completed.watchedAt).toBeTruthy();
+      const replay = await expectOkJson(
+        await contestantRequest.post("/api/profile/watched-videos", {
+          headers,
+          data: { videoId: "paul/intro" },
+        }),
+        "idempotent intro replay"
+      );
+      expect(replay.watchedAt).toBe(completed.watchedAt);
+
+      const contestantHistory = await expectOkJson(
+        await contestantRequest.get("/api/profile/watched-videos"),
+        "contestant watch history"
+      );
+      expect(contestantHistory.videos.filter((item) => item.videoId === "paul/intro"))
+        .toHaveLength(1);
+      const witnessAfter = await expectOkJson(
+        await witnessRequest.get("/api/profile/watched-videos"),
+        "witness watch history after contestant completion"
+      );
+      expect(witnessAfter).toEqual(witnessBefore);
+
+      const freshLogin = await playwright.request.newContext({ baseURL });
+      try {
+        const returningUser = await loginAs(freshLogin, contestant);
+        expect(returningUser.hasSeenIntroVideo).toBe(true);
+        const hydratedUser = await expectOkJson(
+          await freshLogin.get("/api/auth/user"),
+          "returning contestant auth user"
+        );
+        expect(hydratedUser.hasSeenIntroVideo).toBe(true);
+      } finally {
+        await freshLogin.dispose();
+      }
+
+      const rosterPath = "/api/admin/video-watch-roster?videoId=paul%2Fintro";
+      expect((await contestantRequest.get(rosterPath)).status()).toBe(403);
+      expect((await guestRequest.get(rosterPath)).status()).toBe(401);
+      const roster = await expectOkJson(await adminRequest.get(rosterPath), "intro viewer roster");
+      expect(roster.viewers).toEqual(expect.arrayContaining([
+        expect.objectContaining({ userId: contestant.userId, username: contestant.username }),
+      ]));
+      const badId = await contestantRequest.post("/api/profile/watched-videos", {
+        headers,
+        data: { videoId: "invalid/live-puppet-probe" },
+      });
+      expect(badId.status()).toBe(400);
+    } finally {
+      await contestantRequest.dispose();
+      await witnessRequest.dispose();
+      await adminRequest.dispose();
+      await guestRequest.dispose();
+    }
+  });
 });

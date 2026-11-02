@@ -1,0 +1,24 @@
+services:
+  macaroni-companion:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      MACARONI_COMPANION_DATA_DIR: /var/lib/macaroni
+      MACARONI_COMPANION_HOST: 0.0.0.0
+      MACARONI_COMPANION_MASTER_KEY_FILE: /run/secrets/macaroni/master.key
+      MACARONI_COMPANION_SIGNER_KEY_FILE: /run/secrets/macaroni/finalizer.key
+      MACARONI_COMPANION_ADMIN_TOKEN_FILE: /run/secrets/macaroni/admin.token
+      MACARONI_V35_CONTRACT_ABI_PATH: /opt/macaroni-companion/contract/macaroni-v35.contract.json
+      MACARONI_V35_TEMPLATE_PATH: /opt/macaroni-companion/contract/macaroni-v35.template.json
+    ports:
+      - "127.0.0.1:47835:47835"
+    volumes:
+      - ./data:/var/lib/macaroni
+      - ./secrets:/run/secrets/macaroni:ro
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL

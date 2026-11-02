@@ -33,6 +33,7 @@ import {
 } from "../components/WalletDossier";
 import { EtherlinkWalletsPanel } from "../features/etherlink/EtherlinkWalletsPanel";
 import { ProfileShareCard } from "../features/profile/ProfileShareCard";
+import { WatchedVideosList } from "../features/profile/WatchedVideosList";
 import { useAuth } from "../lib/auth-context";
 import { useWallet } from "../lib/wallet-context";
 import { api } from "../lib/api";
@@ -1385,6 +1386,10 @@ export function Profile() {
             )}
           </div>
         </PfpContainer>
+      </Section>
+
+      <Section title="Videos watched" data-profile-section="watched-videos">
+        <WatchedVideosList userId={user?.id ?? null} />
       </Section>
 
       {/* ── Password ── */}

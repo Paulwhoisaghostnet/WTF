@@ -1,7 +1,6 @@
 import {
   useCallback,
   useEffect,
-  useMemo,
   useRef,
   useState,
 } from "react";
@@ -13,12 +12,9 @@ import { useAuth } from "../../lib/auth-context";
 import { HamsterPixelSprite } from "../../components/layout/HamsterPixelSprite";
 import {
   assistantStateLine,
-  greeting,
-  nag,
   questCompleteLine,
   stepLine,
 } from "./reggie-dialogue";
-import { answerQuestion } from "./reggie-knowledge";
 import {
   availableSteps,
   checkpointsForRoute,
@@ -28,7 +24,6 @@ import {
   recommendedStep,
   selectorsForAnchor,
   shouldShowReggie,
-  type ReggieAccountSnapshot,
   type ReggieQuestState,
   type ReggieQuestStepState,
   type ReggieSummonEventDetail,
@@ -44,8 +39,6 @@ import {
 const REGGIE_Z_INDEX = 9100;
 const SNOOZE_STORAGE_KEY = "wtf.reggie.snoozedUntil";
 const SNOOZE_MS = 10 * 60 * 1000;
-const NAG_INTERVAL_MS = 4 * 60 * 1000;
-const TRANSIENT_BUBBLE_MS = 9 * 1000;
 const SPRITE_W = REGGIE_SPRITE_WIDTH;
 const SPRITE_H = REGGIE_SPRITE_HEIGHT;
 
@@ -74,12 +67,16 @@ const assistantIdle = keyframes`
   50% { transform: translateY(-3px); }
 `;
 
-const ReggieRoot = styled.div`
+const ReggieRoot = styled.div<{ $hideOnNarrowHelp: boolean }>`
   position: fixed;
   z-index: ${REGGIE_Z_INDEX};
   transition: left 1.4s ease-in-out, top 1.4s ease-in-out;
   pointer-events: none;
   animation: ${assistantPopIn} 0.28s ease-out;
+
+  @media (max-width: 520px) {
+    ${({ $hideOnNarrowHelp }) => $hideOnNarrowHelp && "display: none;"}
+  }
 
   @media (prefers-reduced-motion: reduce) {
     transition: none;
@@ -281,35 +278,12 @@ const ProgressFill = styled.div<{ $pct: number }>`
   transition: width 0.4s ease;
 `;
 
-const AskForm = styled.form`
-  display: flex;
-  gap: 4px;
-  margin-top: 8px;
-`;
-
-const AskInput = styled.input`
-  flex: 1;
-  min-width: 0;
-  border: 2px inset #d6d6d6;
-  background: #ffffff;
-  font-family: inherit;
-  font-size: 11px;
-  padding: 2px 4px;
-`;
-
-type BubbleMode = "message" | "quests" | "ask";
+type BubbleMode = "message" | "quests";
 
 type ReggieSpeakOptions = {
   source?: string;
   context?: Record<string, string | number | boolean | null>;
   persist?: boolean;
-  transient?: boolean;
-  hideAfter?: boolean;
-};
-
-type BubbleAutoClose = {
-  ms: number;
-  hideSprite: boolean;
 };
 
 function reportReggieEvent(
@@ -368,10 +342,8 @@ export function ReggieAssistant() {
   const [dismissed, setDismissed] = useState(false);
   const [bubbleOpen, setBubbleOpen] = useState(false);
   const [bubbleMode, setBubbleMode] = useState<BubbleMode>("message");
-  const [bubbleAutoClose, setBubbleAutoClose] = useState<BubbleAutoClose | null>(null);
   const [message, setMessage] = useState("");
   const [focusedStep, setFocusedStep] = useState<ReggieQuestStepState | null>(null);
-  const [question, setQuestion] = useState("");
   const [position, setPosition] = useState<{ x: number; y: number }>(() => ({
     x: typeof window === "undefined" ? 600 : homePlacement(currentViewport()).x,
     y: typeof window === "undefined" ? 400 : homePlacement(currentViewport()).y,
@@ -384,23 +356,8 @@ export function ReggieAssistant() {
   const messageCountRef = useRef(0);
   const emittedCheckpointsRef = useRef(new Set<string>());
   const celebratedRef = useRef(false);
-  const greetedRef = useRef(false);
 
   const seedBase = user ? `${user.id}:${user.username}` : "anon";
-
-  const account: ReggieAccountSnapshot | null = useMemo(() => {
-    if (!user) return null;
-    return {
-      username: user.username,
-      displayName: user.displayName ?? null,
-      bio: user.bio ?? null,
-      avatarUrl: user.avatarUrl ?? null,
-      pfpImageUrl: user.pfpImageUrl ?? null,
-      twitterHandle: user.twitterHandle ?? null,
-      twitterVerified: Boolean(user.twitterVerified),
-      experiencePoints: user.experiencePoints ?? 0,
-    };
-  }, [user]);
 
   const assistantAvailable = shouldShowReggie({
     hasUser: Boolean(user),
@@ -451,14 +408,6 @@ export function ReggieAssistant() {
       setMessage(text);
       setBubbleMode("message");
       setBubbleOpen(true);
-      setBubbleAutoClose(
-        options.transient
-          ? {
-              ms: TRANSIENT_BUBBLE_MS,
-              hideSprite: Boolean(options.hideAfter),
-            }
-          : null
-      );
       if (options.persist !== false) {
         persistReggieMessage(text, options);
       }
@@ -509,6 +458,7 @@ export function ReggieAssistant() {
   const focusStep = useCallback(
     (step: ReggieQuestStepState) => {
       if (step.status === "locked") {
+        setFocusedStep(null);
         speak(
           assistantStateLine(
             "locked",
@@ -596,58 +546,22 @@ export function ReggieAssistant() {
     );
   }, [locationPath, queryClient, quest, seedBase, speak]);
 
-  const handleAsk = useCallback(
-    (event: React.FormEvent) => {
-      event.preventDefault();
-      const asked = question.trim();
-      if (!asked) return;
-      const result = answerQuestion(asked, {
-        account,
-        quest,
-        seed: `${seedBase}:${messageCountRef.current}`,
-        lastReply: lastReplyRef.current,
-      });
-      reportReggieEvent("reggie.question.asked", "reggie.question", {
-        matched: result.matched,
-        topic: result.topicId ?? "smartass",
-      });
-      setQuestion("");
-      speak(result.answer, {
-        source: "question-answer",
-        context: {
-          matched: result.matched,
-          topic: result.topicId ?? "smartass",
-        },
-      });
-    },
-    [account, quest, question, seedBase, speak]
-  );
-
   const handleSpriteClick = useCallback(() => {
     if (bubbleOpen) {
       setBubbleOpen(false);
-      setBubbleAutoClose(null);
       return;
     }
     reportReggieEvent("reggie.assistant.opened", "reggie.sprite", {
       path: locationPath,
     });
-    if (!greetedRef.current) {
-      greetedRef.current = true;
-      speak(greeting(`${seedBase}:${new Date().toISOString().slice(0, 10)}`), {
-        source: "greeting",
-      });
-    } else {
-      suggestNext();
-    }
-  }, [bubbleOpen, locationPath, seedBase, speak, suggestNext]);
+    suggestNext();
+  }, [bubbleOpen, locationPath, suggestNext]);
 
   const snooze = useCallback(() => {
     const until = Date.now() + SNOOZE_MS;
     setSnoozedUntil(until);
     setDismissed(true);
     setBubbleOpen(false);
-    setBubbleAutoClose(null);
     reportReggieEvent("reggie.assistant.dismissed", "reggie.sprite", {
       source: "snooze",
       minutes: 10,
@@ -655,14 +569,13 @@ export function ReggieAssistant() {
     try {
       window.localStorage.setItem(SNOOZE_STORAGE_KEY, String(until));
     } catch {
-      // Snooze is best-effort; Reggie forgives.
+      // Snooze is best-effort; Reggie can still wake this session.
     }
   }, []);
 
   const dismissReggie = useCallback(() => {
     setDismissed(true);
     setBubbleOpen(false);
-    setBubbleAutoClose(null);
     reportReggieEvent("reggie.assistant.dismissed", "reggie.sprite", {
       source: "dismiss",
       path: locationPath,
@@ -675,7 +588,6 @@ export function ReggieAssistant() {
       setSnoozedUntil(null);
       setDismissed(false);
       setBubbleOpen(false);
-      setBubbleAutoClose(null);
       try {
         window.localStorage.removeItem(SNOOZE_STORAGE_KEY);
       } catch {
@@ -696,8 +608,7 @@ export function ReggieAssistant() {
         source,
       });
       speak(
-        detail.message ||
-          assistantStateLine("summon", `${seedBase}:${source}`, {}, lastReplyRef.current),
+        assistantStateLine("summon", `${seedBase}:${source}`, {}, lastReplyRef.current),
         {
           source,
           context: { summoned: true },
@@ -740,18 +651,6 @@ export function ReggieAssistant() {
     return () => window.clearTimeout(timer);
   }, [snoozedUntil]);
 
-  useEffect(() => {
-    if (!bubbleOpen || !bubbleAutoClose) return;
-    const timer = window.setTimeout(() => {
-      setBubbleOpen(false);
-      setBubbleAutoClose(null);
-      if (bubbleAutoClose.hideSprite) {
-        setDismissed(true);
-      }
-    }, bubbleAutoClose.ms);
-    return () => window.clearTimeout(timer);
-  }, [bubbleAutoClose, bubbleOpen]);
-
   // Route checkpoints: when the user visits a tour destination while the
   // owning step is not yet complete, emit the proof event the quest engine
   // is listening for.
@@ -781,28 +680,6 @@ export function ReggieAssistant() {
     speak(questCompleteLine(seedBase), { source: "quest-complete" });
   }, [quest?.questComplete, seedBase, speak]);
 
-  // Friendly nag loop.
-  useEffect(() => {
-    if (!assistantAvailable || !quest || quest.questComplete) return;
-    const timer = window.setInterval(() => {
-      if (document.hidden || bubbleOpen) return;
-      const next = recommendedStep(quest);
-      const line = next
-        ? `${nag(`${seedBase}:${Date.now()}`, lastReplyRef.current)} Might I suggest "${next.title}"?`
-        : nag(`${seedBase}:${Date.now()}`, lastReplyRef.current);
-      speak(line, {
-        source: "nag",
-        transient: true,
-        hideAfter: true,
-        context: { stepKey: next?.stepKey ?? "none" },
-      });
-      reportReggieEvent("reggie.hint.shown", "reggie.nag", {
-        stepKey: next?.stepKey ?? "none",
-      });
-    }, NAG_INTERVAL_MS);
-    return () => window.clearInterval(timer);
-  }, [assistantAvailable, bubbleOpen, quest, seedBase, speak]);
-
   // Keep Reggie on screen when the window resizes.
   useEffect(() => {
     const onResize = () => {
@@ -821,9 +698,13 @@ export function ReggieAssistant() {
   const open = availableSteps(quest ?? { questComplete: false, completedCount: 0, totalCount: 0, steps: [], finale: null });
 
   return (
-    <ReggieRoot style={{ left: position.x, top: position.y }} data-reggie-assistant="true">
+    <ReggieRoot
+      $hideOnNarrowHelp={locationPath === "/faq"}
+      style={{ left: position.x, top: position.y }}
+      data-reggie-assistant="true"
+    >
       {bubbleOpen ? (
-        <Bubble $side={bubbleSide} role="dialog" aria-label="Reggie the wtfOS assistant">
+        <Bubble $side={bubbleSide} role="dialog" aria-label="Reggie quest guide">
           <BubbleHeader>
             <span>Reggie</span>
             <HeaderButtons>
@@ -831,7 +712,6 @@ export function ReggieAssistant() {
                 type="button"
                 title="Quest log"
                 onClick={() => {
-                  setBubbleAutoClose(null);
                   setBubbleMode(bubbleMode === "quests" ? "message" : "quests");
                 }}
               >
@@ -848,7 +728,6 @@ export function ReggieAssistant() {
                 title="Close"
                 onClick={() => {
                   setBubbleOpen(false);
-                  setBubbleAutoClose(null);
                 }}
               >
                 ×
@@ -857,7 +736,7 @@ export function ReggieAssistant() {
           </BubbleHeader>
 
           {quest ? (
-            <ProgressTrack title={`${quest.completedCount}/${quest.totalCount} side quests complete`}>
+            <ProgressTrack title={`${quest.completedCount}/${quest.totalCount} Reggie quest steps complete`}>
               <ProgressFill $pct={pct} />
             </ProgressTrack>
           ) : null}
@@ -923,19 +802,9 @@ export function ReggieAssistant() {
             </ActionButton>
           </ActionRow>
 
-          <AskForm onSubmit={handleAsk}>
-            <AskInput
-              value={question}
-              onChange={(event) => setQuestion(event.target.value)}
-              placeholder="Ask Reggie anything…"
-              aria-label="Ask Reggie a question"
-            />
-            <ActionButton type="submit">Ask</ActionButton>
-          </AskForm>
-
           {open.length > 0 && bubbleMode !== "quests" ? (
             <BubbleText style={{ margin: "8px 0 0", fontSize: 10, color: "#666" }}>
-              {open.length} side quest{open.length === 1 ? "" : "s"} available right now.
+              {open.length} quest step{open.length === 1 ? "" : "s"} available right now.
             </BubbleText>
           ) : null}
         </Bubble>
@@ -945,8 +814,8 @@ export function ReggieAssistant() {
         type="button"
         onClick={handleSpriteClick}
         $flip={flip}
-        aria-label="Reggie the wtfOS assistant hamster"
-        title="Reggie — click for help"
+        aria-label="Reggie the quest guide hamster"
+        title="Reggie — click for quest guidance"
       >
         <HamsterPixelSprite
           alive

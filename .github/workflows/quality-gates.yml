@@ -10,7 +10,8 @@ on:
 jobs:
   app-quality:
     name: Unit / Audit / Typecheck / Build / Inventory
-    runs-on: ubuntu-latest
+    # Playwright 1.59.1 cannot install Chromium on the ubuntu26.04 latest image.
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -44,6 +45,11 @@ jobs:
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
+
+      - name: Prepare desktop assets for unit parity
+        run: |
+          npm run prepare --prefix apps/macaroni-desktop
+          npm run prepare --prefix apps/pasta-suite-desktop
 
       - name: Aggregate unit tests
         run: npm run test:unit

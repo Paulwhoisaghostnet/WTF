@@ -4,6 +4,11 @@ apps/macaroni-desktop/macaroni/
 apps/macaroni-desktop/release/
 apps/pasta-suite-desktop/pasta/
 apps/pasta-suite-desktop/release/
+apps/pasta-suite-desktop/companion/
+apps/macaroni-desktop/companion/
+companion/macaroni-v35/data/
+companion/macaroni-v35/secrets/
+companion/macaroni-v35/.env
 apps/ch-ease-desktop/pasta/
 apps/ch-ease-desktop/release/
 apps/spaghetti-desktop/spaghetti/

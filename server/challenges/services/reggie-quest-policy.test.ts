@@ -179,3 +179,20 @@ test("event proofs only use checkpoint metadata the desktop event route can carr
     }
   }
 });
+
+test("navigation quest sends players to its checkpoint while Paul teaches the controls", () => {
+  const step = REGGIE_QUEST_STEPS.find((entry) => entry.stepKey === "navigator");
+  assert.ok(step);
+  assert.equal(step.route, "/dashboard");
+  assert.equal(step.actionLabel, "Visit Dashboard");
+  assert.match(step.description, /Paul's desktop lesson/);
+  assert.ok(
+    collectNodes(step.proof).some((node) =>
+      node.type === "event" &&
+      Array.isArray(node.eventTypes) &&
+      node.eventTypes.includes("reggie.checkpoint.reached") &&
+      (node.filters as { metadata?: { checkpoint?: string } } | undefined)?.metadata?.checkpoint === "navigation"
+    ),
+    "navigation quest must still verify its Dashboard checkpoint"
+  );
+});

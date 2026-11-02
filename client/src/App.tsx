@@ -573,7 +573,6 @@ function AppContent() {
           appAvailability={appAvailability}
           appAvailabilityReady={appAvailabilityReady}
         />
-        <WelcomeMessage />
         <CommandPalette
           role={roleInput}
           accessSurfaceIds={user?.wtfOsAccess?.surfaceIds ?? []}
@@ -616,6 +615,7 @@ export default function App() {
                 <EtherlinkWalletProvider>
                   <MusicPlayerProvider>
                     <AppContent />
+                    <WelcomeMessage />
                   </MusicPlayerProvider>
                 </EtherlinkWalletProvider>
               </WalletProvider>

@@ -90,6 +90,32 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     durableSideEffectAssertion: "Real PostgreSQL and HTTP tests preserve the private published version across draft changes, omit private titles and HTML from public bundles/PDS snapshots, enforce owner/current-admin access, bind host-only access tickets to the original session, and deny unrelated, anonymous, expired, or revoked access. A real native form under no-referrer sends Origin:null; only exact POST /_private/access on a classified user-site host reaches ticket authorization without ACAO/ACAC headers. Wrong origins, methods, paths, platform/infra hosts and malformed site hosts receive no exception; an invalid ticket still returns 401. The .me edge authorizes registered hosts and forwards only /_private/* to the application over verified HTTPS with the original Host; public/PDS routes and wildcard DNS retain their existing owners. Existing public slugs cannot be converted into misleadingly private pages. Local fixtures do not establish production edge availability.",
   },
   {
+    id: "macaroni.v35-managed-secure",
+    domain: "Media, Creation, Gallery, and Preservation",
+    ownerSurfaceIds: ["creation-tools", "pasta-protocol", "wtf-domains"],
+    ownerSpec:
+      "contracts/wtf-collections/MacaroniBlindMintFA2V35.py, scripts/macaroni/v35-contract-policy.test.mjs, public/creation-tools/macaroni/{studio.html,js/studio.js,drop.html,js/drop.js,js/site-bundle.js}, server/features/macaroni/{v35-crypto.ts,v35-entropy.test.ts,v35-managed-assets.ts,v35-managed-policy.test.ts,v35-managed-worker.ts,v35-private-staging.test.ts,v35-service.ts,v35-worker.test.ts}, server/routes/{macaroni.ts,macaroni-policy.test.ts}, server/lib/{cors-origins.ts,cors-origins.test.ts}, tests/playwright/inventory/macaroni-v35-static-collector.spec.mjs",
+    verificationCommand:
+      "node --test scripts/macaroni/v35-contract-policy.test.mjs && npx tsx --test server/features/macaroni/v35-entropy.test.ts server/features/macaroni/v35-managed-policy.test.ts server/features/macaroni/v35-private-staging.test.ts server/features/macaroni/v35-worker.test.ts server/routes/macaroni-policy.test.ts server/lib/cors-origins.test.ts && npx playwright test tests/playwright/inventory/macaroni-v35-static-collector.spec.mjs",
+    userVisibleAssertion:
+      "An eligible wtfOS creator starts on the simple Secure Blind Mint profile, sees private-until-assigned and automatic-fulfillment promises plus the custodian limitation, chooses immediate or automatic-later display, privately stages the collection, sees measured deployment/reserve/finalizer costs, and receives one pleasant explained wallet review at a time. An ineligible creator sees the exact missing role, request-access route, and self-hosted alternative; Legacy and public pre-pinning remain Advanced and require their risk acknowledgements. A collector signs one amount-only purchase and sees purchase confirmed, allocation locked, publishing, and final NFT status without a manual reveal.",
+    durableSideEffectAssertion:
+      "Focused contract, managed-service, worker, private-staging, Studio policy, and real-browser cross-origin tests prove physical weighted allocation without replacement, strict FIFO settlement, token-specific commitments, hidden private staging, local duplicate detection, server-authored exact-size setup actions, five-operation measured reserve funding, durable prompt/submission/reconciliation state, two-block finality, fulfillment arming before activation, automatic final mint, final-only reserve sweep, permanent close recovery, secret-free static exports, credential-free status/purchase/claim/wake calls from an unrelated static origin, creator-endpoint isolation, and live network-specific fail-closed managed-role/runtime readiness even when persisted readiness is stale, and an explicit Shadownet-only alpha guard that rejects Mainnet creator setup, publishing, and worker execution even with Mainnet credentials configured.",
+  },
+  {
+    id: "macaroni.v35-companion-self-hosted",
+    domain: "Media, Creation, Gallery, and Preservation",
+    ownerSurfaceIds: ["creation-tools", "pasta-protocol"],
+    ownerSpec:
+      "companion/macaroni-v35/test/{creator-setup,desktop-adapter,desktop-setup,http,runtime-e2e,watcher}.test.mjs, scripts/{macaroni-desktop-package-policy,pasta-suite-desktop-package-policy}.test.mjs, tests/playwright/inventory/macaroni-native-companion-setup.spec.mjs",
+    verificationCommand:
+      "npm test --prefix companion/macaroni-v35 && node --test scripts/macaroni-desktop-package-policy.test.mjs scripts/pasta-suite-desktop-package-policy.test.mjs && npx playwright test tests/playwright/inventory/macaroni-native-companion-setup.spec.mjs",
+    userVisibleAssertion:
+      "An installed creator sees a native-only Companion setup card with the current readiness reason, can open a copied secret-free guide/standalone kit and the active private config location, explicitly checks again after a correction, and sees creation unlock only after the complete local doctor passes; they then upload the public cover plus private originals and optional previews without exposing private CIDs, receive one plain-language wallet action at a time, can leave and resume safely, inspect parked signed claims and visible publication retries with operation hash and chain state where applicable, retry only when the Companion has safe evidence, and export a static buyer page that uses only explicit public status URLs.",
+    durableSideEffectAssertion:
+      "Focused Companion tests prove encrypted private CAR/entropy custody, immutable creator plans and attempts, exact padded forged-size batching at the Tezos protocol limit, two-block finality, hashless post-broadcast recovery, raw identified remote-wallet abort acceptance with transformed/identity-free errors quarantined, finalized origination-derived contract binding, finalizer arming, forced FIFO settlement, artifact-before-metadata publication, signed-attempt single-flight retention on changed preconditions, chain-checked operator retry, visible transient publication retries and parked deterministic pinning failures, Companion identity challenge before desktop admin-token transfer, Shadownet-only alpha guards and exact local write boundaries in both installed shells, same-origin desktop proxy isolation, and secret-free public/static responses; setup-copy tests reject private runtime paths and copy a usable standalone package; desktop policies prove exact Studio-path IPC authorization and no renderer access to config contents; the browser story proves guide/config actions and user-triggered readiness recovery in both native shells' shared Studio.",
+  },
+  {
     id: "public.static-discovery-metadata",
     domain: "Public Data, Embeds, APIs, Agents, and Automation",
     platformOwner: "public-static-discovery",
@@ -154,9 +180,22 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     verificationCommand:
       "npm run build && npx tsx --test client/src/features/onboarding/classic-task-wayfinder.test.ts client/src/components/layout/start-menu-app-gates.test.ts && npx playwright test tests/playwright/inventory/auth-session.spec.mjs",
     userVisibleAssertion:
-      "The classic OS welcome, Start menu, and Help & Start Here page all lead with the same plain-language Play, Create, Shop, Events, and Talk choices, keep their icon/label/description text contained at desktop and mobile widths, and route each choice to its commissioned application.",
+      "The classic OS welcome introduces paulwhoisaclippy's video and a primary Mission Control action, with the shared Play, Create, Shop, Events, and Talk choices available in an expandable list; Help & Start Here and the Stuffs menu retain the same destinations at desktop and mobile widths.",
     durableSideEffectAssertion:
-      "The shared wayfinder regression locks the five route mappings; the browser harness proves the welcome controls retain their intended height, completes and persists the one-time welcome before opening the chosen destination, verifies stale-session recovery, and confirms the mobile public help route exposes the same task map as full-width, non-overlapping controls.",
+      "The shared wayfinder regression locks the five route mappings; the browser harness expands and follows a welcome choice, persists one-time completion before navigation, verifies stale-session recovery, and confirms the mobile Help route exposes the same task map as full-width, non-overlapping controls.",
+  },
+  {
+    id: "auth.paulwhoisaclippy-welcome-video",
+    domain: "Entry, Authentication, and Account Identity",
+    platformOwner: "auth-session",
+    ownerSpec:
+      "tests/playwright/inventory/auth-session.spec.mjs; tests/playwright/inventory/paulwhoisaclippy.spec.mjs; tests/playwright/inventory/reggie-quest-guide.spec.mjs",
+    verificationCommand:
+      "npm run build && npx playwright test tests/playwright/inventory/auth-session.spec.mjs tests/playwright/inventory/paulwhoisaclippy.spec.mjs tests/playwright/inventory/reggie-quest-guide.spec.mjs",
+    userVisibleAssertion:
+      "A first-time signed-in player sees paulwhoisaclippy's captioned welcome video with play controls on classic and direct full-screen wtfOS entry, a visible path to Mission Control, and a way to continue; Paul explains that he teaches the desktop while Reggie quietly guides the authored Reggie quest path. Help & Start Here can replay the same video and written guidance later.",
+    durableSideEffectAssertion:
+      "Explicit first-entry navigation persists the existing one-time welcomedToWtfOs state and emits auth.welcome.completed. The browser harness verifies the video decodes, the welcome appears on direct full-screen entry, and replay from Help leaves the completed state unchanged.",
   },
   {
     id: "auth.faq-registration-tutorials",
@@ -169,6 +208,30 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "The public FAQ previews short, captioned how-to videos for the full registration journey, and every tutorial visibly uses the TommyTezos account.",
     durableSideEffectAssertion:
       "The checked-in catalog binds each tutorial to private S3 object keys while the public API exposes only same-origin streaming routes; the browser harness proves all eight guides, English captions, transcripts, selection behavior, and mobile containment.",
+  },
+  {
+    id: "faq.paul-tutorial-series",
+    domain: "Entry, Authentication, and Account Identity",
+    platformOwner: "faq",
+    ownerSpec: "tests/playwright/inventory/paul-tutorial-series.spec.mjs",
+    verificationCommand:
+      "npm run build && npx playwright test tests/playwright/inventory/paul-tutorial-series.spec.mjs",
+    userVisibleAssertion:
+      "The first-entry welcome links directly to Help & Start Here's Paul-led, captioned, step-by-step videos for desktop navigation, mission discovery, a ready side quest claim, games, creation, messaging, marketplace, events, and appearance; selecting an episode shows one player, transcript, written steps, and a Try this in wtfOS action at desktop and narrow widths. A labeled episode chooser is within the first narrow-screen viewport, and Reggie does not cover the Help content there.",
+    durableSideEffectAssertion:
+      "The browser harness loads every checked-in episode asset and verifies selected, played, and completed events retain the tutorial slug and paulwhoisaclippy series identity; Try this in wtfOS follows the episode's registered route without granting rewards or changing account state.",
+  },
+  {
+    id: "auth.watched-video-history-and-boot",
+    domain: "Entry, Authentication, and Account Identity",
+    platformOwner: "auth-session",
+    ownerSpec: "tests/playwright/inventory/video-watch-history.spec.mjs; tests/playwright/live/puppet-orchestration.spec.mjs",
+    verificationCommand:
+      "npm run build && npx playwright test tests/playwright/inventory/video-watch-history.spec.mjs",
+    userVisibleAssertion:
+      "Finishing a known Help video records it once on the signed-in account and lists it on My Profile. A returning account that has completed Paul's intro sees a short wtfOS boot animation after login; an account that skipped the intro sees the intro again. Reduced-motion users can enter directly.",
+    durableSideEffectAssertion:
+      "The watched-video roster is keyed by user and canonical video ID, survives logout and login, is idempotent on replay, and cannot be written by a guest or for an unknown video. The per-video viewer roster requires manage_users permission, while each profile can read only its own history.",
   },
   {
     id: "wtfos.guide-promo-channel",
@@ -703,12 +766,12 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     id: "macaroni.shadownet-rpc-wallet-setup",
     domain: "Media, Creation, Gallery, and Preservation",
     ownerSurfaceIds: ["creation-tools", "wtf-domains"],
-    ownerSpec: "tests/playwright/live/macaroni-shadownet.spec.mjs",
-    verificationCommand: "npm run test:e2e:macaroni:shadownet",
+    ownerSpec: "tests/playwright/live/macaroni-shadownet.spec.mjs, scripts/pasta-protocol/shadownet-macaroni-ui-live.test.ts, scripts/pasta-protocol/pasta-ui-live-bridge-kit.test.ts",
+    verificationCommand: "npm run test:e2e:macaroni:shadownet && npm run pasta:shadownet:macaroni:ui-live:check",
     userVisibleAssertion:
       "A trusted-creator puppet can open Macaroni, enter the Studio through the embedded creation-tool iframe, see Shadownet as the default rehearsal network, choose Macaroni V1 or V2 contract templates, see the wtfOS IPFS provider, see Fileship as the default IPFS gateway, see the 1 GB per-artifact hard max, 250 MB average artifact limit, and 1 MB square JPG/PNG collection logo/cover limit, define per-token edition quantity, configure optional minter royalty pool/split/updater policy, attach multiple unrevealed placeholder images for delayed reveal, connect a Shadownet puppet wallet without RPC errors, use Octez Connect as the primary wallet provider with legacy Taquito compatibility scoped to generated static bundles, route selected Kukai pairing to the Shadownet Kukai app, send named wallet permission networks without embedding the dApp RPC URL, serve stored legacy wtfOS-hosted Macaroni drop pages with Octez-primary bridge injection plus the same named-network wallet hardening, and block wtfOS publish until the drop has a deployed or resumed KT1 contract; a regular signed-in puppet loading the static Studio does not see the wtfOS IPFS provider but does see a greyed, disabled wtfOS publish control whose mouse-hover and keyboard-focus tooltip explains the Trusted Market Creator requirement and directs them to the Contact Admin app; generated mint pages expose clean disconnect, prevent duplicate request-permission flows from rapid connect clicks, reuse/reconfigure the same Octez-primary client with active-account subscription before permission APIs, include basic accessibility landmarks/status/progress/quantity semantics, normalize live max_per_wallet storage before showing share/status copy, keep X share compose text within the standard post limit while preserving mint/media URLs where possible, expose prefilled ICS and Google Calendar links for sale stages, clamp requested mint quantity to live collection remaining supply plus the connected wallet's remaining per-wallet/allowlist allowance, show wallet balance/cost status, max-per-wallet status, minter royalty sync status, owned-mint recovery hooks, RPC pack/estimate fallback handling, and bounded theme styling instead of arbitrary stored CSS.",
     durableSideEffectAssertion:
-      "The focused runner seeds dummy users and Shadownet puppet wallet metadata, verifies the live Shadownet RPC chain id `NetXsqzbfFenSTS` in the Macaroni iframe, proves the contract-version selector exposes V1 and V2 template choices, proves the IPFS provider selector follows `trusted_market_creator` access, proves the hosted publisher is enabled without a permission tooltip for a trusted creator and remains genuinely disabled with hover/focus recovery guidance for a regular account, proves a mismatched RPC is blocked before wallet signing, confirms explicit connect uses the Octez-primary bridge with legacy static-bundle compatibility fenced to the generated runtime, verifies all seven Pasta creation tools ship the same Octez Connect v5 bundle and only attach WalletConnect mobile/QR options from the deployment-owned project ID, checks from `/tools/macaroni` that the real Kukai option can escape the sandbox and load `https://shadownet.kukai.app` instead of a blank, mainnet, or Temple-only tab, asserts rapid generated-page connect clicks coalesce to one permission request, asserts the permission network object is `{ type: \"shadownet\" }` rather than Shadownet plus a dApp RPC override, asserts the server injects the Octez bridge and hardens Airporters-shaped stored legacy drop HTML before serving it, and keeps source-policy coverage for the 1 GB per-file and 250 MB average Macaroni artifact policy, contract-required wtfOS publishing, per-token edition quantities, delayed-reveal placeholder pools, request-time minter royalty metadata sync, non-image cover preview metadata, the generated mint page's validated non-blocking wallet restore, disconnect, Octez-primary singleton reuse, ACTIVE_ACCOUNT_SET subscription, bounded browser RPC read fallback, share/calendar canonical handles, X URL-weight trimming, calendar file generation, accessible controls/status regions, balance preflight, max-per-wallet option normalization and allowlist remaining allowance clamping, TzKT-owned-mint lookup, Fileship gateway default, and CSS theme allowlist paths.",
+      "The focused runner seeds dummy users and Shadownet puppet wallet metadata, verifies the live Shadownet RPC chain id `NetXsqzbfFenSTS` in the Macaroni iframe, proves the contract-version selector exposes V1 and V2 template choices, and the real Studio UI mock proves that pinning complete V1/V2 metadata enables deploy, a read-only origination estimate leads to an explicit wallet review, and separate reviewed inventory and stage writes complete a collector-ready drop; proves the IPFS provider selector follows `trusted_market_creator` access, proves the hosted publisher is enabled without a permission tooltip for a trusted creator and remains genuinely disabled with hover/focus recovery guidance for a regular account, proves a mismatched RPC is blocked before wallet signing, confirms explicit connect uses the Octez-primary bridge with legacy static-bundle compatibility fenced to the generated runtime, verifies all seven Pasta creation tools ship the same Octez Connect v5 bundle and only attach WalletConnect mobile/QR options from the deployment-owned project ID, checks from `/tools/macaroni` that the real Kukai option can escape the sandbox and load `https://shadownet.kukai.app` instead of a blank, mainnet, or Temple-only tab, asserts rapid generated-page connect clicks coalesce to one permission request, asserts the permission network object is `{ type: \"shadownet\" }` rather than Shadownet plus a dApp RPC override, asserts the server injects the Octez bridge and hardens Airporters-shaped stored legacy drop HTML before serving it, and keeps source-policy coverage for the 1 GB per-file and 250 MB average Macaroni artifact policy, contract-required wtfOS publishing, per-token edition quantities, delayed-reveal placeholder pools, request-time minter royalty metadata sync, non-image cover preview metadata, the generated mint page's validated non-blocking wallet restore, disconnect, Octez-primary singleton reuse, ACTIVE_ACCOUNT_SET subscription, bounded browser RPC read fallback, share/calendar canonical handles, X URL-weight trimming, calendar file generation, accessible controls/status regions, balance preflight, max-per-wallet option normalization and allowlist remaining allowance clamping, TzKT-owned-mint lookup, Fileship gateway default, and CSS theme allowlist paths.",
   },
   {
     id: "macaroni.wtfos-package-source",
@@ -868,13 +931,13 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     domain: "Pasta Protocol",
     ownerSurfaceIds: ["pasta-protocol"],
     ownerSpec:
-      "apps/*-desktop/src/main.cjs, apps/*-desktop/src/loopback-origin.cjs, apps/pasta-suite-desktop/scripts/prepare-assets.mjs, apps/pasta-suite-desktop/src/static-path.cjs, apps/pasta-suite-desktop/package.json, apps/pasta-suite-desktop/build/*, scripts/pasta-desktop-origin-persistence.test.mjs, scripts/pasta-suite-desktop-package-policy.test.mjs, scripts/pasta-suite-desktop-artifact-smoke.mjs, scripts/pasta-suite-desktop-review-manifest.mjs, .github/workflows/pasta-suite-desktop-installers.yml, tests/playwright/inventory/pasta-suite-desktop-colander.spec.mjs",
+      "apps/*-desktop/src/main.cjs, apps/*-desktop/src/loopback-origin.cjs, apps/pasta-suite-desktop/scripts/prepare-assets.mjs, apps/pasta-suite-desktop/src/{local-boundary,static-path}.cjs, apps/pasta-suite-desktop/package.json, apps/pasta-suite-desktop/build/*, scripts/pasta-desktop-origin-persistence.test.mjs, scripts/pasta-suite-{local-boundary,desktop-package-policy}.test.mjs, scripts/pasta-suite-desktop-artifact-smoke.mjs, scripts/pasta-suite-desktop-review-manifest.mjs, .github/workflows/pasta-suite-desktop-installers.yml, tests/playwright/inventory/pasta-suite-desktop-colander.spec.mjs",
     verificationCommand:
-      "node --test scripts/pasta-desktop-origin-persistence.test.mjs && npm run pasta-suite:desktop:prepare && npm run pasta-suite:desktop:check && HARNESS_PORT=4375 npx playwright test tests/playwright/inventory/pasta-suite-desktop-colander.spec.mjs --project=chromium --reporter=list",
+      "node --test scripts/pasta-desktop-origin-persistence.test.mjs scripts/pasta-suite-local-boundary.test.mjs && npm run pasta-suite:desktop:prepare && npm run pasta-suite:desktop:check && HARNESS_PORT=4375 npx playwright test tests/playwright/inventory/pasta-suite-desktop-colander.spec.mjs --project=chromium --reporter=list",
     userVisibleAssertion:
       "Installed Colander displays the active project's recoverable drafts, complete remembered-contract lifecycle records, and self-hosted page artifacts, then resumes the correct bundled owner app, reopens a KT1 in the native manager, or opens the installed loopback page without requiring Objkt, Teia, or wtfOS hosting. Closing and reopening the suite or any standalone Pasta desktop app returns to the same product-specific local origin and the same locally saved work; launching it twice focuses the existing window.",
     durableSideEffectAssertion:
-      "Native project create/load/import/storage-refresh paths normalize pasta-project@1 records, preserve backward compatibility, filter malformed draft/contract/site references and unsafe local URLs, attach chain-read contracts as pasta-contract-ref@1 records, and pass project/network/contract context back to the same bundled standalone tools that own the records. Fresh project and contract-manager controls default visibly to Shadownet while preserving explicit Mainnet opt-in. The suite and eight standalone shells bind unique fixed 127.0.0.1 origins, never fall back to a random port, acquire Electron single-instance locks, and surface an occupied-origin error that tells creators not to clear application data; a persistent-browser relaunch regression proves localStorage remains reachable. Branded universal macOS DMG and Windows NSIS artifacts include all eight tools without external runtimes; the installer workflow launches each packaged executable on its owning OS and proves Shadownet-default Colander project creation plus CH-EASE launch before upload.",
+      "Native project create/load/import/storage-refresh paths normalize pasta-project@1 records, preserve backward compatibility, filter malformed draft/contract/site references and unsafe local URLs, attach chain-read contracts as pasta-contract-ref@1 records, and pass project/network/contract context back to the same bundled standalone tools that own the records. The 1.0.1 alpha package limits Colander and bundled publisher toolkit setup to Shadownet, preserves imported Mainnet projects without launching them, and labels CH-EASE, Macaroni, and Spaghetti supported while the five newer publishers are preview. Later non-alpha builds retain explicit Mainnet opt-in. The suite and eight standalone shells bind unique fixed 127.0.0.1 origins, never fall back to a random port, acquire Electron single-instance locks, and surface an occupied-origin error that tells creators not to clear application data; a persistent-browser relaunch regression proves localStorage remains reachable. Branded universal macOS DMG and Windows NSIS artifacts include all eight tools without external runtimes; the installer workflow launches each packaged executable on its owning OS and proves Shadownet-default Colander project creation plus CH-EASE launch before upload.",
   },
   {
     id: "pasta-protocol.colander-project-workspace",
@@ -1674,13 +1737,25 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     domain: "Desktop OS",
     ownerSurfaceIds: ["desktop-reggie", "wim", "messages", "mail"],
     ownerSpec:
-      "client/src/features/reggie/reggie-assistant-policy.test.ts; server/challenges/routes/reggie-policy.test.ts; tests/e2e/inventory/domain-workflows.mjs",
+      "client/src/features/reggie/reggie-assistant-policy.test.ts; server/challenges/routes/reggie-policy.test.ts; tests/playwright/inventory/reggie-quest-guide.spec.mjs; tests/e2e/inventory/domain-workflows.mjs",
     verificationCommand:
-      "node --test client/src/features/reggie/reggie-assistant-policy.test.ts server/challenges/routes/reggie-policy.test.ts && npm run test:e2e:inventory:coverage",
+      "node --test client/src/features/reggie/reggie-assistant-policy.test.ts server/challenges/routes/reggie-policy.test.ts && npm run build && npx playwright test tests/playwright/inventory/reggie-quest-guide.spec.mjs && npm run test:e2e:inventory:coverage",
     userVisibleAssertion:
-      "The desktop context menu exposes Summon Reggie, Reggie can be hidden or snoozed and later pops back in with a temporary speech bubble, and WIM identifies assistant-authored messages as Reggie messages.",
+      "Reggie stays quiet on the signed-in desktop until the player clicks or summons him. His bubble offers a current step in the authored Reggie quest path, quest log, progress check, Quest HQ, and quest destination, without a general question field or periodic nags. The player can hide and later summon him from the desktop context menu, or snooze him for ten minutes and see him wake without a bubble. WIM identifies his quest messages as Reggie messages.",
     durableSideEffectAssertion:
       "Reggie speech posts through /api/reggie/messages, which chooses the authenticated user server-side, writes a Reggie-authored DM conversation/message, tags the message metadata as assistant=reggie/source=reggie-assistant, and indexes the item for WIM/Inbox recovery.",
+  },
+  {
+    id: "desktop-paulwhoisaclippy.ambient-whisper",
+    domain: "Desktop OS, Navigation, and Personal Environment",
+    platformOwner: "desktop-ambient",
+    ownerSpec: "tests/playwright/inventory/paulwhoisaclippy.spec.mjs",
+    verificationCommand:
+      "npm run build && npx playwright test tests/playwright/inventory/paulwhoisaclippy.spec.mjs",
+    userVisibleAssertion:
+      "paulwhoisaclippy floats in unobstructed desktop space wearing red glasses, speaks a short optional whisper on click or keyboard activation, stays beneath app windows, and becomes still when reduced motion is requested.",
+    durableSideEffectAssertion:
+      "The click uses the existing desktop.object.clicked event with objectId paulwhoisaclippy; the inventory harness records the accepted event while no pet-care, reward, or account state changes.",
   },
   {
     id: "desktop.app-store-ranked-unlocks",

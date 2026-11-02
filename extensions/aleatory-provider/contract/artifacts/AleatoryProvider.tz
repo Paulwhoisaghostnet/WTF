@@ -1,0 +1,217 @@
+parameter (or (or (unit %default) (address %set_agent)) (or (pair %set_metadata (string %key) (bytes %value)) (or (mutez %set_render_gas) (pair %withdraw (mutez %amount) (address %to_)))));
+storage   (pair (address %agent) (pair (big_map %metadata string bytes) (pair (address %operator) (mutez %render_gas))));
+code
+  {
+    UNPAIR;     # @parameter : @storage
+    IF_LEFT
+      {
+        IF_LEFT
+          {
+            DROP;       # @storage
+            # == default == # @storage
+            NIL operation; # list operation : @storage
+          }
+          {
+            # == set_agent ==
+            # assert sp.amount == sp.mutez(0), "TEZ_NOT_ACCEPTED" # @parameter%set_agent : @storage
+            PUSH mutez 0; # mutez : @parameter%set_agent : @storage
+            AMOUNT;     # @amount : mutez : @parameter%set_agent : @storage
+            COMPARE;    # int : @parameter%set_agent : @storage
+            EQ;         # bool : @parameter%set_agent : @storage
+            IF
+              {}
+              {
+                PUSH string "TEZ_NOT_ACCEPTED"; # string : @parameter%set_agent : @storage
+                FAILWITH;   # FAILED
+              }; # @parameter%set_agent : @storage
+            # assert sp.sender == self.data.operator, "NOT_OPERATOR" # @parameter%set_agent : @storage
+            DUP 2;      # @storage : @parameter%set_agent : @storage
+            GET 5;      # address : @parameter%set_agent : @storage
+            SENDER;     # @sender : address : @parameter%set_agent : @storage
+            COMPARE;    # int : @parameter%set_agent : @storage
+            EQ;         # bool : @parameter%set_agent : @storage
+            IF
+              {}
+              {
+                PUSH string "NOT_OPERATOR"; # string : @parameter%set_agent : @storage
+                FAILWITH;   # FAILED
+              }; # @parameter%set_agent : @storage
+            SWAP;       # @storage : @parameter%set_agent
+            # self.data.agent = agent # @storage : @parameter%set_agent
+            DUP 2;      # @parameter%set_agent : @storage : @parameter%set_agent
+            UPDATE 1;   # @storage : @parameter%set_agent
+            SWAP;       # @parameter%set_agent : @storage
+            # sp.emit(sp.record(agent=agent), tag="set_agent") # @parameter%set_agent : @storage
+            EMIT %set_agent address; # operation : @storage
+            NIL operation; # list operation : operation : @storage
+            SWAP;       # operation : list operation : @storage
+            CONS;       # list operation : @storage
+          }; # list operation : @storage
+      }
+      {
+        IF_LEFT
+          {
+            # == set_metadata ==
+            # assert sp.amount == sp.mutez(0), "TEZ_NOT_ACCEPTED" # @parameter%set_metadata : @storage
+            PUSH mutez 0; # mutez : @parameter%set_metadata : @storage
+            AMOUNT;     # @amount : mutez : @parameter%set_metadata : @storage
+            COMPARE;    # int : @parameter%set_metadata : @storage
+            EQ;         # bool : @parameter%set_metadata : @storage
+            IF
+              {}
+              {
+                PUSH string "TEZ_NOT_ACCEPTED"; # string : @parameter%set_metadata : @storage
+                FAILWITH;   # FAILED
+              }; # @parameter%set_metadata : @storage
+            # assert sp.sender == self.data.operator, "NOT_OPERATOR" # @parameter%set_metadata : @storage
+            DUP 2;      # @storage : @parameter%set_metadata : @storage
+            GET 5;      # address : @parameter%set_metadata : @storage
+            SENDER;     # @sender : address : @parameter%set_metadata : @storage
+            COMPARE;    # int : @parameter%set_metadata : @storage
+            EQ;         # bool : @parameter%set_metadata : @storage
+            IF
+              {}
+              {
+                PUSH string "NOT_OPERATOR"; # string : @parameter%set_metadata : @storage
+                FAILWITH;   # FAILED
+              }; # @parameter%set_metadata : @storage
+            SWAP;       # @storage : @parameter%set_metadata
+            # self.data.metadata[key] = value # @storage : @parameter%set_metadata
+            DUP;        # @storage : @storage : @parameter%set_metadata
+            GET 3;      # big_map string bytes : @storage : @parameter%set_metadata
+            DUP 3;      # @parameter%set_metadata : big_map string bytes : @storage : @parameter%set_metadata
+            CDR;        # bytes : big_map string bytes : @storage : @parameter%set_metadata
+            SOME;       # option bytes : big_map string bytes : @storage : @parameter%set_metadata
+            DIG 3;      # @parameter%set_metadata : option bytes : big_map string bytes : @storage
+            CAR;        # string : option bytes : big_map string bytes : @storage
+            UPDATE;     # big_map string bytes : @storage
+            UPDATE 3;   # @storage
+            NIL operation; # list operation : @storage
+          }
+          {
+            IF_LEFT
+              {
+                # == set_render_gas ==
+                # assert sp.amount == sp.mutez(0), "TEZ_NOT_ACCEPTED" # @parameter%set_render_gas : @storage
+                PUSH mutez 0; # mutez : @parameter%set_render_gas : @storage
+                AMOUNT;     # @amount : mutez : @parameter%set_render_gas : @storage
+                COMPARE;    # int : @parameter%set_render_gas : @storage
+                EQ;         # bool : @parameter%set_render_gas : @storage
+                IF
+                  {}
+                  {
+                    PUSH string "TEZ_NOT_ACCEPTED"; # string : @parameter%set_render_gas : @storage
+                    FAILWITH;   # FAILED
+                  }; # @parameter%set_render_gas : @storage
+                # assert sp.sender == self.data.operator, "NOT_OPERATOR" # @parameter%set_render_gas : @storage
+                DUP 2;      # @storage : @parameter%set_render_gas : @storage
+                GET 5;      # address : @parameter%set_render_gas : @storage
+                SENDER;     # @sender : address : @parameter%set_render_gas : @storage
+                COMPARE;    # int : @parameter%set_render_gas : @storage
+                EQ;         # bool : @parameter%set_render_gas : @storage
+                IF
+                  {}
+                  {
+                    PUSH string "NOT_OPERATOR"; # string : @parameter%set_render_gas : @storage
+                    FAILWITH;   # FAILED
+                  }; # @parameter%set_render_gas : @storage
+                SWAP;       # @storage : @parameter%set_render_gas
+                # self.data.render_gas = price # @storage : @parameter%set_render_gas
+                DUP 2;      # @parameter%set_render_gas : @storage : @parameter%set_render_gas
+                UPDATE 6;   # @storage : @parameter%set_render_gas
+                SWAP;       # @parameter%set_render_gas : @storage
+                # sp.emit(sp.record(price=price), tag="set_render_gas") # @parameter%set_render_gas : @storage
+                EMIT %set_render_gas mutez; # operation : @storage
+                NIL operation; # list operation : operation : @storage
+                SWAP;       # operation : list operation : @storage
+                CONS;       # list operation : @storage
+              }
+              {
+                # == withdraw ==
+                # assert sp.amount == sp.mutez(0), "TEZ_NOT_ACCEPTED" # @parameter%withdraw : @storage
+                PUSH mutez 0; # mutez : @parameter%withdraw : @storage
+                AMOUNT;     # @amount : mutez : @parameter%withdraw : @storage
+                COMPARE;    # int : @parameter%withdraw : @storage
+                EQ;         # bool : @parameter%withdraw : @storage
+                IF
+                  {}
+                  {
+                    PUSH string "TEZ_NOT_ACCEPTED"; # string : @parameter%withdraw : @storage
+                    FAILWITH;   # FAILED
+                  }; # @parameter%withdraw : @storage
+                # assert sp.sender == self.data.operator, "NOT_OPERATOR" # @parameter%withdraw : @storage
+                DUP 2;      # @storage : @parameter%withdraw : @storage
+                GET 5;      # address : @parameter%withdraw : @storage
+                SENDER;     # @sender : address : @parameter%withdraw : @storage
+                COMPARE;    # int : @parameter%withdraw : @storage
+                EQ;         # bool : @parameter%withdraw : @storage
+                IF
+                  {}
+                  {
+                    PUSH string "NOT_OPERATOR"; # string : @parameter%withdraw : @storage
+                    FAILWITH;   # FAILED
+                  }; # @parameter%withdraw : @storage
+                # assert amount <= sp.balance, "INSUFFICIENT" # @parameter%withdraw : @storage
+                BALANCE;    # @balance : @parameter%withdraw : @storage
+                DUP 2;      # @parameter%withdraw : @balance : @parameter%withdraw : @storage
+                CAR;        # mutez : @balance : @parameter%withdraw : @storage
+                COMPARE;    # int : @parameter%withdraw : @storage
+                LE;         # bool : @parameter%withdraw : @storage
+                IF
+                  {}
+                  {
+                    PUSH string "INSUFFICIENT"; # string : @parameter%withdraw : @storage
+                    FAILWITH;   # FAILED
+                  }; # @parameter%withdraw : @storage
+                # sp.send(to_, amount) # @parameter%withdraw : @storage
+                NIL operation; # list operation : @parameter%withdraw : @storage
+                DUP 2;      # @parameter%withdraw : list operation : @parameter%withdraw : @storage
+                CDR;        # address : list operation : @parameter%withdraw : @storage
+                CONTRACT unit; # option (contract unit) : list operation : @parameter%withdraw : @storage
+                IF_NONE
+                  {
+                    PUSH int 877; # int : list operation : @parameter%withdraw : @storage
+                    FAILWITH;   # FAILED
+                  }
+                  {}; # @some : list operation : @parameter%withdraw : @storage
+                DUP 3;      # @parameter%withdraw : @some : list operation : @parameter%withdraw : @storage
+                CAR;        # mutez : @some : list operation : @parameter%withdraw : @storage
+                UNIT;       # unit : mutez : @some : list operation : @parameter%withdraw : @storage
+                TRANSFER_TOKENS; # operation : list operation : @parameter%withdraw : @storage
+                CONS;       # list operation : @parameter%withdraw : @storage
+                SWAP;       # @parameter%withdraw : list operation : @storage
+                # sp.emit(sp.record(to=to_, amount=amount), tag="withdraw") # @parameter%withdraw : list operation : @storage
+                EMIT %withdraw (pair (mutez %amount) (address %to)); # operation : list operation : @storage
+                CONS;       # list operation : @storage
+              }; # list operation : @storage
+          }; # list operation : @storage
+      }; # list operation : @storage
+    NIL operation; # list operation : list operation : @storage
+    SWAP;       # list operation : list operation : @storage
+    ITER
+      {
+        CONS;       # list operation : @storage
+      }; # list operation : @storage
+    PAIR;       # pair (list operation) @storage
+  };
+view
+  "get_render_gas" unit mutez
+  {
+    CDR;        # @storage
+    # return self.data.render_gas # @storage
+    GET 6;      # mutez
+  };
+view
+  "get_agent" unit address
+  {
+    CDR;        # @storage
+    # return self.data.agent # @storage
+    CAR;        # address
+  };
+view
+  "get_operator" unit address
+  {
+    CDR;        # @storage
+    # return self.data.operator # @storage
+    GET 5;      # address
+  };

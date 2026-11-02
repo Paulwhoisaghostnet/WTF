@@ -1,12 +1,12 @@
 # wtfOS API reference
 
-This is the source-derived inventory of the main wtfOS HTTP API: **935 unique method/path operations**, grouped into **100 route families** and declared across **128 server modules**. It documents what each endpoint is for and the gate visible at its route declaration; handler code remains authoritative for payload schemas and conditional authorization.
+This is the source-derived inventory of the main wtfOS HTTP API: **961 unique method/path operations**, grouped into **100 route families** and declared across **128 server modules**. It documents what each endpoint is for and the gate visible at its route declaration; handler code remains authoritative for payload schemas and conditional authorization.
 
 > Evidence: `[source]`. Probe budget: zero-call pass. Actual spend: zero network calls, zero writes, and no production data access. The inventory was extracted from the local route AST, then deduplicated by method and path.
 
 ## Public platform surface
 
-wtfOS exposes 935 unique method/path declarations across production-reachable routers, four WebSocket transports, and a Streamable HTTP MCP server with 47 registered tools. Feature flags and runtime modes can disable or replace some declared routes.
+wtfOS exposes 961 unique method/path declarations across production-reachable routers, four WebSocket transports, and a Streamable HTTP MCP server with 47 registered tools. Feature flags and runtime modes can disable or replace some declared routes.
 
 The public developer boundary is additive: `/api/v1` aliases the established handlers behind paired bearer-token scopes, `/api/v1/openapi.json` serves OpenAPI 3.1, and `/api/v1/docs` serves the grouped human reference. The legacy `/api/*` surface remains unchanged for browser and internal callers.
 
@@ -95,7 +95,7 @@ The MCP transport is `GET/POST/DELETE /mcp`, authenticated exclusively with a pa
 | Family | Operations | Use |
 | --- | ---: | --- |
 | `access` | 1 | Public capability and canonical-origin discovery. |
-| `admin` | 88 | Administrative control plane: users, permissions, registrations, diagnostics, storage, rewards, and platform configuration. |
+| `admin` | 89 | Administrative control plane: users, permissions, registrations, diagnostics, storage, rewards, and platform configuration. |
 | `admin-inbox` | 6 | User-to-admin support threads and replies. |
 | `anchor` | 1 | Operations for the anchor domain. |
 | `apphost` | 12 | Authenticated proxy for launching, streaming, controlling, and stopping host-run applications. |
@@ -104,7 +104,7 @@ The MCP transport is `GET/POST/DELETE /mcp`, authenticated exclusively with a pa
 | `archive` | 2 | Operations for the archive domain. |
 | `atproto` | 13 | AT Protocol account, OAuth, PDS, relay, firehose, record, and AppView operations. |
 | `attendance` | 4 | Attendance check-ins and event attendance records. |
-| `auth` | 23 | Cookie-session authentication, OAuth, wallet sign-in, account recovery, and CSRF bootstrap. |
+| `auth` | 25 | Cookie-session authentication, OAuth, wallet sign-in, account recovery, and CSRF bootstrap. |
 | `barter` | 2 | On-chain barter listings, offers, settlements, and synchronization. |
 | `board` | 23 | Message-board channels, posts, reactions, moderation, search, and inbound webhooks. |
 | `browser` | 2 | Server-assisted browser/session tooling. |
@@ -146,7 +146,7 @@ The MCP transport is `GET/POST/DELETE /mcp`, authenticated exclusively with a pa
 | `lasagna` | 1 | Operations for the lasagna domain. |
 | `leaderboard` | 6 | Platform leaderboards and ranking data. |
 | `links` | 4 | User and platform link records. |
-| `macaroni` | 19 | Macaroni drop publishing, packages, installers, previews, and guarded IPFS uploads. |
+| `macaroni` | 39 | Macaroni drop publishing, packages, installers, previews, and guarded IPFS uploads. |
 | `mail` | 8 | Mailbox, aliases, messages, attachments, and delivery administration. |
 | `marketplace` | 10 | NFT marketplace listings, offers, purchases, and chain synchronization. |
 | `mastodon` | 6 | Mastodon connection, timelines, identity, and posting. |
@@ -163,8 +163,8 @@ The MCP transport is `GET/POST/DELETE /mcp`, authenticated exclusively with a pa
 | `penne` | 1 | Penne installer discovery. |
 | `porcupin` | 5 | Porcupin pinning service status and operations. |
 | `portfolio` | 5 | Wallet portfolio positions and valuation views. |
-| `profile` | 16 | Current-user profile, social identities, settings, and public user views. |
-| `protocol` | 10 | Non-REST protocol and discovery endpoints. |
+| `profile` | 18 | Current-user profile, social identities, settings, and public user views. |
+| `protocol` | 11 | Non-REST protocol and discovery endpoints. |
 | `public` | 4 | Operations for the public domain. |
 | `rat` | 2 | Rat Race feeds, token candidates, voting, and results. |
 | `ravioli` | 1 | Operations for the ravioli domain. |
@@ -197,7 +197,7 @@ The MCP transport is `GET/POST/DELETE /mcp`, authenticated exclusively with a pa
 
 ## Complete endpoint inventory
 
-Method totals: **ALL 13**, **DELETE 45**, **GET 453**, **PATCH 36**, **POST 323**, **PUT 65**. Declared-gate totals: **Admin 102**, **Internal 1**, **MCP bearer 1**, **Permission 142**, **Public/handler 216**, **Session 473**.
+Method totals: **ALL 13**, **DELETE 45**, **GET 463**, **PATCH 36**, **POST 339**, **PUT 65**. Declared-gate totals: **Admin 103**, **Internal 1**, **MCP bearer 1**, **Permission 142**, **Public/handler 223**, **Session 491**.
 
 <details>
 <summary><code>access</code> — 1 operations</summary>
@@ -211,7 +211,7 @@ Public capability and canonical-origin discovery.
 </details>
 
 <details>
-<summary><code>admin</code> — 88 operations</summary>
+<summary><code>admin</code> — 89 operations</summary>
 
 Administrative control plane: users, permissions, registrations, diagnostics, storage, rewards, and platform configuration.
 
@@ -291,6 +291,7 @@ Administrative control plane: users, permissions, registrations, diagnostics, st
 | POST | `/api/admin/users/:id/temp-password` | Create, submit, or run admin users id temp password. | Admin | `server/features/admin/users/temp-password-routes.ts:40` |
 | POST | `/api/admin/users/:id/wtf-subdomains` | Create, submit, or run admin users id wtf subdomains. | Admin | `server/routes/wtf-subdomains.ts:154` |
 | POST | `/api/admin/users/:id/xp` | Create, submit, or run admin users id xp. | Admin | `server/features/admin/users/xp-routes.ts:26` |
+| GET | `/api/admin/video-watch-roster` | Read or list admin video watch roster. | Admin | `server/routes/profile.ts:241` |
 | GET | `/api/admin/w-digest-handles` | Read or list admin w digest handles. | Admin | `server/features/w/digest/routes.ts:147` |
 | PUT | `/api/admin/w-digest-handles` | Replace or set admin w digest handles. | Admin | `server/features/w/digest/routes.ts:164` |
 | GET | `/api/admin/wallets/:address/dossier` | Read or list admin wallets address dossier. | Admin | `server/features/admin/users/dossier-routes.ts:48` |
@@ -423,17 +424,17 @@ AT Protocol account, OAuth, PDS, relay, firehose, record, and AppView operations
 | --- | --- | --- | --- | --- |
 | GET | `/api/atproto/appview/record` | Read or list atproto appview record. | Public/handler | `server/features/atproto-spine/appview/router.ts:70` |
 | GET | `/api/atproto/appview/records` | Read or list atproto appview records. | Public/handler | `server/features/atproto-spine/appview/router.ts:69` |
-| POST | `/api/atproto/handle/claim` | Create, submit, or run atproto handle claim. | Session | `server/routes/atproto.ts:1341` |
-| GET | `/api/atproto/handle/claims` | Read or list atproto handle claims. | Session | `server/routes/atproto.ts:1445` |
-| POST | `/api/atproto/handle/verify` | Create, submit, or run atproto handle verify. | Session | `server/routes/atproto.ts:1449` |
-| GET | `/api/atproto/me` | Read or list atproto me. | Session | `server/routes/atproto.ts:705` |
-| GET | `/api/atproto/oauth/callback` | Read or list atproto oauth callback. | Session | `server/routes/atproto.ts:1080` |
-| GET | `/api/atproto/oauth/start` | Read or list atproto oauth start. | Session | `server/routes/atproto.ts:908` |
-| GET | `/api/atproto/permissions/options` | Read or list atproto permissions options. | Session | `server/routes/atproto.ts:727` |
-| POST | `/api/atproto/register` | Create, submit, or run atproto register. | Session | `server/routes/atproto.ts:812` |
-| POST | `/api/atproto/register/phone-verification` | Create, submit, or run atproto register phone verification. | Session | `server/routes/atproto.ts:755` |
-| GET | `/api/atproto/registration/options` | Read or list atproto registration options. | Session | `server/routes/atproto.ts:740` |
-| POST | `/api/atproto/unlink` | Create, submit, or run atproto unlink. | Session | `server/routes/atproto.ts:1322` |
+| POST | `/api/atproto/handle/claim` | Create, submit, or run atproto handle claim. | Session | `server/routes/atproto.ts:1486` |
+| GET | `/api/atproto/handle/claims` | Read or list atproto handle claims. | Session | `server/routes/atproto.ts:1590` |
+| POST | `/api/atproto/handle/verify` | Create, submit, or run atproto handle verify. | Session | `server/routes/atproto.ts:1594` |
+| GET | `/api/atproto/me` | Read or list atproto me. | Session | `server/routes/atproto.ts:732` |
+| GET | `/api/atproto/oauth/callback` | Read or list atproto oauth callback. | Session | `server/routes/atproto.ts:1147` |
+| GET | `/api/atproto/oauth/start` | Read or list atproto oauth start. | Session | `server/routes/atproto.ts:935` |
+| GET | `/api/atproto/permissions/options` | Read or list atproto permissions options. | Session | `server/routes/atproto.ts:754` |
+| POST | `/api/atproto/register` | Create, submit, or run atproto register. | Session | `server/routes/atproto.ts:839` |
+| POST | `/api/atproto/register/phone-verification` | Create, submit, or run atproto register phone verification. | Session | `server/routes/atproto.ts:782` |
+| GET | `/api/atproto/registration/options` | Read or list atproto registration options. | Session | `server/routes/atproto.ts:767` |
+| POST | `/api/atproto/unlink` | Create, submit, or run atproto unlink. | Session | `server/routes/atproto.ts:1467` |
 
 </details>
 
@@ -452,35 +453,37 @@ Attendance check-ins and event attendance records.
 </details>
 
 <details>
-<summary><code>auth</code> — 23 operations</summary>
+<summary><code>auth</code> — 25 operations</summary>
 
 Cookie-session authentication, OAuth, wallet sign-in, account recovery, and CSRF bootstrap.
 
 | Method | Path | Use | Access | Source |
 | --- | --- | --- | --- | --- |
-| POST | `/api/auth/change-password` | Create, submit, or run auth change password. | Session | `server/auth/routes.ts:919` |
-| GET | `/api/auth/csrf-token` | Read or list auth csrf token. | Public/handler | `server/auth/routes.ts:60` |
-| GET | `/api/auth/discord` | Read or list auth discord. | Session | `server/auth/routes.ts:1537`<br>`server/auth/routes.ts:1547` |
-| GET | `/api/auth/discord/callback` | Read or list auth discord callback. | Public/handler | `server/auth/routes.ts:1542`<br>`server/auth/routes.ts:1550` |
-| GET | `/api/auth/github` | Read or list auth github. | Public/handler | `server/auth/routes.ts:1222` |
-| GET | `/api/auth/github/callback` | Read or list auth github callback. | Public/handler | `server/auth/routes.ts:1226` |
-| GET | `/api/auth/gm-welcome/assets/:filename` | Read or list auth gm welcome assets filename. | Session | `server/auth/routes.ts:885` |
-| POST | `/api/auth/gm-welcome/complete` | Create, submit, or run auth gm welcome complete. | Session | `server/auth/routes.ts:845` |
-| POST | `/api/auth/login` | Create, submit, or run auth login. | Public/handler | `server/auth/routes.ts:755` |
-| POST | `/api/auth/logout` | Create, submit, or run auth logout. | Public/handler | `server/auth/routes.ts:790` |
-| POST | `/api/auth/register` | Create, submit, or run auth register. | Public/handler | `server/auth/routes.ts:693` |
-| GET | `/api/auth/social/config` | Read or list auth social config. | Public/handler | `server/auth/routes.ts:471` |
-| GET | `/api/auth/twitter` | Read or list auth twitter. | Session | `server/auth/routes.ts:1233`<br>`server/auth/routes.ts:1243` |
-| GET | `/api/auth/twitter-oauth2` | Read or list auth twitter oauth2. | Session | `server/auth/routes.ts:1251` |
-| GET | `/api/auth/twitter-oauth2/callback` | Read or list auth twitter oauth2 callback. | Session | `server/auth/routes.ts:1309` |
-| GET | `/api/auth/twitter-oauth2/diagnostics` | Read or list auth twitter oauth2 diagnostics. | Session | `server/auth/routes.ts:496` |
-| GET | `/api/auth/twitter-oauth2/diagnostics/self-test` | Read or list auth twitter oauth2 diagnostics self test. | Session | `server/auth/routes.ts:613` |
-| GET | `/api/auth/twitter/callback` | Read or list auth twitter callback. | Public/handler | `server/auth/routes.ts:1238`<br>`server/auth/routes.ts:1246` |
-| GET | `/api/auth/user` | Read or list auth user. | Session | `server/auth/routes.ts:807` |
-| POST | `/api/auth/wallet/challenge` | Create, submit, or run auth wallet challenge. | Public/handler | `server/auth/routes.ts:1033` |
-| POST | `/api/auth/wallet/register` | Create, submit, or run auth wallet register. | Public/handler | `server/auth/routes.ts:1128` |
-| POST | `/api/auth/wallet/verify` | Create, submit, or run auth wallet verify. | Public/handler | `server/auth/routes.ts:1052` |
-| POST | `/api/auth/welcome/complete` | Create, submit, or run auth welcome complete. | Session | `server/auth/routes.ts:812` |
+| POST | `/api/auth/change-password` | Create, submit, or run auth change password. | Session | `server/auth/routes.ts:949` |
+| GET | `/api/auth/csrf-token` | Read or list auth csrf token. | Public/handler | `server/auth/routes.ts:78` |
+| GET | `/api/auth/discord` | Read or list auth discord. | Session | `server/auth/routes.ts:1749`<br>`server/auth/routes.ts:1777` |
+| GET | `/api/auth/discord/callback` | Read or list auth discord callback. | Session | `server/auth/routes.ts:1763`<br>`server/auth/routes.ts:1780` |
+| GET | `/api/auth/github` | Read or list auth github. | Public/handler | `server/auth/routes.ts:1252` |
+| GET | `/api/auth/github/callback` | Read or list auth github callback. | Public/handler | `server/auth/routes.ts:1256` |
+| GET | `/api/auth/gm-welcome/assets/:filename` | Read or list auth gm welcome assets filename. | Session | `server/auth/routes.ts:915` |
+| POST | `/api/auth/gm-welcome/complete` | Create, submit, or run auth gm welcome complete. | Session | `server/auth/routes.ts:875` |
+| POST | `/api/auth/login` | Create, submit, or run auth login. | Public/handler | `server/auth/routes.ts:785` |
+| POST | `/api/auth/logout` | Create, submit, or run auth logout. | Public/handler | `server/auth/routes.ts:820` |
+| POST | `/api/auth/register` | Create, submit, or run auth register. | Public/handler | `server/auth/routes.ts:723` |
+| GET | `/api/auth/social/config` | Read or list auth social config. | Public/handler | `server/auth/routes.ts:498` |
+| GET | `/api/auth/twitter` | Read or list auth twitter. | Session | `server/auth/routes.ts:1263`<br>`server/auth/routes.ts:1273` |
+| GET | `/api/auth/twitter-oauth2` | Read or list auth twitter oauth2. | Session | `server/auth/routes.ts:1445` |
+| GET | `/api/auth/twitter-oauth2/callback` | Read or list auth twitter oauth2 callback. | Session | `server/auth/routes.ts:1515` |
+| GET | `/api/auth/twitter-oauth2/diagnostics` | Read or list auth twitter oauth2 diagnostics. | Session | `server/auth/routes.ts:526` |
+| GET | `/api/auth/twitter-oauth2/diagnostics/self-test` | Read or list auth twitter oauth2 diagnostics self test. | Session | `server/auth/routes.ts:643` |
+| GET | `/api/auth/twitter-proof` | Read or list auth twitter proof. | Session | `server/auth/routes.ts:1287` |
+| GET | `/api/auth/twitter-proof/callback` | Read or list auth twitter proof callback. | Public/handler | `server/auth/routes.ts:1336` |
+| GET | `/api/auth/twitter/callback` | Read or list auth twitter callback. | Public/handler | `server/auth/routes.ts:1268`<br>`server/auth/routes.ts:1276` |
+| GET | `/api/auth/user` | Read or list auth user. | Session | `server/auth/routes.ts:837` |
+| POST | `/api/auth/wallet/challenge` | Create, submit, or run auth wallet challenge. | Public/handler | `server/auth/routes.ts:1063` |
+| POST | `/api/auth/wallet/register` | Create, submit, or run auth wallet register. | Public/handler | `server/auth/routes.ts:1158` |
+| POST | `/api/auth/wallet/verify` | Create, submit, or run auth wallet verify. | Public/handler | `server/auth/routes.ts:1082` |
+| POST | `/api/auth/welcome/complete` | Create, submit, or run auth welcome complete. | Session | `server/auth/routes.ts:842` |
 
 </details>
 
@@ -932,17 +935,17 @@ Dicksword game state, commands, and scoring.
 
 | Method | Path | Use | Access | Source |
 | --- | --- | --- | --- | --- |
-| POST | `/api/dicksword/admin/avatar-conflicts` | Create, submit, or run dicksword admin avatar conflicts. | Permission | `server/routes/dicksword.ts:332` |
-| POST | `/api/dicksword/admin/avatar-layers` | Create, submit, or run dicksword admin avatar layers. | Permission | `server/routes/dicksword.ts:305` |
-| POST | `/api/dicksword/admin/role-mappings` | Create, submit, or run dicksword admin role mappings. | Permission | `server/routes/dicksword.ts:357` |
-| PUT | `/api/dicksword/avatar/selection` | Replace or set dicksword avatar selection. | Session | `server/routes/dicksword.ts:254` |
-| POST | `/api/dicksword/bot/activity` | Create, submit, or run dicksword bot activity. | Public/handler | `server/routes/dicksword.ts:477` |
-| GET | `/api/dicksword/bot/profile/:discordUserId` | Read or list dicksword bot profile discordUserId. | Public/handler | `server/routes/dicksword.ts:557` |
-| POST | `/api/dicksword/bot/proof` | Create, submit, or run dicksword bot proof. | Public/handler | `server/routes/dicksword.ts:384` |
-| GET | `/api/dicksword/bot/role-sync` | Read or list dicksword bot role sync. | Public/handler | `server/routes/dicksword.ts:537` |
-| POST | `/api/dicksword/claims` | Create, submit, or run dicksword claims. | Session | `server/routes/dicksword.ts:220` |
-| GET | `/api/dicksword/config` | Read or list dicksword config. | Public/handler | `server/routes/dicksword.ts:129` |
-| GET | `/api/dicksword/me` | Read or list dicksword me. | Session | `server/routes/dicksword.ts:143` |
+| POST | `/api/dicksword/admin/avatar-conflicts` | Create, submit, or run dicksword admin avatar conflicts. | Permission | `server/routes/dicksword.ts:336` |
+| POST | `/api/dicksword/admin/avatar-layers` | Create, submit, or run dicksword admin avatar layers. | Permission | `server/routes/dicksword.ts:309` |
+| POST | `/api/dicksword/admin/role-mappings` | Create, submit, or run dicksword admin role mappings. | Permission | `server/routes/dicksword.ts:361` |
+| PUT | `/api/dicksword/avatar/selection` | Replace or set dicksword avatar selection. | Session | `server/routes/dicksword.ts:258` |
+| POST | `/api/dicksword/bot/activity` | Create, submit, or run dicksword bot activity. | Public/handler | `server/routes/dicksword.ts:489` |
+| GET | `/api/dicksword/bot/profile/:discordUserId` | Read or list dicksword bot profile discordUserId. | Public/handler | `server/routes/dicksword.ts:569` |
+| POST | `/api/dicksword/bot/proof` | Create, submit, or run dicksword bot proof. | Public/handler | `server/routes/dicksword.ts:388` |
+| GET | `/api/dicksword/bot/role-sync` | Read or list dicksword bot role sync. | Public/handler | `server/routes/dicksword.ts:549` |
+| POST | `/api/dicksword/claims` | Create, submit, or run dicksword claims. | Session | `server/routes/dicksword.ts:224` |
+| GET | `/api/dicksword/config` | Read or list dicksword config. | Public/handler | `server/routes/dicksword.ts:133` |
+| GET | `/api/dicksword/me` | Read or list dicksword me. | Session | `server/routes/dicksword.ts:147` |
 
 </details>
 
@@ -1181,17 +1184,17 @@ User and platform link records.
 </details>
 
 <details>
-<summary><code>macaroni</code> — 19 operations</summary>
+<summary><code>macaroni</code> — 39 operations</summary>
 
 Macaroni drop publishing, packages, installers, previews, and guarded IPFS uploads.
 
 | Method | Path | Use | Access | Source |
 | --- | --- | --- | --- | --- |
-| GET | `/api/macaroni/installers` | Read or list macaroni installers. | Session | `server/routes/macaroni.ts:671` |
-| POST | `/api/macaroni/ipfs/pin` | Create, submit, or run macaroni ipfs pin. | Permission | `server/routes/macaroni.ts:607` |
-| POST | `/api/macaroni/ipfs/upload` | Create, submit, or run macaroni ipfs upload. | Public/handler | `server/routes/macaroni.ts:574` |
-| POST | `/api/macaroni/ipfs/upload-ticket` | Create, submit, or run macaroni ipfs upload ticket. | Permission | `server/routes/macaroni.ts:540` |
-| POST | `/api/macaroni/media-preview` | Create, submit, or run macaroni media preview. | Session | `server/routes/macaroni.ts:636` |
+| GET | `/api/macaroni/installers` | Read or list macaroni installers. | Session | `server/routes/macaroni.ts:994` |
+| POST | `/api/macaroni/ipfs/pin` | Create, submit, or run macaroni ipfs pin. | Permission | `server/routes/macaroni.ts:930` |
+| POST | `/api/macaroni/ipfs/upload` | Create, submit, or run macaroni ipfs upload. | Public/handler | `server/routes/macaroni.ts:897` |
+| POST | `/api/macaroni/ipfs/upload-ticket` | Create, submit, or run macaroni ipfs upload ticket. | Permission | `server/routes/macaroni.ts:863` |
+| POST | `/api/macaroni/media-preview` | Create, submit, or run macaroni media preview. | Session | `server/routes/macaroni.ts:959` |
 | GET | `/api/macaroni/packages` | Read or list macaroni packages. | Permission | `server/routes/macaroni-packages.ts:282` |
 | POST | `/api/macaroni/packages` | Create, submit, or run macaroni packages. | Permission | `server/routes/macaroni-packages.ts:305` |
 | GET | `/api/macaroni/packages/:packageId` | Read or list macaroni packages packageId. | Permission | `server/routes/macaroni-packages.ts:398` |
@@ -1201,11 +1204,31 @@ Macaroni drop publishing, packages, installers, previews, and guarded IPFS uploa
 | POST | `/api/macaroni/packages/:packageId/items` | Create, submit, or run macaroni packages packageId items. | Permission | `server/routes/macaroni-packages.ts:420` |
 | PATCH | `/api/macaroni/packages/:packageId/items/:itemId` | Partially update macaroni packages packageId items itemId. | Permission | `server/routes/macaroni-packages.ts:541` |
 | GET | `/api/macaroni/packages/:packageId/source` | Read or list macaroni packages packageId source. | Permission | `server/routes/macaroni-packages.ts:773` |
-| POST | `/api/macaroni/publish` | Create, submit, or run macaroni publish. | Permission | `server/routes/macaroni.ts:763` |
-| POST | `/api/macaroni/reveal-automation` | Create, submit, or run macaroni reveal automation. | Public/handler | `server/routes/macaroni.ts:717` |
-| POST | `/api/macaroni/reveal-automation/challenge` | Create, submit, or run macaroni reveal automation challenge. | Public/handler | `server/routes/macaroni.ts:703` |
-| GET | `/api/macaroni/reveal-operator` | Read or list macaroni reveal operator. | Public/handler | `server/routes/macaroni.ts:691` |
-| POST | `/api/macaroni/reveal-request` | Create, submit, or run macaroni reveal request. | Public/handler | `server/routes/macaroni.ts:751` |
+| POST | `/api/macaroni/publish` | Create, submit, or run macaroni publish. | Permission | `server/routes/macaroni.ts:1586` |
+| POST | `/api/macaroni/reveal-automation` | Create, submit, or run macaroni reveal automation. | Public/handler | `server/routes/macaroni.ts:1540` |
+| POST | `/api/macaroni/reveal-automation/challenge` | Create, submit, or run macaroni reveal automation challenge. | Public/handler | `server/routes/macaroni.ts:1526` |
+| GET | `/api/macaroni/reveal-operator` | Read or list macaroni reveal operator. | Public/handler | `server/routes/macaroni.ts:1514` |
+| POST | `/api/macaroni/reveal-request` | Create, submit, or run macaroni reveal request. | Public/handler | `server/routes/macaroni.ts:1574` |
+| GET | `/api/macaroni/v35/capabilities` | Read or list macaroni v35 capabilities. | Public/handler | `server/routes/macaroni.ts:1014` |
+| POST | `/api/macaroni/v35/drops` | Create, submit, or run macaroni v35 drops. | Session | `server/routes/macaroni.ts:1053` |
+| POST | `/api/macaroni/v35/drops/:dropId/attach` | Create, submit, or run macaroni v35 drops dropId attach. | Session | `server/routes/macaroni.ts:1254` |
+| POST | `/api/macaroni/v35/drops/:dropId/attempts` | Create, submit, or run macaroni v35 drops dropId attempts. | Session | `server/routes/macaroni.ts:1276` |
+| POST | `/api/macaroni/v35/drops/:dropId/attempts/:attemptId/reconcile` | Create, submit, or run macaroni v35 drops dropId attempts attemptId reconcile. | Session | `server/routes/macaroni.ts:1416` |
+| POST | `/api/macaroni/v35/drops/:dropId/attempts/:attemptId/submitted` | Create, submit, or run macaroni v35 drops dropId attempts attemptId submitted. | Session | `server/routes/macaroni.ts:1385` |
+| POST | `/api/macaroni/v35/drops/:dropId/attempts/:attemptId/wallet-prompt-aborted` | Create, submit, or run macaroni v35 drops dropId attempts attemptId wallet prompt aborted. | Session | `server/routes/macaroni.ts:1350` |
+| POST | `/api/macaroni/v35/drops/:dropId/attempts/:attemptId/wallet-prompt-started` | Create, submit, or run macaroni v35 drops dropId attempts attemptId wallet prompt started. | Session | `server/routes/macaroni.ts:1319` |
+| POST | `/api/macaroni/v35/drops/:dropId/attempts/:attemptId/wallet-rejected` | Create, submit, or run macaroni v35 drops dropId attempts attemptId wallet rejected. | Session | `server/routes/macaroni.ts:1293` |
+| POST | `/api/macaroni/v35/drops/:dropId/next-action` | Create, submit, or run macaroni v35 drops dropId next action. | Session | `server/routes/macaroni.ts:1151` |
+| POST | `/api/macaroni/v35/drops/:dropId/private-assets` | Create, submit, or run macaroni v35 drops dropId private assets. | Session | `server/routes/macaroni.ts:1238` |
+| POST | `/api/macaroni/v35/drops/:dropId/private-assets/upload-ticket` | Create, submit, or run macaroni v35 drops dropId private assets upload ticket. | Session | `server/routes/macaroni.ts:1177` |
+| POST | `/api/macaroni/v35/drops/:dropId/public-contract-metadata` | Create, submit, or run macaroni v35 drops dropId public contract metadata. | Session | `server/routes/macaroni.ts:1101` |
+| GET | `/api/macaroni/v35/drops/:dropId/setup` | Read or list macaroni v35 drops dropId setup. | Session | `server/routes/macaroni.ts:1134` |
+| POST | `/api/macaroni/v35/private-assets/upload` | Create, submit, or run macaroni v35 private assets upload. | Public/handler | `server/routes/macaroni.ts:1221` |
+| POST | `/api/macaroni/v35/registration/challenge` | Create, submit, or run macaroni v35 registration challenge. | Session | `server/routes/macaroni.ts:1034` |
+| GET | `/api/macaroni/v35/status/:network/:contract` | Read or list macaroni v35 status network contract. | Public/handler | `server/routes/macaroni.ts:1446` |
+| GET | `/api/macaroni/v35/status/:network/:contract/claims/:claimId` | Read or list macaroni v35 status network contract claims claimId. | Public/handler | `server/routes/macaroni.ts:1463` |
+| GET | `/api/macaroni/v35/status/:network/:contract/purchases/:operationHash` | Read or list macaroni v35 status network contract purchases operationHash. | Public/handler | `server/routes/macaroni.ts:1481` |
+| POST | `/api/macaroni/v35/wake/:network/:contract` | Create, submit, or run macaroni v35 wake network contract. | Public/handler | `server/routes/macaroni.ts:1499` |
 
 </details>
 
@@ -1477,40 +1500,43 @@ Wallet portfolio positions and valuation views.
 </details>
 
 <details>
-<summary><code>profile</code> — 16 operations</summary>
+<summary><code>profile</code> — 18 operations</summary>
 
 Current-user profile, social identities, settings, and public user views.
 
 | Method | Path | Use | Access | Source |
 | --- | --- | --- | --- | --- |
-| GET | `/api/profile/account` | Read or list profile account. | Session | `server/routes/profile.ts:184` |
-| PUT | `/api/profile/account` | Replace or set profile account. | Session | `server/routes/profile.ts:209` |
-| PUT | `/api/profile/avatar-media` | Replace or set profile avatar media. | Session | `server/routes/profile.ts:506` |
-| GET | `/api/profile/avatar-media/:id/file` | Read or list profile avatar media id file. | Public/handler | `server/routes/profile.ts:595` |
+| GET | `/api/profile/account` | Read or list profile account. | Session | `server/routes/profile.ts:191` |
+| PUT | `/api/profile/account` | Replace or set profile account. | Session | `server/routes/profile.ts:255` |
+| PUT | `/api/profile/avatar-media` | Replace or set profile avatar media. | Session | `server/routes/profile.ts:552` |
+| GET | `/api/profile/avatar-media/:id/file` | Read or list profile avatar media id file. | Public/handler | `server/routes/profile.ts:641` |
 | GET | `/api/profile/dossier` | Read or list profile dossier. | Session | `server/routes/wallets.ts:1194` |
-| DELETE | `/api/profile/pfp` | Delete, revoke, or stop profile pfp. | Session | `server/routes/profile.ts:477` |
-| PUT | `/api/profile/pfp` | Replace or set profile pfp. | Session | `server/routes/profile.ts:422` |
-| GET | `/api/profile/pfp-candidates` | Read or list profile pfp candidates. | Session | `server/routes/profile.ts:634` |
-| GET | `/api/profile/social` | Read or list profile social. | Session | `server/routes/profile.ts:138` |
-| PUT | `/api/profile/social` | Replace or set profile social. | Session | `server/routes/profile.ts:253` |
-| DELETE | `/api/profile/social/:provider` | Delete, revoke, or stop profile social provider. | Session | `server/routes/profile.ts:356` |
+| DELETE | `/api/profile/pfp` | Delete, revoke, or stop profile pfp. | Session | `server/routes/profile.ts:523` |
+| PUT | `/api/profile/pfp` | Replace or set profile pfp. | Session | `server/routes/profile.ts:468` |
+| GET | `/api/profile/pfp-candidates` | Read or list profile pfp candidates. | Session | `server/routes/profile.ts:680` |
+| GET | `/api/profile/social` | Read or list profile social. | Session | `server/routes/profile.ts:145` |
+| PUT | `/api/profile/social` | Replace or set profile social. | Session | `server/routes/profile.ts:299` |
+| DELETE | `/api/profile/social/:provider` | Delete, revoke, or stop profile social provider. | Session | `server/routes/profile.ts:402` |
 | GET | `/api/profile/tokens` | Read or list profile tokens. | Session | `server/routes/wallets.ts:635` |
 | POST | `/api/profile/tokens/sync` | Create, submit, or run profile tokens sync. | Session | `server/routes/wallets.ts:915` |
 | POST | `/api/profile/tokens/trade-board` | Create, submit, or run profile tokens trade board. | Session | `server/routes/wallets.ts:832` |
 | GET | `/api/profile/wallet-graph` | Read or list profile wallet graph. | Session | `server/routes/wallets.ts:443` |
-| GET | `/api/profile/xp` | Read or list profile xp. | Session | `server/routes/profile.ts:730` |
+| GET | `/api/profile/watched-videos` | Read or list profile watched videos. | Session | `server/routes/profile.ts:216` |
+| POST | `/api/profile/watched-videos` | Create, submit, or run profile watched videos. | Session | `server/routes/profile.ts:226` |
+| GET | `/api/profile/xp` | Read or list profile xp. | Session | `server/routes/profile.ts:776` |
 
 </details>
 
 <details>
-<summary><code>protocol</code> — 10 operations</summary>
+<summary><code>protocol</code> — 11 operations</summary>
 
 Non-REST protocol and discovery endpoints.
 
 | Method | Path | Use | Access | Source |
 | --- | --- | --- | --- | --- |
-| GET | `/.well-known/atproto-did` | Read or list .well known atproto did. | Public/handler | `server/routes/atproto.ts:1494` |
-| GET | `/.well-known/oauth-client-metadata.json` | Read or list .well known oauth client metadata.json. | Public/handler | `server/routes/atproto.ts:700` |
+| GET | `/.well-known/atproto-did` | Read or list .well known atproto did. | Public/handler | `server/routes/atproto.ts:1639` |
+| GET | `/.well-known/oauth-client-metadata-profile.json` | Read or list .well known oauth client metadata profile.json. | Public/handler | `server/routes/atproto.ts:727` |
+| GET | `/.well-known/oauth-client-metadata.json` | Read or list .well known oauth client metadata.json. | Public/handler | `server/routes/atproto.ts:722` |
 | GET | `/^\/api\/arcade\/source\/(.+)$/` | Read or list ^\ api\ arcade\ source\ (.+)$. | Public/handler | `server/routes/arcade.ts:81` |
 | GET | `/^\/api\/console\/bundles\/(.+)$/` | Read or list ^\ api\ console\ bundles\ (.+)$. | Public/handler | `server/routes/console.ts:82` |
 | GET | `/^\/api\/console\/source-arcade\/(.+)$/` | Read or list ^\ api\ console\ source arcade\ (.+)$. | Public/handler | `server/routes/console.ts:84` |
@@ -1942,11 +1968,11 @@ Public user profiles, activity, listings, DMs, and trade boards.
 
 | Method | Path | Use | Access | Source |
 | --- | --- | --- | --- | --- |
-| GET | `/api/users/:username` | Read or list users username. | Public/handler | `server/routes/profile.ts:761` |
-| GET | `/api/users/:username/activity` | Read or list users username activity. | Public/handler | `server/routes/profile.ts:1003` |
-| GET | `/api/users/:username/dm` | Read or list users username dm. | Session | `server/routes/profile.ts:1032` |
-| GET | `/api/users/:username/listings` | Read or list users username listings. | Public/handler | `server/routes/profile.ts:960` |
-| GET | `/api/users/:username/trade-board` | Read or list users username trade board. | Public/handler | `server/routes/profile.ts:854` |
+| GET | `/api/users/:username` | Read or list users username. | Public/handler | `server/routes/profile.ts:807` |
+| GET | `/api/users/:username/activity` | Read or list users username activity. | Public/handler | `server/routes/profile.ts:1049` |
+| GET | `/api/users/:username/dm` | Read or list users username dm. | Session | `server/routes/profile.ts:1078` |
+| GET | `/api/users/:username/listings` | Read or list users username listings. | Public/handler | `server/routes/profile.ts:1006` |
+| GET | `/api/users/:username/trade-board` | Read or list users username trade board. | Public/handler | `server/routes/profile.ts:900` |
 
 </details>
 

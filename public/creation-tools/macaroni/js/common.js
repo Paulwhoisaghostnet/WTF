@@ -47,6 +47,8 @@ const MD = (() => {
   let customRpcOverride = false;
   let octezWalletInstalled = false;
   const subscribedWalletClients = new WeakSet();
+  const subscribedWalletOperationErrorClients = new WeakSet();
+  let activeWalletOperationErrorCapture = null;
 
   function walletSessionKey() {
     const path = typeof location !== "undefined" ? `${location.origin}${location.pathname}` : "local";
@@ -370,6 +372,50 @@ const MD = (() => {
     return "ACTIVE_ACCOUNT_SET";
   }
 
+  function operationRequestErrorEventName() {
+    const root = typeof window !== "undefined" ? window : {};
+    const sources = [TZ, root.MacaroniOctezConnect, root.beacon].filter(Boolean);
+    for (const source of sources) {
+      const eventName = source.BeaconEvent && source.BeaconEvent.OPERATION_REQUEST_ERROR;
+      if (eventName) return eventName;
+    }
+    return "OPERATION_REQUEST_ERROR";
+  }
+
+  function captureWalletOperationErrorEvent(payload) {
+    if (activeWalletOperationErrorCapture && !activeWalletOperationErrorCapture.payload) {
+      activeWalletOperationErrorCapture.payload = payload;
+    }
+  }
+
+  async function subscribeWalletOperationErrorClient(client) {
+    if (!client || subscribedWalletOperationErrorClients.has(client) || typeof client.subscribeToEvent !== "function") return;
+    subscribedWalletOperationErrorClients.add(client);
+    try {
+      await client.subscribeToEvent(operationRequestErrorEventName(), captureWalletOperationErrorEvent);
+    } catch (err) {
+      subscribedWalletOperationErrorClients.delete(client);
+      throw err;
+    }
+  }
+
+  async function beginWalletOperationErrorCapture() {
+    if (!wallet || !wallet.client) throw new Error("The connected wallet cannot expose authenticated operation outcomes.");
+    if (activeWalletOperationErrorCapture) throw new Error("Another wallet operation is already awaiting an outcome.");
+    const clients = typeof wallet.clients === "function" ? wallet.clients() : [wallet.client];
+    await Promise.all([...new Set([...clients, wallet.client].filter(Boolean))].map(subscribeWalletOperationErrorClient));
+    const capture = { payload: null };
+    activeWalletOperationErrorCapture = capture;
+    return {
+      take() {
+        return capture.payload;
+      },
+      stop() {
+        if (activeWalletOperationErrorCapture === capture) activeWalletOperationErrorCapture = null;
+      },
+    };
+  }
+
   function updateActiveAccountFromEvent(account) {
     const active = account && account.account ? account.account : account;
     activeAccount = active && active.address ? active.address : null;
@@ -378,14 +424,20 @@ const MD = (() => {
   }
 
   function subscribeWalletClient(client) {
-    if (!client || subscribedWalletClients.has(client) || typeof client.subscribeToEvent !== "function") return;
-    subscribedWalletClients.add(client);
-    try {
-      client.subscribeToEvent(activeAccountEventName(), updateActiveAccountFromEvent);
-    } catch (err) {
-      subscribedWalletClients.delete(client);
-      console.warn("[Macaroni] Could not subscribe to wallet active-account events:", err);
+    if (!client || typeof client.subscribeToEvent !== "function") return;
+    if (!subscribedWalletClients.has(client)) {
+      subscribedWalletClients.add(client);
+      try {
+        client.subscribeToEvent(activeAccountEventName(), updateActiveAccountFromEvent);
+      } catch (err) {
+        subscribedWalletClients.delete(client);
+        console.warn("[Macaroni] Could not subscribe to wallet active-account events:", err);
+      }
     }
+    subscribeWalletOperationErrorClient(client).catch(() => {
+      // Secure operations call beginWalletOperationErrorCapture() and surface a
+      // blocking error if this authenticated wallet event cannot be observed.
+    });
   }
 
   function subscribeWalletClients(w) {
@@ -559,6 +611,12 @@ const MD = (() => {
 
   function getAccount() {
     return activeAccount;
+  }
+
+  async function getPublicKey() {
+    if (!wallet?.client || typeof wallet.client.getActiveAccount !== "function") return "";
+    const account = await wallet.client.getActiveAccount();
+    return String(account?.publicKey || "").trim();
   }
 
   // ---------- bytes helpers ----------
@@ -1150,13 +1208,16 @@ const MD = (() => {
     ensureSessionNetwork,
     assertOperationSafety,
     signMessage,
+    beginWalletOperationErrorCapture,
     getAccount,
+    getPublicKey,
     getBalanceMutez,
     isAddress,
     utf8ToHex,
     hexToUtf8,
     pinBlob,
     pinJson,
+    uploadFormData,
     apiFetch,
     ipfsToHttp,
     parseCsv,
@@ -1169,6 +1230,7 @@ const MD = (() => {
     withRpcFallback,
     withRpcReadFallback,
     fallbackStorageLimit,
+    feeFloorForGasLimit,
     estimateWalletOp,
     sendWalletOp,
     assertOperationApplied,

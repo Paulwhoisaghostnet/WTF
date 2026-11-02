@@ -5,7 +5,7 @@ import type { ChallengeRewardAction, ConditionTree } from "../events/types";
 /**
  * Reggie's Quest — the wtfOS onboarding questline.
  *
- * Reggie the hamster assistant guides new users from "wtf newbie" to
+ * Reggie the hamster guides players through quests from "wtf newbie" to
  * "wtf rockstar". Every user story below is a real side quest registered
  * in the challenge automation engine (`challenge_automation_definitions`),
  * verified by normalized SystemEvents and DB-backed predicates, and
@@ -313,9 +313,9 @@ export const REGGIE_QUEST_STEPS: ReggieQuestStep[] = [
     stepKey: "navigator",
     title: "OS Navigator",
     description:
-      "Learn the desktop: open an app from an icon or the Start menu, then finish Reggie's navigation tour of windows, taskbar, and the command palette.",
-    route: "/",
-    actionLabel: "Take the Tour",
+      "Open an app from a desktop icon, then visit Dashboard to finish this quest. For help using desktop controls, watch Paul's desktop lesson.",
+    route: "/dashboard",
+    actionLabel: "Visit Dashboard",
     order: 12,
     category: "system",
     prereqStepKeys: ["quest_hq"],
