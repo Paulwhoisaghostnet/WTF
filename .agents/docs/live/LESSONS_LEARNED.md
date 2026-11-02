@@ -13246,3 +13246,13 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: The aggregate unit gate can fail before proving that the Profile and Skywire client grants remain separate.
 
 **Rule**: Set the canonical HTTPS origin inside the isolated OAuth metadata test before constructing its clients, then run the test without a public URL in the shell environment. Keep production origin selection unchanged.
+
+---
+
+## 2026-11-02 — OAuth metadata tests must provide a valid public origin in CI
+
+**What happened**: New AT Profile metadata tests passed locally because `.env` supplied the public site URL, but failed in GitHub Actions where that file is absent. The test fell back to a loopback URL that the AT OAuth SDK rejects as a discoverable client ID, causing both client construction and metadata route assertions to fail.
+
+**Why it mattered**: A production-valid OAuth configuration appeared broken in the release gate because the test depended on local environment state.
+
+**Rule**: Set an explicit canonical HTTPS origin before constructing AT OAuth clients in tests that exercise public metadata. Reproduce those tests with public-origin environment variables cleared before accepting a local pass.
