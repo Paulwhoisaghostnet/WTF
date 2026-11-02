@@ -135,6 +135,7 @@ export const DOMAIN_WORKFLOWS = [
     ],
     apiProbes: [
       { method: "GET", path: "/api/apps/desktop" },
+      { method: "GET", path: "/api/desktop/login-accounts-30d" },
       { method: "GET", path: "/api/desktop/settings" },
       { method: "PUT", path: "/api/desktop/settings", body: { localization: { locale: "es-ES", region: "ES" }, updatedAt: null }, expectedStatuses: [200, 409] },
       { method: "GET", path: "/api/desktop/pet" },

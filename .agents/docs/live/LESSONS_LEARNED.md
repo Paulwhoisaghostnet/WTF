@@ -12970,3 +12970,59 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Correction and proof**: Added an exact numeric user-ID allowlist for PDS provisioning while retaining the default-closed and existing global settings. The read-only Pasta publisher inventory now reports PDS provisioning status and names the disabled setting when a repo is missing. Focused tests prove the allowlist rejects other IDs and that the inventory adds no write method. The dedicated account and live pin publish still require separate identity and operator setup.
 
 **Rule**: Trace a release prerequisite through the live service capability that creates it. A healthy service is not enough when its creation path is disabled; use a scoped rollout and report the disabled capability before attempting publication.
+
+---
+
+### 2026-10-30 — Publisher account setup must be verified as the actual account
+
+**What happened**: The dedicated Pasta WTF account was registered and branded, but its public host remained unclaimable. Authenticated checks for user 77 showed missing wallet and OAuth links, while the healthy WTFOS PDS still refused repo provisioning. The account email was not editable in the profile UI and the pin collector role was absent.
+
+**Why it mattered**: A created account, verified external Bluesky profile, healthy PDS, and available pinning service do not imply that the specific publisher can claim a host or publish a recoverable pin manifest.
+
+**Rule**: Verify the exact publisher's account ID, email, role permissions, wallet links, OAuth identity, site eligibility, and account-scoped PDS provisioning status before attempting any live host or pin write. Keep PDS provisioning scoped to that ID and retain the normal signature and OAuth proof paths for identity links.
+
+### 2026-10-30 — Identity-only OAuth cannot hydrate profile through the granted session
+
+**What happened**: The dedicated Pasta Bluesky account approved the WTF identity-only OAuth request, but the WTF callback failed with `ScopeMissingError` for `app.bsky.actor.getProfile`. The callback tried to read a public profile through the newly granted session, whose scope permits identity only.
+
+**Why it mattered**: The least-privilege linking path could not save the account even though the user authorized it correctly. Repeating OAuth could not repair a deterministic scope mismatch.
+
+**Rule**: Fetch public AT profile data through the configured public AppView during identity-only OAuth callbacks. Keep the authenticated session for operations covered by its actual grant, and prove the live callback after deploying the fix.
+
+### 2026-10-30 — Production runtime env and same-commit deploys need separate proofs
+
+**What happened**: The Pasta PDS allowlist was staged in the checkout `.env`, but the app service uses the root-owned `/etc/wtf/wtf.env` through `WTF_ENV_FILE`. The merged code deployed successfully while the container still lacked the allowlist. A manual GitHub redeploy of the same commit then failed before server deployment because its incremental Git bundle had no objects when server HEAD equaled the requested commit.
+
+**Why it mattered**: A green deploy and a correct source commit did not prove the publisher account's runtime policy was active. The manual workflow could not apply an environment-only change to an unchanged commit.
+
+**Rule**: Inspect the running container's effective environment for rollout settings and verify both an allowed and denied account against the public endpoint. For unchanged-commit redeploys, build a nonempty tip-commit bundle with its parent as prerequisite; exercise workflow_dispatch through its health check, not merely the initial push deploy.
+
+---
+
+## 2026-11-02 — Desktop status regions make global role locators ambiguous
+
+**What happened**: Adding the passive 30-day login account readout as an accessible `<output>` gave it the implicit `status` role. An existing Admin E2E assertion used `page.getByRole("status")` for its app-registration feedback and then matched both the desktop readout and the active Admin message.
+
+**Why it mattered**: The Admin operation succeeded, but the browser test failed in strict mode because the desktop shell remains mounted behind app windows.
+
+**Rule**: Scope status and other repeated role locators to the owning active app surface. A shell-level accessible readout can introduce a valid role match even when it does not accept input.
+
+---
+
+## 2026-11-02 — Wallet auth actor fixtures must apply proof-binding schema
+
+**What happened**: The local live-puppet database preparation list stopped before `0125_wallet_auth_proof_binding.sql`. Wallet-auth actor tests then reached nonce queries with no `origin` or `action` columns, even though the application migration defines both.
+
+**Why it mattered**: Schema drift in the actor fixture stopped wallet-login verification before it could test the current authentication behavior.
+
+**Rule**: When a wallet-auth migration adds fields consumed by login routes, include it in every explicitly managed actor database migration list and lock the migration and required columns with a policy assertion before relying on the live-puppet suite.
+
+---
+
+## 2026-11-02 — Preserve mixed workspace work before restoring the main checkout
+
+**What happened**: A long-lived branch accumulated 526 Git-visible changes while falling more than 200 commits behind `main`. Some files already matched production, but copying the remaining tree wholesale would restore older private-page behavior, and the Anatomy assets included material whose redistribution rights still need review.
+
+**Why it mattered**: An all-at-once push could regress access controls or publish restricted assets. Leaving the changes uncommitted also made the requested clean checkout impossible without risking work loss.
+
+**Correction and rule**: Commit the full state to a local rescue ref and verify a private, self-contained Git bundle before switching the original checkout to current `main`. Keep unfinished or rights-sensitive assets off the public remote. Port each release candidate from a fresh `main` checkout and verify its own behavior before production promotion.

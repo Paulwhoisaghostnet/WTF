@@ -77,6 +77,7 @@ test("Hetzner deploys queue and hold one host-side lock instead of orphaning can
 test("Hetzner deploy transports the exact checked-out commit without server GitHub credentials", () => {
   assert.match(deployWorkflow, /fetch-depth: 0/);
   assert.match(deployWorkflow, /DEPLOY_COMMIT: \$\{\{ github\.sha \}\}/);
+  assert.match(deployWorkflow, /if \[ "\$SERVER_HEAD" = "\$DEPLOY_COMMIT" \]; then[\s\S]*git bundle create "\$LOCAL_BUNDLE" HEAD\^\.\.HEAD/);
   assert.match(deployWorkflow, /git bundle create "\$LOCAL_BUNDLE" HEAD "\^\$\{SERVER_HEAD\}"/);
   assert.match(deployWorkflow, /git bundle verify "\$LOCAL_BUNDLE"/);
   assert.match(deployWorkflow, /scp -i ~\/\.ssh\/id_ed25519 "\$LOCAL_BUNDLE"/);

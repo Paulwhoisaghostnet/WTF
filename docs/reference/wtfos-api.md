@@ -1,12 +1,12 @@
 # wtfOS API reference
 
-This is the source-derived inventory of the main wtfOS HTTP API: **954 unique method/path operations**, grouped into **100 route families** and declared across **128 server modules**. It documents what each endpoint is for and the gate visible at its route declaration; handler code remains authoritative for payload schemas and conditional authorization.
+This is the source-derived inventory of the main wtfOS HTTP API: **955 unique method/path operations**, grouped into **100 route families** and declared across **128 server modules**. It documents what each endpoint is for and the gate visible at its route declaration; handler code remains authoritative for payload schemas and conditional authorization.
 
 > Evidence: `[source]`. Probe budget: zero-call pass. Actual spend: zero network calls, zero writes, and no production data access. The inventory was extracted from the local route AST, then deduplicated by method and path.
 
 ## Public platform surface
 
-wtfOS exposes 954 unique method/path declarations across production-reachable routers, four WebSocket transports, and a Streamable HTTP MCP server with 47 registered tools. Feature flags and runtime modes can disable or replace some declared routes.
+wtfOS exposes 955 unique method/path declarations across production-reachable routers, four WebSocket transports, and a Streamable HTTP MCP server with 47 registered tools. Feature flags and runtime modes can disable or replace some declared routes.
 
 The public developer boundary is additive: `/api/v1` aliases the established handlers behind paired bearer-token scopes, `/api/v1/openapi.json` serves OpenAPI 3.1, and `/api/v1/docs` serves the grouped human reference. The legacy `/api/*` surface remains unchanged for browser and internal callers.
 
@@ -127,7 +127,7 @@ The MCP transport is `GET/POST/DELETE /mcp`, authenticated exclusively with a pa
 | `crawler-preview` | 1 | Operations for the crawler preview domain. |
 | `crp` | 8 | CRP nomination status, credits, submissions, and resolution. |
 | `dedrooms` | 6 | DedRooms world sessions, commands, state, and administration. |
-| `desktop` | 10 | Desktop state, shortcuts, events, sessions, and preferences. |
+| `desktop` | 11 | Desktop state, shortcuts, events, sessions, and preferences. |
 | `dex` | 5 | Decentralized-exchange market data and actions. |
 | `diary` | 5 | Personal diary entries and related profile data. |
 | `dicksword` | 11 | Dicksword game state, commands, and scoring. |
@@ -197,7 +197,7 @@ The MCP transport is `GET/POST/DELETE /mcp`, authenticated exclusively with a pa
 
 ## Complete endpoint inventory
 
-Method totals: **ALL 13**, **DELETE 45**, **GET 457**, **PATCH 36**, **POST 338**, **PUT 65**. Declared-gate totals: **Admin 102**, **Internal 1**, **MCP bearer 1**, **Permission 142**, **Public/handler 222**, **Session 486**.
+Method totals: **ALL 13**, **DELETE 45**, **GET 458**, **PATCH 36**, **POST 338**, **PUT 65**. Declared-gate totals: **Admin 102**, **Internal 1**, **MCP bearer 1**, **Permission 142**, **Public/handler 222**, **Session 487**.
 
 <details>
 <summary><code>access</code> — 1 operations</summary>
@@ -423,17 +423,17 @@ AT Protocol account, OAuth, PDS, relay, firehose, record, and AppView operations
 | --- | --- | --- | --- | --- |
 | GET | `/api/atproto/appview/record` | Read or list atproto appview record. | Public/handler | `server/features/atproto-spine/appview/router.ts:70` |
 | GET | `/api/atproto/appview/records` | Read or list atproto appview records. | Public/handler | `server/features/atproto-spine/appview/router.ts:69` |
-| POST | `/api/atproto/handle/claim` | Create, submit, or run atproto handle claim. | Session | `server/routes/atproto.ts:1344` |
-| GET | `/api/atproto/handle/claims` | Read or list atproto handle claims. | Session | `server/routes/atproto.ts:1448` |
-| POST | `/api/atproto/handle/verify` | Create, submit, or run atproto handle verify. | Session | `server/routes/atproto.ts:1452` |
-| GET | `/api/atproto/me` | Read or list atproto me. | Session | `server/routes/atproto.ts:712` |
-| GET | `/api/atproto/oauth/callback` | Read or list atproto oauth callback. | Session | `server/routes/atproto.ts:1087` |
-| GET | `/api/atproto/oauth/start` | Read or list atproto oauth start. | Session | `server/routes/atproto.ts:915` |
-| GET | `/api/atproto/permissions/options` | Read or list atproto permissions options. | Session | `server/routes/atproto.ts:734` |
-| POST | `/api/atproto/register` | Create, submit, or run atproto register. | Session | `server/routes/atproto.ts:819` |
-| POST | `/api/atproto/register/phone-verification` | Create, submit, or run atproto register phone verification. | Session | `server/routes/atproto.ts:762` |
-| GET | `/api/atproto/registration/options` | Read or list atproto registration options. | Session | `server/routes/atproto.ts:747` |
-| POST | `/api/atproto/unlink` | Create, submit, or run atproto unlink. | Session | `server/routes/atproto.ts:1325` |
+| POST | `/api/atproto/handle/claim` | Create, submit, or run atproto handle claim. | Session | `server/routes/atproto.ts:1341` |
+| GET | `/api/atproto/handle/claims` | Read or list atproto handle claims. | Session | `server/routes/atproto.ts:1445` |
+| POST | `/api/atproto/handle/verify` | Create, submit, or run atproto handle verify. | Session | `server/routes/atproto.ts:1449` |
+| GET | `/api/atproto/me` | Read or list atproto me. | Session | `server/routes/atproto.ts:705` |
+| GET | `/api/atproto/oauth/callback` | Read or list atproto oauth callback. | Session | `server/routes/atproto.ts:1080` |
+| GET | `/api/atproto/oauth/start` | Read or list atproto oauth start. | Session | `server/routes/atproto.ts:908` |
+| GET | `/api/atproto/permissions/options` | Read or list atproto permissions options. | Session | `server/routes/atproto.ts:727` |
+| POST | `/api/atproto/register` | Create, submit, or run atproto register. | Session | `server/routes/atproto.ts:812` |
+| POST | `/api/atproto/register/phone-verification` | Create, submit, or run atproto register phone verification. | Session | `server/routes/atproto.ts:755` |
+| GET | `/api/atproto/registration/options` | Read or list atproto registration options. | Session | `server/routes/atproto.ts:740` |
+| POST | `/api/atproto/unlink` | Create, submit, or run atproto unlink. | Session | `server/routes/atproto.ts:1322` |
 
 </details>
 
@@ -875,22 +875,23 @@ DedRooms world sessions, commands, state, and administration.
 </details>
 
 <details>
-<summary><code>desktop</code> — 10 operations</summary>
+<summary><code>desktop</code> — 11 operations</summary>
 
 Desktop state, shortcuts, events, sessions, and preferences.
 
 | Method | Path | Use | Access | Source |
 | --- | --- | --- | --- | --- |
-| POST | `/api/desktop/events` | Create, submit, or run desktop events. | Session | `server/routes/desktop.ts:346` |
-| GET | `/api/desktop/pet` | Read or list desktop pet. | Session | `server/routes/desktop.ts:441` |
-| PATCH | `/api/desktop/pet` | Partially update desktop pet. | Session | `server/routes/desktop.ts:482` |
-| POST | `/api/desktop/pet/actions` | Create, submit, or run desktop pet actions. | Session | `server/routes/desktop.ts:555` |
-| GET | `/api/desktop/pet/events` | Read or list desktop pet events. | Session | `server/routes/desktop.ts:464` |
-| GET | `/api/desktop/settings` | Read or list desktop settings. | Session | `server/routes/desktop.ts:306` |
-| PUT | `/api/desktop/settings` | Replace or set desktop settings. | Session | `server/routes/desktop.ts:417` |
-| POST | `/api/desktop/world/escape` | Create, submit, or run desktop world escape. | Session | `server/routes/desktop.ts:326` |
-| POST | `/api/desktop/world/heartbeat` | Create, submit, or run desktop world heartbeat. | Session | `server/routes/desktop.ts:316` |
-| POST | `/api/desktop/world/toy-escape` | Create, submit, or run desktop world toy escape. | Session | `server/routes/desktop.ts:336` |
+| POST | `/api/desktop/events` | Create, submit, or run desktop events. | Session | `server/routes/desktop.ts:360` |
+| GET | `/api/desktop/login-accounts-30d` | Read or list desktop login accounts 30d. | Session | `server/routes/desktop.ts:317` |
+| GET | `/api/desktop/pet` | Read or list desktop pet. | Session | `server/routes/desktop.ts:455` |
+| PATCH | `/api/desktop/pet` | Partially update desktop pet. | Session | `server/routes/desktop.ts:496` |
+| POST | `/api/desktop/pet/actions` | Create, submit, or run desktop pet actions. | Session | `server/routes/desktop.ts:569` |
+| GET | `/api/desktop/pet/events` | Read or list desktop pet events. | Session | `server/routes/desktop.ts:478` |
+| GET | `/api/desktop/settings` | Read or list desktop settings. | Session | `server/routes/desktop.ts:307` |
+| PUT | `/api/desktop/settings` | Replace or set desktop settings. | Session | `server/routes/desktop.ts:431` |
+| POST | `/api/desktop/world/escape` | Create, submit, or run desktop world escape. | Session | `server/routes/desktop.ts:340` |
+| POST | `/api/desktop/world/heartbeat` | Create, submit, or run desktop world heartbeat. | Session | `server/routes/desktop.ts:330` |
+| POST | `/api/desktop/world/toy-escape` | Create, submit, or run desktop world toy escape. | Session | `server/routes/desktop.ts:350` |
 
 </details>
 
@@ -1528,8 +1529,8 @@ Non-REST protocol and discovery endpoints.
 
 | Method | Path | Use | Access | Source |
 | --- | --- | --- | --- | --- |
-| GET | `/.well-known/atproto-did` | Read or list .well known atproto did. | Public/handler | `server/routes/atproto.ts:1497` |
-| GET | `/.well-known/oauth-client-metadata.json` | Read or list .well known oauth client metadata.json. | Public/handler | `server/routes/atproto.ts:707` |
+| GET | `/.well-known/atproto-did` | Read or list .well known atproto did. | Public/handler | `server/routes/atproto.ts:1494` |
+| GET | `/.well-known/oauth-client-metadata.json` | Read or list .well known oauth client metadata.json. | Public/handler | `server/routes/atproto.ts:700` |
 | GET | `/^\/api\/arcade\/source\/(.+)$/` | Read or list ^\ api\ arcade\ source\ (.+)$. | Public/handler | `server/routes/arcade.ts:81` |
 | GET | `/^\/api\/console\/bundles\/(.+)$/` | Read or list ^\ api\ console\ bundles\ (.+)$. | Public/handler | `server/routes/console.ts:82` |
 | GET | `/^\/api\/console\/source-arcade\/(.+)$/` | Read or list ^\ api\ console\ source arcade\ (.+)$. | Public/handler | `server/routes/console.ts:84` |
@@ -1938,19 +1939,19 @@ Tezos-to-AT Protocol bridge state, outbox, publishing, PDS, and firehose data.
 
 | Method | Path | Use | Access | Source |
 | --- | --- | --- | --- | --- |
-| GET | `/api/tz2at/activity` | Read or list tz2at activity. | Session | `server/routes/tz2at.ts:882` |
-| GET | `/api/tz2at/ecosystem/analytics` | Read or list tz2at ecosystem analytics. | Session | `server/routes/tz2at.ts:963` |
-| GET | `/api/tz2at/firehose/events` | Read or list tz2at firehose events. | Session | `server/routes/tz2at.ts:960` |
-| GET | `/api/tz2at/firehose/search` | Read or list tz2at firehose search. | Session | `server/routes/tz2at.ts:961` |
-| GET | `/api/tz2at/firehose/status` | Read or list tz2at firehose status. | Session | `server/routes/tz2at.ts:902` |
-| POST | `/api/tz2at/import/tzbsky` | Create, submit, or run tz2at import tzbsky. | Session | `server/routes/tz2at.ts:691` |
-| POST | `/api/tz2at/outbox/flush` | Create, submit, or run tz2at outbox flush. | Session | `server/routes/tz2at.ts:546` |
-| GET | `/api/tz2at/outbox/status` | Read or list tz2at outbox status. | Session | `server/routes/tz2at.ts:535` |
-| GET | `/api/tz2at/pds-offering` | Read or list tz2at pds offering. | Session | `server/routes/tz2at.ts:502` |
-| POST | `/api/tz2at/pds-offering/request` | Create, submit, or run tz2at pds offering request. | Session | `server/routes/tz2at.ts:558` |
-| GET | `/api/tz2at/pds/status` | Read or list tz2at pds status. | Session | `server/routes/tz2at.ts:523` |
-| POST | `/api/tz2at/publish/wallet-link` | Create, submit, or run tz2at publish wallet link. | Session | `server/routes/tz2at.ts:781` |
-| GET | `/api/tz2at/status` | Read or list tz2at status. | Session | `server/routes/tz2at.ts:498` |
+| GET | `/api/tz2at/activity` | Read or list tz2at activity. | Session | `server/routes/tz2at.ts:880` |
+| GET | `/api/tz2at/ecosystem/analytics` | Read or list tz2at ecosystem analytics. | Session | `server/routes/tz2at.ts:961` |
+| GET | `/api/tz2at/firehose/events` | Read or list tz2at firehose events. | Session | `server/routes/tz2at.ts:958` |
+| GET | `/api/tz2at/firehose/search` | Read or list tz2at firehose search. | Session | `server/routes/tz2at.ts:959` |
+| GET | `/api/tz2at/firehose/status` | Read or list tz2at firehose status. | Session | `server/routes/tz2at.ts:900` |
+| POST | `/api/tz2at/import/tzbsky` | Create, submit, or run tz2at import tzbsky. | Session | `server/routes/tz2at.ts:689` |
+| POST | `/api/tz2at/outbox/flush` | Create, submit, or run tz2at outbox flush. | Session | `server/routes/tz2at.ts:544` |
+| GET | `/api/tz2at/outbox/status` | Read or list tz2at outbox status. | Session | `server/routes/tz2at.ts:533` |
+| GET | `/api/tz2at/pds-offering` | Read or list tz2at pds offering. | Session | `server/routes/tz2at.ts:500` |
+| POST | `/api/tz2at/pds-offering/request` | Create, submit, or run tz2at pds offering request. | Session | `server/routes/tz2at.ts:556` |
+| GET | `/api/tz2at/pds/status` | Read or list tz2at pds status. | Session | `server/routes/tz2at.ts:521` |
+| POST | `/api/tz2at/publish/wallet-link` | Create, submit, or run tz2at publish wallet link. | Session | `server/routes/tz2at.ts:779` |
+| GET | `/api/tz2at/status` | Read or list tz2at status. | Session | `server/routes/tz2at.ts:496` |
 
 </details>
 

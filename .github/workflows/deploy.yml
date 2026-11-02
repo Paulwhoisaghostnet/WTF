@@ -54,7 +54,11 @@ jobs:
             exit 1
           fi
 
-          if git cat-file -e "${SERVER_HEAD}^{commit}" 2>/dev/null && \
+          if [ "$SERVER_HEAD" = "$DEPLOY_COMMIT" ]; then
+            # An environment-only redeploy still needs a nonempty bundle for
+            # the normal server fetch and health-check path.
+            git bundle create "$LOCAL_BUNDLE" HEAD^..HEAD
+          elif git cat-file -e "${SERVER_HEAD}^{commit}" 2>/dev/null && \
              git merge-base --is-ancestor "$SERVER_HEAD" "$DEPLOY_COMMIT"; then
             git bundle create "$LOCAL_BUNDLE" HEAD "^${SERVER_HEAD}"
           else

@@ -2320,6 +2320,10 @@ function apiMock(req, res) {
       ),
     });
   }
+  if (pathName === "/api/desktop/login-accounts-30d" && req.method === "GET") {
+    if (!currentAuthUser()) return res.status(401).json({ error: "Not authenticated" });
+    return res.json({ uniqueAccounts: 42, windowDays: 30 });
+  }
   if (pathName === "/api/desktop/settings" && req.method === "GET") {
     return res.json({
       appearance: forceHarnessDesktopFonts(desktopAppearance),

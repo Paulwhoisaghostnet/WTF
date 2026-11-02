@@ -312,6 +312,19 @@ test.describe("live E2E puppet orchestration", () => {
       ).toBe(true);
       await request.dispose();
     }
+
+    const loginRequest = await playwright.request.newContext({ baseURL });
+    try {
+      await loginAs(loginRequest, puppetCredentials.actors[0]);
+      const metric = await expectOkJson(
+        await loginRequest.get("/api/desktop/login-accounts-30d"),
+        "30-day login account count after puppet password login"
+      );
+      expect(metric.windowDays).toBe(30);
+      expect(metric.uniqueAccounts).toBeGreaterThanOrEqual(1);
+    } finally {
+      await loginRequest.dispose();
+    }
   });
 
   test("a witness puppet sees Contact Admin but cannot discover or open Admin", async ({

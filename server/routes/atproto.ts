@@ -15,6 +15,7 @@ import {
   atprotoAccountCapabilities,
   atprotoAccountSessionSummary,
   getAtprotoOAuthClient,
+  getPublicAtprotoAgent,
   isAtprotoEnabled,
   atprotoOAuthAppStateKeyForCallback,
   deleteAtprotoOAuthStateFamily,
@@ -50,6 +51,8 @@ import {
   resolveDidViaHttpsWellKnown,
 } from "../features/atproto/identity";
 import { emitAtprotoSystemEvent } from "../features/atproto/events";
+import { ingestSystemEvent } from "../challenges/events/ingest";
+import { loginRequestUser } from "../features/atproto/standalone-login-event";
 import { createInMemoryRateLimit } from "../lib/in-memory-rate-limit";
 import { resolveUserTezosIdentity } from "../lib/user-tezos-identity";
 import { skywireRolloutStatusForRole } from "../lib/skywire-access";
@@ -234,7 +237,7 @@ async function findOrCreateSkywireStandaloneUser(input: {
   const existingAccount = await linkedAccountForDid(input.did);
   if (existingAccount) {
     const existingUser = await getUserById(existingAccount.userId);
-    if (existingUser) return existingUser;
+    if (existingUser) return { user: existingUser, created: false };
   }
 
   for (const username of skywireStandaloneUsernameCandidates(input.handle, input.did)) {
@@ -244,7 +247,7 @@ async function findOrCreateSkywireStandaloneUser(input: {
         displayName: input.displayName || input.handle || username,
         role: "test_subject",
       });
-      if (user) return user;
+      if (user) return { user, created: true };
     } catch (err) {
       if (isUniqueViolation(err)) continue;
       throw err;
@@ -252,16 +255,6 @@ async function findOrCreateSkywireStandaloneUser(input: {
   }
 
   throw new Error("Unable to create standalone Skywire user");
-}
-
-async function loginRequestUser(req: any, user: any): Promise<void> {
-  if (typeof req.login !== "function") return;
-  await new Promise<void>((resolve, reject) => {
-    req.login(user, (err: unknown) => {
-      if (err) reject(err);
-      else resolve();
-    });
-  });
 }
 
 function safeReturnPath(value: unknown): string {
@@ -1136,9 +1129,10 @@ router.get("/api/atproto/oauth/callback", async (req, res) => {
       return redirectWith("error=atproto_state");
     }
 
-    const { Agent } = await import("@atproto/api");
-    const api = new Agent(session);
-    const profile = await api.getProfile({ actor: session.did });
+    // Identity-only OAuth grants no app.bsky.actor.getProfile RPC scope. Profile
+    // data is public, so hydrate it through the public AppView instead of the
+    // permission-limited OAuth session.
+    const profile = await getPublicAtprotoAgent().getProfile({ actor: session.did });
     const tokenInfo = await session.getTokenInfo(false).catch(() => null);
     const sessionTokenScope =
       typeof (session as any)?.tokenSet?.scope === "string" ? String((session as any).tokenSet.scope) : null;
@@ -1189,13 +1183,16 @@ router.get("/api/atproto/oauth/callback", async (req, res) => {
     }
     let resolvedUserId = sessionState.userId ? Number(sessionState.userId) : null;
     let standaloneLoginUser: Awaited<ReturnType<typeof getUserById>> | null = null;
+    let standaloneCreated = false;
     if (!resolvedUserId && sessionState.standalone && appName === "skywire") {
-      standaloneLoginUser = await findOrCreateSkywireStandaloneUser({
+      const standaloneIdentity = await findOrCreateSkywireStandaloneUser({
         did: session.did,
         handle: profile.data.handle,
         displayName: profile.data.displayName,
         avatarUrl: profile.data.avatar,
       });
+      standaloneLoginUser = standaloneIdentity.user;
+      standaloneCreated = standaloneIdentity.created;
       resolvedUserId = standaloneLoginUser?.id ?? null;
     }
     if (!resolvedUserId) {
@@ -1300,7 +1297,7 @@ router.get("/api/atproto/oauth/callback", async (req, res) => {
     if (sessionState.standalone && appName === "skywire") {
       const loginUser = standaloneLoginUser ?? (await getUserById(resolvedUserId));
       if (loginUser) {
-        await loginRequestUser(req, loginUser);
+        await loginRequestUser(req, loginUser, standaloneCreated, ingestSystemEvent);
       }
     }
 

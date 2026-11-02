@@ -21,6 +21,7 @@ import { CustomCursor } from "../../features/desktop/CustomCursor";
 import { CursedDesktopEffects } from "../../features/desktop/CursedDesktopEffects";
 import { DesktopPet, type DesktopObstacle } from "../../features/desktop/DesktopPet";
 import { DesktopScreenSaver } from "../../features/desktop/DesktopScreenSaver";
+import { DesktopLoginAccounts } from "../../features/desktop/DesktopLoginAccounts";
 import { reportDesktopClientEvent, type DesktopClientEventPayload } from "../../features/desktop/desktop-event-delivery";
 import { ReggieAssistant } from "../../features/reggie/ReggieAssistant";
 import {
@@ -1375,6 +1376,7 @@ export function Desktop({
                 onContextMenu={openDesktopItemContextMenu}
                 splitAssemblyKeyDown={splitAssemblyKeyDown}
               />
+              {user ? <DesktopLoginAccounts /> : null}
               <PortalPlacementLayer
                 $active={activeDesktopTool === "portal-gun"}
                 $color={portalPaintColor}

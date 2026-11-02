@@ -3,6 +3,7 @@ import { randomUUID } from "crypto";
 import { and, desc, eq, gte, sql } from "drizzle-orm";
 import { isAuthenticated } from "../auth/passport";
 import { db } from "../db";
+import { countLoginAccounts30d, LOGIN_ACCOUNTS_WINDOW_DAYS } from "../lib/desktop-login-accounts";
 import { awardXp } from "../lib/xp";
 import {
   recordDesktopWorldHeartbeat,
@@ -310,6 +311,19 @@ router.get("/api/desktop/settings", isAuthenticated, async (req, res) => {
   } catch (err) {
     console.error("GET /api/desktop/settings error:", err);
     res.status(500).json({ error: "Failed to fetch desktop settings" });
+  }
+});
+
+router.get("/api/desktop/login-accounts-30d", isAuthenticated, async (_req, res) => {
+  res.set("Cache-Control", "private, no-store");
+  try {
+    res.json({
+      uniqueAccounts: await countLoginAccounts30d(),
+      windowDays: LOGIN_ACCOUNTS_WINDOW_DAYS,
+    });
+  } catch (err) {
+    console.error("GET /api/desktop/login-accounts-30d error:", err);
+    res.status(500).json({ error: "Failed to fetch login account count" });
   }
 });
 
