@@ -13296,3 +13296,13 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: Existing players could lose seat recovery and turn alerts even though the new sponsor flow tests passed.
 
 **Rule**: Compare the vendored hosted game server against the current hosted release before accepting a new game workspace variant. Preserve hosted endpoints and lifecycle hooks, then run the hosted authority and deployment-guard tests against the vendored bytes.
+
+---
+
+## 2026-11-02 — Preserve hosted lobby actions when vendoring game UI
+
+**What happened**: The game workspace client lacked hosted lobby actions for returning to a saved seat, prefilling a logged-in WTF identity, and drafting invitations. Vendoring it removed those controls from the hosted game, although the sponsor room browser itself worked.
+
+**Why it mattered**: The full browser inventory found three regressions in existing room navigation and invitations.
+
+**Rule**: Compare both the game server and client against the hosted release before vendoring. Rebuild the host's public assets before browser testing; a stale build can falsely report the same failure after the source is fixed.

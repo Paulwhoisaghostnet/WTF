@@ -61,9 +61,9 @@
     {
       "path": "public/games/installed/wtfiap/party-client.js",
       "sourcePath": "dist/party-client.js",
-      "sourceSha256": "9a56d0296e597149e7c94222c8dca6a4ef01151d3c56777af38f60bab8126d57",
-      "sha256": "9a56d0296e597149e7c94222c8dca6a4ef01151d3c56777af38f60bab8126d57",
-      "bytes": 79420
+      "sourceSha256": "c29b8f85242123108516f370361194080dcb9e20a71dbc157d70517e564179ef",
+      "sha256": "c29b8f85242123108516f370361194080dcb9e20a71dbc157d70517e564179ef",
+      "bytes": 82481
     },
     {
       "path": "public/games/installed/wtfiap/tournament.js",
@@ -425,9 +425,9 @@
     {
       "path": "public/games/installed/wtfiap/party.html",
       "sourcePath": "dist/party.html",
-      "sourceSha256": "70f2a4d2bd0f6280a33c405bbee7b5119059721b417a8da8ad533323bf216f9b",
-      "sha256": "518cae528dd0464bec45d572cf8fb23c679698962267ea93e2d66fc34c446d7c",
-      "bytes": 641028
+      "sourceSha256": "5a3cb478f86628298c6009401f6b958b7b1b0e82667dcefc4c0895c5b924f9ef",
+      "sha256": "85467736bfce5b34478223fc2607604d01bed1cc1484d1e5fb55d2954b328e5d",
+      "bytes": 641326
     },
     {
       "path": "public/games/installed/wtfiap/host-config.js",
