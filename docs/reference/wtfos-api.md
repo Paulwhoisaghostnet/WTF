@@ -197,7 +197,7 @@ The MCP transport is `GET/POST/DELETE /mcp`, authenticated exclusively with a pa
 
 ## Complete endpoint inventory
 
-Method totals: **ALL 13**, **DELETE 45**, **GET 462**, **PATCH 36**, **POST 339**, **PUT 65**. Declared-gate totals: **Admin 103**, **Internal 1**, **MCP bearer 1**, **Permission 142**, **Public/handler 223**, **Session 490**.
+Method totals: **ALL 13**, **DELETE 45**, **GET 462**, **PATCH 36**, **POST 339**, **PUT 65**. Declared-gate totals: **Admin 103**, **Internal 1**, **MCP bearer 1**, **Permission 142**, **Public/handler 222**, **Session 491**.
 
 <details>
 <summary><code>access</code> — 1 operations</summary>
@@ -424,17 +424,17 @@ AT Protocol account, OAuth, PDS, relay, firehose, record, and AppView operations
 | --- | --- | --- | --- | --- |
 | GET | `/api/atproto/appview/record` | Read or list atproto appview record. | Public/handler | `server/features/atproto-spine/appview/router.ts:70` |
 | GET | `/api/atproto/appview/records` | Read or list atproto appview records. | Public/handler | `server/features/atproto-spine/appview/router.ts:69` |
-| POST | `/api/atproto/handle/claim` | Create, submit, or run atproto handle claim. | Session | `server/routes/atproto.ts:1341` |
-| GET | `/api/atproto/handle/claims` | Read or list atproto handle claims. | Session | `server/routes/atproto.ts:1445` |
-| POST | `/api/atproto/handle/verify` | Create, submit, or run atproto handle verify. | Session | `server/routes/atproto.ts:1449` |
-| GET | `/api/atproto/me` | Read or list atproto me. | Session | `server/routes/atproto.ts:705` |
-| GET | `/api/atproto/oauth/callback` | Read or list atproto oauth callback. | Session | `server/routes/atproto.ts:1080` |
-| GET | `/api/atproto/oauth/start` | Read or list atproto oauth start. | Session | `server/routes/atproto.ts:908` |
-| GET | `/api/atproto/permissions/options` | Read or list atproto permissions options. | Session | `server/routes/atproto.ts:727` |
-| POST | `/api/atproto/register` | Create, submit, or run atproto register. | Session | `server/routes/atproto.ts:812` |
-| POST | `/api/atproto/register/phone-verification` | Create, submit, or run atproto register phone verification. | Session | `server/routes/atproto.ts:755` |
-| GET | `/api/atproto/registration/options` | Read or list atproto registration options. | Session | `server/routes/atproto.ts:740` |
-| POST | `/api/atproto/unlink` | Create, submit, or run atproto unlink. | Session | `server/routes/atproto.ts:1322` |
+| POST | `/api/atproto/handle/claim` | Create, submit, or run atproto handle claim. | Session | `server/routes/atproto.ts:1417` |
+| GET | `/api/atproto/handle/claims` | Read or list atproto handle claims. | Session | `server/routes/atproto.ts:1521` |
+| POST | `/api/atproto/handle/verify` | Create, submit, or run atproto handle verify. | Session | `server/routes/atproto.ts:1525` |
+| GET | `/api/atproto/me` | Read or list atproto me. | Session | `server/routes/atproto.ts:715` |
+| GET | `/api/atproto/oauth/callback` | Read or list atproto oauth callback. | Session | `server/routes/atproto.ts:1105` |
+| GET | `/api/atproto/oauth/start` | Read or list atproto oauth start. | Session | `server/routes/atproto.ts:918` |
+| GET | `/api/atproto/permissions/options` | Read or list atproto permissions options. | Session | `server/routes/atproto.ts:737` |
+| POST | `/api/atproto/register` | Create, submit, or run atproto register. | Session | `server/routes/atproto.ts:822` |
+| POST | `/api/atproto/register/phone-verification` | Create, submit, or run atproto register phone verification. | Session | `server/routes/atproto.ts:765` |
+| GET | `/api/atproto/registration/options` | Read or list atproto registration options. | Session | `server/routes/atproto.ts:750` |
+| POST | `/api/atproto/unlink` | Create, submit, or run atproto unlink. | Session | `server/routes/atproto.ts:1398` |
 
 </details>
 
@@ -459,31 +459,31 @@ Cookie-session authentication, OAuth, wallet sign-in, account recovery, and CSRF
 
 | Method | Path | Use | Access | Source |
 | --- | --- | --- | --- | --- |
-| POST | `/api/auth/change-password` | Create, submit, or run auth change password. | Session | `server/auth/routes.ts:938` |
-| GET | `/api/auth/csrf-token` | Read or list auth csrf token. | Public/handler | `server/auth/routes.ts:70` |
-| GET | `/api/auth/discord` | Read or list auth discord. | Session | `server/auth/routes.ts:1710`<br>`server/auth/routes.ts:1720` |
-| GET | `/api/auth/discord/callback` | Read or list auth discord callback. | Public/handler | `server/auth/routes.ts:1715`<br>`server/auth/routes.ts:1723` |
-| GET | `/api/auth/github` | Read or list auth github. | Public/handler | `server/auth/routes.ts:1241` |
-| GET | `/api/auth/github/callback` | Read or list auth github callback. | Public/handler | `server/auth/routes.ts:1245` |
-| GET | `/api/auth/gm-welcome/assets/:filename` | Read or list auth gm welcome assets filename. | Session | `server/auth/routes.ts:904` |
-| POST | `/api/auth/gm-welcome/complete` | Create, submit, or run auth gm welcome complete. | Session | `server/auth/routes.ts:864` |
-| POST | `/api/auth/login` | Create, submit, or run auth login. | Public/handler | `server/auth/routes.ts:774` |
-| POST | `/api/auth/logout` | Create, submit, or run auth logout. | Public/handler | `server/auth/routes.ts:809` |
-| POST | `/api/auth/register` | Create, submit, or run auth register. | Public/handler | `server/auth/routes.ts:712` |
-| GET | `/api/auth/social/config` | Read or list auth social config. | Public/handler | `server/auth/routes.ts:487` |
-| GET | `/api/auth/twitter` | Read or list auth twitter. | Session | `server/auth/routes.ts:1252`<br>`server/auth/routes.ts:1262` |
-| GET | `/api/auth/twitter-oauth2` | Read or list auth twitter oauth2. | Session | `server/auth/routes.ts:1408` |
-| GET | `/api/auth/twitter-oauth2/callback` | Read or list auth twitter oauth2 callback. | Session | `server/auth/routes.ts:1476` |
-| GET | `/api/auth/twitter-oauth2/diagnostics` | Read or list auth twitter oauth2 diagnostics. | Session | `server/auth/routes.ts:515` |
-| GET | `/api/auth/twitter-oauth2/diagnostics/self-test` | Read or list auth twitter oauth2 diagnostics self test. | Session | `server/auth/routes.ts:632` |
-| GET | `/api/auth/twitter-proof` | Read or list auth twitter proof. | Session | `server/auth/routes.ts:1276` |
-| GET | `/api/auth/twitter-proof/callback` | Read or list auth twitter proof callback. | Public/handler | `server/auth/routes.ts:1316` |
-| GET | `/api/auth/twitter/callback` | Read or list auth twitter callback. | Public/handler | `server/auth/routes.ts:1257`<br>`server/auth/routes.ts:1265` |
-| GET | `/api/auth/user` | Read or list auth user. | Session | `server/auth/routes.ts:826` |
-| POST | `/api/auth/wallet/challenge` | Create, submit, or run auth wallet challenge. | Public/handler | `server/auth/routes.ts:1052` |
-| POST | `/api/auth/wallet/register` | Create, submit, or run auth wallet register. | Public/handler | `server/auth/routes.ts:1147` |
-| POST | `/api/auth/wallet/verify` | Create, submit, or run auth wallet verify. | Public/handler | `server/auth/routes.ts:1071` |
-| POST | `/api/auth/welcome/complete` | Create, submit, or run auth welcome complete. | Session | `server/auth/routes.ts:831` |
+| POST | `/api/auth/change-password` | Create, submit, or run auth change password. | Session | `server/auth/routes.ts:949` |
+| GET | `/api/auth/csrf-token` | Read or list auth csrf token. | Public/handler | `server/auth/routes.ts:78` |
+| GET | `/api/auth/discord` | Read or list auth discord. | Session | `server/auth/routes.ts:1749`<br>`server/auth/routes.ts:1781` |
+| GET | `/api/auth/discord/callback` | Read or list auth discord callback. | Session | `server/auth/routes.ts:1767`<br>`server/auth/routes.ts:1784` |
+| GET | `/api/auth/github` | Read or list auth github. | Public/handler | `server/auth/routes.ts:1252` |
+| GET | `/api/auth/github/callback` | Read or list auth github callback. | Public/handler | `server/auth/routes.ts:1256` |
+| GET | `/api/auth/gm-welcome/assets/:filename` | Read or list auth gm welcome assets filename. | Session | `server/auth/routes.ts:915` |
+| POST | `/api/auth/gm-welcome/complete` | Create, submit, or run auth gm welcome complete. | Session | `server/auth/routes.ts:875` |
+| POST | `/api/auth/login` | Create, submit, or run auth login. | Public/handler | `server/auth/routes.ts:785` |
+| POST | `/api/auth/logout` | Create, submit, or run auth logout. | Public/handler | `server/auth/routes.ts:820` |
+| POST | `/api/auth/register` | Create, submit, or run auth register. | Public/handler | `server/auth/routes.ts:723` |
+| GET | `/api/auth/social/config` | Read or list auth social config. | Public/handler | `server/auth/routes.ts:498` |
+| GET | `/api/auth/twitter` | Read or list auth twitter. | Session | `server/auth/routes.ts:1263`<br>`server/auth/routes.ts:1273` |
+| GET | `/api/auth/twitter-oauth2` | Read or list auth twitter oauth2. | Session | `server/auth/routes.ts:1445` |
+| GET | `/api/auth/twitter-oauth2/callback` | Read or list auth twitter oauth2 callback. | Session | `server/auth/routes.ts:1515` |
+| GET | `/api/auth/twitter-oauth2/diagnostics` | Read or list auth twitter oauth2 diagnostics. | Session | `server/auth/routes.ts:526` |
+| GET | `/api/auth/twitter-oauth2/diagnostics/self-test` | Read or list auth twitter oauth2 diagnostics self test. | Session | `server/auth/routes.ts:643` |
+| GET | `/api/auth/twitter-proof` | Read or list auth twitter proof. | Session | `server/auth/routes.ts:1287` |
+| GET | `/api/auth/twitter-proof/callback` | Read or list auth twitter proof callback. | Public/handler | `server/auth/routes.ts:1336` |
+| GET | `/api/auth/twitter/callback` | Read or list auth twitter callback. | Public/handler | `server/auth/routes.ts:1268`<br>`server/auth/routes.ts:1276` |
+| GET | `/api/auth/user` | Read or list auth user. | Session | `server/auth/routes.ts:837` |
+| POST | `/api/auth/wallet/challenge` | Create, submit, or run auth wallet challenge. | Public/handler | `server/auth/routes.ts:1063` |
+| POST | `/api/auth/wallet/register` | Create, submit, or run auth wallet register. | Public/handler | `server/auth/routes.ts:1158` |
+| POST | `/api/auth/wallet/verify` | Create, submit, or run auth wallet verify. | Public/handler | `server/auth/routes.ts:1082` |
+| POST | `/api/auth/welcome/complete` | Create, submit, or run auth welcome complete. | Session | `server/auth/routes.ts:842` |
 
 </details>
 
@@ -935,17 +935,17 @@ Dicksword game state, commands, and scoring.
 
 | Method | Path | Use | Access | Source |
 | --- | --- | --- | --- | --- |
-| POST | `/api/dicksword/admin/avatar-conflicts` | Create, submit, or run dicksword admin avatar conflicts. | Permission | `server/routes/dicksword.ts:332` |
-| POST | `/api/dicksword/admin/avatar-layers` | Create, submit, or run dicksword admin avatar layers. | Permission | `server/routes/dicksword.ts:305` |
-| POST | `/api/dicksword/admin/role-mappings` | Create, submit, or run dicksword admin role mappings. | Permission | `server/routes/dicksword.ts:357` |
-| PUT | `/api/dicksword/avatar/selection` | Replace or set dicksword avatar selection. | Session | `server/routes/dicksword.ts:254` |
-| POST | `/api/dicksword/bot/activity` | Create, submit, or run dicksword bot activity. | Public/handler | `server/routes/dicksword.ts:477` |
-| GET | `/api/dicksword/bot/profile/:discordUserId` | Read or list dicksword bot profile discordUserId. | Public/handler | `server/routes/dicksword.ts:557` |
-| POST | `/api/dicksword/bot/proof` | Create, submit, or run dicksword bot proof. | Public/handler | `server/routes/dicksword.ts:384` |
-| GET | `/api/dicksword/bot/role-sync` | Read or list dicksword bot role sync. | Public/handler | `server/routes/dicksword.ts:537` |
-| POST | `/api/dicksword/claims` | Create, submit, or run dicksword claims. | Session | `server/routes/dicksword.ts:220` |
-| GET | `/api/dicksword/config` | Read or list dicksword config. | Public/handler | `server/routes/dicksword.ts:129` |
-| GET | `/api/dicksword/me` | Read or list dicksword me. | Session | `server/routes/dicksword.ts:143` |
+| POST | `/api/dicksword/admin/avatar-conflicts` | Create, submit, or run dicksword admin avatar conflicts. | Permission | `server/routes/dicksword.ts:336` |
+| POST | `/api/dicksword/admin/avatar-layers` | Create, submit, or run dicksword admin avatar layers. | Permission | `server/routes/dicksword.ts:309` |
+| POST | `/api/dicksword/admin/role-mappings` | Create, submit, or run dicksword admin role mappings. | Permission | `server/routes/dicksword.ts:361` |
+| PUT | `/api/dicksword/avatar/selection` | Replace or set dicksword avatar selection. | Session | `server/routes/dicksword.ts:258` |
+| POST | `/api/dicksword/bot/activity` | Create, submit, or run dicksword bot activity. | Public/handler | `server/routes/dicksword.ts:489` |
+| GET | `/api/dicksword/bot/profile/:discordUserId` | Read or list dicksword bot profile discordUserId. | Public/handler | `server/routes/dicksword.ts:569` |
+| POST | `/api/dicksword/bot/proof` | Create, submit, or run dicksword bot proof. | Public/handler | `server/routes/dicksword.ts:388` |
+| GET | `/api/dicksword/bot/role-sync` | Read or list dicksword bot role sync. | Public/handler | `server/routes/dicksword.ts:549` |
+| POST | `/api/dicksword/claims` | Create, submit, or run dicksword claims. | Session | `server/routes/dicksword.ts:224` |
+| GET | `/api/dicksword/config` | Read or list dicksword config. | Public/handler | `server/routes/dicksword.ts:133` |
+| GET | `/api/dicksword/me` | Read or list dicksword me. | Session | `server/routes/dicksword.ts:147` |
 
 </details>
 
@@ -1534,8 +1534,8 @@ Non-REST protocol and discovery endpoints.
 
 | Method | Path | Use | Access | Source |
 | --- | --- | --- | --- | --- |
-| GET | `/.well-known/atproto-did` | Read or list .well known atproto did. | Public/handler | `server/routes/atproto.ts:1494` |
-| GET | `/.well-known/oauth-client-metadata.json` | Read or list .well known oauth client metadata.json. | Public/handler | `server/routes/atproto.ts:700` |
+| GET | `/.well-known/atproto-did` | Read or list .well known atproto did. | Public/handler | `server/routes/atproto.ts:1570` |
+| GET | `/.well-known/oauth-client-metadata.json` | Read or list .well known oauth client metadata.json. | Public/handler | `server/routes/atproto.ts:710` |
 | GET | `/^\/api\/arcade\/source\/(.+)$/` | Read or list ^\ api\ arcade\ source\ (.+)$. | Public/handler | `server/routes/arcade.ts:81` |
 | GET | `/^\/api\/console\/bundles\/(.+)$/` | Read or list ^\ api\ console\ bundles\ (.+)$. | Public/handler | `server/routes/console.ts:82` |
 | GET | `/^\/api\/console\/source-arcade\/(.+)$/` | Read or list ^\ api\ console\ source arcade\ (.+)$. | Public/handler | `server/routes/console.ts:84` |

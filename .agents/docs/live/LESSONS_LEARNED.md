@@ -13166,3 +13166,53 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: A correct runtime fix could not receive a green release check because the tracked generated reference no longer matched the source tree.
 
 **Rule**: After changing environment references or `.env.example` lifecycle comments, run `npm run env:inventory`, then `npm run env:inventory:check`, and include the generated reference in the same release commit.
+
+---
+
+## 2026-11-02 — Social proof routes must bind the chosen provider identity before replacing a link
+
+**What happened**: Profile showed a typed Discord username but its OAuth start ignored that value, requested guild and role-connection scopes for an identity check, and the callback linked whichever Discord account the browser authorized. The production Discord app also lacked the exact `wtfos.app` callback. A second review found that Profile OAuth and Dicksword bot proof could claim the same Discord ID for different WTF users because the column had no unique constraint.
+
+**Why it mattered**: A correct local callback still fails at the provider when its redirect is absent. An already signed-in browser can bind the wrong account, and duplicate Discord IDs make bot attribution ambiguous.
+
+**Rule**: For each identity-only social link, request only the provider permission needed for identity, bind the intended account and OAuth state to the signed-in WTF session, and reject a mismatch before any write. Register the exact canonical callback in the provider console. Serialize all writers for one provider ID and reject a different owner inside the same transaction before persisting; check existing production duplicates separately before claiming historical data is clean.
+
+---
+
+## 2026-11-02 — Profile AT proof must be independent of Skywire app access
+
+**What happened**: Profile's AT Protocol control opened Skywire rather than starting a Profile proof. Skywire's OAuth start was gated to staff-alpha access and its reconnect path targeted the existing actor, so ordinary users had no direct route to link or change their AT identity from Profile.
+
+**Why it mattered**: A user could see their AT identity beside X and Discord but could not complete the same identity-proof task there. Reusing Skywire's broader grant would also ask for permissions unrelated to social proof.
+
+**Rule**: Give Profile its own identity-only AT OAuth intent and return path, resolve the requested actor to a DID before consent, bind the callback's OAuth DID and WTF session before persistence, and keep richer Skywire grants when verifying the same DID. Use public profile metadata only as decoration; a valid OAuth DID remains the identity proof.
+
+---
+
+## 2026-11-02 — Optional X handles should preserve existing-link identity checks
+
+**What happened**: The first X proof repair required a handle and forced a fresh X login on every attempt. Users confirmed linking worked but expected a first link to go straight to X when their browser was already signed in.
+
+**Why it mattered**: Requiring a handle adds friction to a first link, while simply removing it could let a different signed-in X account silently replace an existing verified link.
+
+**Rule**: Let a first X proof start without a typed handle and without `force_login`. For a verified existing link, compare the returned provider ID and handle with the saved identity unless the user explicitly enters a different target handle. Force account choice only for that targeted change, and continue rejecting any mismatch before replacing the link.
+
+---
+
+## 2026-11-02 — OAuth callbacks must respect a link changed in another session
+
+**What happened**: A Profile X proof could begin in one browser session while a second session changed the same WTF account's X link. The first callback checked its session intent but updated the user row by ID alone, allowing an older consent result to replace the newer link.
+
+**Why it mattered**: Provider identity checks prevent a wrong account within one flow, but they do not establish that the saved link is still the one the flow started from.
+
+**Rule**: Capture the current verified link when OAuth starts. Before persistence, compare that snapshot with fresh account state and include the snapshot in the conditional database update. A stale callback must return a conflict and leave the newer link untouched.
+
+---
+
+## 2026-11-02 — Merge Profile inventory by behavior ownership
+
+**What happened**: The current Profile pass moved X, Discord, and AT identity proof into a dedicated social-linking inventory row while the Paul branch added watched-video history to the older Profile identity row. A branch-side choice would have lost the social proof details; a main-side choice would have lost the video-history behavior. The same merge assigned social findings to IDs 730 and 731, which the Paul branch had already used for unrelated open findings.
+
+**Why it mattered**: The generated E2E registry would describe only part of the released Profile behavior, and conflicting bounty IDs could overwrite distinct findings.
+
+**Rule**: Keep each behavior in its owning inventory row, assign unique canonical IDs to every finding before regenerating the board, and run focused browser cases for both flows after the merge.

@@ -46,6 +46,8 @@ export const DOMAIN_WORKFLOWS = [
       "auth.watched-video-history-and-boot",
       "wtfos.guide-promo-channel",
       "profile.x-oauth-expected-account",
+      "profile.discord-expected-account",
+      "profile.atproto-expected-account",
       "profile.pfp-preview-gateway-fallback",
     ],
     apiProbes: [

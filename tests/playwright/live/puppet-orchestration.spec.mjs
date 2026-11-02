@@ -43,6 +43,7 @@ const EXTERNAL_OAUTH_PATTERNS = [
   /\/api\/auth\/twitter/i,
   /\/api\/auth\/twitter-oauth2/i,
   /\/api\/auth\/discord/i,
+  /\/api\/atproto\/oauth\/start/i,
   /\/api\/auth\/github/i,
   /\/api\/auth\/google/i,
 ];
@@ -324,6 +325,27 @@ test.describe("live E2E puppet orchestration", () => {
       expect(metric.uniqueAccounts).toBeGreaterThanOrEqual(1);
     } finally {
       await loginRequest.dispose();
+    }
+  });
+
+  test("a signed-in puppet sees X, Discord, and AT Protocol in Profile social linking", async ({
+    browser,
+    baseURL,
+  }) => {
+    const actor = actorByRole(puppetCredentials, "contestant");
+    const { context, page } = await actorPage(browser, baseURL, actor);
+    try {
+      await page.goto("/profile", { waitUntil: "domcontentloaded" });
+      const socialLinks = page.locator('[data-profile-section="social-network-linking"]');
+      await expect(socialLinks.getByRole("heading", { name: "Social network linking" })).toBeVisible();
+      await expect(socialLinks.getByRole("textbox", { name: "Twitter handle" })).toBeVisible();
+      await expect(socialLinks.getByRole("textbox", { name: "Discord username" })).toBeVisible();
+      await expect(socialLinks.getByRole("textbox", { name: "AT Protocol handle" })).toBeVisible();
+      await expect(socialLinks.getByText("X:", { exact: true })).toBeVisible();
+      await expect(socialLinks.getByText("Discord:", { exact: true })).toBeVisible();
+      await expect(socialLinks.getByText("AT Protocol:", { exact: true })).toBeVisible();
+    } finally {
+      await context.close();
     }
   });
 

@@ -3,6 +3,11 @@ import passport from "passport";
 import { createHash, randomBytes } from "crypto";
 import { hashPassword, comparePasswords, isAuthenticated } from "./passport";
 import {
+  DiscordLinkError,
+  normalizeDiscordExpectedHandle,
+  type DiscordLinkIntent,
+} from "./discord-link";
+import {
   createUser,
   getUserById,
   getUserByUsername,
@@ -54,12 +59,15 @@ import { runXConnectOnboardingSoon } from "../lib/w-x-onboarding";
 import {
   exchangeXProofToken,
   normalizeXProofHandle,
+  resolveXProofIntent,
   requestXProofToken,
   shouldUseXIdentityProof,
   xProofAccountUpdate,
   xProofAuthorizeUrl,
+  xProofIdentityMatchesIntent,
   XProofProviderError,
 } from "./twitter-proof";
+import { xProofUnchangedLinkWhere, type XProofLinkSnapshot } from "./twitter-proof-snapshot";
 import { listRolesForUserSnapshot } from "../lib/user-roles";
 import { listActiveUserCurses } from "../lib/user-curses";
 import { getWtfOsAccessForRoles } from "../lib/role-surface-access";
@@ -424,6 +432,9 @@ function oauthVerifyCallback(
     passport.authenticate(strategy, (err: Error | null, user: any) => {
       if (err) {
         console.error(`[auth] ${strategy} callback error:`, err);
+        if (strategy === "discord-verify" && err instanceof DiscordLinkError) {
+          return res.redirect(profileRedirect(`error=${err.code}`));
+        }
         return res.redirect(profileRedirect(failureQuery));
       }
       if (!user) {
@@ -1280,20 +1291,29 @@ router.get("/api/auth/twitter-proof", isAuthenticated, async (req, res) => {
     return res.redirect(profileRedirect("error=twitter_proof_not_configured"));
   }
 
-  const rawHandle = req.query.expectedHandle;
-  const expectedHandle = normalizeXProofHandle(rawHandle);
-  if (!expectedHandle) {
-    return res.redirect(profileRedirect("error=twitter_proof_handle"));
-  }
-
   try {
+    const current = await getUserById(Number((req.user as any).id));
+    if (!current) {
+      return res.redirect(profileRedirect("error=twitter_proof_session"));
+    }
+    const existingLink = {
+      twitterId: current.twitterId ?? null,
+      twitterHandle: current.twitterHandle ?? null,
+      twitterVerified: current.twitterVerified === true,
+    };
+    const intent = resolveXProofIntent(req.query.expectedHandle, existingLink);
+    if (!intent) {
+      return res.redirect(profileRedirect("error=twitter_proof_handle"));
+    }
     const callbackUrl = oauthCallbackUrl("/api/auth/twitter-proof/callback");
     const pending = await requestXProofToken({ consumerKey, consumerSecret }, callbackUrl);
     (req.session as any).twitterProof = {
       token: pending.token,
       secret: pending.secret,
       userId: (req.user as any).id,
-      expectedHandle,
+      ...intent,
+      existingLink,
+      intentVersion: 3,
       createdAt: Date.now(),
     };
     req.session.save((err) => {
@@ -1301,7 +1321,7 @@ router.get("/api/auth/twitter-proof", isAuthenticated, async (req, res) => {
         console.error("[auth] X identity proof session save failed:", err);
         return res.redirect(profileRedirect("error=twitter_proof_session"));
       }
-      return res.redirect(xProofAuthorizeUrl(pending.token, expectedHandle));
+      return res.redirect(xProofAuthorizeUrl(pending.token, intent.promptHandle));
     });
   } catch (err) {
     if (err instanceof XProofProviderError) {
@@ -1321,6 +1341,9 @@ router.get("/api/auth/twitter-proof/callback", async (req, res) => {
   try {
     if (!req.user || !pending || pending.userId !== (req.user as any).id) {
       return res.redirect(fail("twitter_proof_session"));
+    }
+    if (pending.intentVersion !== 3 || !pending.existingLink) {
+      return res.redirect(fail("twitter_proof_restart"));
     }
     const returnedToken = typeof req.query.oauth_token === "string" ? req.query.oauth_token : "";
     const verifier = typeof req.query.oauth_verifier === "string" ? req.query.oauth_verifier : "";
@@ -1369,28 +1392,42 @@ router.get("/api/auth/twitter-proof/callback", async (req, res) => {
     if (!identity) {
       return res.redirect(fail("twitter_proof_identity"));
     }
-    const expectedHandle = normalizeXProofHandle(pending.expectedHandle);
-    if (!expectedHandle) {
+    const expectedHandle = pending.expectedHandle == null
+      ? null
+      : normalizeXProofHandle(pending.expectedHandle);
+    if (pending.expectedHandle != null && !expectedHandle) {
       return res.redirect(fail("twitter_proof_state"));
     }
-    if (expectedHandle !== identity.handle) {
+    if (!xProofIdentityMatchesIntent(identity, {
+      expectedHandle,
+      priorId: pending.priorId || null,
+      allowAccountChange: pending.allowAccountChange === true,
+    })) {
       return res.redirect(
         fail(
           "twitter_proof_wrong_account",
-          `&expected=${encodeURIComponent(expectedHandle)}&actual=${encodeURIComponent(identity.handle)}`
+          `&expected=${encodeURIComponent(expectedHandle || "")}&actual=${encodeURIComponent(identity.handle)}`
         )
       );
     }
 
     const user = req.user as any;
-    const updateSet = xProofAccountUpdate(user, identity);
+    const existingLink = pending.existingLink as XProofLinkSnapshot;
+    if (
+      (existingLink.twitterId !== null && typeof existingLink.twitterId !== "string") ||
+      (existingLink.twitterHandle !== null && typeof existingLink.twitterHandle !== "string") ||
+      typeof existingLink.twitterVerified !== "boolean"
+    ) {
+      return res.redirect(fail("twitter_proof_state"));
+    }
+    const updateSet = xProofAccountUpdate(existingLink, identity);
     const [updated] = await db
       .update(users)
       .set(updateSet)
-      .where(eq(users.id, user.id))
+      .where(xProofUnchangedLinkWhere(user.id, existingLink))
       .returning();
     if (!updated) {
-      return res.redirect(fail("twitter_proof"));
+      return res.redirect(fail("twitter_proof_conflict"));
     }
     await new Promise<void>((resolve, reject) => {
       req.login(updated, (err) => (err ? reject(err) : resolve()));
@@ -1411,11 +1448,13 @@ router.get("/api/auth/twitter-oauth2", isAuthenticated, (req, res) => {
     // Route them to identity-only proof before creating a token whose
     // /users/me lookup would consume a paid X API User Read.
     if (shouldUseXIdentityProof(req.query.returnTo)) {
-      const intended = normalizeXProofHandle(req.query.expectedHandle);
-      if (!intended) {
+      const intent = resolveXProofIntent(req.query.expectedHandle, req.user as any);
+      if (!intent) {
         return res.redirect(profileRedirect("error=twitter_proof_handle"));
       }
-      return res.redirect(`/api/auth/twitter-proof?expectedHandle=${encodeURIComponent(intended)}`);
+      return res.redirect(intent.promptHandle
+        ? `/api/auth/twitter-proof?expectedHandle=${encodeURIComponent(intent.promptHandle)}`
+        : "/api/auth/twitter-proof");
     }
     const clientId = getTwitterOAuth2ClientId();
     if (!clientId) {
@@ -1710,10 +1749,32 @@ if (
   router.get(
     "/api/auth/discord",
     isAuthenticated,
-    passport.authenticate("discord-verify"),
+    (req, res, next) => {
+      const expectedHandle = normalizeDiscordExpectedHandle(req.query.expectedHandle);
+      if (!expectedHandle) {
+        return res.redirect(profileRedirect("error=discord_handle"));
+      }
+      const userId = Number((req.user as { id?: number } | undefined)?.id);
+      if (!Number.isInteger(userId)) {
+        return res.redirect(profileRedirect("error=discord_session"));
+      }
+      (req.session as typeof req.session & {
+        discordLinkIntent?: DiscordLinkIntent;
+      }).discordLinkIntent = { userId, expectedHandle };
+      return passport.authenticate("discord-verify")(req, res, next);
+    },
   );
   router.get(
     "/api/auth/discord/callback",
+    (req, res, next) => {
+      const intent = (req.session as typeof req.session & {
+        discordLinkIntent?: DiscordLinkIntent;
+      }).discordLinkIntent;
+      if (!req.isAuthenticated() || !intent) {
+        return res.redirect(profileRedirect("error=discord_session"));
+      }
+      return next();
+    },
     oauthVerifyCallback("discord-verify", "verified=discord", "error=discord"),
   );
 } else {

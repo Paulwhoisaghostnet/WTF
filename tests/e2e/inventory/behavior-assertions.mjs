@@ -548,13 +548,39 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     domain: "Entry, Authentication, and Account Identity",
     platformOwner: "profile-social",
     ownerSpec:
-      "server/auth/oauth-base.test.ts; server/auth/twitter-proof.test.ts; client/src/pages/profile-social-link-policy.test.ts; tests/playwright/inventory/profile-x-proof.spec.mjs",
+      "server/auth/oauth-base.test.ts; server/auth/twitter-proof.test.ts; server/auth/twitter-proof-snapshot.test.ts; client/src/pages/profile-social-link-policy.test.ts; tests/playwright/inventory/profile-x-proof.spec.mjs",
     verificationCommand:
-      "npx tsx --test server/auth/oauth-base.test.ts server/auth/twitter-proof.test.ts client/src/pages/profile-social-link-policy.test.ts && npm run build && npx playwright test tests/playwright/inventory/profile-x-proof.spec.mjs --project=chromium --reporter=list",
+      "npx tsx --test server/auth/oauth-base.test.ts server/auth/twitter-proof.test.ts server/auth/twitter-proof-snapshot.test.ts client/src/pages/profile-social-link-policy.test.ts && npm run build && npx playwright test tests/playwright/inventory/profile-x-proof.spec.mjs --project=chromium --reporter=list",
     userVisibleAssertion:
-      "Profile requires the intended X handle, explains the fresh X sign-in for account changes, sends that handle to the identity-only proof route, and displays a specific recovery message if X returns another account or omits identity. The provider callback stays on canonical wtfos.app even if legacy platform env is present.",
+      "Profile lets a first-time user connect X without entering a handle, accepts an optional intended handle for targeted account changes, and displays a specific recovery message if X returns another account or omits identity. The provider callback stays on canonical wtfos.app even if legacy platform env is present.",
     durableSideEffectAssertion:
-      "The server binds a one-time signed OAuth 1.0a request token to the wtfOS session, requires provider-returned user ID and screen name to match the intended handle, replaces the stored X identity only after that proof, clears credentials from a different previously linked X account, and performs no metered user lookup. The browser story covers the handoff and callback error; external provider consent and durable DB write still require a live account-backed proof before full E2E coverage can be claimed.",
+      "The server binds a one-time signed OAuth 1.0a request token to the wtfOS session, requires provider-returned user ID and screen name, enforces any supplied intended handle, and compares the saved X link at callback with its start snapshot before replacing it. It clears credentials from a different previously linked X account and performs no metered user lookup. The browser stories cover blank-handle first link, targeted handoff, and callback error; external provider consent and durable DB write still require a live account-backed proof before full E2E coverage can be claimed.",
+  },
+  {
+    id: "profile.discord-expected-account",
+    domain: "Entry, Authentication, and Account Identity",
+    platformOwner: "profile-social",
+    ownerSpec:
+      "server/auth/discord-link.test.ts; server/auth/discord-strategy.test.ts; server/auth/discord-ownership.test.ts; tests/playwright/inventory/profile-social-linking.spec.mjs",
+    verificationCommand:
+      "npx tsx --test server/auth/discord-link.test.ts server/auth/discord-strategy.test.ts server/auth/discord-ownership.test.ts && npm run build && npx playwright test tests/playwright/inventory/profile-social-linking.spec.mjs --project=chromium --reporter=list",
+    userVisibleAssertion:
+      "Profile groups X, Discord, and AT Protocol account proofs under Social network linking, requires the intended Discord username, and reports a different-account callback without replacing the displayed linked identity.",
+    durableSideEffectAssertion:
+      "The Discord callback binds the intended username to the authenticated session and OAuth state, accepts only the matching provider identity, and leaves the previous durable link untouched on mismatch. Profile OAuth and bot proof serialize claims for one Discord ID and reject a different WTF owner before persistence. The browser story covers handoff and error presentation; external Discord consent and the actual database write require an account-backed live proof.",
+  },
+  {
+    id: "profile.atproto-expected-account",
+    domain: "Entry, Authentication, and Account Identity",
+    platformOwner: "profile-social",
+    ownerSpec:
+      "server/features/atproto/profile-proof.test.ts; server/features/atproto/oauth-session-restore.test.ts; tests/playwright/inventory/profile-social-linking.spec.mjs",
+    verificationCommand:
+      "npx tsx --test server/features/atproto/profile-proof.test.ts server/features/atproto/oauth-session-restore.test.ts && npm run build && npx playwright test tests/playwright/inventory/profile-social-linking.spec.mjs --project=chromium --reporter=list",
+    userVisibleAssertion:
+      "Profile asks for an AT Protocol handle and starts an identity-only account proof that returns to Profile; a different-account callback reports the mismatch and leaves the existing link visible.",
+    durableSideEffectAssertion:
+      "The AT Protocol callback compares the returned DID and handle with the intended identity before changing the durable account row, preserves existing grants when reverifying the same DID, and rejects a DID already linked to another WTF user. The browser story covers handoff and error presentation; external provider consent and the actual database write require an account-backed live proof.",
   },
   {
     id: "profile.pfp-preview-gateway-fallback",

@@ -37,10 +37,7 @@ import { WatchedVideosList } from "../features/profile/WatchedVideosList";
 import { useAuth } from "../lib/auth-context";
 import { useWallet } from "../lib/wallet-context";
 import { api } from "../lib/api";
-import {
-  presentationRouteHref,
-  usePresentationShell,
-} from "../lib/presentation-shell";
+import { usePresentationShell } from "../lib/presentation-shell";
 import {
   advanceResolvedMediaFallback,
   resolveTokenThumbnail,
@@ -190,6 +187,24 @@ const SocialRow = styled.div.attrs(profileRegion("social-row"))`
   flex-wrap: wrap;
 `;
 
+const SocialNetworkGroup = styled.section`
+  min-width: 0;
+  margin: var(--wtf-space-3, 12px) 0;
+  padding: var(--wtf-space-3, 12px);
+  border: 1px solid var(--wtf-app-border, #808080);
+  background: var(--wtf-app-surface-raised, #fff);
+
+  h3 {
+    margin: 0 0 var(--wtf-space-2, 8px);
+    color: var(--wtf-app-text, #111);
+    font-size: 16px;
+  }
+`;
+
+const SocialNetworkLabel = styled.strong`
+  min-width: 88px;
+`;
+
 const VerifiedBadge = styled(UiStatusPill).attrs({ $tone: "success" as const })``;
 
 const PfpContainer = styled.div.attrs(profileRegion("identity-cluster"))`
@@ -336,10 +351,6 @@ const HelperText = styled.p`
   color: var(--wtf-app-muted-text, #384352);
   font-size: var(--wtf-type-caption, 13px);
   line-height: 1.4;
-`;
-
-const InlineCode = styled.code`
-  font-size: var(--wtf-type-caption, 13px);
 `;
 
 /* ── types ───────────────────────────────────────────────────────────────── */
@@ -498,6 +509,8 @@ export function Profile() {
   const [twitterPublic, setTwitterPublic] = useState(false);
   const [discordHandle, setDiscordHandle] = useState("");
   const [discordPublic, setDiscordPublic] = useState(false);
+  const [atprotoHandle, setAtprotoHandle] = useState("");
+  const [atprotoHandleEdited, setAtprotoHandleEdited] = useState(false);
   const [emailPublic, setEmailPublic] = useState(false);
   const [socialDirty, setSocialDirty] = useState(false);
   const [oauthFlash, setOauthFlash] = useState<{
@@ -551,6 +564,11 @@ export function Profile() {
       qc.invalidateQueries({ queryKey: ["auth", "user"] });
     } else if (verified === "discord") {
       setOauthFlash({ kind: "ok", message: "Discord account linked successfully." });
+      qc.invalidateQueries({ queryKey: ["profile-social"] });
+      qc.invalidateQueries({ queryKey: ["auth", "user"] });
+    } else if (verified === "atproto") {
+      setOauthFlash({ kind: "ok", message: "AT Protocol account verified and linked successfully." });
+      setAtprotoHandleEdited(false);
       qc.invalidateQueries({ queryKey: ["profile-social"] });
       qc.invalidateQueries({ queryKey: ["auth", "user"] });
     }
@@ -610,7 +628,12 @@ export function Profile() {
       const actual = params.get("actual");
       setOauthFlash({
         kind: "err",
-        message: `X signed in as ${actual ? `@${actual}` : "another X account"}, but you asked to link ${expected ? `@${expected}` : "the handle you entered"}. Return to Profile and sign in to the intended X account. Your profile's X link was not changed.`,
+        message: `X signed in as ${actual ? `@${actual}` : "another X account"}, but this profile expected ${expected ? `@${expected}` : "its existing linked account"}. Sign in to that account, or enter a new handle to change the link. Your profile's X link was not changed.`,
+      });
+    } else if (err === "twitter_proof_conflict") {
+      setOauthFlash({
+        kind: "err",
+        message: "Your X link changed in another session while verification was open. The newer link was kept; start again from this Profile page.",
       });
     } else if (err === "twitter_proof") {
       setOauthFlash({
@@ -718,7 +741,77 @@ export function Profile() {
     } else if (err === "discord") {
       setOauthFlash({
         kind: "err",
-        message: "Discord verification failed. Try again or check redirect URL in Discord Developer Portal.",
+        message: "Discord verification failed. Your linked account was not changed. Please try again.",
+      });
+    } else if (err === "discord_account_mismatch") {
+      setOauthFlash({
+        kind: "err",
+        message: "Discord signed in to a different account. Choose the username you entered and try again; your existing link was not changed.",
+      });
+    } else if (err === "discord_handle") {
+      setOauthFlash({
+        kind: "err",
+        message: "Enter a valid Discord username before starting verification.",
+      });
+    } else if (err === "discord_session") {
+      setOauthFlash({
+        kind: "err",
+        message: "Your sign-in session was lost during Discord verification. Start again from Profile in the same browser.",
+      });
+    } else if (err === "discord_profile") {
+      setOauthFlash({
+        kind: "err",
+        message: "Discord did not return an account identity. Your existing link was not changed. Please try again.",
+      });
+    } else if (err === "discord_already_linked") {
+      setOauthFlash({
+        kind: "err",
+        message: "This Discord account is already linked to another WTF account. Your existing link was not changed.",
+      });
+    } else if (err === "atproto_account_mismatch") {
+      setOauthFlash({
+        kind: "err",
+        message: "AT Protocol signed in to a different account. Sign in as the handle you entered; your existing link was not changed.",
+      });
+    } else if (err === "atproto_handle") {
+      setOauthFlash({
+        kind: "err",
+        message: "Enter a valid AT Protocol handle before starting verification.",
+      });
+    } else if (err === "atproto_handle_not_found") {
+      setOauthFlash({
+        kind: "err",
+        message: "That AT Protocol handle could not be found. Check the handle and try again.",
+      });
+    } else if (err === "atproto_identity_unavailable") {
+      setOauthFlash({
+        kind: "err",
+        message: "AT Protocol did not confirm this account's identity. Your existing link was not changed. Please try again.",
+      });
+    } else if (err === "atproto_scope_mismatch") {
+      setOauthFlash({
+        kind: "err",
+        message: "AT Protocol did not grant the identity permission needed to link this account. Please start again.",
+      });
+    } else if (err === "atproto_already_linked") {
+      setOauthFlash({
+        kind: "err",
+        message: "This AT Protocol account is already linked to another WTF account.",
+      });
+    } else if (err === "atproto_platform_actor_confirmation_required") {
+      setOauthFlash({
+        kind: "err",
+        message: "This shared platform account needs explicit confirmation in Skywire before it can be linked.",
+      });
+    } else if (err === "atproto_session") {
+      setOauthFlash({
+        kind: "err",
+        message: "Your sign-in session was lost during AT Protocol verification. Start again from Profile in the same browser.",
+      });
+    } else if (err === "atproto_oauth_start" || err === "atproto_oauth") {
+      setOauthFlash({
+        kind: "err",
+        message: "AT Protocol verification could not finish. Your existing link was not changed. Please try again.",
       });
     } else if (err === "twitter_not_configured" || err === "twitter_oauth2_not_configured") {
       setOauthFlash({
@@ -729,8 +822,7 @@ export function Profile() {
     } else if (err === "discord_not_configured") {
       setOauthFlash({
         kind: "err",
-        message:
-          "Discord login is not configured on the server. Set DISCORD_CLIENT_ID and DISCORD_CLIENT_SECRET (and PUBLIC_SITE_URL) in Netlify.",
+        message: "Discord linking is unavailable right now. Please try again later.",
       });
     }
 
@@ -761,11 +853,17 @@ export function Profile() {
     if (social && !socialDirty) {
       setTwitterHandle(social.twitterHandle || "");
       setTwitterPublic(social.twitterPublic);
-      setDiscordHandle(social.discordHandle || "");
+      setDiscordHandle((social.discordHandle || "").replace(/#0$/i, ""));
       setDiscordPublic(social.discordPublic);
       setEmailPublic(social.emailPublic);
     }
   }, [social, socialDirty]);
+
+  useEffect(() => {
+    if (!atprotoHandleEdited) {
+      setAtprotoHandle(social?.atprotoHandle || "");
+    }
+  }, [social?.atprotoHandle, atprotoHandleEdited]);
 
   useEffect(() => {
     if (!accountDirty) {
@@ -937,7 +1035,7 @@ export function Profile() {
       setSocialDirty(false);
       setOauthFlash({
         kind: "ok",
-        message: "Skywire AT Protocol identity disconnected. Reconnect from Skywire when you want it back.",
+        message: "AT Protocol account disconnected. Verify an AT Protocol handle here to link one again.",
       });
       qc.invalidateQueries({ queryKey: ["profile-social"] });
       qc.invalidateQueries({ queryKey: ["skywire", "me"] });
@@ -946,7 +1044,7 @@ export function Profile() {
     onError: (err: Error) => {
       setOauthFlash({
         kind: "err",
-        message: `Failed to disconnect Skywire: ${err.message}`,
+        message: `Failed to disconnect AT Protocol account: ${err.message}`,
       });
     },
   });
@@ -1024,13 +1122,39 @@ export function Profile() {
 
   const expectedTwitterHandle = normalizeProfileTwitterHandle(twitterHandle);
   const currentTwitterHandle = normalizeProfileTwitterHandle(social?.twitterHandle || "");
-  const twitterConnectLabel = !expectedTwitterHandle
-    ? "Enter an X handle"
+  const twitterHandleInvalid = !!twitterHandle.trim() && !expectedTwitterHandle;
+  const twitterTargetedChange = !!expectedTwitterHandle &&
+    (!social?.twitterVerified || currentTwitterHandle !== expectedTwitterHandle);
+  const twitterConnectLabel = twitterHandleInvalid
+    ? "Enter a valid X handle"
+    : !expectedTwitterHandle
+      ? social?.twitterVerified ? "Reverify X" : "Connect X"
     : social?.twitterVerified && currentTwitterHandle === expectedTwitterHandle
       ? `Reverify @${expectedTwitterHandle}`
       : social?.twitterVerified
         ? `Change to @${expectedTwitterHandle}`
         : `Verify @${expectedTwitterHandle}`;
+  const expectedDiscordHandle = discordHandle.trim().replace(/^@+/, "");
+  const currentDiscordHandle = (social?.discordHandle || "").replace(/#0$/i, "");
+  const discordConnectLabel = !expectedDiscordHandle
+    ? "Enter a Discord username"
+    : social?.discordVerified && currentDiscordHandle.toLowerCase() === expectedDiscordHandle.toLowerCase()
+      ? `Reverify ${expectedDiscordHandle}`
+      : social?.discordVerified
+        ? `Change to ${expectedDiscordHandle}`
+        : `Verify ${expectedDiscordHandle}`;
+  const expectedAtprotoHandle = atprotoHandle.trim().replace(/^@+/, "");
+  const atprotoHandleLabel = expectedAtprotoHandle.startsWith("did:")
+    ? expectedAtprotoHandle
+    : `@${expectedAtprotoHandle}`;
+  const currentAtprotoHandle = (social?.atprotoHandle || "").toLowerCase();
+  const atprotoConnectLabel = !expectedAtprotoHandle
+    ? "Enter an AT handle"
+    : social?.atprotoDid && currentAtprotoHandle === expectedAtprotoHandle.toLowerCase()
+      ? `Reverify ${atprotoHandleLabel}`
+      : social?.atprotoDid
+        ? `Change to ${atprotoHandleLabel}`
+        : `Verify ${atprotoHandleLabel}`;
 
   /* ── PFP editor ────────────────────────────────────────────────────────── */
 
@@ -1393,13 +1517,6 @@ export function Profile() {
             </UiButton>
           </UiNotice>
         )}
-        <HelperText style={{ marginBottom: 8 }}>
-          <strong>Verify with X / Discord:</strong> you stay logged into WTF; we
-          open X or Discord so you can authorize linking. Requires{" "}
-          <InlineCode>PUBLIC_SITE_URL</InlineCode> on the server to
-          match this site (e.g. <InlineCode>https://wtfos.app</InlineCode>
-          ).
-        </HelperText>
         <SocialRow>
           <strong style={{ width: 70 }}>Email:</strong>
           <span style={{ flex: 1, fontSize: PROFILE_CAPTION_TYPE }}>
@@ -1416,162 +1533,187 @@ export function Profile() {
           />
         </SocialRow>
 
-        <SocialRow>
-          <strong style={{ width: 70 }}>Skywire:</strong>
-          <span style={{ flex: 1, fontSize: PROFILE_CAPTION_TYPE, overflowWrap: "anywhere" }}>
-            {social?.atprotoHandle ? (
-              <>
-                @{social.atprotoHandle}
-                {social.atprotoDisplayName ? ` (${social.atprotoDisplayName})` : ""}
-              </>
-            ) : (
-              "Not connected"
-            )}
-          </span>
-          {social?.atprotoHandle ? <VerifiedBadge>Connected</VerifiedBadge> : null}
-          <UiButton
-            size="sm"
-            onClick={() => {
-              window.location.assign(presentationRouteHref("/skywire"));
-            }}
-          >
-            {social?.atprotoHandle ? "Open Skywire" : "Connect Skywire"}
-          </UiButton>
-          {social?.atprotoHandle ? (
-            <UiButton
-              size="sm"
-              uiVariant="danger"
-              disabled={disconnectSkywireMutation.isPending}
-              onClick={() => {
-                if (confirm("Disconnect this Skywire AT Protocol identity from your WTF account?")) {
-                  disconnectSkywireMutation.mutate();
-                }
-              }}
-            >
-              {disconnectSkywireMutation.isPending ? "Disconnecting Skywire..." : "Disconnect Skywire"}
-            </UiButton>
-          ) : null}
-        </SocialRow>
+        <SocialNetworkGroup data-profile-section="social-network-linking">
+          <h3>Social network linking</h3>
+          <HelperText style={{ marginBottom: 8 }}>
+            Verify your social accounts here. X can use the account already signed in;
+            enter a handle when you want to choose a different one. Discord and AT Protocol
+            use the username or handle you enter below.
+          </HelperText>
 
-        <SocialRow>
-          <strong style={{ width: 70 }}>Twitter:</strong>
-          <TextInput
-            aria-label="Twitter handle"
-            value={twitterHandle}
-            onChange={(e: any) => {
-              setTwitterHandle(e.target.value);
-              markDirty();
-            }}
-            placeholder="handle (without @)"
-            style={{ flex: 1, minWidth: 100 }}
-          />
-          {social?.twitterVerified && (
-            <VerifiedBadge>
-              {social.twitterHandle ? `Linked @${social.twitterHandle}` : "Linked X account"}
-            </VerifiedBadge>
-          )}
+          <SocialRow>
+            <SocialNetworkLabel>X:</SocialNetworkLabel>
+            <TextInput
+              aria-label="Twitter handle"
+              value={twitterHandle}
+              onChange={(e: any) => {
+                setTwitterHandle(e.target.value);
+                markDirty();
+              }}
+              placeholder="handle (without @)"
+              style={{ flex: 1, minWidth: 100 }}
+            />
+            {social?.twitterVerified && (
+              <VerifiedBadge>
+                {social.twitterHandle ? `Linked @${social.twitterHandle}` : "Linked X account"}
+              </VerifiedBadge>
+            )}
+            {oauthConfig?.twitterProof ? (
+              <UiButton
+                size="sm"
+                disabled={disconnectSocialMutation.isPending || twitterHandleInvalid}
+                onClick={() => {
+                  const path = twitterTargetedChange
+                    ? `/api/auth/twitter-proof?${new URLSearchParams({ expectedHandle: expectedTwitterHandle }).toString()}`
+                    : "/api/auth/twitter-proof";
+                  window.location.assign(oauthStartUrl(path));
+                }}
+              >
+                {twitterConnectLabel}
+              </UiButton>
+            ) : (
+              <span
+                data-wtf-caption="true"
+                style={{ maxWidth: 140 }}
+              >
+                X identity verification unavailable
+              </span>
+            )}
+            {social?.twitterHandle || social?.twitterVerified ? (
+              <UiButton
+                size="sm"
+                uiVariant="danger"
+                disabled={disconnectSocialMutation.isPending}
+                onClick={() => disconnectSocialMutation.mutate("twitter")}
+              >
+                {disconnectSocialMutation.isPending ? "Disconnecting X..." : "Disconnect X"}
+              </UiButton>
+            ) : null}
+            <Checkbox
+              label="Public"
+              aria-label="Make Twitter public"
+              checked={twitterPublic}
+              onChange={() => {
+                setTwitterPublic(!twitterPublic);
+                markDirty();
+              }}
+            />
+          </SocialRow>
           {oauthConfig?.twitterProof ? (
+            <div data-wtf-caption="true" style={{ marginBottom: 10 }}>
+              {twitterHandleInvalid
+                ? "Use a valid X handle or leave this blank to use your current X sign-in."
+                : twitterTargetedChange
+                  ? `X will ask you to sign in as @${expectedTwitterHandle}.`
+                  : "Continue to X with your current sign-in. Your existing link stays in place if X returns another account."}
+            </div>
+          ) : null}
+
+          <SocialRow>
+            <SocialNetworkLabel>Discord:</SocialNetworkLabel>
+            <TextInput
+              aria-label="Discord username"
+              value={discordHandle}
+              onChange={(e: any) => {
+                setDiscordHandle(e.target.value);
+                markDirty();
+              }}
+              placeholder="username"
+              style={{ flex: 1, minWidth: 100 }}
+            />
+            {social?.discordVerified && <VerifiedBadge>Verified</VerifiedBadge>}
+            {oauthConfig?.discord ? (
+              <UiButton
+                size="sm"
+                disabled={disconnectSocialMutation.isPending || !expectedDiscordHandle}
+                onClick={() => {
+                  const params = new URLSearchParams({ expectedHandle: expectedDiscordHandle });
+                  window.location.assign(oauthStartUrl(`/api/auth/discord?${params.toString()}`));
+                }}
+              >
+                {discordConnectLabel}
+              </UiButton>
+            ) : !oauthConfig?.discord ? (
+              <span
+                data-wtf-caption="true"
+                style={{ maxWidth: 140 }}
+              >
+                Discord not configured
+              </span>
+            ) : null}
+            {social?.discordHandle || social?.discordVerified ? (
+              <UiButton
+                size="sm"
+                uiVariant="danger"
+                disabled={disconnectSocialMutation.isPending}
+                onClick={() => disconnectSocialMutation.mutate("discord")}
+              >
+                {disconnectSocialMutation.isPending ? "Disconnecting Discord..." : "Disconnect Discord"}
+              </UiButton>
+            ) : null}
+            <Checkbox
+              label="Public"
+              aria-label="Make Discord public"
+              checked={discordPublic}
+              onChange={() => {
+                setDiscordPublic(!discordPublic);
+                markDirty();
+              }}
+            />
+          </SocialRow>
+
+          <SocialRow>
+            <SocialNetworkLabel>AT Protocol:</SocialNetworkLabel>
+            <TextInput
+              aria-label="AT Protocol handle"
+              value={atprotoHandle}
+              onChange={(e: any) => {
+                setAtprotoHandle(e.target.value);
+                setAtprotoHandleEdited(true);
+              }}
+              placeholder="name.bsky.social"
+              style={{ flex: 1, minWidth: 130 }}
+            />
+            {social?.atprotoDid ? (
+              <VerifiedBadge>
+              {social.atprotoHandle
+                ? `Linked ${social.atprotoHandle.startsWith("did:") ? "" : "@"}${social.atprotoHandle}`
+                : "Linked AT Protocol account"}
+              </VerifiedBadge>
+            ) : null}
             <UiButton
               size="sm"
-              disabled={disconnectSocialMutation.isPending || !expectedTwitterHandle}
+              disabled={!expectedAtprotoHandle || disconnectSkywireMutation.isPending}
               onClick={() => {
                 const params = new URLSearchParams({
-                  expectedHandle: expectedTwitterHandle,
+                  app: "profile",
+                  handle: expectedAtprotoHandle,
+                  returnTo: "/profile",
                 });
-                window.location.assign(
-                  oauthStartUrl(`/api/auth/twitter-proof?${params.toString()}`)
-                );
+                window.location.assign(oauthStartUrl(`/api/atproto/oauth/start?${params.toString()}`));
               }}
             >
-              {twitterConnectLabel}
+              {atprotoConnectLabel}
             </UiButton>
-          ) : (
-            <span
-              data-wtf-caption="true"
-              style={{ maxWidth: 140 }}
-            >
-              X identity verification unavailable
-            </span>
-          )}
-          {social?.twitterHandle || social?.twitterVerified ? (
-            <UiButton
-              size="sm"
-              uiVariant="danger"
-              disabled={disconnectSocialMutation.isPending}
-              onClick={() => disconnectSocialMutation.mutate("twitter")}
-            >
-              {disconnectSocialMutation.isPending ? "Disconnecting X..." : "Disconnect X"}
-            </UiButton>
-          ) : null}
-          <Checkbox
-            label="Public"
-            aria-label="Make Twitter public"
-            checked={twitterPublic}
-            onChange={() => {
-              setTwitterPublic(!twitterPublic);
-              markDirty();
-            }}
-          />
-        </SocialRow>
-        {oauthConfig?.twitterProof ? (
-          <div data-wtf-caption="true" style={{ marginBottom: 10 }}>
-            {expectedTwitterHandle
-              ? `X will ask you to sign in as @${expectedTwitterHandle}. Verification uses X sign-in without an X profile lookup.`
-              : "Enter the X handle you want to verify. X will ask you to sign in to that account."}
-          </div>
-        ) : null}
-
-        <SocialRow>
-          <strong style={{ width: 70 }}>Discord:</strong>
-          <TextInput
-            aria-label="Discord handle"
-            value={discordHandle}
-            onChange={(e: any) => {
-              setDiscordHandle(e.target.value);
-              markDirty();
-            }}
-            placeholder="username#0000"
-            style={{ flex: 1, minWidth: 100 }}
-          />
-          {social?.discordVerified && <VerifiedBadge>Verified</VerifiedBadge>}
-          {oauthConfig?.discord ? (
-            <UiButton
-              size="sm"
-              disabled={disconnectSocialMutation.isPending}
-              onClick={() => {
-                window.location.assign(oauthStartUrl("/api/auth/discord"));
-              }}
-            >
-              {social?.discordVerified ? "Reconnect Discord" : "Connect Discord"}
-            </UiButton>
-          ) : !oauthConfig?.discord ? (
-            <span
-              data-wtf-caption="true"
-              style={{ maxWidth: 140 }}
-            >
-              Discord not configured
-            </span>
-          ) : null}
-          {social?.discordHandle || social?.discordVerified ? (
-            <UiButton
-              size="sm"
-              uiVariant="danger"
-              disabled={disconnectSocialMutation.isPending}
-              onClick={() => disconnectSocialMutation.mutate("discord")}
-            >
-              {disconnectSocialMutation.isPending ? "Disconnecting Discord..." : "Disconnect Discord"}
-            </UiButton>
-          ) : null}
-          <Checkbox
-            label="Public"
-            aria-label="Make Discord public"
-            checked={discordPublic}
-            onChange={() => {
-              setDiscordPublic(!discordPublic);
-              markDirty();
-            }}
-          />
-        </SocialRow>
+            {social?.atprotoDid ? (
+              <UiButton
+                size="sm"
+                uiVariant="danger"
+                disabled={disconnectSkywireMutation.isPending}
+                onClick={() => {
+                  if (confirm("Disconnect this AT Protocol identity from your WTF account?")) {
+                    disconnectSkywireMutation.mutate();
+                  }
+                }}
+              >
+                {disconnectSkywireMutation.isPending ? "Disconnecting AT Protocol..." : "Disconnect AT Protocol"}
+              </UiButton>
+            ) : null}
+          </SocialRow>
+          <HelperText style={{ marginTop: 0 }}>
+            Your AT Protocol handle also connects Skywire. You can grant Skywire's extra permissions there when needed.
+          </HelperText>
+        </SocialNetworkGroup>
 
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 4 }}>
           <UiButton
@@ -1588,7 +1730,7 @@ export function Profile() {
           see all info.
         </HelperText>
         <HelperText style={{ marginTop: 4 }}>
-          Changing a social handle clears verification until you reconnect that provider.
+          Saving a changed X or Discord handle clears its verification until you reconnect that account.
         </HelperText>
       </Section>
 

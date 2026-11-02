@@ -1,4 +1,5 @@
 import { Agent, AtpAgent, type AtpSessionData } from "@atproto/api";
+import { AsyncLocalStorage } from "node:async_hooks";
 import {
   NodeOAuthClient,
   type NodeSavedSession,
@@ -26,6 +27,7 @@ import {
 
 const stateStore = new Map<string, NodeSavedState>();
 const pendingOAuthSessions = new Map<string, NodeSavedSession>();
+const callbackOAuthSessions = new AsyncLocalStorage<Map<string, NodeSavedSession>>();
 let oauthClient: NodeOAuthClient | null = null;
 
 export const ATPROTO_OAUTH_STATE_TTL_MS = 15 * 60 * 1000;
@@ -323,7 +325,7 @@ export function assertPersistableOAuthSession(session: unknown): asserts session
 }
 
 export function resolveAtprotoOAuthGrantState(params: {
-  appName: "skywire" | "tz2at";
+  appName: "skywire" | "tz2at" | "profile";
   tokenScope?: string | null;
   requestedScope?: string | null;
   chatRequested?: boolean;
@@ -490,6 +492,23 @@ export function takePendingOAuthSessionForDid(did: string): NodeSavedSession | n
   return session;
 }
 
+export async function captureAtprotoOAuthCallbackSessions<T>(
+  callback: () => Promise<T>,
+): Promise<{ value: T; sessions: ReadonlyMap<string, NodeSavedSession> }> {
+  const sessions = new Map<string, NodeSavedSession>();
+  const value = await callbackOAuthSessions.run(sessions, callback);
+  return { value, sessions };
+}
+
+export async function saveAtprotoSdkSessionForDid(did: string, session: NodeSavedSession): Promise<void> {
+  const callbackSessions = callbackOAuthSessions.getStore();
+  if (callbackSessions) {
+    callbackSessions.set(did, session);
+    return;
+  }
+  await persistOAuthSessionForDid(did, session);
+}
+
 export async function getAtprotoOAuthClient(): Promise<NodeOAuthClient> {
   if (oauthClient) return oauthClient;
   oauthClient = new NodeOAuthClient({
@@ -535,7 +554,7 @@ export async function getAtprotoOAuthClient(): Promise<NodeOAuthClient> {
         return restored;
       },
       async set(key: string, value: NodeSavedSession) {
-        await persistOAuthSessionForDid(key, value);
+        await saveAtprotoSdkSessionForDid(key, value);
       },
       async del(key: string) {
         pendingOAuthSessions.delete(key);

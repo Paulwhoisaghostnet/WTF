@@ -10,6 +10,7 @@ test("Profile account shell is presentation-host aware", () => {
   assert.match(profileSource, /data-profile-presentation-host=\{presentation\.host\}/);
   assert.match(profileSource, /data-profile-section="account"/);
   assert.match(profileSource, /data-profile-section="social"/);
+  assert.match(profileSource, /data-profile-section="social-network-linking"/);
   assert.match(profileSource, /data-profile-section="linked-wallets"/);
   assert.match(profileSource, /data-profile-section="owned-tokens"/);
 });
@@ -31,7 +32,7 @@ test("Profile Gamma chrome scopes identity, wallet, and PFP modal regions", () =
   assert.match(profileSource, /border-radius:\s*6px/);
 });
 
-test("Profile keeps shared account, wallet, avatar, OAuth, and Skywire behavior", () => {
+test("Profile keeps shared account, wallet, avatar, OAuth, and AT Protocol behavior", () => {
   assert.match(profileSource, /queryKey:\s*\["wallets"\]/);
   assert.match(profileSource, /api\.get<WalletWithCount\[\]>\("\/api\/wallets"\)/);
   assert.match(profileSource, /queryKey:\s*\["profile-social"\]/);
@@ -50,8 +51,9 @@ test("Profile keeps shared account, wallet, avatar, OAuth, and Skywire behavior"
   assert.doesNotMatch(profileSource, /toDataURL\("image\/png"\)/);
   assert.match(profileSource, /api\.delete\("\/api\/profile\/pfp"\)/);
   assert.match(profileSource, /\/api\/profile\/pfp-candidates\?\$\{pfpQueryParams\}/);
-  assert.match(profileSource, /presentationRouteHref\("\/skywire"\)/);
-  assert.match(profileSource, /oauthStartUrl\(`\/api\/auth\/twitter-proof\?\$\{params\.toString\(\)\}`\)/);
-  assert.match(profileSource, /oauthStartUrl\("\/api\/auth\/discord"\)/);
+  assert.match(profileSource, /window\.location\.assign\(oauthStartUrl\(path\)\)/);
+  assert.match(profileSource, /"\/api\/auth\/twitter-proof"/);
+  assert.match(profileSource, /oauthStartUrl\(`\/api\/auth\/discord\?\$\{params\.toString\(\)\}`\)/);
+  assert.match(profileSource, /oauthStartUrl\(`\/api\/atproto\/oauth\/start\?\$\{params\.toString\(\)\}`\)/);
   assert.doesNotMatch(profileSource, /\/api\/gamma/);
 });
