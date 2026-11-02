@@ -10,6 +10,7 @@ import { formatFundingAmount, fundingEntryError, type FundingActionKind, type Fu
 import { fundingWalletGateway } from "./funding-wallet-adapter";
 import { getNetwork } from "../../lib/tezos/loaders";
 import { OpenDuelFundingPanel } from "./OpenDuelFundingPanel";
+import { SponsorFundingPanel } from "./SponsorFundingPanel";
 
 const Panel = styled.section`
   flex: 1; min-height: 0; overflow: auto; padding: 16px;
@@ -37,18 +38,27 @@ const endpoint = (roomCode: string) => `/api/wtfiap/funding/rooms/${encodeURICom
 const configEndpoint = (roomCode: string) => `/api/wtfiap/funding/config?room=${encodeURIComponent(roomCode)}`;
 
 export function FundingPanel({ roomCode, onReturn, onEnterRoom }: { roomCode: string; onReturn(): void; onEnterRoom(): void }) {
-  const [mode, setMode] = useState<'open' | 'legacy' | 'error' | null>(null);
+  const [mode, setMode] = useState<'sponsor' | 'open' | 'legacy' | 'error' | null>(null);
   const [probeError, setProbeError] = useState('');
   useEffect(() => {
     let active = true; setMode(null);
-    void api.get(`/api/wtfiap/open-duel/rooms/${encodeURIComponent(roomCode)}`)
-      .then(() => { if (active) setMode('open'); })
-      .catch((reason: unknown) => { if (!active) return;
-        if (isApiRequestError(reason) && reason.status === 400) setMode('legacy');
-        else { setProbeError(reason instanceof Error ? reason.message : 'Escrow verification is unavailable.'); setMode('error'); }
+    void api.get(`/api/wtfiap/sponsor-funding/rooms/${encodeURIComponent(roomCode)}`)
+      .then(() => { if (active) setMode('sponsor'); })
+      .catch((sponsorReason: unknown) => {
+        if (!active) return;
+        if (!isApiRequestError(sponsorReason) || ![400, 404].includes(sponsorReason.status)) {
+          setProbeError(sponsorReason instanceof Error ? sponsorReason.message : 'Prize escrow verification is unavailable.'); setMode('error'); return;
+        }
+        void api.get(`/api/wtfiap/open-duel/rooms/${encodeURIComponent(roomCode)}`)
+          .then(() => { if (active) setMode('open'); })
+          .catch((reason: unknown) => { if (!active) return;
+            if (isApiRequestError(reason) && reason.status === 400) setMode('legacy');
+            else { setProbeError(reason instanceof Error ? reason.message : 'Escrow verification is unavailable.'); setMode('error'); }
+          });
       });
     return () => { active = false; };
   }, [roomCode]);
+  if (mode === 'sponsor') return <SponsorFundingPanel roomCode={roomCode} onReturn={onReturn} />;
   if (mode === 'open') return <OpenDuelFundingPanel roomCode={roomCode} onReturn={onReturn} onEnterRoom={onEnterRoom} />;
   if (mode === 'legacy') return <LegacyFundingPanel roomCode={roomCode} onReturn={onReturn} />;
   if (mode === 'error') return <Panel role="alert"><h2>Room funding unavailable</h2><p>{probeError}</p>

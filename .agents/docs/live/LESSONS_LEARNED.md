@@ -13266,3 +13266,13 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: Paul did not look like the character users were promised, and the recorded introductions would continue showing the old design after a sprite change.
 
 **Rule**: Inspect character art at its rendered desktop size and in each shared placement. When a visual asset is baked into guide recordings, rebuild and validate those recordings and their posters from reusable narration in the same change. Version the public asset URLs when browser caching could keep showing the old art after deploy.
+
+---
+
+## 2026-11-02 — Read settled escrow claims with Taquito's flattened big-map keys
+
+**What happened**: The sponsored escrow settled and paid its Shadownet XTZ claims, but the host reader returned no cash claims. Its Taquito `BigMapAbstraction.get` call supplied a nested pair for a three-part Michelson key; Taquito expects one positional array containing room ID, wallet and currency index.
+
+**Why it mattered**: A funded room could appear settled while its prize and treasury claim state stayed invisible to the game UI.
+
+**Rule**: Use the flattened positional key for each nested-pair big map and check the reader against a settled on-chain room, as well as a mocked regression case, before enabling new escrow views.

@@ -11,8 +11,10 @@ const Party = require('../core/party.cjs');
 const Match = require('../core/match.cjs');
 const Tournament = require('../core/tournament.cjs');
 const DuelWager = require('../core/duel-wager.cjs');
+const SponsoredPrizes = require('../core/sponsored-prizes.cjs');
 const Accounting = require('../core/tournament-accounting.cjs');
 const Standings = require('../core/party-standings.cjs');
+const SponsorTieBreak = require('../core/sponsor-tie-break.cjs');
 const ROOT = path.resolve(__dirname, '../..');
 const DIST = path.join(ROOT, 'dist');
 const REVIEW = path.join(ROOT, 'review');
@@ -97,7 +99,7 @@ function configuration(input, preserveItemVersion = false) {
   requireThat(input.oddPlayerPolicy === undefined || input.oddPlayerPolicy === 'round-ai', 'An odd survivor faces the round-scaled AI opponent.');
   requireThat(input.openSeatEscrowVersion === undefined || input.openSeatEscrowVersion === 1 && roomType === 'duel' &&
     input.duelWager?.currency === 'XTZ', 'Open-seat escrow belongs only to XTZ duels.');
-  requireThat(['duel', 'party', 'tournament'].includes(roomType), 'Choose a Duel, Party or Tournament room.');
+  requireThat(['duel', 'party', 'tournament', 'sponsored'].includes(roomType), 'Choose a Duel, Party or Tournament room.');
   requireThat(!['config', 'currency', 'entryFee', 'entryAtomic', 'prizePercentages', 'shares', 'tournamentAccounting'].some(key => Object.hasOwn(input, key)),
     'Tournament money terms belong in the tournament configuration.');
   requireThat(input.itemRulesVersion === undefined || input.itemRulesVersion === 1, 'Unknown item rules version.');
@@ -129,7 +131,25 @@ function configuration(input, preserveItemVersion = false) {
     ...(features ? { rulesPreset: input.rulesPreset, gameFeatures: features,
       treasureEnabled: features.treasure, zoneBonusesEnabled: features.zoneBonuses,
       ...(features.blessings || features.curses ? { fortuneKinds: { blessings: features.blessings, curses: features.curses } } : {}) } : {}) };
-  if (roomType === 'tournament') {
+  if (roomType === 'sponsored' || (['party', 'tournament'].includes(roomType) && (Object.hasOwn(input, 'sponsor') || Object.hasOwn(input, 'sponsorInput')))) {
+    requireThat(['mainnet', 'shadownet'].includes(input.sponsorNetwork), 'Choose Tezos Mainnet or Shadownet for sponsor prizes.');
+    requireThat(typeof input.sponsorCompetes === 'boolean', 'Choose whether the sponsor plays or watches.');
+    requireThat(input.allowAI === undefined || typeof input.allowAI === 'boolean', 'Choose whether AI may fill unoccupied seats.');
+    requireThat(!Object.hasOwn(input, 'tournament') && !Object.hasOwn(input, 'duelWager'), 'Sponsored prizes use their own fixed terms.');
+    const sponsorInput = input.sponsorInput || input.sponsor;
+    let sponsor;
+    try { sponsor = SponsoredPrizes.normalize(sponsorInput); }
+    catch (error) { requireThat(false, error.message); }
+    requireThat(preserveItemVersion || sponsor.mode !== 'pick', 'Place-order token picking is not available for new rooms yet. Choose fixed or random allocation.');
+    requireThat(sponsor.entry.currency === 'FREE' || sponsor.minimumHumans >= 2, 'Paid prize rooms require at least two human entrants.');
+    if (input.sponsorInput) requireThat(fingerprint(sponsor) === fingerprint(input.sponsor), 'Persisted sponsor terms changed.');
+    config.roomType = roomType;
+    config.sponsorNetwork = input.sponsorNetwork;
+    config.allowAI = input.allowAI !== false;
+    config.sponsorCompetes = input.sponsorCompetes;
+    config.sponsorInput = clone(sponsorInput);
+    config.sponsor = sponsor;
+  } else if (roomType === 'tournament') {
     requireThat(!Object.hasOwn(input, 'duelWager') && (input.allowAI === undefined || typeof input.allowAI === 'boolean'),
       'Tournament AI fill must be an explicit yes or no.');
     try { config.tournament = Tournament.normalizeTerms(input.tournament); }
@@ -137,7 +157,7 @@ function configuration(input, preserveItemVersion = false) {
     if (input.allowAI === true) config.allowAI = true;
     config.roomType = roomType;
   } else {
-    requireThat(!Object.hasOwn(input, 'tournament'), 'Entry fees are only available in Tournament rooms.');
+    requireThat(!Object.hasOwn(input, 'tournament') && !Object.hasOwn(input, 'sponsor') && !Object.hasOwn(input, 'sponsorCompetes') && !Object.hasOwn(input, 'sponsorNetwork'), 'Prize terms belong to their room type.');
     requireThat(!Object.hasOwn(input, 'allowAI'), 'Only tournaments can fill empty seats with AI.');
     if (roomType === 'duel') {
       if (Object.hasOwn(input, 'duelWager')) {
@@ -150,7 +170,7 @@ function configuration(input, preserveItemVersion = false) {
   return config;
 }
 function immutableTerms(input) {
-  requireThat(!['roomType', 'tournament', 'duelWager', 'allowAI', 'tournamentAccounting', 'config', 'currency', 'entryFee', 'entryAtomic', 'shopOddsVersion',
+  requireThat(!['roomType', 'tournament', 'duelWager', 'sponsor', 'sponsorInput', 'sponsorCompetes', 'sponsorNetwork', 'allowAI', 'tournamentAccounting', 'config', 'currency', 'entryFee', 'entryAtomic', 'shopOddsVersion',
     'prizePercentages', 'shares', 'mode', 'fundingStatus', 'collectedAtomic'].some(key => Object.hasOwn(input, key)),
   'Room type and tournament terms are fixed when the room is created.');
 }
@@ -182,7 +202,7 @@ function auditFundingRoom(room, atMs) {
   try {
     if (room.match) {
       const copy = Party.restore(Party.serialize(room.match));
-      if (room.config.roomType === 'tournament' && room.config.allowAI !== true) Accounting.validate(room.tournamentAccounting, room.match);
+      if (room.config.roomType === 'tournament' && !room.config.sponsor && room.config.allowAI !== true) Accounting.validate(room.tournamentAccounting, room.match);
       const result = Party.advance(copy, atMs);
       requireThat(result.ok, result.reason || 'Authoritative transition failed.');
       Party.validate(copy);
@@ -194,7 +214,7 @@ function auditFundingRoom(room, atMs) {
 }
 
 function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now, listen = true,
-  apiPrefix = '/api/party', sharePath = '/dist/party.html', staticFiles = true, resolveActor, onRoomChanged, onPreparationOpened,
+  apiPrefix = '/api/party', sharePath = '/dist/party.html', staticFiles = true, resolveActor, onRoomChanged,
   openDuelNetworks = [] } = {}) {
   requireThat(typeof apiPrefix === 'string' && /^\/[A-Za-z0-9_/-]+$/.test(apiPrefix) && !apiPrefix.endsWith('/') && !apiPrefix.includes('//'), 'Use an absolute API path without a trailing slash.');
   requireThat(typeof sharePath === 'string' && sharePath.startsWith('/') && !sharePath.startsWith('//') && !/[?#\\]/.test(sharePath), 'Use a same-origin invitation path without a query or fragment.');
@@ -217,7 +237,7 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
       // Cache completed human views only after replay-derived accounting has
       // been validated under this room's pinned rules. Historical claims must
       // not replay an old match through a later game's hero definitions.
-      if (room.config.roomType === 'tournament' && room.config.allowAI !== true) {
+      if (room.config.roomType === 'tournament' && !room.config.sponsor && room.config.allowAI !== true) {
         Accounting.validate(room.tournamentAccounting, room.match);
         requireThat(room.tournamentAccounting.status === 'complete', 'A funded terminal archive requires complete verified accounting.');
       } else {
@@ -239,13 +259,14 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
     if (notifyFunding && onRoomChanged) queueMicrotask(() => onRoomChanged(room.roomCode));
   }
   const isTournament = room => room.config.roomType === 'tournament';
+  const isSponsored = room => !!room.config.sponsor;
   const isDuel = room => room.config.roomType === 'duel';
   const isWageredDuel = room => isDuel(room) && !!room.config.duelWager;
-  const usesLegacyAccounting = room => isTournament(room) && room.config.allowAI !== true;
-  const hasWagerTerms = room => isTournament(room) || isWageredDuel(room);
+  const usesLegacyAccounting = room => isTournament(room) && !isSponsored(room) && room.config.allowAI !== true;
+  const hasWagerTerms = room => isTournament(room) || isWageredDuel(room) || isSponsored(room);
   const roomCapacity = room => isDuel(room) ? 2 : ROOM_SIZE;
   function reconcileTournament(room, restoring = false) {
-    if (!isTournament(room)) {
+    if (!isTournament(room) || isSponsored(room)) {
       requireThat(room.tournamentAccounting === undefined, 'Party rooms cannot carry tournament accounting.'); return false;
     }
     Tournament.validateTerms(room.config.tournament);
@@ -283,6 +304,17 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
     room.tournamentAccounting = next; return true;
   }
   function tournamentView(room) {
+    if (isSponsored(room)) return { sponsored: { mode: room.fundingLock ? 'escrow' : 'awaiting-escrow',
+      network: room.config.sponsorNetwork,
+      fundingStatus: room.fundingLock?.summary?.status || (room.fundingLock ? 'opening' : 'unfunded'),
+      ...(room.fundingLock ? { funding: { roomId: room.fundingLock.roomId, network: room.fundingLock.network,
+        escrowContract: room.fundingLock.escrowContract, ...clone(room.fundingLock.summary || {}) } } : {}),
+      aiFill: room.config.allowAI === true,
+      payingEntrants: room.players.filter(player => !player.isAI).length,
+      minimumHumans: room.config.sponsor.minimumHumans,
+      prizePlaces: room.config.sponsor.places.length,
+      sponsorCompetes: room.config.sponsorCompetes,
+      terms: clone(room.config.sponsor) } };
     if (isWageredDuel(room)) return { wager: { mode: room.fundingLock || room.fundingOffer ? 'escrow' : 'accounting-only',
       fundingStatus: room.fundingLock?.summary?.status || room.fundingOffer?.summary?.status || (room.fundingLock ? 'opening' : 'unfunded'),
       collectedAtomic: room.fundingLock?.summary?.collectedAtomic || room.fundingOffer?.summary?.collectedAtomic || '0',
@@ -316,8 +348,9 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
     room.watcherSessions ||= {};
     room.messages ||= [];
     if (room.closedAtMs !== undefined) requireThat(Number.isSafeInteger(room.closedAtMs) && room.closedAtMs >= room.createdAtMs &&
-      room.closedByPlayerId === room.hostPlayerId && !room.fundingLock && !room.fundingOffer,
-    'Closed room archive must be an unfunded host action.');
+      (room.closedByPlayerId === room.hostPlayerId || isSponsored(room) && room.closedByPlayerId === room.hostWatcherId) &&
+      !room.match && !room.fundingLock && !room.fundingOffer,
+    'Closed room archive must be an unfunded, unstarted host action.');
     if (room.fundingOffer) requireThat(isWageredDuel(room) && room.config.duelWager.currency === 'XTZ' &&
       !room.closedAtMs && hash(room.fundingOffer.seed) === room.fundingOffer.seedCommitment &&
       ['roomId', 'termsHash', 'rulesHash', 'matchId'].every(key => /^[a-f0-9]{64}$/.test(room.fundingOffer[key])) &&
@@ -331,8 +364,10 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
         ...(room.config.duelWager.network ? { network: room.config.duelWager.network } : {}) } } : {}) }, true);
     requireThat(fingerprint(restoredConfig) === fingerprint(room.config), 'Persisted room configuration is not canonical.');
     if (room.fundingLock) {
-      requireThat(hasWagerTerms(room) && room.players.length === roomCapacity(room) &&
-        (room.fundingLock.version === 3
+      requireThat(hasWagerTerms(room) && (isSponsored(room) && room.fundingLock.version === 4 || room.players.length === roomCapacity(room)) &&
+        (room.fundingLock.version === 4
+          ? isSponsored(room) && hash(room.fundingLock.seed) === room.fundingLock.seedCommitment
+          : room.fundingLock.version === 3
           ? room.fundingOffer && hash(room.fundingLock.seed) === room.fundingLock.seedCommitment
           : room.fundingLock.version === 2
           ? fingerprint({ seed: room.fundingLock.seed, roster: room.players.map(player => ({ playerId: player.playerId, isAI: player.isAI })) })
@@ -369,9 +404,9 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
     rooms.set(room.roomCode, room);
   }
   function lobby(room) {
-    return { authorityEpoch, roomCode: room.roomCode, hostPlayerId: room.hostPlayerId,
+    return { authorityEpoch, roomCode: room.roomCode, hostPlayerId: room.hostPlayerId, hostWatcherId: room.hostWatcherId || null,
       phase: room.voidArchive ? 'voided' : room.closedAtMs !== undefined ? 'closed' : room.match ? room.match.phase : 'lobby',
-      ...(!room.fundingLock && !room.fundingOffer ? { canClose: room.closedAtMs === undefined } : {}),
+      ...(!room.match && !room.fundingLock && !room.fundingOffer ? { canClose: room.closedAtMs === undefined } : {}),
       players: room.players.map(({ playerId, name, isAI }) => ({ playerId, name, isAI })),
       watchers: room.watchers.map(({ watcherId, name }) => ({ watcherId, name })),
       config: clone(room.config), capacity: roomCapacity(room), sharePath: sharePath + '?room=' + room.roomCode, ...tournamentView(room) };
@@ -383,9 +418,6 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
       : (room.match?.players.find(player => player.hp > 0)?.playerId || room.players[0]?.playerId)) : session.playerId;
     const base = room.terminalArchive ? clone(room.terminalArchive.views[watchedPlayerId])
       : room.match ? Party.view(room.match, watchedPlayerId) : lobby(room);
-    // Hosts may retire unescrowed tables from any phase. Escrow-bound rooms
-    // remain pinned to the refund/settlement flow and cannot be closed here.
-    if (room.closedAtMs === undefined && !room.fundingLock && !room.fundingOffer) base.canClose = true;
     if (spectator && room.match) {
       // Party.view contains a commander's private shop. A watcher gets the
       // same public board and combat, with no offers or actionable seat.
@@ -402,8 +434,7 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
         Object.assign(player, { finalHP, finalGold, fieldedMaxHP });
       }
     }
-    return { ...base, phase: room.closedAtMs !== undefined ? 'closed' : base.phase,
-      roomCode: room.roomCode, hostPlayerId: room.hostPlayerId, config: clone(room.config),
+    return { ...base, roomCode: room.roomCode, hostPlayerId: room.hostPlayerId, hostWatcherId: room.hostWatcherId || null, config: clone(room.config),
       authorityEpoch, roomRevision: room.revision, serverNowMs: atMs, nextCommandSequence: spectator ? null : session.nextSequence,
       viewer: { id: viewerId, name: spectator ? room.watchers.find(watcher => watcher.watcherId === viewerId)?.name : room.players.find(player => player.playerId === viewerId)?.name,
         role: spectator ? 'watcher' : 'player' }, watchingPlayerId: watchedPlayerId,
@@ -433,7 +464,7 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
   }
   function schedule(room) {
     if (timers.has(room.roomCode)) clearTimeout(timers.get(room.roomCode));
-    timers.delete(room.roomCode); if (closing || room.closedAtMs !== undefined) return;
+    timers.delete(room.roomCode); if (closing) return;
     const atMs = deadline(room); if (atMs === null || atMs === undefined) return;
     requireThat(Number.isSafeInteger(atMs) && atMs >= 0, 'Party deadlines must be exact epoch milliseconds.');
     const delay = Math.min(MAX_TIMER_MS, Math.max(0, atMs - now()));
@@ -444,15 +475,11 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
     timer.unref(); timers.set(room.roomCode, timer);
   }
   function advance(room) {
-    if (room.closedAtMs !== undefined || room.terminalArchive || room.voidArchive || room.fundingFaultArchive) return;
+    if (room.terminalArchive || room.voidArchive || room.fundingFaultArchive) return;
     if (room.match) {
       const result = Party.advance(room.match, now());
       requireThat(result.ok, result.reason || 'Party clock transition failed.', 500);
-      const preparationOpened = result.events?.find(event => event.type === 'preparation-opened');
-      if (preparationOpened) {
-        prepareBots(room);
-        notifyPreparationOpened(room, preparationOpened.roundNumber);
-      }
+      if (result.events?.some(event => event.type === 'preparation-opened')) prepareBots(room);
       const accountingChanged = reconcileTournament(room);
       if (result.changed || accountingChanged) {
         room.revision++;
@@ -470,19 +497,6 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
       const result = Party.prepareAI(room.match, player.playerId, now());
       requireThat(result.ok, result.reason || 'AI preparation failed.', 500);
     }
-  }
-  function notifyPreparationOpened(room, roundNumber = room.match?.roundNumber) {
-    if (typeof onPreparationOpened !== 'function' || !Number.isSafeInteger(roundNumber)) return;
-    const recipients = room.players.filter(player => !player.isAI && validText(player.playerId)).flatMap(player => {
-      const roomWindowOpen = [...(streams.get(room.roomCode) || [])].some(subscriber =>
-        subscriber.session?.playerId === player.playerId && !subscriber.response.destroyed && !subscriber.response.writableEnded);
-      if (roomWindowOpen) return [];
-      const accountId = Object.values(room.sessions).find(session => session.playerId === player.playerId && validText(session.accountId))?.accountId;
-      return accountId ? [{ userId: accountId, playerId: player.playerId, name: player.name }] : [];
-    });
-    if (!recipients.length) return;
-    queueMicrotask(() => Promise.resolve(onPreparationOpened({ roomCode: room.roomCode, roundNumber, recipients }))
-      .catch(error => console.warn('coLILseum turn notification failed:', error?.message || error)));
   }
   function authenticate(request, room) {
     const authorization = request.headers.authorization || '';
@@ -502,6 +516,10 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
     const account = actor(request);
     if (account) {
       requireThat(!Object.values(room.sessions).some(session => session.accountId === account.id), 'This account already has a commander in this room.', 409);
+      if (isSponsored(room) && !room.config.sponsorCompetes) {
+        const sponsor = Object.values(room.watcherSessions).find(session => session.watcherId === room.hostWatcherId);
+        requireThat(sponsor?.accountId !== account.id, 'The noncompeting sponsor cannot take a player seat in this room.', 409);
+      }
       name = account.name;
     }
     requireThat(validText(name), 'Enter a commander name.');
@@ -510,23 +528,6 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
     const session = { playerId, nextSequence: 1, commands: {}, ...(account ? { accountId: account.id } : {}) };
     room.sessions[hash(sessionToken)] = session;
     return { playerId, sessionToken, session };
-  }
-  function resumeAccountPlayer(room, request) {
-    const account = actor(request);
-    requireThat(account, 'Sign in to the WTF account that owns this commander.', 401);
-    const existing = Object.entries(room.sessions).find(([, session]) => session.accountId === account.id &&
-      room.players.some(player => player.playerId === session.playerId && !player.isAI));
-    requireThat(existing, 'This WTF account has no player seat in this room.', 404);
-    const previous = existing[1];
-    for (const [tokenHash, session] of Object.entries(room.sessions)) {
-      if (session.accountId === account.id && session.playerId === previous.playerId) delete room.sessions[tokenHash];
-    }
-    const sessionToken = crypto.randomUUID();
-    const session = { playerId: previous.playerId, accountId: account.id,
-      nextSequence: previous.nextSequence, commands: clone(previous.commands) };
-    room.sessions[hash(sessionToken)] = session;
-    persist(room, false);
-    return { roomCode: room.roomCode, playerId: session.playerId, sessionToken };
   }
   function addWatcher(room, name, request) {
     const account = actor(request);
@@ -570,26 +571,24 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
         const config = configuration(input);
         const room = { version: 1, roomCode: crypto.randomUUID(), revision: 0, config, players: [], sessions: {},
           watchers: [], watcherSessions: {}, messages: [], match: null, createdAtMs: now() };
-        const identity = addHuman(room, input.name, request); room.hostPlayerId = identity.playerId;
+        const sponsorWatches = !!config.sponsor && !config.sponsorCompetes;
+        const identity = sponsorWatches ? addWatcher(room, input.name, request) : addHuman(room, input.name, request);
+        if (sponsorWatches) { room.hostPlayerId = null; room.hostWatcherId = identity.watcherId; }
+        else room.hostPlayerId = identity.playerId;
         persist(room); rooms.set(room.roomCode, room);
-        writeJSON(response, 201, { ok: true, roomCode: room.roomCode, playerId: identity.playerId,
+        writeJSON(response, 201, { ok: true, roomCode: room.roomCode, playerId: identity.playerId || identity.watcherId,
+          ...(sponsorWatches ? { role: 'watcher' } : {}),
           sessionToken: identity.sessionToken, sharePath: lobby(room).sharePath, view: snapshot(room, identity.session) }); return;
       }
-      const route = endpoint.match(/^\/rooms\/([^/]+)(?:\/(join|watch|resume|start|close|commands|messages|events|replay|lobby))?$/);
+      const route = endpoint.match(/^\/rooms\/([^/]+)(?:\/(join|watch|start|close|commands|messages|events|replay|lobby))?$/);
       requireThat(route, 'Unknown party endpoint.', 404);
       const room = rooms.get(route[1]); requireThat(room, 'Party room not found.', 404);
       const action = route[2];
       if (request.method === 'GET' && action === 'lobby') { writeJSON(response, 200, { ok: true, view: lobby(room), serverNowMs: now() }); return; }
-      if (request.method === 'POST' && action === 'resume') {
-        const input = await bodyJSON(request);
-        requireThat(Object.keys(input).length === 0, 'Rejoining a player seat needs no extra data.');
-        const identity = resumeAccountPlayer(room, request);
-        writeJSON(response, 200, { ok: true, ...identity }); return;
-      }
       if (request.method === 'POST' && action === 'join') {
         const input = await bodyJSON(request);
         immutableTerms(input);
-        requireThat(room.closedAtMs === undefined && !room.match && !room.fundingLock && !room.fundingOffer &&
+        requireThat(room.closedAtMs === undefined && !room.match && (!room.fundingLock || isSponsored(room)) && !room.fundingOffer &&
           room.config.openSeatEscrowVersion !== 1,
           'This room is closed, already started, or has frozen funded entrants.', 409);
         requireThat(room.players.length < roomCapacity(room), 'All room seats are occupied.', 409);
@@ -612,12 +611,12 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
       if (request.method === 'POST' && action === 'close') {
         const input = await bodyJSON(request);
         requireThat(Object.keys(input).length === 0, 'Closing a room needs no extra terms.');
-        requireThat(!session.watcherId && session.playerId === room.hostPlayerId,
+        requireThat(session.playerId === room.hostPlayerId || isSponsored(room) && session.watcherId === room.hostWatcherId,
           'Only the room host can close it.', 403);
-        requireThat(!room.fundingLock && !room.fundingOffer, 'Escrow-bound rooms must use their refund or settlement flow.', 409);
+        requireThat(!room.match && !room.fundingLock && !room.fundingOffer, 'Started or escrow-bound rooms cannot be closed.', 409);
         if (room.closedAtMs === undefined) {
-          room.closedAtMs = now(); room.closedByPlayerId = session.playerId;
-          room.revision++; schedule(room); persist(room, false); publish(room);
+          room.closedAtMs = now(); room.closedByPlayerId = session.playerId || session.watcherId;
+          room.revision++; persist(room, false); publish(room);
         }
         writeJSON(response, 200, { ok: true, view: snapshot(room, session) }); return;
       }
@@ -658,6 +657,7 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
       if (request.method === 'POST' && action === 'start') {
         const input = await bodyJSON(request);
         immutableTerms(input);
+        requireThat(!isSponsored(room), 'Sponsored rooms start only after prizes and required human entries are verified in escrow.', 409);
         requireThat(room.closedAtMs === undefined, 'This room is closed.', 409);
         requireThat(!session.watcherId, 'Watchers cannot start a match.', 403);
         requireThat(session.playerId === room.hostPlayerId, 'Only the room host can start the party.', 403);
@@ -679,7 +679,6 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
         if (usesLegacyAccounting(room)) room.tournamentAccounting = Accounting.create({ matchId: room.match.matchId,
           terms: room.config.tournament, playerIds: room.players.map(player => player.playerId) });
         prepareBots(room);
-        notifyPreparationOpened(room, room.match.roundNumber);
         room.revision++; persist(room); publish(room); schedule(room);
         writeJSON(response, 200, { ok: true, view: snapshot(room, session) }); return;
       }
@@ -746,7 +745,11 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
     inspect(roomCode) {
       const room = rooms.get(roomCode); requireThat(room, 'Party room not found.', 404);
       const accounts = new Map(Object.values(room.sessions).map(session => [session.playerId, session.accountId ?? null]));
-      return { roomCode, hostPlayerId: room.hostPlayerId, config: clone(room.config),
+      return { roomCode, hostPlayerId: room.hostPlayerId, hostWatcherId: room.hostWatcherId || null,
+        sponsorAccountId: room.hostWatcherId
+          ? Object.values(room.watcherSessions).find(session => session.watcherId === room.hostWatcherId)?.accountId || null
+          : accounts.get(room.hostPlayerId) || null,
+        config: clone(room.config),
         phase: room.voidArchive ? 'voided' : room.closedAtMs !== undefined ? 'closed' : room.match?.phase || 'lobby',
         players: room.players.map(player => ({ ...clone(player), accountId: accounts.get(player.playerId) })),
         lock: room.fundingLock ? (({ seed, ...publicLock }) => clone(publicLock))(room.fundingLock) : null,
@@ -821,23 +824,30 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
         'Only an open, unstarted wager room can open escrow.', 409);
       for (const key of ['roomId', 'termsHash', 'rulesHash', 'matchId']) requireThat(typeof binding[key] === 'string' && /^[a-f0-9]{64}$/.test(binding[key]), 'Invalid funding commitment.');
       requireThat(['mainnet', 'shadownet'].includes(binding.network) && /^KT1[1-9A-HJ-NP-Za-km-z]{33}$/.test(binding.escrowContract), 'Invalid escrow binding.');
+      if (isSponsored(room)) requireThat(binding.network === room.config.sponsorNetwork, 'Sponsor escrow network must match the room.');
       const expected = { roomId: binding.roomId, termsHash: binding.termsHash, rulesHash: binding.rulesHash,
         matchId: binding.matchId, network: binding.network, escrowContract: binding.escrowContract };
       if (room.fundingOffer) requireThat(Object.entries(expected).every(([key, value]) => room.fundingOffer[key] === value),
         'The funded match must use its original open-offer commitments.');
       if (room.fundingLock) requireThat(Object.entries(expected).every(([key, value]) => room.fundingLock[key] === value), 'Escrow commitments cannot change.', 409);
       else {
-        requireThat((isTournament(room) && room.config.allowAI === true || room.players.length === roomCapacity(room)) &&
+        if (isSponsored(room)) {
+          const sponsorSession = room.config.sponsorCompetes
+            ? Object.values(room.sessions).find(session => session.playerId === room.hostPlayerId)
+            : Object.values(room.watcherSessions).find(session => session.watcherId === room.hostWatcherId);
+          requireThat(validText(sponsorSession?.accountId), 'The sponsor must use an account-bound room session before escrow opens.', 409);
+        }
+        if (!isSponsored(room)) requireThat((isTournament(room) && room.config.allowAI === true || room.players.length === roomCapacity(room)) &&
           (!isTournament(room) || room.config.allowAI !== true || room.players.length >= 2) &&
           room.players.every(player => !player.isAI) &&
           room.players.every(player => Object.values(room.sessions).some(session => session.playerId === player.playerId && validText(session.accountId))),
         'Funded rooms require at least two account-bound human entrants and every paying wallet.', 409);
-        const seed = room.fundingOffer ? room.fundingOffer.seed : crypto.randomUUID();
-        if (isTournament(room) && room.config.allowAI === true)
+        const seed = room.fundingOffer ? room.fundingOffer.seed : isSponsored(room) ? crypto.randomBytes(32).toString('hex') : crypto.randomUUID();
+        if (isTournament(room) && !isSponsored(room) && room.config.allowAI === true)
           while (room.players.length < ROOM_SIZE) room.players.push({ playerId: crypto.randomUUID(), name: 'AI Commander ' + (room.players.length + 1), isAI: true });
         const modern = isWageredDuel(room) || room.config.allowAI === true;
-        room.fundingLock = { ...expected, ...(room.fundingOffer ? { version: 3 } : modern ? { version: 2 } : {}), seed,
-          seedCommitment: room.fundingOffer ? hash(seed) : modern ? fingerprint({ seed, roster: room.players.map(player => ({ playerId: player.playerId, isAI: player.isAI })) }) : hash(seed),
+        room.fundingLock = { ...expected, ...(isSponsored(room) ? { version: 4 } : room.fundingOffer ? { version: 3 } : modern ? { version: 2 } : {}), seed,
+          seedCommitment: isSponsored(room) || room.fundingOffer ? hash(seed) : modern ? fingerprint({ seed, roster: room.players.map(player => ({ playerId: player.playerId, isAI: player.isAI })) }) : hash(seed),
           summary: { status: 'opening', collectedAtomic: '0' } };
         room.revision++; persist(room); publish(room);
       }
@@ -856,12 +866,20 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
       requireThat(['roomId', 'termsHash', 'matchId'].every(key => binding[key] === room.fundingLock[key]), 'Applied start must match the frozen room.', 409);
       requireThat(!room.voidArchive && !room.fundingFaultArchive, 'A paused or voided funded room cannot start.', 409);
       if (room.match) return funding.inspect(roomCode);
+      if (isSponsored(room)) {
+        const humans = room.players.filter(player => !player.isAI);
+        requireThat(humans.length >= room.config.sponsor.minimumHumans &&
+          (room.config.allowAI === true || room.players.length === roomCapacity(room)) &&
+          humans.every(player => Object.values(room.sessions).some(session => session.playerId === player.playerId && validText(session.accountId))),
+        'Sponsor prizes require the selected human minimum and account-bound entrants before the verified escrow start.', 409);
+        if (room.config.allowAI === true) while (room.players.length < ROOM_SIZE)
+          room.players.push({ playerId: crypto.randomUUID(), name: 'AI Commander ' + (room.players.length + 1), isAI: true });
+      }
       room.match = Party.createMatch({ matchId: 'party:' + room.roomCode, seed: room.fundingLock.seed,
         ...room.config, players: clone(room.players), openedAtMs: now() });
       if (usesLegacyAccounting(room)) room.tournamentAccounting = Accounting.create({ matchId: room.match.matchId,
         terms: room.config.tournament, playerIds: room.players.map(player => player.playerId) });
       prepareBots(room);
-      notifyPreparationOpened(room, room.match.roundNumber);
       room.revision++; persist(room); publish(room); schedule(room);
       return funding.inspect(roomCode);
     },
@@ -890,6 +908,18 @@ function createServer({ port = 0, host = '127.0.0.1', dataDir, clock = Date.now,
       // submitted winner, prize amount or standings document from a client.
       return clone(usesLegacyAccounting(room) ? Accounting.settle(room.tournamentAccounting, room.match).completion
         : { ...Standings.derive(room.match), receiptsHash: fingerprint(room.match.receipts) });
+    },
+    revealSeed(roomCode) {
+      const room = rooms.get(roomCode); requireThat(isSponsored(room) && room.fundingLock?.version === 4 && room.match?.phase === 'finished',
+        'Only a finished sponsored room may reveal its committed seed.', 409);
+      requireThat(hash(room.fundingLock.seed) === room.fundingLock.seedCommitment, 'The sponsor seed commitment changed.');
+      return room.fundingLock.seed;
+    },
+    sponsorHumanRanks(roomCode) {
+      const room = rooms.get(roomCode); requireThat(isSponsored(room) && room.fundingLock?.version === 4 && room.match?.phase === 'finished',
+        'Only a finished sponsored room has human prize ranks.', 409);
+      requireThat(hash(room.fundingLock.seed) === room.fundingLock.seedCommitment, 'The sponsor seed commitment changed.');
+      return SponsorTieBreak.derive(room.match, room.fundingLock.seed);
     },
   };
   return { server, handler, ready, dataDir: directory, funding,

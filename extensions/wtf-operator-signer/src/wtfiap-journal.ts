@@ -4,7 +4,7 @@ import { join } from "node:path";
 import type { OperatorSignerEnvelope, OperatorSignerResponse } from "../../../shared/operator-signer";
 import { refuse } from "./policy";
 
-type Envelope = Extract<OperatorSignerEnvelope, { intent: "wtfiap_escrow" }>;
+type Envelope = Extract<OperatorSignerEnvelope, { intent: "wtfiap_escrow" | "wtfiap_sponsor_escrow" }>;
 type Entry = { payloadHash: string; attemptedAt: string; response?: OperatorSignerResponse };
 const hash = (s: string) => createHash("sha256").update(s).digest("hex");
 function canonical(value: unknown): string {

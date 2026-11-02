@@ -35,7 +35,39 @@ const env: SignerEnv = {
   WTF_OPERATOR_SIGNER_WTFIAP_MAINNET_CHAIN_ID: "",
   WTF_OPERATOR_SIGNER_WTFIAP_MAINNET_RPC: "",
   WTF_OPERATOR_SIGNER_WTFIAP_MAINNET_JOURNAL_PATH: "/tmp/wtfiap-mainnet-journal",
+  WTF_OPERATOR_SIGNER_WTFIAP_SPONSOR_CONTRACTS: [],
+  WTF_OPERATOR_SIGNER_WTFIAP_SPONSOR_MAINNET_CONTRACTS: [],
 };
+
+test("sponsor escrow has its own typed intent and network contract allowlist", () => {
+  const contract = "KT1" + "4".repeat(33);
+  const wallet = "tz1" + "5".repeat(33);
+  const target = { contract, chainId: "NetXsqzbfFenSTS", entrypoint: "create_room",
+    args: { room_id: "a".repeat(64), terms_hash: "b".repeat(64), rules_hash: "c".repeat(64),
+      seed_commitment: "d".repeat(64), referee: wallet, sponsor: wallet, mode: 0,
+      minimum_humans: 2, entry_currency: 0, entry_amount: "0", pool_numerator: "0",
+      pool_denominator: "1", designated_wallet: wallet,
+      places: [{ xtz: "10000", wtf: "0", pool_weight: "0" }], lots: [], pick_counts: [] } };
+  const envelope = operatorSignerEnvelopeSchema.parse({ version: OPERATOR_SIGNER_PROTOCOL_VERSION,
+    auth: env.WTF_OPERATOR_SIGNER_AUTH_TOKEN, requestId: "sponsor-room", walletId: "wtfiap-referee",
+    intent: "wtfiap_sponsor_escrow", payload: target });
+  const lane = { ...env, WTF_OPERATOR_SIGNER_WTFIAP_WALLET_ID: "wtfiap-referee",
+    WTF_OPERATOR_SIGNER_WTFIAP_CHAIN_ID: "NetXsqzbfFenSTS",
+    WTF_OPERATOR_SIGNER_WTFIAP_RPC: "https://tezos-shadownet.octez.io/" };
+  assert.equal(policyCode(lane, envelope), "WTFIAP_CONTRACT");
+  assert.equal(enforceEnvelopePolicy({ ...lane, WTF_OPERATOR_SIGNER_WTFIAP_SPONSOR_CONTRACTS: [contract] }, envelope), null);
+  assert.equal(policyCode({ ...lane, WTF_OPERATOR_SIGNER_WTFIAP_CONTRACTS: [contract] }, envelope), "WTFIAP_CONTRACT");
+  assert.throws(() => operatorSignerEnvelopeSchema.parse({ ...envelope, intent: "wtfiap_escrow" }));
+  assert.throws(() => operatorSignerEnvelopeSchema.parse({ ...envelope, payload: {
+    ...target, entrypoint: "claim_cash", args: { room_id: target.args.room_id,
+      recipient: wallet, currency: 0 } } }));
+  assert.throws(() => operatorSignerEnvelopeSchema.parse({ ...envelope, payload: {
+    ...target, args: { ...target.args, minimum_humans: 1, entry_currency: 1, entry_amount: "10000" } } }));
+  const oldTarget = operatorSignerEnvelopeSchema.parse({ ...envelope, intent: "custom", payload: {
+    contract, entrypoint: "create_room", args: {}, mutez: 0 } });
+  assert.equal(policyCode({ ...lane, WTF_OPERATOR_SIGNER_WTFIAP_SPONSOR_CONTRACTS: [contract],
+    WTF_OPERATOR_SIGNER_ALLOW_CUSTOM: 1 }, oldTarget), "WTFIAP_INTENT_REQUIRED");
+});
 
 test("disburse_wtf policy only permits configured FA2 reward assets", () => {
   const allowed = operatorSignerEnvelopeSchema.parse({

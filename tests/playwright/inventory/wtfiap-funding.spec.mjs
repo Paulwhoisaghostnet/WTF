@@ -35,6 +35,9 @@ function fixtureRoom(code) {
 test.describe("interaction inventory - WTFIAP funding safety", () => {
   test.beforeEach(async ({ request, page }) => {
     expect((await request.post("/__test/state", { data: { userRole: "admin" } })).ok()).toBeTruthy();
+    // These legacy fixtures are deliberately not sponsored rooms. Keep the
+    // sponsor probe deterministic instead of consulting the unseeded backend.
+    await page.route("**/api/wtfiap/sponsor-funding/rooms/*", route => route.fulfill({ status: 400, json: { ok: false, reason: "This room has no sponsor prize terms." } }));
     // Legacy funding fixtures explicitly model the pre-open-seat API response.
     await page.route("**/api/wtfiap/open-duel/rooms/*", route => route.fulfill({ status: 400, json: { ok: false, reason: "This room uses the prior duel rules." } }));
   });
@@ -78,6 +81,27 @@ test.describe("interaction inventory - WTFIAP funding safety", () => {
     const panel = surface(page).getByRole("region", { name: "Open-seat duel wager" });
     await expect(panel).toContainText("2 XTZ paid automatically on settlement");
     await expect(panel.getByRole("button", { name: "Claim prize" })).toHaveCount(0);
+  });
+
+  test("sponsored prize room shows its funded-place plan and one escrow action", async ({ page }) => {
+    const roomCode = "88888888-8888-4888-8888-888888888888";
+    const room = {
+      roomCode, status: "funding", network: "shadownet", chainId: "NetXsqzbfFenSTS",
+      escrowContract: "KT1ReadOnlySponsorFixture", roomId: "c".repeat(64), termsHash: "d".repeat(64),
+      houseFeeAtomic: "0", wtfToken: { contract: "KT1ReadOnlyFixtureWTF", tokenId: "0", decimals: 8 },
+      sponsorFunded: false, depositedCount: 0, roster: [], config: { enabled: true },
+      terms: { mode: "fixed", minimumHumans: 2, entry: { currency: "FREE", entryAtomic: "0", poolNumerator: "0", poolDenominator: "100", designatedWallet: null },
+        places: [{ place: 1, xtzAtomic: "1000000", wtfAtomic: "0", poolWeight: "0" }], tokens: [], deposit: { xtzAtomic: "1000000", wtfAtomic: "0" } },
+      self: { role: "sponsor", walletAddress: "tz1ReadOnlyFixtureWallet", canBind: false, canOpen: false, canStart: false,
+        actions: { sponsorXtz: { entrypoint: "fund_sponsor_xtz", params: { room_id: "c".repeat(64) }, amountMutez: "1000000", expectedWallet: "tz1ReadOnlyFixtureWallet", contract: "KT1ReadOnlySponsorFixture", network: "shadownet", chainId: "NetXsqzbfFenSTS" }, sponsorLots: [], refundSponsorLots: [], cashClaims: [], lotClaims: [] } },
+    };
+    await page.route(`**/api/wtfiap/sponsor-funding/rooms/${roomCode}`, route => route.fulfill({ json: { ok: true, room } }));
+    await page.goto(`/colilseum/${roomCode}?funding=1`);
+    const panel = surface(page).getByRole("region", { name: "Prize escrow" });
+    await expect(panel).toContainText("2 human entrants needed to start");
+    await expect(panel).toContainText("Place 1 · 1 XTZ");
+    await expect(panel.getByRole("button", { name: "Stake XTZ prize · 1 XTZ" })).toBeVisible();
+    await expect(panel.getByRole("button", { name: "Pay entry" })).toHaveCount(0);
   });
 
   test("duel wagering stays optional and AI tournament quotes only paying humans", async ({ page }) => {

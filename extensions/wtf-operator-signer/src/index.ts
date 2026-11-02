@@ -173,7 +173,7 @@ async function handleOriginateContract(
 
 async function handleWtfIap(
   env: SignerEnv, keyring: PlatformWalletKeyring,
-  envelope: Extract<OperatorSignerEnvelope, { intent: "wtfiap_escrow" }>,
+  envelope: Extract<OperatorSignerEnvelope, { intent: "wtfiap_escrow" | "wtfiap_sponsor_escrow" }>,
 ): Promise<string> {
   return wtfiapQueue.run(envelope.walletId, async () => {
     const { wallet, signer } = await keyring.getSigner(envelope.walletId);
@@ -277,6 +277,7 @@ async function dispatch(
       case "originate_contract":
         return await handleOriginateContract(env, keyring, parsed.envelope);
       case "wtfiap_escrow":
+      case "wtfiap_sponsor_escrow":
         return await handleWtfIap(env, keyring, parsed.envelope);
     }
   } catch (err) {
