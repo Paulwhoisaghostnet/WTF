@@ -4,6 +4,7 @@ import { expect, test } from "@playwright/test";
 const catalog = JSON.parse(
   readFileSync(new URL("../../../public/desktop/paul-tutorials/catalog.json", import.meta.url), "utf8")
 );
+const visualVersion = "?v=ghost-red-glasses-20261102";
 
 async function setTutorialPlayer(request) {
   const response = await request.post("/__test/state", {
@@ -76,9 +77,9 @@ test.describe("interaction inventory - Paul tutorial series", () => {
       await expect(card).toHaveAttribute("aria-pressed", "true");
       const video = series.locator(`[data-paul-tutorial-player="${episode.slug}"]`);
       await expect(video).toBeVisible();
-      await expect(video.locator('source[type="video/mp4"]')).toHaveAttribute("src", episode.videoUrl);
+      await expect(video.locator('source[type="video/mp4"]')).toHaveAttribute("src", `${episode.videoUrl}${visualVersion}`);
       await expect(video.locator('track[kind="captions"]')).toHaveAttribute("src", episode.captionsUrl);
-      await expect(video).toHaveAttribute("poster", episode.posterUrl);
+      await expect(video).toHaveAttribute("poster", `${episode.posterUrl}${visualVersion}`);
       await expect(series.locator(`[data-paul-tutorial-steps="${episode.slug}"] li`)).toHaveCount(
         episode.steps.length
       );
@@ -86,7 +87,7 @@ test.describe("interaction inventory - Paul tutorial series", () => {
       await expect.poll(() => video.evaluate((player) =>
         player.readyState >= 1 && Number.isFinite(player.duration) && player.duration > 0))
         .toBe(true);
-      const poster = await request.get(episode.posterUrl);
+      const poster = await request.get(`${episode.posterUrl}${visualVersion}`);
       const captions = await request.get(episode.captionsUrl);
       expect(poster.ok(), `${episode.slug} poster`).toBeTruthy();
       expect(captions.ok(), `${episode.slug} captions`).toBeTruthy();

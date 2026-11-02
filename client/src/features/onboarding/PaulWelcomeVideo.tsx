@@ -1,10 +1,11 @@
 import { useState } from "react";
 import styled from "styled-components";
 import { Button } from "react95";
+import { paulAssetUrl } from "../../lib/paul-assets";
 import { useRecordWatchedVideo } from "../video-history/video-history";
 
-const VIDEO_URL = "/desktop/paulwhoisaclippy-welcome.mp4";
-const POSTER_URL = "/desktop/paulwhoisaclippy-welcome-poster.png";
+const VIDEO_URL = paulAssetUrl("/desktop/paulwhoisaclippy-welcome.mp4");
+const POSTER_URL = paulAssetUrl("/desktop/paulwhoisaclippy-welcome-poster.png");
 const CAPTIONS_URL = "/desktop/paulwhoisaclippy-welcome.vtt";
 
 const Player = styled.div`

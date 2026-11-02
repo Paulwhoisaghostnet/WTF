@@ -15485,8 +15485,8 @@ Copy this when adding a new issue:
 - Last touched: 2026-11-02
 - Score: C2 + F2 + S0 + P2(3) = 7
 - Evidence (2026-11-02): The desktop sprite was a rounded face with tiny wisps and no continuous sheet body or wavy hem. The interaction inventory promises a red-framed-glasses ghost, and the user reported that Paul did not look like a ghost. The same SVG appears in Help and is baked into recorded guide media.
-- Correction: Redrew the shared pixel SVG with a continuous white/cyan sheet, raised arms, scalloped hem, and thick red frames while preserving the 96x64 asset boundary and existing behavior. Rebuilt the welcome video and all ten tutorial videos and posters using their original narration.
-- Verification (2026-11-02): Inspected the rendered sprite, welcome poster, and tutorial frame at desktop size; welcome and tutorial media validators passed; six focused Paul Playwright cases passed, including narrow layout and reduced motion; inventory coverage, typecheck, build, and bounty board checks passed. Production smoke follows promotion to main.
+- Correction: Redrew the shared pixel SVG with a continuous white/cyan sheet, raised arms, scalloped hem, and thick red frames while preserving the 96x64 asset boundary and existing behavior. Rebuilt the welcome video and all ten tutorial videos and posters using their original narration. Versioned the public asset URLs because the original paths carry a four-hour browser cache.
+- Verification (2026-11-02): Inspected the rendered sprite, welcome poster, and tutorial frame at desktop size; welcome and tutorial media validators passed; focused Paul Playwright cases cover the versioned media URLs, narrow layout, and reduced motion; inventory coverage, typecheck, build, and bounty board checks passed. Production smoke follows promotion to main.
 - Score: P2(3)+C2/F2/S0=7; visual identity mismatch without a known access or persistence failure.
 
 ### WTF-BB-751 - Environment inventory marks the platform keyring master key as non-secret

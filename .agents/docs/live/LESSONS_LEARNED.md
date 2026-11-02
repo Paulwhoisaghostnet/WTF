@@ -13265,4 +13265,4 @@ When shop and board are visible together, contextual help must prioritize a sele
 
 **Why it mattered**: Paul did not look like the character users were promised, and the recorded introductions would continue showing the old design after a sprite change.
 
-**Rule**: Inspect character art at its rendered desktop size and in each shared placement. When a visual asset is baked into guide recordings, rebuild and validate those recordings and their posters from reusable narration in the same change.
+**Rule**: Inspect character art at its rendered desktop size and in each shared placement. When a visual asset is baked into guide recordings, rebuild and validate those recordings and their posters from reusable narration in the same change. Version the public asset URLs when browser caching could keep showing the old art after deploy.
