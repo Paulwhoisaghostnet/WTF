@@ -6,6 +6,8 @@
 
 `codex/pasta-review-handoff` and `codex/pasta-alpha-readiness` are ancestors or semantic predecessors of this line. `origin/skllz/pasta-review-response` at `9ba30e89` adds only review documentation beyond the older alpha line; its `pasta-protocol/REVIEW_RESPONSE.md` is byte-identical to the candidate. These branches can be retired after the final PR retains their work.
 
+Local `codex/pr38-review-response-corrections` points to that same `9ba30e89` review response commit and is redundant. Local `codex/macaroni-v35` at `f4e26986` contains two old Anchor and TommyTezos guide commits, not a separate V3.5 implementation. Their files are present in this line; the only guide content difference is the later `Games` label replacing `Play` in `shared/faq-tutorials.json`. Both local checkouts can be removed after their ignored state is archived.
+
 The workspace rescue snapshot predates the October 30 Macaroni recovery work. Its 92 generated Companion copies and nine September screenshots are not canonical source. Its divergent Companion files are older than this line; copying them would remove later recovery and tests. Keep canonical Companion source in `companion/macaroni-v35/` and build the desktop copies from tracked files.
 
 ## PR #39 (`codex/rotini-aleatory-001`)
