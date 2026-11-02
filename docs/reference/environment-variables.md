@@ -1278,7 +1278,7 @@ Variables: **1309**. Source files scanned: **2601**.
 | `WTFOS_PRIVATE_REPO_DID` | platform, server/atproto-spine | server-runtime, shared-runtime | none | no | no explicit validation found | active | 2 (.env.example, server/features/atproto-spine/private-emit.ts) |
 | `WTFOS_PRIVATE_REPO_IDENTIFIER` | platform, server/atproto-spine | server-runtime, shared-runtime | none | no | no explicit validation found | active | 2 (.env.example, server/features/atproto-spine/private-emit.ts) |
 | `WTFOS_PRIVATE_REPO_PASSWORD` | platform, server/atproto-spine | server-runtime, shared-runtime | none (secret value intentionally omitted) | yes | no explicit validation found | active | 2 (.env.example, server/features/atproto-spine/private-emit.ts) |
-| `WTFOS_PUBLIC_BASE_URL` | server/platform | server-runtime | none | no | parsed or validated | active | 2 (server/lib/canonical-domain.ts, server/routes/access.ts) |
+| `WTFOS_PUBLIC_BASE_URL` | server/atproto, server/platform | server-runtime, test | none | no | required / fail-closed | active | 3 (server/features/atproto/oauth-session-restore.test.ts, server/lib/canonical-domain.ts, server/routes/access.ts) |
 | `WTFOS_RELAY_ADMIN_PASSWORD` | operations | deploy-ops | none (secret value intentionally omitted) | yes | no explicit validation found | active | 1 (docker-compose.yml) |
 | `WTFOS_RELAY_DB_DATA_DIR` | operations | deploy-ops | /mnt/wtf-data/relay-db | no | no explicit validation found | active | 1 (docker-compose.yml) |
 | `WTFOS_RELAY_DB_PASSWORD` | operations | deploy-ops | none (secret value intentionally omitted) | yes | no explicit validation found | active | 1 (docker-compose.yml) |

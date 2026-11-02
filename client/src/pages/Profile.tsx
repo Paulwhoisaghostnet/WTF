@@ -746,7 +746,12 @@ export function Profile() {
     } else if (err === "discord_account_mismatch") {
       setOauthFlash({
         kind: "err",
-        message: "Discord signed in to a different account. Choose the username you entered and try again; your existing link was not changed.",
+        message: "Discord signed in to a different account. Use the account already linked here, or enter a new username to change it. Your existing link was not changed.",
+      });
+    } else if (err === "discord_link_changed") {
+      setOauthFlash({
+        kind: "err",
+        message: "Your Discord link changed in another session while verification was open. The newer link was kept; start again from this Profile page.",
       });
     } else if (err === "discord_handle") {
       setOauthFlash({
@@ -771,7 +776,12 @@ export function Profile() {
     } else if (err === "atproto_account_mismatch") {
       setOauthFlash({
         kind: "err",
-        message: "AT Protocol signed in to a different account. Sign in as the handle you entered; your existing link was not changed.",
+        message: "AT Protocol signed in to a different account. Use the account already linked here, or enter another handle to change it. Your existing link was not changed.",
+      });
+    } else if (err === "atproto_link_changed") {
+      setOauthFlash({
+        kind: "err",
+        message: "Your AT Protocol link changed in another session while verification was open. The newer link was kept; start again from this Profile page.",
       });
     } else if (err === "atproto_handle") {
       setOauthFlash({
@@ -1137,7 +1147,7 @@ export function Profile() {
   const expectedDiscordHandle = discordHandle.trim().replace(/^@+/, "");
   const currentDiscordHandle = (social?.discordHandle || "").replace(/#0$/i, "");
   const discordConnectLabel = !expectedDiscordHandle
-    ? "Enter a Discord username"
+    ? social?.discordVerified ? "Reverify Discord" : "Connect Discord"
     : social?.discordVerified && currentDiscordHandle.toLowerCase() === expectedDiscordHandle.toLowerCase()
       ? `Reverify ${expectedDiscordHandle}`
       : social?.discordVerified
@@ -1149,7 +1159,7 @@ export function Profile() {
     : `@${expectedAtprotoHandle}`;
   const currentAtprotoHandle = (social?.atprotoHandle || "").toLowerCase();
   const atprotoConnectLabel = !expectedAtprotoHandle
-    ? "Enter an AT handle"
+    ? social?.atprotoDid ? "Reverify AT Protocol" : "Connect AT Protocol"
     : social?.atprotoDid && currentAtprotoHandle === expectedAtprotoHandle.toLowerCase()
       ? `Reverify ${atprotoHandleLabel}`
       : social?.atprotoDid
@@ -1536,9 +1546,10 @@ export function Profile() {
         <SocialNetworkGroup data-profile-section="social-network-linking">
           <h3>Social network linking</h3>
           <HelperText style={{ marginBottom: 8 }}>
-            Verify your social accounts here. X can use the account already signed in;
-            enter a handle when you want to choose a different one. Discord and AT Protocol
-            use the username or handle you enter below.
+            Leave a field blank to continue to that network's sign-in page. Enter a
+            username or handle when you want to choose a different account. A first
+            AT Protocol link opens the default sign-in page; enter a handle for another
+            provider. Existing links stay in place if a different account signs in.
           </HelperText>
 
           <SocialRow>
@@ -1625,10 +1636,12 @@ export function Profile() {
             {oauthConfig?.discord ? (
               <UiButton
                 size="sm"
-                disabled={disconnectSocialMutation.isPending || !expectedDiscordHandle}
+                disabled={disconnectSocialMutation.isPending}
                 onClick={() => {
-                  const params = new URLSearchParams({ expectedHandle: expectedDiscordHandle });
-                  window.location.assign(oauthStartUrl(`/api/auth/discord?${params.toString()}`));
+                  const path = expectedDiscordHandle
+                    ? `/api/auth/discord?${new URLSearchParams({ expectedHandle: expectedDiscordHandle }).toString()}`
+                    : "/api/auth/discord";
+                  window.location.assign(oauthStartUrl(path));
                 }}
               >
                 {discordConnectLabel}
@@ -1683,13 +1696,10 @@ export function Profile() {
             ) : null}
             <UiButton
               size="sm"
-              disabled={!expectedAtprotoHandle || disconnectSkywireMutation.isPending}
+              disabled={disconnectSkywireMutation.isPending}
               onClick={() => {
-                const params = new URLSearchParams({
-                  app: "profile",
-                  handle: expectedAtprotoHandle,
-                  returnTo: "/profile",
-                });
+                const params = new URLSearchParams({ app: "profile", returnTo: "/profile" });
+                if (expectedAtprotoHandle) params.set("handle", expectedAtprotoHandle);
                 window.location.assign(oauthStartUrl(`/api/atproto/oauth/start?${params.toString()}`));
               }}
             >

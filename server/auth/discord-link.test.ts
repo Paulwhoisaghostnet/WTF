@@ -5,6 +5,7 @@ import {
   DiscordLinkError,
   discordAuthorizationParams,
   normalizeDiscordExpectedHandle,
+  resolveDiscordLinkIntent,
   resolveDiscordLinkIdentity,
 } from "./discord-link";
 
@@ -22,7 +23,10 @@ test("Discord handle normalization accepts modern and legacy usernames", () => {
 });
 
 test("Discord callback refuses a different account before it can be linked", () => {
-  const intent = { userId: 5, expectedHandle: "another_user" };
+  const intent = resolveDiscordLinkIntent("another_user", {
+    id: 5, discordId: "111111111111111111", discordHandle: "old_user", discordVerified: true,
+  });
+  assert.ok(intent);
   assert.throws(
     () => resolveDiscordLinkIdentity(intent, 5, {
       id: "123456789012345678",
@@ -42,7 +46,8 @@ test("Discord callback refuses a different account before it can be linked", () 
 });
 
 test("Discord callback requires the initiating WTF session and valid provider identity", () => {
-  const intent = { userId: 5, expectedHandle: "Legacy#1234" };
+  const intent = resolveDiscordLinkIntent("Legacy#1234", { id: 5 });
+  assert.ok(intent);
   assert.throws(
     () => resolveDiscordLinkIdentity(null, 5, {
       id: "123456789012345678", username: "Legacy", discriminator: "1234",
@@ -65,4 +70,52 @@ test("Discord callback requires the initiating WTF session and valid provider id
     id: "123456789012345678",
     handle: "Legacy#1234",
   });
+});
+
+test("blank Discord first link accepts the signed-in provider account", () => {
+  const intent = resolveDiscordLinkIntent(undefined, { id: 5 });
+  assert.ok(intent);
+  assert.equal(intent.expectedHandle, null);
+  assert.equal(intent.priorId, null);
+  assert.deepEqual(resolveDiscordLinkIdentity(intent, 5, {
+    id: "123456789012345678", username: "new_user", discriminator: "0",
+  }), { id: "123456789012345678", handle: "new_user" });
+});
+
+test("blank Discord reverify stays bound to the existing provider ID", () => {
+  const intent = resolveDiscordLinkIntent(undefined, {
+    id: 5, discordId: "123456789012345678", discordHandle: "old_user", discordVerified: true,
+  });
+  assert.ok(intent);
+  assert.equal(intent.expectedHandle, null);
+  assert.equal(intent.priorId, "123456789012345678");
+  assert.equal(intent.allowAccountChange, false);
+  assert.deepEqual(resolveDiscordLinkIdentity(intent, 5, {
+    id: "123456789012345678", username: "renamed_user", discriminator: "0",
+  }), { id: "123456789012345678", handle: "renamed_user" });
+  assert.throws(
+    () => resolveDiscordLinkIdentity(intent, 5, {
+      id: "999999999999999999", username: "other_user", discriminator: "0",
+    }),
+    (error: unknown) => error instanceof DiscordLinkError && error.code === "discord_account_mismatch"
+  );
+});
+
+test("typed Discord username permits an explicit account change only for that username", () => {
+  const current = {
+    id: 5, discordId: "123456789012345678", discordHandle: "old_user", discordVerified: true,
+  };
+  const intent = resolveDiscordLinkIntent("other_user", current);
+  assert.ok(intent);
+  assert.equal(intent.allowAccountChange, true);
+  assert.deepEqual(resolveDiscordLinkIdentity(intent, 5, {
+    id: "999999999999999999", username: "other_user", discriminator: "0",
+  }), { id: "999999999999999999", handle: "other_user" });
+  assert.throws(
+    () => resolveDiscordLinkIdentity(intent, 5, {
+      id: "999999999999999999", username: "wrong_user", discriminator: "0",
+    }),
+    (error: unknown) => error instanceof DiscordLinkError && error.code === "discord_account_mismatch"
+  );
+  assert.equal(resolveDiscordLinkIntent("bad handle", current), null);
 });

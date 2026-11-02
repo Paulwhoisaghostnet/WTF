@@ -27,7 +27,10 @@ import {
   resolveDiscordLinkIdentity,
   type DiscordLinkIntent,
 } from "./discord-link";
-import { DiscordIdentityAlreadyLinkedError } from "./discord-ownership";
+import {
+  DiscordIdentityAlreadyLinkedError,
+  DiscordLinkChangedError,
+} from "./discord-ownership";
 
 const scryptAsync = promisify(scrypt);
 const GITHUB_AUTHORIZATION_URL = "https://github.com/login/oauth/authorize";
@@ -272,20 +275,24 @@ export function createDiscordStrategy() {
           discordLinkIntent?: DiscordLinkIntent;
         })?.discordLinkIntent;
         if (req.session) delete req.session.discordLinkIntent;
-        if (!req.user?.id) throw new DiscordLinkError("discord_session");
+        if (!req.user?.id || !intent) throw new DiscordLinkError("discord_session");
         const identity = resolveDiscordLinkIdentity(intent, req.user.id, profile);
-        const { linkSocialAccount } = await import("./storage");
-        const user = await linkSocialAccount(
+        const { linkDiscordAccount } = await import("./storage");
+        const user = await linkDiscordAccount(
           req.user.id,
-          "discord",
           identity.id,
-          identity.handle
+          identity.handle,
+          intent.snapshot
         );
         done(null, user);
       } catch (err) {
-        done(err instanceof DiscordIdentityAlreadyLinkedError
-          ? new DiscordLinkError("discord_already_linked")
-          : err as Error);
+        done(
+          err instanceof DiscordIdentityAlreadyLinkedError
+            ? new DiscordLinkError("discord_already_linked")
+            : err instanceof DiscordLinkChangedError
+              ? new DiscordLinkError("discord_link_changed")
+              : err as Error
+        );
       }
     }
   );

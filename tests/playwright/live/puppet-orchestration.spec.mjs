@@ -344,6 +344,13 @@ test.describe("live E2E puppet orchestration", () => {
       await expect(socialLinks.getByText("X:", { exact: true })).toBeVisible();
       await expect(socialLinks.getByText("Discord:", { exact: true })).toBeVisible();
       await expect(socialLinks.getByText("AT Protocol:", { exact: true })).toBeVisible();
+      await socialLinks.getByRole("textbox", { name: "AT Protocol handle" }).fill("");
+      await expect(socialLinks.getByRole("button", { name: /^(Connect|Reverify) AT Protocol$/i })).toBeEnabled();
+      await socialLinks.getByRole("textbox", { name: "Discord username" }).fill("");
+      const discordBlankButton = socialLinks.getByRole("button", { name: /^(Connect|Reverify) Discord$/i });
+      if (await discordBlankButton.count()) {
+        await expect(discordBlankButton).toBeEnabled();
+      }
     } finally {
       await context.close();
     }

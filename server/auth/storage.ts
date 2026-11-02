@@ -5,7 +5,12 @@ import { isSystemUserRole, type UserRole } from "@shared/types";
 import { randomBytes } from "crypto";
 import { ensureUserRole, listUserRoles, setUserRoles } from "../lib/user-roles";
 import type { WalletProofAction } from "./wallet-verify";
-import { assertDiscordIdentityAvailable } from "./discord-ownership";
+import {
+  assertDiscordIdentityAvailable,
+  discordLinkSnapshotCondition,
+  DiscordLinkChangedError,
+} from "./discord-ownership";
+import type { DiscordLinkSnapshot } from "./discord-link";
 
 async function withRoleSet<T extends { id: number; role: UserRole } | null>(
   user: T
@@ -179,9 +184,33 @@ export async function clearUserTempPassword(userId: number) {
   return updateUserTempPassword(userId, null, null);
 }
 
+export async function linkDiscordAccount(
+  userId: number,
+  providerId: string,
+  handle: string,
+  snapshot: DiscordLinkSnapshot
+) {
+  const updated = await db.transaction(async (tx) => {
+    await assertDiscordIdentityAvailable(tx, providerId, userId);
+    const [linked] = await tx
+      .update(users)
+      .set({
+        discordId: providerId,
+        discordHandle: handle,
+        discordVerified: true,
+        updatedAt: new Date(),
+      })
+      .where(discordLinkSnapshotCondition(userId, snapshot))
+      .returning();
+    if (!linked) throw new DiscordLinkChangedError();
+    return linked;
+  });
+  return withRoleSet(updated);
+}
+
 export async function linkSocialAccount(
   userId: number,
-  provider: "twitter" | "discord",
+  _provider: "twitter",
   providerId: string,
   handle: string,
   oauth?: {
@@ -189,23 +218,6 @@ export async function linkSocialAccount(
     tokenSecret?: string;
   }
 ) {
-  if (provider === "discord") {
-    const [updated] = await db.transaction(async (tx) => {
-      await assertDiscordIdentityAvailable(tx, providerId, userId);
-      return tx
-        .update(users)
-        .set({
-          discordId: providerId,
-          discordHandle: handle,
-          discordVerified: true,
-          updatedAt: new Date(),
-        })
-        .where(eq(users.id, userId))
-        .returning();
-    });
-    return withRoleSet(updated ?? null);
-  }
-
   const sets: Record<string, any> = { updatedAt: new Date() };
 
   sets.twitterId = providerId;

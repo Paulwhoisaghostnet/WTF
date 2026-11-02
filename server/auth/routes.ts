@@ -4,7 +4,7 @@ import { createHash, randomBytes } from "crypto";
 import { hashPassword, comparePasswords, isAuthenticated } from "./passport";
 import {
   DiscordLinkError,
-  normalizeDiscordExpectedHandle,
+  resolveDiscordLinkIntent,
   type DiscordLinkIntent,
 } from "./discord-link";
 import {
@@ -1750,17 +1750,13 @@ if (
     "/api/auth/discord",
     isAuthenticated,
     (req, res, next) => {
-      const expectedHandle = normalizeDiscordExpectedHandle(req.query.expectedHandle);
-      if (!expectedHandle) {
+      const intent = resolveDiscordLinkIntent(req.query.expectedHandle, req.user as any);
+      if (!intent) {
         return res.redirect(profileRedirect("error=discord_handle"));
-      }
-      const userId = Number((req.user as { id?: number } | undefined)?.id);
-      if (!Number.isInteger(userId)) {
-        return res.redirect(profileRedirect("error=discord_session"));
       }
       (req.session as typeof req.session & {
         discordLinkIntent?: DiscordLinkIntent;
-      }).discordLinkIntent = { userId, expectedHandle };
+      }).discordLinkIntent = intent;
       return passport.authenticate("discord-verify")(req, res, next);
     },
   );

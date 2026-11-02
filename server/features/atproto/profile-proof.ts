@@ -3,9 +3,37 @@ import { normalizeAtHandle } from "./identity";
 
 export const AT_PROTO_PROFILE_SCOPE = ATPROTO_BASE_SCOPE;
 
+export function profileProofStartTarget(input: {
+  rawActor?: string | null;
+  linkedAccount?: { did: string; pdsUrl?: string | null; oauthIssuer?: string | null } | null;
+  defaultPds?: string | null;
+}): { oauthInput: string; requestedActor: string; requestedDid: string | null } {
+  const requestedActor = String(input.rawActor || "").trim();
+  if (requestedActor) {
+    return { oauthInput: requestedActor, requestedActor, requestedDid: null };
+  }
+  const service = new URL(input.linkedAccount?.pdsUrl || input.linkedAccount?.oauthIssuer || input.defaultPds || "https://bsky.social");
+  if (service.protocol !== "https:" || service.username || service.password) {
+    throw new Error("AT Protocol login service must be HTTPS");
+  }
+  return {
+    oauthInput: service.origin,
+    requestedActor: "",
+    requestedDid: input.linkedAccount?.did || null,
+  };
+}
+
 export function isIdentityOnlyAtprotoGrant(scope: string): boolean {
   const grants = new Set(scope.trim().split(/\s+/).filter(Boolean));
   return grants.size === 1 && grants.has(AT_PROTO_PROFILE_SCOPE);
+}
+
+export function profileProofLinkChanged(
+  linkedAtStart: { id: number | null | undefined; did: string | null | undefined },
+  linkedNow: { id: number; did: string } | null,
+): boolean {
+  return (linkedAtStart.id ?? null) !== (linkedNow?.id ?? null) ||
+    (linkedAtStart.did ?? null) !== (linkedNow?.did ?? null);
 }
 
 export function atprotoProofProfileData(input: {
@@ -47,7 +75,7 @@ export function profileProofIdentityError(input: {
   const requestedDid = input.requestedDid || (requestedActor.startsWith("did:") ? requestedActor : null);
   const actorMatches = requestedDid
     ? requestedDid === input.verifiedDid
-    : normalizeAtHandle(requestedActor) === normalizeAtHandle(input.verifiedHandle);
+    : !requestedActor || normalizeAtHandle(requestedActor) === normalizeAtHandle(input.verifiedHandle);
   if (!actorMatches) return "atproto_account_mismatch";
   if (input.linkedOwnerUserId !== null && input.linkedOwnerUserId !== input.userId) {
     return "atproto_already_linked";

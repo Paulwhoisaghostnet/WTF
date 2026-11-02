@@ -56,6 +56,8 @@ export const DOMAIN_WORKFLOWS = [
       { method: "GET", path: "/api/profile/account" },
       { method: "GET", path: "/api/profile/watched-videos" },
       { method: "POST", path: "/api/profile/watched-videos", body: { videoId: "invalid/inventory-probe" }, expectedStatuses: [400] },
+      { method: "GET", path: "/.well-known/oauth-client-metadata.json" },
+      { method: "GET", path: "/.well-known/oauth-client-metadata-profile.json" },
       { method: "GET", path: "/api/users/wtf-admin/activity", expectedStatuses: [200, 404] },
       { method: "GET", path: "/api/notifications/preferences" },
       { method: "GET", path: "/api/faq/tutorials" },

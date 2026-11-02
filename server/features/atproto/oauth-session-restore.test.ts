@@ -1,5 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { WTFOS_PLATFORM_ORIGIN } from "@shared/platform-branding";
+
+// The AT OAuth SDK requires a public HTTPS client ID, including in local tests.
+process.env.WTFOS_PUBLIC_BASE_URL = WTFOS_PLATFORM_ORIGIN;
 
 test("restored OAuth sessions keep SDK-required token subject and issuer fields", async () => {
   process.env.SESSION_SECRET = process.env.SESSION_SECRET || "atproto-oauth-restore-test-secret";
@@ -180,4 +184,44 @@ test("Profile proof captures the OAuth SDK session without writing it to an exis
   assert.equal(captured.value, "verified");
   assert.equal(captured.sessions.get("did:plc:proof"), session);
   assert.equal(takePendingOAuthSessionForDid("did:plc:proof"), null);
+});
+
+test("Profile identity proof has a separate OAuth client grant from Skywire", async () => {
+  process.env.DATABASE_URL = process.env.DATABASE_URL || "postgresql://test:test@127.0.0.1:5432/wtf_test";
+  const { getAtprotoOAuthClient, getAtprotoProfileProofOAuthClient } = await import("./oauth");
+  const skywire = await getAtprotoOAuthClient();
+  const profile = await getAtprotoProfileProofOAuthClient();
+  assert.notEqual(profile.clientMetadata.client_id, skywire.clientMetadata.client_id);
+  assert.equal(profile.clientMetadata.scope, "atproto");
+  assert.deepEqual(profile.clientMetadata.redirect_uris, skywire.clientMetadata.redirect_uris);
+});
+
+test("public Profile OAuth metadata advertises an identity-only client separate from Skywire", async () => {
+  process.env.SESSION_SECRET = process.env.SESSION_SECRET || "atproto-oauth-restore-test-secret";
+  process.env.NODE_ENV = "test";
+  process.env.DATABASE_URL = process.env.DATABASE_URL || "postgresql://test:test@127.0.0.1:5432/wtf_test";
+  const { default: express } = await import("express");
+  const { default: atprotoRouter } = await import("../../routes/atproto");
+  const app = express();
+  app.use(atprotoRouter);
+  const server = app.listen(0, "127.0.0.1");
+  try {
+    await new Promise<void>((resolve) => server.once("listening", resolve));
+    const address = server.address();
+    assert.ok(address && typeof address !== "string");
+    const origin = `http://127.0.0.1:${address.port}`;
+    const [skywireResponse, profileResponse] = await Promise.all([
+      fetch(`${origin}/.well-known/oauth-client-metadata.json`),
+      fetch(`${origin}/.well-known/oauth-client-metadata-profile.json`),
+    ]);
+    assert.equal(skywireResponse.status, 200);
+    assert.equal(profileResponse.status, 200);
+    const skywire = await skywireResponse.json() as { client_id: string; redirect_uris: string[] };
+    const profile = await profileResponse.json() as { client_id: string; scope: string; redirect_uris: string[] };
+    assert.equal(profile.scope, "atproto");
+    assert.notEqual(profile.client_id, skywire.client_id);
+    assert.deepEqual(profile.redirect_uris, skywire.redirect_uris);
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close((err) => err ? reject(err) : resolve()));
+  }
 });

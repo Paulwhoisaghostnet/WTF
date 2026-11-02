@@ -1,6 +1,7 @@
-import { and, eq, ne, sql } from "drizzle-orm";
+import { and, eq, isNull, ne, sql } from "drizzle-orm";
 import { users } from "@shared/schema";
 import { db } from "../db";
+import type { DiscordLinkSnapshot } from "./discord-link";
 
 export type DiscordOwnerTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -9,6 +10,27 @@ export class DiscordIdentityAlreadyLinkedError extends Error {
     super("Discord account is already linked to another WTF user");
     this.name = "DiscordIdentityAlreadyLinkedError";
   }
+}
+
+export class DiscordLinkChangedError extends Error {
+  constructor() {
+    super("Discord link changed while authorization was in progress");
+    this.name = "DiscordLinkChangedError";
+  }
+}
+
+/** The database update must match the link that existed when OAuth started. */
+export function discordLinkSnapshotCondition(userId: number, snapshot: DiscordLinkSnapshot) {
+  return and(
+    eq(users.id, userId),
+    snapshot.discordId === null
+      ? isNull(users.discordId)
+      : eq(users.discordId, snapshot.discordId),
+    snapshot.discordHandle === null
+      ? isNull(users.discordHandle)
+      : eq(users.discordHandle, snapshot.discordHandle),
+    eq(users.discordVerified, snapshot.discordVerified)
+  );
 }
 
 /** Both Profile OAuth and bot proof must call this inside their write transaction. */

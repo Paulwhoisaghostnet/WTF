@@ -7,7 +7,16 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list .well known atproto did.",
     "declaredAccess": "Public/handler",
     "sources": [
-      "server/routes/atproto.ts:1570"
+      "server/routes/atproto.ts:1639"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/.well-known/oauth-client-metadata-profile.json",
+    "purpose": "Read or list .well known oauth client metadata profile.json.",
+    "declaredAccess": "Public/handler",
+    "sources": [
+      "server/routes/atproto.ts:727"
     ]
   },
   {
@@ -16,7 +25,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list .well known oauth client metadata.json.",
     "declaredAccess": "Public/handler",
     "sources": [
-      "server/routes/atproto.ts:710"
+      "server/routes/atproto.ts:722"
     ]
   },
   {
@@ -1294,7 +1303,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run atproto handle claim.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/atproto.ts:1417"
+      "server/routes/atproto.ts:1486"
     ]
   },
   {
@@ -1303,7 +1312,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list atproto handle claims.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/atproto.ts:1521"
+      "server/routes/atproto.ts:1590"
     ]
   },
   {
@@ -1312,7 +1321,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run atproto handle verify.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/atproto.ts:1525"
+      "server/routes/atproto.ts:1594"
     ]
   },
   {
@@ -1321,7 +1330,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list atproto me.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/atproto.ts:715"
+      "server/routes/atproto.ts:732"
     ]
   },
   {
@@ -1330,7 +1339,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list atproto oauth callback.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/atproto.ts:1105"
+      "server/routes/atproto.ts:1147"
     ]
   },
   {
@@ -1339,7 +1348,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list atproto oauth start.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/atproto.ts:918"
+      "server/routes/atproto.ts:935"
     ]
   },
   {
@@ -1348,7 +1357,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list atproto permissions options.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/atproto.ts:737"
+      "server/routes/atproto.ts:754"
     ]
   },
   {
@@ -1357,7 +1366,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run atproto register.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/atproto.ts:822"
+      "server/routes/atproto.ts:839"
     ]
   },
   {
@@ -1366,7 +1375,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run atproto register phone verification.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/atproto.ts:765"
+      "server/routes/atproto.ts:782"
     ]
   },
   {
@@ -1375,7 +1384,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list atproto registration options.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/atproto.ts:750"
+      "server/routes/atproto.ts:767"
     ]
   },
   {
@@ -1384,7 +1393,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Create, submit, or run atproto unlink.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes/atproto.ts:1398"
+      "server/routes/atproto.ts:1467"
     ]
   },
   {
@@ -1448,7 +1457,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "declaredAccess": "Session",
     "sources": [
       "server/auth/routes.ts:1749",
-      "server/auth/routes.ts:1781"
+      "server/auth/routes.ts:1777"
     ]
   },
   {
@@ -1457,8 +1466,8 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list auth discord callback.",
     "declaredAccess": "Session",
     "sources": [
-      "server/auth/routes.ts:1767",
-      "server/auth/routes.ts:1784"
+      "server/auth/routes.ts:1763",
+      "server/auth/routes.ts:1780"
     ]
   },
   {

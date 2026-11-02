@@ -1,12 +1,12 @@
 # wtfOS API reference
 
-This is the source-derived inventory of the main wtfOS HTTP API: **960 unique method/path operations**, grouped into **100 route families** and declared across **128 server modules**. It documents what each endpoint is for and the gate visible at its route declaration; handler code remains authoritative for payload schemas and conditional authorization.
+This is the source-derived inventory of the main wtfOS HTTP API: **961 unique method/path operations**, grouped into **100 route families** and declared across **128 server modules**. It documents what each endpoint is for and the gate visible at its route declaration; handler code remains authoritative for payload schemas and conditional authorization.
 
 > Evidence: `[source]`. Probe budget: zero-call pass. Actual spend: zero network calls, zero writes, and no production data access. The inventory was extracted from the local route AST, then deduplicated by method and path.
 
 ## Public platform surface
 
-wtfOS exposes 960 unique method/path declarations across production-reachable routers, four WebSocket transports, and a Streamable HTTP MCP server with 47 registered tools. Feature flags and runtime modes can disable or replace some declared routes.
+wtfOS exposes 961 unique method/path declarations across production-reachable routers, four WebSocket transports, and a Streamable HTTP MCP server with 47 registered tools. Feature flags and runtime modes can disable or replace some declared routes.
 
 The public developer boundary is additive: `/api/v1` aliases the established handlers behind paired bearer-token scopes, `/api/v1/openapi.json` serves OpenAPI 3.1, and `/api/v1/docs` serves the grouped human reference. The legacy `/api/*` surface remains unchanged for browser and internal callers.
 
@@ -164,7 +164,7 @@ The MCP transport is `GET/POST/DELETE /mcp`, authenticated exclusively with a pa
 | `porcupin` | 5 | Porcupin pinning service status and operations. |
 | `portfolio` | 5 | Wallet portfolio positions and valuation views. |
 | `profile` | 18 | Current-user profile, social identities, settings, and public user views. |
-| `protocol` | 10 | Non-REST protocol and discovery endpoints. |
+| `protocol` | 11 | Non-REST protocol and discovery endpoints. |
 | `public` | 4 | Operations for the public domain. |
 | `rat` | 2 | Rat Race feeds, token candidates, voting, and results. |
 | `ravioli` | 1 | Operations for the ravioli domain. |
@@ -197,7 +197,7 @@ The MCP transport is `GET/POST/DELETE /mcp`, authenticated exclusively with a pa
 
 ## Complete endpoint inventory
 
-Method totals: **ALL 13**, **DELETE 45**, **GET 462**, **PATCH 36**, **POST 339**, **PUT 65**. Declared-gate totals: **Admin 103**, **Internal 1**, **MCP bearer 1**, **Permission 142**, **Public/handler 222**, **Session 491**.
+Method totals: **ALL 13**, **DELETE 45**, **GET 463**, **PATCH 36**, **POST 339**, **PUT 65**. Declared-gate totals: **Admin 103**, **Internal 1**, **MCP bearer 1**, **Permission 142**, **Public/handler 223**, **Session 491**.
 
 <details>
 <summary><code>access</code> — 1 operations</summary>
@@ -424,17 +424,17 @@ AT Protocol account, OAuth, PDS, relay, firehose, record, and AppView operations
 | --- | --- | --- | --- | --- |
 | GET | `/api/atproto/appview/record` | Read or list atproto appview record. | Public/handler | `server/features/atproto-spine/appview/router.ts:70` |
 | GET | `/api/atproto/appview/records` | Read or list atproto appview records. | Public/handler | `server/features/atproto-spine/appview/router.ts:69` |
-| POST | `/api/atproto/handle/claim` | Create, submit, or run atproto handle claim. | Session | `server/routes/atproto.ts:1417` |
-| GET | `/api/atproto/handle/claims` | Read or list atproto handle claims. | Session | `server/routes/atproto.ts:1521` |
-| POST | `/api/atproto/handle/verify` | Create, submit, or run atproto handle verify. | Session | `server/routes/atproto.ts:1525` |
-| GET | `/api/atproto/me` | Read or list atproto me. | Session | `server/routes/atproto.ts:715` |
-| GET | `/api/atproto/oauth/callback` | Read or list atproto oauth callback. | Session | `server/routes/atproto.ts:1105` |
-| GET | `/api/atproto/oauth/start` | Read or list atproto oauth start. | Session | `server/routes/atproto.ts:918` |
-| GET | `/api/atproto/permissions/options` | Read or list atproto permissions options. | Session | `server/routes/atproto.ts:737` |
-| POST | `/api/atproto/register` | Create, submit, or run atproto register. | Session | `server/routes/atproto.ts:822` |
-| POST | `/api/atproto/register/phone-verification` | Create, submit, or run atproto register phone verification. | Session | `server/routes/atproto.ts:765` |
-| GET | `/api/atproto/registration/options` | Read or list atproto registration options. | Session | `server/routes/atproto.ts:750` |
-| POST | `/api/atproto/unlink` | Create, submit, or run atproto unlink. | Session | `server/routes/atproto.ts:1398` |
+| POST | `/api/atproto/handle/claim` | Create, submit, or run atproto handle claim. | Session | `server/routes/atproto.ts:1486` |
+| GET | `/api/atproto/handle/claims` | Read or list atproto handle claims. | Session | `server/routes/atproto.ts:1590` |
+| POST | `/api/atproto/handle/verify` | Create, submit, or run atproto handle verify. | Session | `server/routes/atproto.ts:1594` |
+| GET | `/api/atproto/me` | Read or list atproto me. | Session | `server/routes/atproto.ts:732` |
+| GET | `/api/atproto/oauth/callback` | Read or list atproto oauth callback. | Session | `server/routes/atproto.ts:1147` |
+| GET | `/api/atproto/oauth/start` | Read or list atproto oauth start. | Session | `server/routes/atproto.ts:935` |
+| GET | `/api/atproto/permissions/options` | Read or list atproto permissions options. | Session | `server/routes/atproto.ts:754` |
+| POST | `/api/atproto/register` | Create, submit, or run atproto register. | Session | `server/routes/atproto.ts:839` |
+| POST | `/api/atproto/register/phone-verification` | Create, submit, or run atproto register phone verification. | Session | `server/routes/atproto.ts:782` |
+| GET | `/api/atproto/registration/options` | Read or list atproto registration options. | Session | `server/routes/atproto.ts:767` |
+| POST | `/api/atproto/unlink` | Create, submit, or run atproto unlink. | Session | `server/routes/atproto.ts:1467` |
 
 </details>
 
@@ -461,8 +461,8 @@ Cookie-session authentication, OAuth, wallet sign-in, account recovery, and CSRF
 | --- | --- | --- | --- | --- |
 | POST | `/api/auth/change-password` | Create, submit, or run auth change password. | Session | `server/auth/routes.ts:949` |
 | GET | `/api/auth/csrf-token` | Read or list auth csrf token. | Public/handler | `server/auth/routes.ts:78` |
-| GET | `/api/auth/discord` | Read or list auth discord. | Session | `server/auth/routes.ts:1749`<br>`server/auth/routes.ts:1781` |
-| GET | `/api/auth/discord/callback` | Read or list auth discord callback. | Session | `server/auth/routes.ts:1767`<br>`server/auth/routes.ts:1784` |
+| GET | `/api/auth/discord` | Read or list auth discord. | Session | `server/auth/routes.ts:1749`<br>`server/auth/routes.ts:1777` |
+| GET | `/api/auth/discord/callback` | Read or list auth discord callback. | Session | `server/auth/routes.ts:1763`<br>`server/auth/routes.ts:1780` |
 | GET | `/api/auth/github` | Read or list auth github. | Public/handler | `server/auth/routes.ts:1252` |
 | GET | `/api/auth/github/callback` | Read or list auth github callback. | Public/handler | `server/auth/routes.ts:1256` |
 | GET | `/api/auth/gm-welcome/assets/:filename` | Read or list auth gm welcome assets filename. | Session | `server/auth/routes.ts:915` |
@@ -1528,14 +1528,15 @@ Current-user profile, social identities, settings, and public user views.
 </details>
 
 <details>
-<summary><code>protocol</code> — 10 operations</summary>
+<summary><code>protocol</code> — 11 operations</summary>
 
 Non-REST protocol and discovery endpoints.
 
 | Method | Path | Use | Access | Source |
 | --- | --- | --- | --- | --- |
-| GET | `/.well-known/atproto-did` | Read or list .well known atproto did. | Public/handler | `server/routes/atproto.ts:1570` |
-| GET | `/.well-known/oauth-client-metadata.json` | Read or list .well known oauth client metadata.json. | Public/handler | `server/routes/atproto.ts:710` |
+| GET | `/.well-known/atproto-did` | Read or list .well known atproto did. | Public/handler | `server/routes/atproto.ts:1639` |
+| GET | `/.well-known/oauth-client-metadata-profile.json` | Read or list .well known oauth client metadata profile.json. | Public/handler | `server/routes/atproto.ts:727` |
+| GET | `/.well-known/oauth-client-metadata.json` | Read or list .well known oauth client metadata.json. | Public/handler | `server/routes/atproto.ts:722` |
 | GET | `/^\/api\/arcade\/source\/(.+)$/` | Read or list ^\ api\ arcade\ source\ (.+)$. | Public/handler | `server/routes/arcade.ts:81` |
 | GET | `/^\/api\/console\/bundles\/(.+)$/` | Read or list ^\ api\ console\ bundles\ (.+)$. | Public/handler | `server/routes/console.ts:82` |
 | GET | `/^\/api\/console\/source-arcade\/(.+)$/` | Read or list ^\ api\ console\ source arcade\ (.+)$. | Public/handler | `server/routes/console.ts:84` |

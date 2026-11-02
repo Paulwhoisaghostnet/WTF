@@ -13216,3 +13216,33 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: The generated E2E registry would describe only part of the released Profile behavior, and conflicting bounty IDs could overwrite distinct findings.
 
 **Rule**: Keep each behavior in its owning inventory row, assign unique canonical IDs to every finding before regenerating the board, and run focused browser cases for both flows after the merge.
+
+---
+
+## 2026-11-02 — Blank social sign-in still needs an explicit identity boundary
+
+**What happened**: Profile allowed X proof without a typed handle, but Discord and AT Protocol still disabled their Connect buttons until a username or handle was entered. Simply removing that UI requirement would have let a signed-in provider account replace an existing WTF link without an explicit change request.
+
+**Why it mattered**: A first link should reach the provider directly, while an existing link must remain tied to its provider ID or DID if the user leaves the field blank.
+
+**Rule**: A blank first link may accept the identity returned by a state-bound provider OAuth callback. A blank reverify pins the saved provider ID or DID; a typed username or handle expresses an account-change target. Compare the saved link again at write time and reject stale callbacks rather than silently replacing a newer link.
+
+---
+
+## 2026-11-02 — AT Profile proof needs its own OAuth client grant
+
+**What happened**: Profile identity proof and Skywire used the same AT OAuth client ID. The installed OAuth client callback revokes the prior session for a DID before saving the new one, so preserving Skywire's encrypted account row could still leave its richer grant revoked after a Profile reverify.
+
+**Why it mattered**: A social proof that asks only for identity must not break the user's separate Skywire permissions.
+
+**Rule**: Serve distinct identity-only Profile client metadata and use that client for both OAuth start and callback. Keep Skywire's grant and session independent, and verify the separate client IDs, granted scope, callback DID, and stored-session behavior before release.
+
+---
+
+## 2026-11-02 — OAuth metadata tests need a valid public client origin
+
+**What happened**: The new AT Profile metadata tests passed with a configured public URL but failed in a clean checkout. Without that URL, the local origin resolver returned `http://127.0.0.1:3000`; the AT OAuth SDK rejects an IP-based HTTP client ID before the assertions run.
+
+**Why it mattered**: The aggregate unit gate can fail before proving that the Profile and Skywire client grants remain separate.
+
+**Rule**: Set the canonical HTTPS origin inside the isolated OAuth metadata test before constructing its clients, then run the test without a public URL in the shell environment. Keep production origin selection unchanged.
