@@ -1,0 +1,10 @@
+{
+  "network": "shadownet",
+  "rpcUrl": "https://tezos-shadownet.octez.io/",
+  "source": "tz1T9d8Qi4ZmWHNWgtbU6DwArwu191NfRnHe",
+  "roomCreator": "tz1T9d8Qi4ZmWHNWgtbU6DwArwu191NfRnHe",
+  "wtfTokenAddress": "KT1U3isJU8p1rtfjZaEWa31FCSKNeLiuL7zg",
+  "wtfTokenId": "0",
+  "treasuryAddress": "tz1cVRngZw42KZ42VQF2ZCy2CJSPNG3H7Cgt",
+  "xtzPaidRoomHouseFee": "0"
+}

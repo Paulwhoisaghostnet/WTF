@@ -10,9 +10,12 @@ import type {
   OperatorSignerEnvelope,
   OperatorSignerOriginationPayload,
 } from "../../../shared/operator-signer";
+import { operatorSignerWtfIapSponsorPayloadSchema } from "../../../shared/operator-signer";
 import { appendAuditLine } from "./audit";
 import { loadEnv, type SignerEnv } from "./env";
 import { PlatformWalletKeyring } from "./keyring";
+import { awaitPinnedWtfIapInclusion, PinnedRpcChainMismatch,
+  preparePinnedWtfIapRpc } from "./network";
 import { journalWtfIapSend, WtfIapSigningQueue } from "./wtfiap-journal";
 import {
   enforceEnvelopePolicy,
@@ -173,31 +176,63 @@ async function handleOriginateContract(
 
 async function handleWtfIap(
   env: SignerEnv, keyring: PlatformWalletKeyring,
-  envelope: Extract<OperatorSignerEnvelope, { intent: "wtfiap_escrow" }>,
+  envelope: Extract<OperatorSignerEnvelope, { intent: "wtfiap_escrow" | "wtfiap_sponsor_escrow" }>,
 ): Promise<string> {
-  return wtfiapQueue.run(envelope.walletId, async () => {
+  return wtfiapQueue.runWithAcknowledgement(envelope.walletId, async (acknowledge) => {
     const { wallet, signer } = await keyring.getSigner(envelope.walletId);
     const lane = wtfIapSignerLane(env, envelope.payload.chainId);
-    const tz = new TezosToolkit(lane.rpc);
-    tz.setProvider({ signer });
-    const chainId = await tz.rpc.getChainId();
-    if (chainId !== envelope.payload.chainId || wallet.chainId !== chainId) {
+    if (wallet.chainId !== envelope.payload.chainId) {
       return JSON.stringify(refuse("WTFIAP wallet/RPC chain mismatch", "WTFIAP_CHAIN", envelope.requestId));
     }
     if (envelope.payload.entrypoint === "create_room" && envelope.payload.args.referee !== wallet.address) {
       return JSON.stringify(refuse("WTFIAP room must pin the configured referee", "WTFIAP_REFEREE", envelope.requestId));
     }
-    const contract = await tz.contract.at(envelope.payload.contract);
+    const network = envelope.payload.chainId === "NetXdQprcVkpaWU" ? "mainnet" : "shadownet";
+    let prepared;
+    try {
+      prepared = await preparePinnedWtfIapRpc({ network, rpcUrl: lane.rpc,
+        expectedChainId: envelope.payload.chainId,
+        connect: rpcUrl => {
+          const tz = new TezosToolkit(rpcUrl);
+          tz.setProvider({ signer });
+          return { getChainId: () => tz.rpc.getChainId(),
+            prepare: async () => ({ tz, contract: await tz.contract.at(envelope.payload.contract) }) };
+        } });
+    } catch (error) {
+      if (error instanceof PinnedRpcChainMismatch)
+        return JSON.stringify(refuse(error.message, "WTFIAP_CHAIN", envelope.requestId));
+      throw error;
+    }
+    const { contract } = prepared.value;
     const method = contract.methodsObject[envelope.payload.entrypoint];
     if (typeof method !== "function") return JSON.stringify(refuse("WTFIAP contract entrypoint missing", "BAD_EP", envelope.requestId));
     let confirmation: (() => Promise<unknown>) | undefined;
     const response = await journalWtfIapSend(lane.journalPath, envelope, async () => {
       const op = await method(envelope.payload.args).send({ amount: 0, mutez: true });
-      confirmation = () => op.confirmation(1);
+      confirmation = async () => {
+        const branchHash = op.raw.opOb.branch;
+        if (!branchHash) return op.confirmation(1);
+        const controller = new AbortController();
+        try {
+          const outcome = await Promise.any([
+            op.confirmation(1).then(() => "included" as const),
+            awaitPinnedWtfIapInclusion({ network, rpcUrl: lane.rpc,
+              expectedChainId: envelope.payload.chainId,
+              operationHash: op.hash, branchHash,
+              connect: rpcUrl => new TezosToolkit(rpcUrl).rpc,
+              signal: controller.signal }),
+          ]);
+          if (outcome === "expired") logger.warn({ requestId: envelope.requestId,
+            opHash: op.hash }, "WTFIAP signed operation expired without inclusion");
+          return outcome;
+        } finally { controller.abort(); }
+      };
       return okResponse({ requestId: envelope.requestId, intent: envelope.intent, signedBy: wallet.address, opHash: op.hash });
     });
-    // Journal the hash before waiting. A dropped client can recover it using the
-    // same request ID. Waiting here keeps this lane's manager counters serial.
+    // journalWtfIapSend fsyncs the hash before this response. The queue still
+    // holds the wallet lane while confirmation consumes its manager counter.
+    const responseText = JSON.stringify(response);
+    acknowledge(responseText);
     if (confirmation) await confirmation().catch((error) => {
       logger.warn({ requestId: envelope.requestId, error: error instanceof Error ? error.message : String(error) }, "WTFIAP inclusion unresolved; durable hash retained");
     });
@@ -205,8 +240,10 @@ async function handleWtfIap(
       requestId: envelope.requestId, runId: envelope.runId, intent: envelope.intent,
       opHash: response.opHash, contract: envelope.payload.contract, entrypoint: envelope.payload.entrypoint,
     });
-    return JSON.stringify(response);
-  });
+    return responseText;
+  }, error => logger.error({ requestId: envelope.requestId,
+    error: error instanceof Error ? error.message : String(error) },
+  "WTFIAP post-acknowledgement work failed"));
 }
 
 async function dispatch(
@@ -232,6 +269,9 @@ async function dispatch(
             signedBy: selected?.wallet.address,
             keyringConfigured: keyring.isConfigured(),
             wallets,
+            capabilities: operatorSignerWtfIapSponsorPayloadSchema.options.map(
+              (option) => `wtfiap_sponsor_escrow.${option.shape.entrypoint.value}`,
+            ),
           })
         );
       }
@@ -277,6 +317,7 @@ async function dispatch(
       case "originate_contract":
         return await handleOriginateContract(env, keyring, parsed.envelope);
       case "wtfiap_escrow":
+      case "wtfiap_sponsor_escrow":
         return await handleWtfIap(env, keyring, parsed.envelope);
     }
   } catch (err) {

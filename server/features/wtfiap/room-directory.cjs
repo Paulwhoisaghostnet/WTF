@@ -17,7 +17,9 @@ function roomSummary(room) {
   const capacity = type === 'duel' ? 2 : 8;
   // A full waiting table cannot be joined, and has no live match to watch.
   // Its invitation still works; it reappears here if the match starts.
-  if (phase === 'lobby' && (room.fundingLock || room.players.length >= capacity)) return null;
+  // Sponsor custody opens before entrants join, so its locked invitation
+  // remains discoverable. Legacy funded rooms retain their original listing.
+  if (phase === 'lobby' && ((room.fundingLock && !room.config.sponsor) || room.players.length >= capacity)) return null;
   const record = new Map(room.players.map(player => [player.playerId, { wins: 0, losses: 0 }]));
   for (const receipt of match?.receipts || []) for (const result of receipt.results || []) for (const award of result.awards || []) {
     const tally = record.get(award.playerId);
@@ -25,14 +27,17 @@ function roomSummary(room) {
     if (tally && award.outcome === 'loss') tally.losses++;
   }
   const wager = type === 'duel' ? room.config.duelWager : type === 'tournament' ? room.config.tournament : null;
+  const sponsored = room.config.sponsor ? { network: room.config.sponsorNetwork } : null;
   return {
-    roomCode: room.roomCode, type, phase, capacity, openSeats: phase === 'lobby' && !room.fundingLock ? capacity - room.players.length : 0,
+    roomCode: room.roomCode, type, phase, capacity,
+    openSeats: phase === 'lobby' && (!room.fundingLock || sponsored) ? capacity - room.players.length : 0,
     aiFill: room.config.allowAI === true, watcherCount: Array.isArray(room.watchers) ? room.watchers.length : 0,
     rulesPreset: room.config.rulesPreset || 'original',
     players: room.players.map(player => ({ name: String(player.name || 'Commander'), isAI: player.isAI === true,
       ...record.get(player.playerId) })),
     wager: wager ? { currency: wager.currency, entryFee: wager.entryFee,
       network: wager.network || (wager.currency === 'WTF' ? 'mainnet' : 'shadownet') } : null,
+    sponsored,
     createdAtMs: Number.isSafeInteger(room.createdAtMs) ? room.createdAtMs : 0,
   };
 }

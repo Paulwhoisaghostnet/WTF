@@ -4,7 +4,7 @@ import { join } from "node:path";
 import type { OperatorSignerEnvelope, OperatorSignerResponse } from "../../../shared/operator-signer";
 import { refuse } from "./policy";
 
-type Envelope = Extract<OperatorSignerEnvelope, { intent: "wtfiap_escrow" }>;
+type Envelope = Extract<OperatorSignerEnvelope, { intent: "wtfiap_escrow" | "wtfiap_sponsor_escrow" }>;
 type Entry = { payloadHash: string; attemptedAt: string; response?: OperatorSignerResponse };
 const hash = (s: string) => createHash("sha256").update(s).digest("hex");
 function canonical(value: unknown): string {
@@ -66,5 +66,34 @@ export class WtfIapSigningQueue {
     this.queues.set(walletId, next);
     void next.finally(() => { if (this.queues.get(walletId) === next) this.queues.delete(walletId); }).catch(() => undefined);
     return next;
+  }
+
+  /** Respond after the durable operation hash exists, but keep the wallet lane
+   * occupied until its confirmation work ends. A caller disconnect cannot
+   * release the lane or cause a second submission with the same request ID.
+   */
+  runWithAcknowledgement<T>(walletId: string,
+    work: (acknowledge: (value: T) => void) => Promise<T>,
+    onDetachedError: (error: unknown) => void): Promise<T> {
+    let resolve!: (value: T) => void;
+    let reject!: (reason: unknown) => void;
+    let settled = false;
+    let published = false;
+    const acknowledgement = new Promise<T>((res, rej) => { resolve = res; reject = rej; });
+    const task = this.run(walletId, async () => {
+      const acknowledge = (value: T) => {
+        if (!settled) { settled = true; published = true; resolve(value); }
+      };
+      try {
+        const value = await work(acknowledge);
+        acknowledge(value);
+        return value;
+      } catch (error) {
+        if (!settled) { settled = true; reject(error); }
+        throw error;
+      }
+    });
+    void task.catch(error => { if (published) onDetachedError(error); });
+    return acknowledgement;
   }
 }

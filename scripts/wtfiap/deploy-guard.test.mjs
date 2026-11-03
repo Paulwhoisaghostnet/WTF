@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { readFileSync } from 'node:fs';
 import rules from '../../server/features/wtfiap/rules.cjs';
 import { assertFundingCompatibility, guardedReplacement } from './deploy-guard.mjs';
 
@@ -26,10 +27,52 @@ test('an active open-seat duel is bound to its durable escrow record before repl
   assert.throws(() => assertFundingCompatibility([record, record], [lock], 'current'), /Duplicate durable/);
   assert.throws(() => assertFundingCompatibility([record], [lock], 'future'), /pinned rules/);
 });
+test('an active sponsored room is bound to its durable prize escrow before replacement', () => {
+  const record = { roomCode: 'sponsored-party', source: 'sponsor', hasLock: true,
+    rulesHash: 'current', status: 'active', hasFinalResult: false,
+    roomId: 'room-id', termsHash: 'terms-hash', matchId: 'match-id',
+    network: 'shadownet', escrowContract: 'KT1contract' };
+  const lock = { roomCode: record.roomCode, rulesHash: record.rulesHash, version: 4,
+    roomId: record.roomId, termsHash: record.termsHash, matchId: record.matchId,
+    network: record.network, escrowContract: record.escrowContract };
+  assert.doesNotThrow(() => assertFundingCompatibility([record], [lock], 'current'));
+  assert.throws(() => assertFundingCompatibility([], [lock], 'current'), /no matching durable/);
+  assert.throws(() => assertFundingCompatibility([{ ...record, hasLock: false }], [lock], 'current'), /no matching durable/);
+  assert.throws(() => assertFundingCompatibility([record], [{ ...lock, termsHash: 'other' }], 'current'), /inconsistent sponsor/);
+  assert.throws(() => assertFundingCompatibility([record], [{ ...lock, network: 'mainnet' }], 'current'), /inconsistent sponsor/);
+  assert.throws(() => assertFundingCompatibility([record], [{ ...lock, version: 2 }], 'current'), /wrong sponsor/);
+  assert.throws(() => assertFundingCompatibility([{ ...record, source: 'funded-room' }], [lock], 'current'), /inconsistent sponsor/);
+  assert.throws(() => assertFundingCompatibility([record, record], [lock], 'current'), /Duplicate durable/);
+  assert.throws(() => assertFundingCompatibility([record], [lock], 'future'), /pinned rules/);
+  assert.doesNotThrow(() => assertFundingCompatibility([{ ...record, status: 'settled', hasFinalResult: true }], [lock], 'future'));
+});
+test('the sponsor snapshot reads the persisted sponsor record fields used by the game lock', () => {
+  const source = readFileSync(new URL('./deploy-guard.mjs', import.meta.url), 'utf8');
+  const end = source.indexOf('FROM wtfiap_sponsor_funding');
+  const start = source.lastIndexOf('SELECT jsonb_build_object(', end);
+  const sponsorSql = end < 0 || start < 0 ? '' : source.slice(start, end + 'FROM wtfiap_sponsor_funding'.length);
+  assert.ok(sponsorSql, 'the deployment snapshot must include sponsor escrow records');
+  const expression = key => sponsorSql.match(new RegExp("'" + key + "',(jsonb_typeof\\(document->'[^']+'\\)='object'|document(?:->'[^']+')*(?:->>'[^']+')?)"))?.[1];
+  const stored = { roomId: 'room-id', termsHash: 'terms-hash', status: 'active',
+    config: { rulesHash: 'rules-hash', network: 'shadownet', escrowContract: 'KT1contract' },
+    lock: { matchId: 'match-id' }, finalResult: null };
+  const resolve = sql => {
+    assert.ok(sql, 'missing sponsor binding field');
+    const type = sql.match(/^jsonb_typeof\(document->'([^']+)'\)='object'$/);
+    if (type) return typeof stored[type[1]] === 'object' && stored[type[1]] !== null;
+    return [...sql.matchAll(/->>?'([^']+)'/g)].reduce((value, [, key]) => value?.[key], stored);
+  };
+  for (const [key, expected] of Object.entries({ hasLock: true, rulesHash: 'rules-hash',
+    status: 'active', hasFinalResult: false, roomId: 'room-id', termsHash: 'terms-hash',
+    matchId: 'match-id', network: 'shadownet', escrowContract: 'KT1contract' }))
+    assert.equal(resolve(expression(key)), expected, `${key} must match the saved sponsor record`);
+  assert.match(sponsorSql, /'roomCode',room_code/);
+});
 test('the current release preserves only its explicitly pinned prior funded-room rules', () => {
   const oldRules = '49e69fb6b0dba17eb58ce63310be746dee29242aed0bbbb94e751a5e81a0f669';
-  const currentRelease = '9331bb06c2c54dd19b0fda5c645e68952501a015f6529b08d2f4eafb73fd4497';
+  const currentRelease = 'e205d96724b9b9ee081a605a73e644292057b8c4e69c4582dfd0ddb3bf0f54be';
   assert.equal(rules.getRuntimeRulesHash(), currentRelease);
+  assert.equal(rules.supportsPinnedRules(currentRelease, '1df5d5c0065f97657179a7adea0cf4eb3766e659dab932491f16bdbcf8079dc1'), true);
   assert.equal(rules.supportsPinnedRules(currentRelease, 'f4acaf1dd0f1e0fcfd1d57f3a403e0d503721f94fdc269d1cdc07c26719c67fe'), true);
   assert.equal(rules.supportsPinnedRules(currentRelease, 'df03f5268ef98057c603630dca7c9d4932bdf5dfbc6d9e38b104e79aaf1a6fcb'), true);
   assert.equal(rules.supportsPinnedRules(currentRelease, 'f24470119652a6b5b0f135fd83af9d9b3f743e24fcfe413a62cc1f1f0740e579'), true);

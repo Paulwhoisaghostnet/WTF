@@ -1,0 +1,10 @@
+{
+  "network": "mainnet",
+  "rpcUrl": "https://tezos-mainnet.octez.io/",
+  "source": "tz1hNbUXWdjPpUuGK3tMWM8uSJzBBGonWB5u",
+  "roomCreator": "tz1W4pW7zEsovK5tQ3HqfqQAcWifRYeYAUTo",
+  "wtfTokenAddress": "KT1DUZ2nf4Dd1F2BNm3zeg1TwAnA1iKZXbHD",
+  "wtfTokenId": "0",
+  "treasuryAddress": "tz1cVRngZw42KZ42VQF2ZCy2CJSPNG3H7Cgt",
+  "xtzPaidRoomHouseFee": "500000"
+}

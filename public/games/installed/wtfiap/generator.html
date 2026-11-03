@@ -3605,12 +3605,13 @@ const seed=new URLSearchParams(location.search).get('seed')||'lil-guys-v2';const
 
   function prepareTreasure(game, config) {
     if (!config || !Number.isSafeInteger(config.roundNumber) || config.roundNumber < 1 || !Array.isArray(config.chests)) throw new Error('Treasure requires an explicit round number and chest list.');
-    const enabled = config.roundNumber >= 5;
-    const expiresAtSeconds = enabled ? config.roundNumber * 15 : null;
-    if (enabled && !Number.isSafeInteger(expiresAtSeconds)) throw new Error('Treasure duration exceeds exact numeric representation.');
+    if (config.treasureEnabled !== undefined && typeof config.treasureEnabled !== 'boolean') throw new Error('Unknown treasure rule.');
+    const goldEnabled = config.roundNumber >= 5 && config.treasureEnabled !== false;
     const itemRound = config.itemRulesVersion === 1 && config.roundNumber % 10 === 0;
+    const expiresAtSeconds = goldEnabled || itemRound ? config.roundNumber * 15 : null;
+    if (expiresAtSeconds !== null && !Number.isSafeInteger(expiresAtSeconds)) throw new Error('Treasure duration exceeds exact numeric representation.');
     if (config.itemChestPlacementVersion !== undefined && config.itemChestPlacementVersion !== 2) throw new Error('Unknown item chest placement version.');
-    if (config.chests.length !== (enabled ? itemRound ? 4 : 2 : 0)) throw new Error('Place one gold chest per player and a second item chest every ten rounds.');
+    if (config.chests.length !== (goldEnabled ? 2 : 0) + (itemRound ? 2 : 0)) throw new Error('Place one gold chest per player and a second item chest every ten rounds.');
     const ids = new Set([...game.field, ...game.opponents, ...game.bench].map(unit => unit.id)), sides = new Set();
     const cherubs = [1, 2].includes(config.cherubRulesVersion) ? config.cherubs : [];
     if (config.cherubRulesVersion !== undefined && ![1, 2].includes(config.cherubRulesVersion)) throw new Error('Unknown Cherub rules version.');

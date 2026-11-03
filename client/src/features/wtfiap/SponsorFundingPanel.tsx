@@ -1,0 +1,307 @@
+import { useEffect, useMemo, useState } from "react";
+import { styled } from "styled-components";
+import { api } from "../../lib/api";
+import { useAuth } from "../../lib/auth-context";
+import { useWallet } from "../../lib/wallet-context";
+import { assertWalletLinkedToCurrentUser } from "../../lib/tezos/wallet-ownership";
+import { getNetwork } from "../../lib/tezos/loaders";
+import { createFundingActionLatch } from "./funding-checkpoint";
+import { fundingWalletGateway } from "./funding-wallet-adapter";
+import { formatFundingAmount, type FundingWalletAction } from "./funding-types";
+import { sponsorWalletCalls } from "./sponsor-funding-calls";
+
+const Surface = styled.section`
+  min-height: 0; overflow: auto; padding: 16px; box-sizing: border-box; background: transparent; color: inherit;
+  h2, h3 { margin: 0 0 8px; } h3 { font-size: 1rem; } p { line-height: 1.45; }
+  button { padding: 10px 14px; cursor: pointer; } button:disabled { opacity: .6; cursor: default; }
+  button:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+  .step { border: 1px solid #9c8350; border-radius: 6px; padding: 12px; margin: 12px 0; }
+  .primary { background: #d9bb72; color: #102322; border: 1px solid #d9bb72; font-weight: 700; }
+  .status { padding: 10px; border: 1px solid currentColor; overflow-wrap: anywhere; }
+  .error { color: #ffaaa0; } code { overflow-wrap: anywhere; }
+  ul { padding-left: 20px; } li { margin: 6px 0; }
+`;
+
+type Lot = { contract: string; tokenId: string; amount: string; place?: number };
+type Plan = {
+  mode: "fixed" | "random" | "pick";
+  minimumHumans: number;
+  entry: { currency: "FREE" | "XTZ" | "WTF"; entryAtomic: string; poolNumerator: string; poolDenominator: string; designatedWallet: string | null };
+  places: Array<{ place: number; xtzAtomic: string; wtfAtomic: string; poolWeight: string }>;
+  tokens: Lot[];
+  deposit: { xtzAtomic: string; wtfAtomic: string };
+};
+type IndexedAction = { index: number; action: FundingWalletAction };
+type CashClaim = { currency: "XTZ" | "WTF"; amountAtomic: string; action: FundingWalletAction };
+type LotClaim = IndexedAction & Lot;
+type SponsorActions = {
+  sponsorXtz?: FundingWalletAction; sponsorWtf?: FundingWalletAction; sponsorLots: IndexedAction[];
+  entry?: FundingWalletAction; cancel?: FundingWalletAction; refundEntry?: FundingWalletAction;
+  refundSponsorXtz?: FundingWalletAction; refundSponsorWtf?: FundingWalletAction;
+  refundSponsorLots: IndexedAction[]; cashClaims: CashClaim[]; lotClaims: LotClaim[];
+};
+type SponsorRoom = {
+  roomCode: string; status: string; network: "mainnet" | "shadownet"; chainId: string;
+  escrowContract: string; roomId: string | null; termsHash: string | null; terms: Plan;
+  houseFeeAtomic?: string | null; wtfToken: { contract: string; tokenId: string | number; decimals: 8 };
+  sponsorFunded: boolean; depositedCount: number; roster: Array<{ name: string; deposited: boolean; walletAddress: string | null }>;
+  lotVerification?: { funded: number; verified: number; required: number; pending: boolean };
+  config: { enabled: boolean; reason?: string | null };
+  self: { role: "sponsor" | "entrant" | "watcher"; walletAddress: string | null; canBind: boolean; canOpen: boolean; canStart: boolean; canPick: boolean; actions: SponsorActions;
+    pendingOperations?: Array<{ action: string; operationHash: string; status: "pending" | "applied" | "failed";
+      proof?: { kind: "finalized-action-state" | "finalized-failed-operation"; blockHash: string; level: number } }> };
+  prizeSelection: null | { nextPlace: number | null; nextPlayerId: string | null;
+    nextPlayerName: string | null; remainingForPlace: number;
+    chosen: Array<{ index: number; place: number; playerId: string }>;
+    availableLots: Array<{ index: number; contract: string; tokenId: string; amount: string }> };
+  operations?: Array<{ kind: string; operationHash?: string | null; status: string }>;
+  error?: string | null;
+};
+
+const endpoint = (code: string) => `/api/wtfiap/sponsor-funding/rooms/${encodeURIComponent(code)}`;
+const checkpointKey = (account: string, code: string) => `wtfiap:sponsor:pending:${account}:${code}`;
+type WalletCheckpoint = { kind: string; index?: number; currency?: "XTZ" | "WTF"; opHash: string };
+const checkpointPresent = (account: string, code: string): boolean => {
+  try { return localStorage.getItem(checkpointKey(account, code)) !== null; }
+  catch { return true; } // Unavailable storage cannot safely checkpoint a new wallet send.
+};
+const assertCheckpointWritable = (account: string, code: string): void => {
+  const key = `${checkpointKey(account, code)}:write-check`;
+  try {
+    localStorage.setItem(key, "1");
+    if (localStorage.getItem(key) !== "1") throw new Error("The wallet checkpoint could not be read back.");
+    localStorage.removeItem(key);
+    if (localStorage.getItem(key) !== null) throw new Error("The wallet checkpoint could not be removed.");
+  } catch {
+    throw new Error("Browser storage is unavailable. Enable storage for this site before signing a wallet transaction.");
+  }
+};
+const readCheckpoint = (account: string, code: string): WalletCheckpoint | null => {
+  try {
+    const value = JSON.parse(localStorage.getItem(checkpointKey(account, code)) || "null");
+    if (!value || !["sponsorXtz", "sponsorWtf", "sponsorLot", "entry", "cancel", "refundEntry",
+      "refundSponsorXtz", "refundSponsorWtf", "refundSponsorLot", "cashClaim", "lotClaim"].includes(value.kind) ||
+      typeof value.opHash !== "string" || !/^o[1-9A-HJ-NP-Za-km-z]{50}$/.test(value.opHash)) return null;
+    if (["sponsorLot", "refundSponsorLot", "lotClaim"].includes(value.kind) &&
+      (!Number.isSafeInteger(value.index) || value.index < 0)) return null;
+    if (value.currency !== undefined && !["XTZ", "WTF"].includes(value.currency)) return null;
+    return value;
+  } catch { return null; }
+};
+const observedAction = (kind: string, index?: number, currency?: "XTZ" | "WTF") => {
+  if (["sponsorLot", "refundSponsorLot", "lotClaim"].includes(kind)) {
+    if (!Number.isSafeInteger(index) || index! < 0) throw new Error("The prize lot index is missing.");
+    return `${kind === "sponsorLot" ? "sponsorToken" : kind}:${index}`;
+  }
+  if (kind === "cashClaim") {
+    if (!currency) return kind; // Existing checkpoints did not save the claim currency.
+    return `cashClaim:${currency}`;
+  }
+  return kind;
+};
+const checkpointOutcome = (room: SponsorRoom, saved: WalletCheckpoint): "applied" | "failed" | null => {
+  const item = room.self.pendingOperations?.find(item => {
+    try { return item.operationHash === saved.opHash &&
+      (item.action === observedAction(saved.kind, saved.index, saved.currency) ||
+        (["cashClaim", "refundSponsorLot", "lotClaim"].includes(saved.kind) && item.action === saved.kind)); }
+    catch { return false; }
+  });
+  if (item?.status === "applied") return "applied";
+  // Only a server-verified exact failed operation can release a pending wallet send.
+  if (item?.status === "failed" && item.proof?.kind === "finalized-failed-operation") return "failed";
+  return null;
+};
+const pendingRefereeOperation = (room: SponsorRoom | null) => room?.operations?.find(item =>
+  item.status === "submission-unknown" || item.status === "submitted");
+const refereeProgress = (kind: string) => ({
+  create_room: "Opening the prize escrow",
+  register_entrant: "Confirming a player seat",
+  start_room: "Starting the match",
+  finalize_room: "Recording the result",
+  claim_cash: "Sending a cash prize",
+  claim_lot: "Sending an FA2 prize",
+} as Record<string, string>)[kind] || "Checking the escrow";
+const atomic = (value: string): bigint => {
+  if (!/^(0|[1-9]\d*)$/.test(value)) throw new Error("Invalid prize amount in this room.");
+  return BigInt(value);
+};
+export function SponsorFundingPanel({ roomCode, onReturn }: { roomCode: string; onReturn(): void }) {
+  const { user } = useAuth(), wallet = useWallet(), account = user ? String(user.id) : null;
+  const latch = useMemo(() => createFundingActionLatch(`wtfiap-sponsor:${account}:${roomCode}`), [account, roomCode]);
+  const [room, setRoom] = useState<SponsorRoom | null>(null), [busy, setBusy] = useState(false);
+  const [pending, setPending] = useState<WalletCheckpoint | null>(() => account ? readCheckpoint(account, roomCode) : null);
+  const [selectedNetwork, setSelectedNetwork] = useState(getNetwork);
+  const [message, setMessage] = useState(""), [error, setError] = useState("");
+  const unreadableCheckpoint = Boolean(account && checkpointPresent(account, roomCode) && !readCheckpoint(account, roomCode));
+  useEffect(() => {
+    const sync = () => setSelectedNetwork(getNetwork());
+    window.addEventListener("focus", sync);
+    window.addEventListener("storage", sync);
+    window.addEventListener("wtf:network-selected", sync);
+    return () => {
+      window.removeEventListener("focus", sync);
+      window.removeEventListener("storage", sync);
+      window.removeEventListener("wtf:network-selected", sync);
+    };
+  }, []);
+  async function refresh() {
+    const response = await api.get<{ ok: true; room: SponsorRoom }>(endpoint(roomCode));
+    setRoom(response.room);
+    const saved = account ? readCheckpoint(account, roomCode) : null;
+    const outcome = saved && checkpointOutcome(response.room, saved);
+    if (outcome) {
+      localStorage.removeItem(checkpointKey(account!, roomCode)); setPending(null);
+      setMessage(outcome === "failed" ? "Wallet operation failed on Tezos " + response.room.network + ". No payment was verified. Retry only if the action remains available." :
+        "Wallet operation verified on Tezos " + response.room.network + ".");
+    }
+    setError("");
+    return response.room;
+  }
+  useEffect(() => {
+    if (!account) return;
+    let active = true;
+    const poll = async () => {
+      try { const response = await api.get<{ ok: true; room: SponsorRoom }>(endpoint(roomCode)); if (!active) return;
+        setRoom(response.room);
+        const saved = readCheckpoint(account, roomCode);
+        setPending(saved);
+        // A wallet can return a hash even when the subsequent observe request fails.
+        // Resume that read-only checkpoint rather than asking for another payment.
+        const observed = saved && response.room.self.pendingOperations?.some(item =>
+          item.operationHash === saved.opHash);
+        const next = saved && !observed
+          ? await api.post<{ ok: true; room: SponsorRoom }>(endpoint(roomCode) + "/observe", {
+            operationHash: saved.opHash, action: observedAction(saved.kind, saved.index, saved.currency),
+          })
+          : response;
+        if (!active) return;
+        setRoom(next.room);
+        const outcome = saved && checkpointOutcome(next.room, saved);
+        if (outcome) {
+          localStorage.removeItem(checkpointKey(account, roomCode)); setPending(null);
+          setMessage(outcome === "failed" ? "Wallet operation failed on Tezos " + next.room.network + ". No payment was verified. Retry only if the action remains available." :
+            "Wallet operation verified on Tezos " + next.room.network + ".");
+        }
+        setError("");
+      } catch (reason) { if (active) setError((reason as Error).message); }
+    };
+    void poll(); const timer = window.setInterval(() => void poll(), 3000);
+    return () => { active = false; window.clearInterval(timer); };
+  }, [account, roomCode]);
+  async function run(work: () => Promise<void>) {
+    if (busy || latch.active) return;
+    setBusy(true); setError(""); setMessage("");
+    try { await latch.run(work); } catch (reason) { setError((reason as Error).message); }
+    finally { setBusy(false); }
+  }
+  async function post(action: string, body: unknown = {}) {
+    const response = await api.post<{ ok: true; room: SponsorRoom }>(endpoint(roomCode) + "/" + action, body);
+    setRoom(response.room); return response.room;
+  }
+  async function bind() {
+    const address = wallet.address || (await wallet.connect()).address;
+    await assertWalletLinkedToCurrentUser(address);
+    await post("bind-wallet", { walletAddress: address });
+    setMessage("Wallet bound to this room. Prize custody and entry payments remain separate steps.");
+  }
+  async function send(kind: string, action: FundingWalletAction, index?: number, currency?: "XTZ" | "WTF") {
+    if (!room || !account) throw new Error("Sign in and load the room before funding a prize.");
+    if (pending || checkpointPresent(account, roomCode)) throw new Error("A saved wallet operation is unresolved. Recheck before sending another.");
+    assertCheckpointWritable(account, roomCode);
+    const address = wallet.address || (await wallet.connect()).address;
+    await assertWalletLinkedToCurrentUser(address);
+    if (address !== room.self.walletAddress) throw new Error("Connect the exact wallet bound to this room.");
+    if (getNetwork() !== room.network) throw new Error("Select Tezos " + room.network + " for this room before signing.");
+    const calls = sponsorWalletCalls(room, action, kind, index, currency);
+    const result = await fundingWalletGateway.send(calls, address, room.network, room.chainId);
+    if (!result.opHash) throw new Error("The wallet did not return an operation hash. Recheck before retrying.");
+    const checkpoint = { kind, ...(index === undefined ? {} : { index }), ...(currency ? { currency } : {}), opHash: result.opHash };
+    localStorage.setItem(checkpointKey(account, roomCode), JSON.stringify(checkpoint)); setPending(checkpoint);
+    setMessage("Transaction submitted. The room is checking Tezos; do not send it again.");
+    await post("observe", { operationHash: result.opHash, action: observedAction(kind, index, currency) });
+  }
+  if (!user) return <Surface><h2>Prize escrow</h2><p>Sign in to wtfOS to fund or claim a prize.</p><button onClick={onReturn}>Return to room</button></Surface>;
+  const actions = room?.self.actions;
+  const refereePending = pendingRefereeOperation(room);
+  const exitDisabled = busy || !!pending || unreadableCheckpoint || !room?.roomId;
+  const fundingDisabled = exitDisabled || !room?.config.enabled;
+  const entry = room?.terms.entry;
+  const fundingSummary = room?.status === "settled" ? "Results settled on chain. Prize payouts are shown below." :
+    room?.status === "voided" ? "Room voided. Refunds are shown below." :
+    room?.sponsorFunded ? "Sponsor prizes verified in escrow." :
+    "Waiting for sponsor prizes to be verified in escrow.";
+  return <Surface aria-label="Prize escrow" aria-busy={busy}>
+    <h2>Room prizes</h2>
+    <p>{room ? `Tezos ${room.network} · ${room.terms.minimumHumans} human entrants needed to start` : "Checking room rules…"}</p>
+    {room?.config.reason && !room.config.enabled && <p className="status" role="status">{room.config.reason} New prize and entry payments are paused. Existing refund and claim actions remain available for an opened room.</p>}
+    {refereePending && <p className="status" role="status">{refereeProgress(refereePending.kind)} on Tezos {room?.network}. The room checks automatically while confirmation is pending. Do not repeat a wallet payment. You can return to the room and come back.</p>}
+    {room && selectedNetwork !== room.network && <section className="step" role="status"><h3>Choose this room’s network</h3>
+      <p>This prize room uses Tezos {room.network}. Switch the app’s network before signing a wallet transaction.</p>
+      <button onClick={() => { localStorage.setItem("wtf:network", room.network); window.dispatchEvent(new Event("wtf:network-selected")); setSelectedNetwork(getNetwork()); }}>Switch to {room.network}</button>
+    </section>}
+    {room && <>
+      <section className="step"><h3>Prizes</h3><ul>{room.terms.places.map(place => <li key={place.place}><strong>Place {place.place}</strong>
+        {atomic(place.xtzAtomic) > 0n && ` · ${formatFundingAmount(place.xtzAtomic, 6)} XTZ`}
+        {atomic(place.wtfAtomic) > 0n && ` · ${formatFundingAmount(place.wtfAtomic, 8)} WTF`}
+        {room.terms.tokens.filter(token => token.place === place.place).map(token => ` · FA2 ${token.contract} #${token.tokenId} ×${token.amount}`).join("")}
+      </li>)}</ul>
+        {room.terms.mode !== "fixed" && <p>FA2 prizes use {room.terms.mode === "random" ? "a seeded random allocation" : "finish-place picks"} when the match ends.</p>}
+        {room.terms.tokens.length > 0 && <p><small>Token custody checks use <a href="https://tzkt.io" target="_blank" rel="noopener noreferrer">data provided by TzKT API</a>.</small></p>}
+        <p>{entry?.currency === "FREE" ? "Free entry" : `Entry: ${formatFundingAmount(entry?.entryAtomic || "0", entry?.currency === "WTF" ? 8 : 6)} ${entry?.currency} per human`}. Sponsor prize funding is separate from entry payment.</p>
+      </section>
+      {room.prizeSelection && <section className="step" aria-label="Finish-place FA2 prize picks">
+        <h3>Choose FA2 prizes</h3>
+        {room.prizeSelection.nextPlace === null
+          ? <p role="status">All finishers have chosen. The verified prize result is being submitted to escrow.</p>
+          : <p role="status">{room.prizeSelection.nextPlayerName || "The next finisher"} chooses for place {room.prizeSelection.nextPlace}. {room.prizeSelection.remainingForPlace} pick{room.prizeSelection.remainingForPlace === 1 ? " remains" : "s remain"} at this place.</p>}
+        {room.prizeSelection.chosen.length > 0 && <ul aria-label="Recorded prize choices">{room.prizeSelection.chosen.map(pick => {
+          const lot = room.terms.tokens[pick.index];
+          return <li key={pick.index}>Place {pick.place} chose FA2 {lot.contract} #{lot.tokenId} ×{lot.amount}</li>;
+        })}</ul>}
+        {room.self.canPick && <div className="actions">{room.prizeSelection.availableLots.map(lot =>
+          <button key={lot.index} className="primary" disabled={busy}
+            onClick={() => void run(async () => { await post("pick-lot", { index: lot.index });
+              setMessage("Your FA2 prize choice was recorded. The next finisher may choose when it is their turn."); })}>
+            Pick FA2 {lot.contract} #{lot.tokenId} ×{lot.amount}
+          </button>)}</div>}
+      </section>}
+      <section className="step"><h3>Fund and enter</h3>
+        <p>{fundingSummary} {room.depositedCount} entrant deposits verified.</p>
+        {room.lotVerification?.pending && room.status !== "settled" && room.status !== "voided" && <p role="status">FA2 prize transfer seen on Tezos; token custody verification is pending. The room cannot start until the transfer and escrow balance are confirmed.</p>}
+        <div className="actions">
+          {room.self.canBind && <button className="primary" disabled={fundingDisabled} onClick={() => void run(bind)}>Connect and bind wallet</button>}
+          {room.self.canOpen && <button className="primary" disabled={fundingDisabled} onClick={() => void run(async () => { await post("open"); setMessage("Prize escrow creation requested; check status before depositing."); })}>Open prize escrow</button>}
+          {actions?.sponsorXtz && <button className="primary" disabled={fundingDisabled} onClick={() => void run(() => send("sponsorXtz", actions.sponsorXtz!))}>Stake XTZ prize · {formatFundingAmount((atomic(room.terms.deposit.xtzAtomic) + atomic(room.houseFeeAtomic || "0")).toString(), 6)} XTZ</button>}
+          {actions?.sponsorWtf && <button className="primary" disabled={fundingDisabled} onClick={() => void run(() => send("sponsorWtf", actions.sponsorWtf!))}>Stake WTF prize · {formatFundingAmount(room.terms.deposit.wtfAtomic, 8)} WTF</button>}
+          {actions?.sponsorLots?.map(lot => <button key={lot.index} className="primary" disabled={fundingDisabled} onClick={() => void run(() => send("sponsorLot", lot.action, lot.index))}>Stake FA2 #{room.terms.tokens[lot.index]?.tokenId} · lot {lot.index + 1}</button>)}
+          {actions?.entry && <button className="primary" disabled={fundingDisabled} onClick={() => void run(() => send("entry", actions.entry!))}>{entry?.currency === "FREE" ? "Confirm free entry" : `Pay entry · ${formatFundingAmount(entry?.entryAtomic || "0", entry?.currency === "WTF" ? 8 : 6)} ${entry?.currency}`}</button>}
+          {room.self.canStart && <button className="primary" disabled={fundingDisabled} onClick={() => void run(async () => { await post("start"); setMessage("Match start requested. It begins after escrow verifies every required deposit."); })}>Start funded match</button>}
+        </div>
+      </section>
+      {(actions?.cancel || actions?.refundEntry || actions?.refundSponsorXtz || actions?.refundSponsorWtf || actions?.refundSponsorLots?.length || actions?.cashClaims?.length || actions?.lotClaims?.length) ?
+        <section className="step"><h3>Refunds and winnings</h3><div className="actions">
+          {actions.cancel && <button disabled={exitDisabled} onClick={() => void run(() => send("cancel", actions.cancel!))}>Cancel before combat</button>}
+          {actions.refundEntry && <button disabled={exitDisabled} onClick={() => void run(() => send("refundEntry", actions.refundEntry!))}>Refund entry</button>}
+          {actions.refundSponsorXtz && <button disabled={exitDisabled} onClick={() => void run(() => send("refundSponsorXtz", actions.refundSponsorXtz!))}>Refund XTZ prize</button>}
+          {actions.refundSponsorWtf && <button disabled={exitDisabled} onClick={() => void run(() => send("refundSponsorWtf", actions.refundSponsorWtf!))}>Refund WTF prize</button>}
+          {actions.refundSponsorLots?.map(lot => <button key={lot.index} disabled={exitDisabled} onClick={() => void run(() => send("refundSponsorLot", lot.action, lot.index))}>Refund FA2 lot {lot.index + 1}</button>)}
+          {actions.cashClaims?.map(claim => <button key={claim.currency} disabled={exitDisabled} onClick={() => void run(() => send("cashClaim", claim.action, undefined, claim.currency))}>Claim {formatFundingAmount(claim.amountAtomic, claim.currency === "XTZ" ? 6 : 8)} {claim.currency}</button>)}
+          {actions.lotClaims?.map(lot => <button key={lot.index} disabled={exitDisabled} onClick={() => void run(() => send("lotClaim", lot.action, lot.index))}>Claim FA2 #{lot.tokenId} · lot {lot.index + 1}</button>)}
+        </div></section> : null}
+      <p className="status" role="status">Status: {room.status}. {refereePending && (!room.error || room.error.includes("submission outcome is unknown"))
+        ? "Confirmation pending." : room.error || ""}</p>
+      <p><small>Escrow: <code>{room.escrowContract}</code></small></p>
+      <ul aria-label="Human entrant funding">{room.roster.map((player, index) => <li key={index}>{player.name} · {entry?.currency === "FREE" ? "Free entry" : player.deposited ? "Entry verified" : "Entry pending"}</li>)}</ul>
+    </>}
+    {pending && <p className="status" role="status">Wallet transaction submitted: <code>{pending.opHash}</code>. The room checks Tezos automatically. Do not send another payment while this is pending.</p>}
+    {unreadableCheckpoint && <p className="status error" role="alert">The saved wallet operation for this room cannot be read. New wallet payments are paused. Keep this browser data intact and contact wtfOS support with room {roomCode} before trying again.</p>}
+    {message && <p className="status" role="status">{message}</p>}
+    {error && <p className="error" role="alert">{error}</p>}
+    <div className="actions"><button disabled={busy} onClick={() => void run(async () => {
+      if (pending) await post("observe", { operationHash: pending.opHash, action: observedAction(pending.kind, pending.index, pending.currency) });
+      else await post("reconcile");
+      await refresh();
+    })}>Refresh escrow status</button><button onClick={onReturn}>Return to room</button></div>
+  </Surface>;
+}

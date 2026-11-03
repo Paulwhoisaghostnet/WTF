@@ -31,10 +31,28 @@ function fixtureRoom(code) {
     self: { playerId: "fixture-seat", walletAddress: "tz1ReadOnlyFixtureWallet", canBind: false, canOpen: false, canStart: false, actions: {}, payout: null, pendingOperations: [{ playerId: "fixture-seat", action: "deposit", operationHash: "ooReadOnlyFixtureSubmitted", observedAt: "2026-10-19T00:00:00Z" }] },
     health: { lastAttemptAt: null, lastSuccessAt: null, error: null, headStreamConnected: true } };
 }
+function sponsorWalletFixture(roomCode) {
+  return {
+    roomCode, status: "funding", network: "shadownet", chainId: "NetXsqzbfFenSTS",
+    escrowContract: "KT1ReadOnlySponsorFixture", roomId: "c".repeat(64), termsHash: "d".repeat(64),
+    houseFeeAtomic: "0", wtfToken: { contract: "KT1ReadOnlyFixtureWTF", tokenId: "0", decimals: 8 },
+    sponsorFunded: false, depositedCount: 0, roster: [], config: { enabled: true },
+    terms: { mode: "fixed", minimumHumans: 2,
+      entry: { currency: "FREE", entryAtomic: "0", poolNumerator: "0", poolDenominator: "1", designatedWallet: null },
+      places: [{ place: 1, xtzAtomic: "1000000", wtfAtomic: "0", poolWeight: "0" }],
+      tokens: [], deposit: { xtzAtomic: "1000000", wtfAtomic: "0" } },
+    self: { role: "sponsor", walletAddress: "tz1ReadOnlyFixtureWallet", canBind: false, canOpen: false, canStart: false,
+      pendingOperations: [],
+      actions: { sponsorXtz: { entrypoint: "fund_sponsor_xtz" }, sponsorLots: [], refundSponsorLots: [], cashClaims: [], lotClaims: [] } },
+  };
+}
 
 test.describe("interaction inventory - WTFIAP funding safety", () => {
   test.beforeEach(async ({ request, page }) => {
     expect((await request.post("/__test/state", { data: { userRole: "admin" } })).ok()).toBeTruthy();
+    // These legacy fixtures are deliberately not sponsored rooms. Keep the
+    // sponsor probe deterministic instead of consulting the unseeded backend.
+    await page.route("**/api/wtfiap/sponsor-funding/rooms/*", route => route.fulfill({ status: 400, json: { ok: false, reason: "This room has no sponsor prize terms." } }));
     // Legacy funding fixtures explicitly model the pre-open-seat API response.
     await page.route("**/api/wtfiap/open-duel/rooms/*", route => route.fulfill({ status: 400, json: { ok: false, reason: "This room uses the prior duel rules." } }));
   });
@@ -78,6 +96,269 @@ test.describe("interaction inventory - WTFIAP funding safety", () => {
     const panel = surface(page).getByRole("region", { name: "Open-seat duel wager" });
     await expect(panel).toContainText("2 XTZ paid automatically on settlement");
     await expect(panel.getByRole("button", { name: "Claim prize" })).toHaveCount(0);
+  });
+
+  test("sponsored prize room shows its funded-place plan and one escrow action", async ({ page }) => {
+    const roomCode = "88888888-8888-4888-8888-888888888888";
+    const room = {
+      roomCode, status: "funding", network: "shadownet", chainId: "NetXsqzbfFenSTS",
+      escrowContract: "KT1ReadOnlySponsorFixture", roomId: "c".repeat(64), termsHash: "d".repeat(64),
+      houseFeeAtomic: "0", wtfToken: { contract: "KT1ReadOnlyFixtureWTF", tokenId: "0", decimals: 8 },
+      sponsorFunded: false, depositedCount: 0, roster: [], config: { enabled: true },
+      terms: { mode: "fixed", minimumHumans: 2, entry: { currency: "FREE", entryAtomic: "0", poolNumerator: "0", poolDenominator: "100", designatedWallet: null },
+        places: [{ place: 1, xtzAtomic: "1000000", wtfAtomic: "0", poolWeight: "0" }], tokens: [], deposit: { xtzAtomic: "1000000", wtfAtomic: "0" } },
+      self: { role: "sponsor", walletAddress: "tz1ReadOnlyFixtureWallet", canBind: false, canOpen: false, canStart: false,
+        actions: { sponsorXtz: { entrypoint: "fund_sponsor_xtz", params: { room_id: "c".repeat(64) }, amountMutez: "1000000", expectedWallet: "tz1ReadOnlyFixtureWallet", contract: "KT1ReadOnlySponsorFixture", network: "shadownet", chainId: "NetXsqzbfFenSTS" }, sponsorLots: [], refundSponsorLots: [], cashClaims: [], lotClaims: [] } },
+    };
+    await page.route(`**/api/wtfiap/sponsor-funding/rooms/${roomCode}`, route => route.fulfill({ json: { ok: true, room } }));
+    await page.goto(`/colilseum/${roomCode}?funding=1`);
+    const panel = surface(page).getByRole("region", { name: "Prize escrow" });
+    await expect(panel).toContainText("2 human entrants needed to start");
+    await expect(panel).toContainText("Place 1 · 1 XTZ");
+    await expect(panel.getByRole("button", { name: "Stake XTZ prize · 1 XTZ" })).toBeVisible();
+    await expect(panel.getByRole("button", { name: "Pay entry" })).toHaveCount(0);
+    room.status = "settled";
+    room.sponsorFunded = false;
+    room.lotVerification = { funded: 1, verified: 0, required: 1, pending: true };
+    await page.reload();
+    await expect(panel).toContainText("Results settled on chain. Prize payouts are shown below.");
+    await expect(panel).not.toContainText("Waiting for sponsor prizes to be verified in escrow.");
+    await expect(panel).not.toContainText("The room cannot start until the transfer and escrow balance are confirmed.");
+  });
+
+  test("sponsor wallet payment remains blocked until its observed chain effect is confirmed", async ({ page }) => {
+    const roomCode = "81818181-8181-4818-8818-818181818181";
+    const user = await page.request.get("/api/auth/user").then(response => response.json());
+    const opHash = "o" + "2".repeat(50);
+    const key = `wtfiap:sponsor:pending:${user.id}:${roomCode}`;
+    await page.addInitScript(({ key, opHash }) => localStorage.setItem(key,
+      JSON.stringify({ kind: "sponsorXtz", opHash })), { key, opHash });
+    const room = {
+      roomCode, status: "funding", network: "shadownet", chainId: "NetXsqzbfFenSTS",
+      escrowContract: "KT1ReadOnlySponsorFixture", roomId: "c".repeat(64), termsHash: "d".repeat(64),
+      houseFeeAtomic: "0", wtfToken: { contract: "KT1ReadOnlyFixtureWTF", tokenId: "0", decimals: 8 },
+      sponsorFunded: false, depositedCount: 0, roster: [], config: { enabled: true },
+      terms: { mode: "fixed", minimumHumans: 2,
+        entry: { currency: "FREE", entryAtomic: "0", poolNumerator: "0", poolDenominator: "1", designatedWallet: null },
+        places: [{ place: 1, xtzAtomic: "1000000", wtfAtomic: "0", poolWeight: "0" }],
+        tokens: [], deposit: { xtzAtomic: "1000000", wtfAtomic: "0" } },
+      operations: [{ kind: "create_room", operationHash: opHash, status: "submitted" }],
+      self: { role: "sponsor", walletAddress: "tz1ReadOnlyFixtureWallet", canBind: false, canOpen: false, canStart: false,
+        pendingOperations: [],
+        actions: { sponsorXtz: { entrypoint: "fund_sponsor_xtz" }, sponsorLots: [], refundSponsorLots: [], cashClaims: [], lotClaims: [] } },
+    };
+    await page.route(`**/api/wtfiap/sponsor-funding/rooms/${roomCode}`, route =>
+      route.fulfill({ json: { ok: true, room } }));
+    let observations = 0;
+    await page.route(`**/api/wtfiap/sponsor-funding/rooms/${roomCode}/observe`, route => {
+      const body = route.request().postDataJSON();
+      expect(body).toEqual({ action: "sponsorXtz", operationHash: opHash });
+      observations++;
+      room.self.pendingOperations = [{ action: "sponsorXtz", operationHash: opHash, status: "pending" }];
+      return route.fulfill({ json: { ok: true, room } });
+    });
+    await page.goto(`/colilseum/${roomCode}?funding=1`);
+    const panel = surface(page).getByRole("region", { name: "Prize escrow" });
+    await expect(panel).toContainText("Do not send another payment while this is pending.");
+    await expect(panel.getByRole("button", { name: "Stake XTZ prize · 1 XTZ" })).toBeDisabled();
+    expect(await page.evaluate(key => localStorage.getItem(key), key)).toBeTruthy();
+    await expect.poll(() => observations).toBe(1);
+    room.self.pendingOperations[0].status = "applied";
+    room.operations = [];
+    await expect(panel).toContainText("Wallet operation verified on Tezos shadownet.");
+    await expect.poll(() => page.evaluate(key => localStorage.getItem(key), key)).toBeNull();
+  });
+
+  test("uncertain referee submission explains automatic confirmation without inviting a second payment", async ({ page }) => {
+    const roomCode = "82828282-8282-4828-8828-828282828282";
+    const room = {
+      roomCode, status: "opening", network: "shadownet", chainId: "NetXsqzbfFenSTS",
+      escrowContract: "KT1ReadOnlySponsorFixture", roomId: "c".repeat(64), termsHash: "d".repeat(64),
+      wtfToken: { contract: "KT1ReadOnlyFixtureWTF", tokenId: "0", decimals: 8 },
+      sponsorFunded: false, depositedCount: 0, roster: [], config: { enabled: true },
+      terms: { mode: "fixed", minimumHumans: 2,
+        entry: { currency: "FREE", entryAtomic: "0", poolNumerator: "0", poolDenominator: "1", designatedWallet: null },
+        places: [{ place: 1, xtzAtomic: "1000000", wtfAtomic: "0", poolWeight: "0" }],
+        tokens: [], deposit: { xtzAtomic: "1000000", wtfAtomic: "0" } },
+      operations: [{ kind: "create_room", operationHash: null, status: "submission-unknown" }],
+      error: "Sponsor escrow submission outcome is unknown; reconcile on-chain before retrying.",
+      self: { role: "sponsor", walletAddress: "tz1ReadOnlyFixtureWallet", canBind: false, canOpen: false, canStart: false,
+        actions: { sponsorLots: [], refundSponsorLots: [], cashClaims: [], lotClaims: [] } },
+    };
+    await page.route(`**/api/wtfiap/sponsor-funding/rooms/${roomCode}`, route =>
+      route.fulfill({ json: { ok: true, room } }));
+    await page.goto(`/colilseum/${roomCode}?funding=1`);
+    const panel = surface(page).getByRole("region", { name: "Prize escrow" });
+    await expect(panel).toContainText("Opening the prize escrow on Tezos shadownet.");
+    await expect(panel).toContainText("The room checks automatically while confirmation is pending.");
+    await expect(panel).not.toContainText("reconcile on-chain before retrying");
+    room.operations = [];
+    room.error = null;
+    room.status = "funding";
+    await expect(panel).not.toContainText("Confirmation pending.");
+  });
+
+  test("an older cash-claim checkpoint clears after its unsuffixed observation is fully claimed", async ({ page }) => {
+    const roomCode = "83838383-8383-4838-8838-838383838383";
+    const user = await page.request.get("/api/auth/user").then(response => response.json());
+    const opHash = "o" + "7".repeat(50);
+    const key = `wtfiap:sponsor:pending:${user.id}:${roomCode}`;
+    await page.addInitScript(({ key, opHash }) => localStorage.setItem(key,
+      JSON.stringify({ kind: "cashClaim", opHash })), { key, opHash });
+    const room = {
+      roomCode, status: "settled", network: "shadownet", chainId: "NetXsqzbfFenSTS",
+      escrowContract: "KT1ReadOnlySponsorFixture", roomId: "c".repeat(64), termsHash: "d".repeat(64),
+      wtfToken: { contract: "KT1ReadOnlyFixtureWTF", tokenId: "0", decimals: 8 },
+      sponsorFunded: true, depositedCount: 2, roster: [], config: { enabled: true },
+      terms: { mode: "fixed", minimumHumans: 2,
+        entry: { currency: "FREE", entryAtomic: "0", poolNumerator: "0", poolDenominator: "1", designatedWallet: null },
+        places: [{ place: 1, xtzAtomic: "1000000", wtfAtomic: "0", poolWeight: "0" }],
+        tokens: [], deposit: { xtzAtomic: "1000000", wtfAtomic: "0" } },
+      self: { role: "sponsor", walletAddress: "tz1ReadOnlyFixtureWallet", canBind: false, canOpen: false, canStart: false,
+        pendingOperations: [{ action: "cashClaim", operationHash: opHash, status: "pending" }],
+        actions: { sponsorLots: [], refundSponsorLots: [], cashClaims: [], lotClaims: [] } },
+    };
+    await page.route(`**/api/wtfiap/sponsor-funding/rooms/${roomCode}`, route =>
+      route.fulfill({ json: { ok: true, room } }));
+    await page.goto(`/colilseum/${roomCode}?funding=1`);
+    const panel = surface(page).getByRole("region", { name: "Prize escrow" });
+    await expect(panel).toContainText("Do not send another payment while this is pending.");
+    room.self.pendingOperations[0].status = "applied";
+    await expect(panel).toContainText("Wallet operation verified on Tezos shadownet.");
+    await expect.poll(() => page.evaluate(key => localStorage.getItem(key), key)).toBeNull();
+  });
+
+  test("an unreadable saved sponsor checkpoint blocks a second wallet payment", async ({ page }) => {
+    const roomCode = "84848484-8484-4848-8848-848484848484";
+    const user = await page.request.get("/api/auth/user").then(response => response.json());
+    const key = `wtfiap:sponsor:pending:${user.id}:${roomCode}`;
+    await page.addInitScript(key => localStorage.setItem(key, "{damaged"), key);
+    const room = sponsorWalletFixture(roomCode);
+    await page.route(`**/api/wtfiap/sponsor-funding/rooms/${roomCode}`, route =>
+      route.fulfill({ json: { ok: true, room } }));
+    await page.goto(`/colilseum/${roomCode}?funding=1`);
+    const panel = surface(page).getByRole("region", { name: "Prize escrow" });
+    await expect(panel.getByRole("alert")).toContainText("saved wallet operation for this room cannot be read");
+    await expect(panel.getByRole("button", { name: "Stake XTZ prize · 1 XTZ" })).toBeDisabled();
+    expect(await page.evaluate(key => localStorage.getItem(key), key)).toBe("{damaged");
+  });
+
+  test("a transient sponsor status read error clears when automatic polling recovers", async ({ page }) => {
+    const roomCode = "86868686-8686-4868-8868-868686868686";
+    const room = sponsorWalletFixture(roomCode);
+    let reads = 0;
+    await page.route(`**/api/wtfiap/sponsor-funding/rooms/${roomCode}`, route => {
+      reads++;
+      // The outer game shell probes the funding route before mounting this panel.
+      // Fail the panel's first poll, then let its next poll recover.
+      return reads === 2
+        ? route.fulfill({ status: 503, json: { error: "Temporary escrow read failure" } })
+        : route.fulfill({ json: { ok: true, room } });
+    });
+    await page.goto(`/colilseum/${roomCode}?funding=1`);
+    const panel = surface(page).getByRole("region", { name: "Prize escrow" });
+    await expect(panel.getByRole("alert")).toContainText("Temporary escrow read failure");
+    await expect(panel).toContainText("Stake XTZ prize · 1 XTZ");
+    await expect(panel.getByRole("alert")).toHaveCount(0);
+    expect(reads).toBeGreaterThan(1);
+  });
+
+  test("sponsor funding refuses to open a wallet when its checkpoint cannot be written", async ({ page }) => {
+    const roomCode = "87878787-8787-4878-8878-878787878787";
+    const room = sponsorWalletFixture(roomCode);
+    await page.addInitScript(() => {
+      const original = Storage.prototype.setItem;
+      Storage.prototype.setItem = function (key, value) {
+        if (key.endsWith(":write-check")) throw new Error("Storage unavailable");
+        return original.call(this, key, value);
+      };
+    });
+    await page.route(`**/api/wtfiap/sponsor-funding/rooms/${roomCode}`, route =>
+      route.fulfill({ json: { ok: true, room } }));
+    await page.goto(`/colilseum/${roomCode}?funding=1`);
+    const panel = surface(page).getByRole("region", { name: "Prize escrow" });
+    await panel.getByRole("button", { name: "Stake XTZ prize · 1 XTZ" }).click();
+    await expect(panel.getByRole("alert")).toContainText("Browser storage is unavailable");
+    await expect(panel.getByRole("button", { name: "Stake XTZ prize · 1 XTZ" })).toBeEnabled();
+  });
+
+  test("only a finalized failure proof releases a saved sponsor payment for retry", async ({ page }) => {
+    const roomCode = "85858585-8585-4858-8858-858585858585";
+    const user = await page.request.get("/api/auth/user").then(response => response.json());
+    const opHash = "o" + "5".repeat(50);
+    const key = `wtfiap:sponsor:pending:${user.id}:${roomCode}`;
+    await page.addInitScript(({ key, opHash }) => localStorage.setItem(key,
+      JSON.stringify({ kind: "sponsorXtz", opHash })), { key, opHash });
+    const room = sponsorWalletFixture(roomCode);
+    room.self.pendingOperations = [{ action: "sponsorXtz", operationHash: opHash, status: "failed" }];
+    await page.route(`**/api/wtfiap/sponsor-funding/rooms/${roomCode}`, route =>
+      route.fulfill({ json: { ok: true, room } }));
+    await page.goto(`/colilseum/${roomCode}?funding=1`);
+    const panel = surface(page).getByRole("region", { name: "Prize escrow" });
+    await expect(panel.getByRole("button", { name: "Stake XTZ prize · 1 XTZ" })).toBeDisabled();
+    expect(await page.evaluate(key => localStorage.getItem(key), key)).toBeTruthy();
+    room.self.pendingOperations[0].proof = { kind: "finalized-failed-operation", blockHash: "Bfinal", level: 42 };
+    await expect(panel).toContainText("Wallet operation failed on Tezos shadownet. No payment was verified.");
+    await expect(panel.getByRole("button", { name: "Stake XTZ prize · 1 XTZ" })).toBeEnabled();
+    await expect.poll(() => page.evaluate(key => localStorage.getItem(key), key)).toBeNull();
+  });
+
+  test("sponsored Party setup offers paid entry and ordered FA2 prize picks", async ({ page }) => {
+    await page.goto("/colilseum?mode=party", { waitUntil: "domcontentloaded" });
+    const frame = await partyFrame(page);
+    await frame.locator("#room-type").selectOption("party");
+    await frame.locator("#prize-source").selectOption("sponsor-paid");
+    await expect(frame.locator("#sponsor-entry-fields")).toBeVisible();
+    await frame.locator("#sponsor-mode").selectOption("pick");
+    await expect(frame.locator("#sponsor-picks-1")).toBeVisible();
+    await frame.locator("#sponsor-place-count").selectOption("2");
+    await frame.locator("#add-sponsor-token").click();
+    await frame.locator("#sponsor-picks-1").fill("1");
+    await frame.locator("#sponsor-picks-2").fill("0");
+    await frame.locator("#sponsor-designated-wallet").fill("tz1" + "1".repeat(33));
+    const token = frame.locator("#sponsor-token-list .sponsor-token-row");
+    await token.locator('input').nth(0).fill("KT1" + "1".repeat(33));
+    await token.locator('input').nth(1).fill("7");
+    await token.locator('input').nth(2).fill("1");
+    await expect(frame.locator("#sponsor-preview")).toContainText("finish-place pick order");
+    await expect(frame.locator("#create-room")).toHaveText("Create prize party");
+  });
+
+  test("a ranked finisher can choose an FA2 prize from the room funding panel", async ({ page }) => {
+    const roomCode = "99999999-9999-4999-8999-999999999999";
+    const lot = { index: 0, contract: "KT1" + "1".repeat(33), tokenId: "7", amount: "1" };
+    let selected = null;
+    const room = {
+      roomCode, status: "awaiting-prize-picks", network: "shadownet",
+      chainId: "NetXsqzbfFenSTS", escrowContract: "KT1ReadOnlySponsorFixture",
+      roomId: "c".repeat(64), termsHash: "d".repeat(64),
+      wtfToken: { contract: "KT1ReadOnlyFixtureWTF", tokenId: "0", decimals: 8 },
+      sponsorFunded: true, depositedCount: 2, roster: [], config: { enabled: true },
+      terms: { mode: "pick", minimumHumans: 2,
+        entry: { currency: "FREE", entryAtomic: "0", poolNumerator: "0", poolDenominator: "1", designatedWallet: null },
+        places: [{ place: 1, xtzAtomic: "0", wtfAtomic: "0", poolWeight: "0" }],
+        tokens: [lot], deposit: { xtzAtomic: "0", wtfAtomic: "0" } },
+      prizeSelection: { nextPlace: 1, nextPlayerId: "winner", nextPlayerName: "Winner",
+        remainingForPlace: 1, chosen: [], availableLots: [lot] },
+      self: { role: "entrant", canPick: true, walletAddress: "tz1ReadOnlyFixtureWallet",
+        canBind: false, canOpen: false, canStart: false,
+        actions: { sponsorLots: [], refundSponsorLots: [], cashClaims: [], lotClaims: [] } },
+    };
+    await page.route(`**/api/wtfiap/sponsor-funding/rooms/${roomCode}`, route =>
+      route.fulfill({ json: { ok: true, room } }));
+    await page.route(`**/api/wtfiap/sponsor-funding/rooms/${roomCode}/pick-lot`, route => {
+      selected = route.request().postDataJSON().index;
+      room.prizeSelection = { nextPlace: null, nextPlayerId: null, nextPlayerName: null,
+        remainingForPlace: 0, chosen: [{ index: 0, place: 1, playerId: "winner" }], availableLots: [] };
+      room.self.canPick = false;
+      return route.fulfill({ json: { ok: true, room } });
+    });
+    await page.goto(`/colilseum/${roomCode}?funding=1`);
+    const panel = surface(page).getByRole("region", { name: "Prize escrow" });
+    await expect(panel.getByRole("button", { name: /Pick FA2 .* #7 ×1/ })).toBeVisible();
+    await panel.getByRole("button", { name: /Pick FA2 .* #7 ×1/ }).click();
+    await expect.poll(() => selected).toBe(0);
+    await expect(panel).toContainText("All finishers have chosen");
   });
 
   test("duel wagering stays optional and AI tournament quotes only paying humans", async ({ page }) => {

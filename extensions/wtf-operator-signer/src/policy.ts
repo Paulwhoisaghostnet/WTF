@@ -51,9 +51,14 @@ export function enforceEnvelopePolicy(
 
   if (envelope.intent === "health") return null;
 
-  if (envelope.intent === "wtfiap_escrow") {
+  if (envelope.intent === "wtfiap_escrow" || envelope.intent === "wtfiap_sponsor_escrow") {
     const lane = wtfIapSignerLane(env, envelope.payload.chainId);
-    if (!lane.contracts?.includes(envelope.payload.contract)) {
+    const contracts = envelope.intent === "wtfiap_sponsor_escrow"
+      ? envelope.payload.chainId === "NetXdQprcVkpaWU"
+        ? env.WTF_OPERATOR_SIGNER_WTFIAP_SPONSOR_MAINNET_CONTRACTS
+        : env.WTF_OPERATOR_SIGNER_WTFIAP_SPONSOR_CONTRACTS
+      : lane.contracts;
+    if (!contracts?.includes(envelope.payload.contract)) {
       return refuse("WTFIAP escrow is not allowlisted", "WTFIAP_CONTRACT", envelope.requestId);
     }
     if (!lane.walletId || envelope.walletId !== lane.walletId) {
@@ -87,7 +92,9 @@ export function enforceEnvelopePolicy(
 
   if (isOperatorSignerContractCallIntent(envelope.intent)) {
     const payload = envelope.payload as OperatorSignerContractCallPayload;
-    if ([...env.WTF_OPERATOR_SIGNER_WTFIAP_CONTRACTS, ...env.WTF_OPERATOR_SIGNER_WTFIAP_MAINNET_CONTRACTS].includes(payload.contract)) {
+    if ([...env.WTF_OPERATOR_SIGNER_WTFIAP_CONTRACTS, ...env.WTF_OPERATOR_SIGNER_WTFIAP_MAINNET_CONTRACTS,
+      ...env.WTF_OPERATOR_SIGNER_WTFIAP_SPONSOR_CONTRACTS,
+      ...env.WTF_OPERATOR_SIGNER_WTFIAP_SPONSOR_MAINNET_CONTRACTS].includes(payload.contract)) {
       return refuse("WTFIAP escrow requires its durable typed intent", "WTFIAP_INTENT_REQUIRED", envelope.requestId);
     }
     if (payload.mutez > env.WTF_OPERATOR_SIGNER_MAX_XTZ_MUTEZ) {
@@ -178,6 +185,7 @@ export function okResponse(opts: {
   keyringConfigured?: boolean;
   wallet?: PlatformWalletPublic;
   wallets?: PlatformWalletPublic[];
+  capabilities?: string[];
 }): OperatorSignerResponse {
   return {
     ok: true,
@@ -192,5 +200,6 @@ export function okResponse(opts: {
     keyringConfigured: opts.keyringConfigured,
     wallet: opts.wallet,
     wallets: opts.wallets,
+    capabilities: opts.capabilities,
   };
 }

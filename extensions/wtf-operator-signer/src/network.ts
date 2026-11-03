@@ -1,3 +1,4 @@
+import { setTimeout as wait } from "node:timers/promises";
 import type { PlatformWalletNetwork } from "../../../shared/operator-signer";
 
 export const TEZOS_CHAIN_ID_BY_NETWORK: Partial<Record<PlatformWalletNetwork, string>> = {
@@ -84,4 +85,132 @@ export async function probeRpcChainId(options: {
   }
 
   throw new Error(`Tezos RPC chain-id probe failed (${failures.join("; ")})`);
+}
+
+export class PinnedRpcChainMismatch extends Error {}
+
+/** Resolve the contract through a same-chain RPC before any transaction is
+ * prepared. Only the configured primary and its project fallback are tried.
+ */
+export async function preparePinnedWtfIapRpc<T>(options: {
+  network: PlatformWalletNetwork;
+  rpcUrl: string;
+  expectedChainId: string;
+  connect: (rpcUrl: string) => {
+    getChainId: () => Promise<string>;
+    prepare: () => Promise<T>;
+  };
+}): Promise<{ rpcUrl: string; value: T }> {
+  let lastError: unknown;
+  for (const rpcUrl of rpcProbeCandidates(options.network, options.rpcUrl)) {
+    try {
+      const connection = options.connect(rpcUrl);
+      const chainId = await connection.getChainId();
+      if (chainId !== options.expectedChainId) {
+        throw new PinnedRpcChainMismatch(
+          `WTFIAP RPC ${rpcUrl} returned ${chainId}, expected ${options.expectedChainId}`);
+      }
+      return { rpcUrl, value: await connection.prepare() };
+    } catch (error) {
+      if (error instanceof PinnedRpcChainMismatch) throw error;
+      lastError = error;
+    }
+  }
+  throw lastError ?? new Error("No configured WTFIAP RPC is available");
+}
+
+type WtfIapReadRpc = {
+  getChainId: () => Promise<string>;
+  getBlockHeader: (options: { block: string }) => Promise<{ level: number | string }>;
+  getConstants: (options: { block: string }) => Promise<{ max_operations_time_to_live?: number | string }>;
+  getBlockHash: (options: { block: string }) => Promise<string>;
+  getBlock: (options: { block: string }) => Promise<{
+    hash: string;
+    operations: Array<Array<{ hash: string }>>;
+  }>;
+};
+
+/** Read only: scan from the signed branch until inclusion or the protocol's
+ * operation TTL expires. The same signed hash is never injected here.
+ */
+export async function awaitPinnedWtfIapInclusion(options: {
+  network: PlatformWalletNetwork;
+  rpcUrl: string;
+  expectedChainId: string;
+  operationHash: string;
+  branchHash: string;
+  connect: (rpcUrl: string) => WtfIapReadRpc;
+  signal?: AbortSignal;
+  waitForNextHead?: () => Promise<void>;
+}): Promise<"included" | "expired"> {
+  const candidates = rpcProbeCandidates(options.network, options.rpcUrl);
+  type Cursor = { branchLevel: number; horizon: number; lastLevel: number; lastHash: string };
+  const cursors = new Map<string, Cursor>();
+  let activeRpcUrl: string | undefined;
+  for (;;) {
+    if (options.signal?.aborted) throw options.signal.reason;
+    let scannedExpired = false;
+    let scannedBeforeExpiry = false;
+    for (const rpcUrl of candidates) {
+      try {
+        const rpc = options.connect(rpcUrl);
+        const chainId = await rpc.getChainId();
+        if (chainId !== options.expectedChainId) {
+          throw new PinnedRpcChainMismatch(
+            `WTFIAP confirmation RPC ${rpcUrl} returned ${chainId}, expected ${options.expectedChainId}`);
+        }
+        const [branch, constants, head] = await Promise.all([
+          rpc.getBlockHeader({ block: options.branchHash }),
+          rpc.getConstants({ block: options.branchHash }),
+          rpc.getBlockHeader({ block: "head" }),
+        ]);
+        const branchLevel = Number(branch.level);
+        const headLevel = Number(head.level);
+        const ttl = Number(constants.max_operations_time_to_live);
+        if (![branchLevel, headLevel, ttl].every(Number.isSafeInteger) || ttl <= 0 ||
+            headLevel < branchLevel) throw new Error("Invalid WTFIAP confirmation horizon");
+        const horizon = branchLevel + ttl;
+        const lastPossibleLevel = Math.min(headLevel, horizon);
+        const expired = headLevel > horizon;
+        let cursor = activeRpcUrl === rpcUrl ? cursors.get(rpcUrl) : undefined;
+        if (cursor && (cursor.branchLevel !== branchLevel || cursor.horizon !== horizon ||
+            cursor.lastLevel > lastPossibleLevel ||
+            await rpc.getBlockHash({ block: String(cursor.lastLevel) }) !== cursor.lastHash)) {
+          cursors.delete(rpcUrl);
+          cursor = undefined;
+        }
+        // Normal heads need only new blocks after a stable last-block hash.
+        // Expiry always gets an exhaustive scan, even on a steady endpoint.
+        const startLevel = expired ? branchLevel + 1 : (cursor?.lastLevel ?? branchLevel) + 1;
+        let lastHash = cursor?.lastHash;
+        for (let level = startLevel; level <= lastPossibleLevel; level++) {
+          if (options.signal?.aborted) throw options.signal.reason;
+          const block = await rpc.getBlock({ block: String(level) });
+          if (!block.hash) throw new Error("WTFIAP confirmation block hash missing");
+          if (block.operations.some(pass => pass.some(operation =>
+            operation.hash === options.operationHash))) {
+            if (await rpc.getBlockHash({ block: String(level) }) === block.hash) return "included";
+            throw new Error("WTFIAP confirmation fork changed during scan");
+          }
+          lastHash = block.hash;
+        }
+        if (lastPossibleLevel > branchLevel) {
+          if (await rpc.getBlockHash({ block: String(lastPossibleLevel) }) !== lastHash)
+            throw new Error("WTFIAP confirmation fork changed during scan");
+          cursors.set(rpcUrl, { branchLevel, horizon,
+            lastLevel: lastPossibleLevel, lastHash: lastHash! });
+        }
+        activeRpcUrl = rpcUrl;
+        if (expired) scannedExpired = true;
+        else { scannedBeforeExpiry = true; break; }
+      } catch (error) {
+        if (options.signal?.aborted) throw options.signal.reason;
+        // A wrong-chain or unavailable reader cannot confirm inclusion. Try the
+        // next configured endpoint, and keep the wallet lane held if all fail.
+      }
+    }
+    if (scannedExpired && !scannedBeforeExpiry) return "expired";
+    await (options.waitForNextHead?.() ?? wait(DEFAULT_RPC_PROBE_TIMEOUT_MS,
+      undefined, { signal: options.signal }));
+  }
 }

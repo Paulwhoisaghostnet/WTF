@@ -13269,6 +13269,186 @@ When shop and board are visible together, contextual help must prioritize a sele
 
 ---
 
+## 2026-11-02 — Read settled escrow claims with Taquito's flattened big-map keys
+
+**What happened**: The sponsored escrow settled and paid its Shadownet XTZ claims, but the host reader returned no cash claims. Its Taquito `BigMapAbstraction.get` call supplied a nested pair for a three-part Michelson key; Taquito expects one positional array containing room ID, wallet and currency index.
+
+**Why it mattered**: A funded room could appear settled while its prize and treasury claim state stayed invisible to the game UI.
+
+**Rule**: Use the flattened positional key for each nested-pair big map and check the reader against a settled on-chain room, as well as a mocked regression case, before enabling new escrow views.
+
+---
+
+## 2026-11-02 — Install signer dependencies without entering its private directory as the deploy user
+
+**What happened**: The signer deployment copied the new bundle but stopped before restart because its remote command tried to `cd` into `/opt/wtf-operator-signer` as the deploy user. That directory is restricted to the signer service account.
+
+**Why it mattered**: A partially copied signer bundle could leave a later service restart running new code without the matching dependency install and without a verified rollout.
+
+**Rule**: Run npm with `--prefix /opt/wtf-operator-signer` under `wtf-signer`, then restart and compare the installed bundle hash with the local build. Keep the directory inaccessible to the deploy user.
+
+---
+
+## 2026-11-02 — Rebase hosted game behavior when vendoring a newer room server
+
+**What happened**: The sponsored-room source was based on a game server variant that lacked the hosted `resume` endpoint and turn notification calls, and narrowed the existing unfunded room close action. The vendor command replaced the hosted server with that variant, so the aggregate authority test failed.
+
+**Why it mattered**: Existing players could lose seat recovery and turn alerts even though the new sponsor flow tests passed.
+
+**Rule**: Compare the vendored hosted game server against the current hosted release before accepting a new game workspace variant. Preserve hosted endpoints and lifecycle hooks, then run the hosted authority and deployment-guard tests against the vendored bytes.
+
+---
+
+## 2026-11-02 — Preserve hosted lobby actions when vendoring game UI
+
+**What happened**: The game workspace client lacked hosted lobby actions for returning to a saved seat, prefilling a logged-in WTF identity, and drafting invitations. Vendoring it removed those controls from the hosted game, although the sponsor room browser itself worked.
+
+**Why it mattered**: The full browser inventory found three regressions in existing room navigation and invitations.
+
+**Rule**: Compare both the game server and client against the hosted release before vendoring. Rebuild the host's public assets before browser testing; a stale build can falsely report the same failure after the source is fixed.
+
+---
+
+## 2026-11-02 — Wire prize selection through the game, host, and escrow result
+
+**What happened**: The sponsor escrow contract supported finish-place FA2 prize picks, but the game rejected that room mode and the host had no pick action or result mapping.
+
+**Why it mattered**: A sponsor could not offer ordered prize choice even though the contract had a settlement mode for it. A completed match could not settle until each lot was assigned to a verified human finisher.
+
+**Rule**: For every escrow prize mode, test the room creation UI, server acceptance, authenticated post-match action, persisted choice order, and exact result submitted to escrow. A contract entrypoint alone is not a finished game feature.
+
+---
+
+## 2026-11-02 — Wait for the host's finalized block before judging a sponsor deposit or claim
+
+**What happened**: The Shadownet WTF sponsor deposit and winner claim both confirmed and appeared in TzKT, while the host chain reader initially returned the earlier state. The reader intentionally snapshots `head~2`, which had not yet reached each freshly included operation. The journaled test resumed without resending the operation and passed once the snapshot advanced.
+
+**Why it mattered**: Treating an expected finality delay as failed custody could prompt an unsafe duplicate transaction or a false player-facing funding error.
+
+**Rule**: For sponsor escrow live proofs, wait until the `head~2` snapshot includes the operation before asserting the reader state. Preserve the operation journal and reconcile confirmed hashes before any retry; never interpret a stale read as proof that a deposit or payout did not occur.
+
+---
+
+## 2026-11-02 — Show settlement state after an FA2 prize leaves escrow
+
+**What happened**: The prize panel used the current escrow FA2 balance to show whether sponsor funding was verified. Once an FA2 prize was claimed, that balance correctly fell to zero, but the settled room could then display a warning that prize custody was pending and the match could not start.
+
+**Why it mattered**: A completed payout looked like an unfunded room to players returning to check their winnings.
+
+**Rule**: Use current custody checks to gate a room before combat. After settlement or void, show the chain lifecycle and claim or refund state instead of interpreting the remaining escrow balance as a new funding failure.
+
+---
+
+## 2026-11-02 — Match the wallet prompt to the paid-room fee condition
+
+**What happened**: The sponsored-room server adds the 0.5 XTZ Mainnet house fee only when entrants pay an XTZ wager, but the client wallet-call validator added it to every sponsor XTZ prize deposit. A free-entry or WTF-entry room with an XTZ prize could show the correct deposit action and still reject it before the wallet opened.
+
+**Why it mattered**: Mainnet sponsors could not fund valid free-entry or WTF-entry prize rooms containing XTZ, even though the deployed escrow accepted those room terms.
+
+**Rule**: Derive the wallet amount from the same pinned room terms and fee condition as the server. Cover paid XTZ, free, and WTF-entry plans in the wallet-call regression suite before enabling the Mainnet sponsor lane.
+
+---
+
+## 2026-11-03 — Optional treasure must be explicit at the combat boundary
+
+**What happened**: A funded Shadownet sponsored Party match using Ancient rules reached round five and both authenticated player views and its event stream returned HTTP 500. The Party layer correctly omitted gold chests because treasure was disabled, but the engine required two gold chests for every round from five onward. The funded room and escrow remained active.
+
+**Why it mattered**: An ordinary game-mode choice blocked a real funded match from continuing to settlement.
+
+**Rule**: Carry the room's pinned treasure setting into combat configuration. Validate gold and item chests according to their separate enabled rules, then replay both the disabled and default-enabled paths through the first affected round. Preserve the existing room and resume it after a compatible deployment.
+
+---
+
+## 2026-11-03 — Include sponsored escrow in the funded-room deployment guard
+
+**What happened**: The replacement guard read durable legacy tournament and open-duel funding records, but omitted sponsored-room escrow rows. Its game-volume scan still saw the funded sponsored room, so a safe hotfix would have been rejected as a game lock with no matching escrow binding.
+
+**Why it mattered**: The normal deploy path could not repair the blocked match while keeping the guard's funding commitments intact.
+
+**Rule**: Every escrow lane that can attach a game funding lock must appear in the deployment snapshot. Compare the exact lock version, room, terms, match, network, contract, and pinned rules against its durable record before replacing the app; test missing and mismatched bindings as well as the live-compatible case.
+
+---
+
+## 2026-11-03 — Regenerate environment inventory when adding a source test file
+
+**What happened**: The sponsored-room recovery PR passed local gameplay and build checks, but CI stopped at environment inventory. The new regression test contained no environment variables, yet the generated inventory also records the number of scanned source files and was one file stale. A separate untracked local puppet script changed local scan output but was absent from clean CI.
+
+**Why it mattered**: The exact-head quality gate rejected a correct hotfix before running its aggregate tests.
+
+**Rule**: Regenerate the environment inventory from the tracked candidate file set whenever adding a source file, then run its check in the same clean-file view. Keep unrelated untracked local scripts out of generated release metadata.
+
+---
+
+## 2026-11-03 — Admit a funded room build only with a compatible signer
+
+**What happened**: A sponsored Shadownet Party match settled, but its automatic `claim_cash` stayed `submission-unknown`. The live isolated signer bundle predated `claim_cash` and `claim_lot`, because the normal app deployment did not synchronize the signer. The exact claim had no signer journal or chain payment. After a standard signer rebuild, guarded reconciliation of that same intent paid the winner and left zero XTZ in escrow.
+
+**Why it mattered**: App and signer versions could diverge while both services appeared healthy, blocking a real prize payout after the match completed. An unguarded retry of an unknown submission could risk duplicate effects.
+
+**Rule**: Deploy the signer from the same source commit before admitting the app, compare the built and installed bundle hashes, and wait through transient post-restart socket startup within the app's configured signer response window. Require a live socket response that advertises sponsored prize claim actions and matches enabled escrow policy pins. If submission is unknown, inspect the exact signer journal and finalized chain state before retrying the same durable intent.
+
+---
+
+## 2026-11-03 — Return a durable escrow hash without releasing the signer lane
+
+**What happened**: During a Mainnet sponsored Tournament test, the app timed out on `create_room` and then `register_entrant` while the signer still held the referee wallet lane for an earlier confirmation. The first operation appeared on chain; the second request's journal was absent for minutes, then the original queued request submitted under the same ID. Journal absence at the app timeout therefore did not prove that a retry was safe.
+
+**Why it mattered**: The room looked stalled while the signer was still processing valid work. Resetting the intent based on the initially absent journal could have created a duplicate submission.
+
+**Rule**: Fsync and return the operation hash before waiting for inclusion, while keeping the wallet lane serialized until confirmation or the signed branch's protocol TTL. Use only same-chain configured RPC fallbacks for pre-send reads and read-only confirmation. Cache confirmation progress per endpoint only while the last scanned block hash remains stable; rescan from the branch after an endpoint switch or reorg and before expiry. A lost response or missing journal at one instant never authorizes replay; reconcile the original request ID and on-chain state.
+
+---
+
+## 2026-11-03 — Match a sponsor wallet checkpoint to its own chain observation
+
+**What happened**: The sponsored room panel saved a wallet operation hash after a player signed, but checked that hash against the referee's escrow intents. Those are different transactions. A confirmed sponsor or entrant payment could leave the wallet checkpoint locked in the browser, while a failed `observe` request after wallet submission had no automatic recovery.
+
+**Why it mattered**: Players could see a confirmed escrow deposit yet still be told their payment was pending, and might be tempted to sign another payment. Slow referee submissions also exposed a raw `submission-unknown` error without a clear waiting state.
+
+**Rule**: Keep user wallet observations separate from referee intents. Re-observe a saved wallet hash idempotently if the server has not recorded it, and clear the browser checkpoint only after the intended action is visible in verified escrow state. Show referee submission uncertainty as a pending confirmation; never suggest a fresh payment or replay from an uncertain result.
+
+---
+
+## 2026-11-03 — Preserve old wallet observation keys during escrow UI upgrades
+
+**What happened**: Earlier sponsored-room clients recorded cash claims without a currency and FA2 refund or prize claims without a lot index. A newer panel expected suffixed actions, but `observe` deduplicates by operation hash and preserves the original action. Those saved browser checkpoints would have remained pending even after escrow completed the transfer.
+
+**Why it mattered**: A safe upgrade must recognize the actual saved observation format, including pre-upgrade rooms. Reposting the same hash with a more precise action cannot rewrite historical evidence.
+
+**Rule**: Match the saved operation hash and accept legacy action keys only when all potentially matching claims or lots for that wallet are complete in verified chain state. Keep new observations currency- and index-specific, and test both historical and current checkpoint formats.
+
+---
+
+## 2026-11-03 — A failed wallet operation needs finalized exact-call proof
+
+**What happened**: The sponsored-room wallet panel treated every unfulfilled observation as pending, so a genuinely failed or backtracked transaction could lock its browser checkpoint forever. A separate parse path treated a damaged saved checkpoint as absent, which could have permitted another payment while the first outcome was unknown.
+
+**Why it mattered**: Indexer status or an unavailable RPC cannot authorize a retry, and damaged local state cannot establish that no payment was submitted. Either shortcut risks a duplicate wager or prize deposit.
+
+**Rule**: Locate a candidate with the indexer, then require the configured network's finalized RPC branch to show the same operation hash, wallet, escrow contract, entrypoint, exact encoded parameters and amount, with every matching manager call failed, backtracked, or skipped. Persist the proof before exposing retry. Keep unreadable checkpoints intact and block new wallet sends until reconciled through an authoritative path.
+
+---
+
+## 2026-11-03 — Optional wallet failure proof must not disable a funded room
+
+**What happened**: Sponsored-room reconciliation read a verified escrow room, then tried to prove whether an unrelated pending wallet operation had failed. A transient RPC failure in that optional proof path propagated to the room error field, hiding every wallet action in the funding panel.
+
+**Why it mattered**: An unavailable failure-proof reader cannot authorize a retry, but it also cannot invalidate the escrow state already read. Hiding deposit and refund actions for the whole room makes a temporary RPC failure look like a broken wager.
+
+**Rule**: If optional exact-call failure proof is unavailable, leave the operation checkpoint pending and continue reconciling the verified room. Keep primary escrow reads and validation failures fail-closed; test the split failure path explicitly.
+
+---
+
+## 2026-11-03 — Generate the environment inventory from the release source set
+
+**What happened**: CI stopped at the environment inventory check after the sponsored-room indexer configuration gained another reference to existing variables. A local regeneration also picked up an unrelated untracked proof script, creating entries that would not exist in the pushed checkout.
+
+**Why it mattered**: A generated document based on local untracked files can pass locally and still fail the release job, obscuring the actual source change.
+
+**Rule**: Regenerate the environment inventory with local untracked scripts outside the scanned tree, restore those scripts afterward, and verify the generated diff reflects only tracked release sources before pushing.
+
+---
+
 ## 2026-11-03 — Horse-return fixtures must balance pending receipts and counterpart totals
 
 **What happened**: The first Horf browser fixture displayed two horses owed back to Sir Canter but only one waiting horse in the received-token list. The UI rendered each response field faithfully, yet the screenshot implied a ledger state that FIFO reciprocal pairing cannot produce.
@@ -13476,3 +13656,23 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: The wrapper falsely reported a failed build and hid the build log tail until rerun.
 
 **Rule**: In zsh build wrappers, use a task-specific name such as `build_exit_code` to capture `$?`, then report that value after printing the log summary.
+
+---
+
+## 2026-11-03 - Merge canonical bounty records before regenerating the board
+
+**What happened**: The Horf branch and current main both added bounty records, and the generated JSON ranks and Markdown board conflicted across hundreds of rows. Both branches also used WTF-BB-757 for different findings.
+
+**Why it mattered**: Taking either generated file wholesale would erase the other branch's audit history or leave duplicate IDs and invalid ranks.
+
+**Rule**: Merge canonical records by ID, move a colliding new finding to the next unused ID, recalculate ranks from the merged point scores, then regenerate and check the Markdown board. Preserve appended lessons from both branches rather than choosing one side.
+
+---
+
+## 2026-11-03 - Clear orphaned inventory harnesses before a full browser run
+
+**What happened**: The Horf inventory command built successfully but Playwright refused to start because a previous `tests/playwright/harness.mjs` process, orphaned to PID 1, still held port 4173.
+
+**Why it mattered**: The required full inventory test reported a setup failure despite no application assertion running.
+
+**Rule**: When Playwright reports its configured web-server port in use, identify the listener and its command first, stop only a confirmed stale test harness, verify the port is free, then rerun the canonical inventory command.
