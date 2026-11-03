@@ -86,6 +86,7 @@ import horfWalletRoutes from "./routes/horf-wallet";
 import horfModerationRoutes from "./routes/horf-moderation";
 import horfInspectionsRoutes from "./routes/horf-inspections";
 import horfOpenRangeRoutes from "./routes/horf-open-range";
+import horfTraderRoutes from "./routes/horf-traders";
 import horfStablesRoutes from "./features/horf/stables/routes";
 import collektRoutes from "./routes/collekt";
 import { attendanceRoutes } from "./routes/attendance";
@@ -375,6 +376,7 @@ export function registerRoutes(app: Express) {
   app.use(horfModerationRoutes);
   app.use(horfInspectionsRoutes);
   app.use(horfOpenRangeRoutes);
+  app.use(horfTraderRoutes);
   app.use(horfStablesRoutes);
   app.use(dexRoutes);
   app.use(profileRoutes);

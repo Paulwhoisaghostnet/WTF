@@ -1,14 +1,13 @@
 import { useRef, useState, type ChangeEvent, type FormEvent } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import styled from "styled-components";
-import { api, fetchWithCsrf, isApiRequestError } from "../../lib/api";
+import { api } from "../../lib/api";
 import { logClientSystemEvent } from "../../lib/system-log";
 import { useWindowManager } from "../../lib/window-context";
 import { sendHorfTokenTransfer, type HorfSendProgress } from "../../lib/tezos/horf-send";
 import { claimHorfRewards, HORF_CLAIM_CHAIN_ID } from "../../lib/tezos/horf-claim";
 import {
   HORF_RECIPIENT_LIMIT,
-  assertTraderAddress,
   formatHorseAmount,
   parseHorseRecipientCsv,
   validateHorseRecipients,
@@ -73,7 +72,7 @@ const Header = styled.div`
 
 const Columns = styled.div`
   display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(220px, 0.8fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 18px;
   margin-top: 20px;
   @container (max-width: 720px) { grid-template-columns: 1fr; }
@@ -146,24 +145,6 @@ const RecipientRows = styled.ol`
   @container (max-width: 540px) { li { grid-template-columns: 24px minmax(0, 1fr) 90px; } li > button { grid-column: 2 / -1; } }
 `;
 
-const Compact = styled.div`
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 7px;
-  align-items: end;
-  margin: 8px 0;
-  @container (max-width: 470px) { grid-template-columns: 1fr; }
-`;
-
-const PosseList = styled.ul`
-  list-style: none;
-  margin: 11px 0 0;
-  padding: 0;
-  li { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 0; border-top: 1px solid var(--horf-line, #d6ded8); font-size: 14px; }
-  span { overflow-wrap: anywhere; }
-  small { display: block; color: var(--horf-muted, #50625e); font: 12px/1.4 var(--horf-font, "Avenir Next", sans-serif); }
-`;
-
 function shortAddress(address: string): string {
   return address.length > 18 ? `${address.slice(0, 8)}…${address.slice(-6)}` : address;
 }
@@ -192,16 +173,11 @@ export function HorfHorseSend({
   isConnecting: boolean;
 }) {
   const windowManager = useWindowManager();
-  const qc = useQueryClient();
   const nextRowId = useRef(2);
   const [rows, setRows] = useState<RecipientRow[]>([{ id: 1, address: "", amount: "1" }]);
   const [sameAmount, setSameAmount] = useState(true);
   const [sharedAmount, setSharedAmount] = useState("1");
   const [csvAmount, setCsvAmount] = useState("1");
-  const [posseAddress, setPosseAddress] = useState("");
-  const [posseNickname, setPosseNickname] = useState("");
-  const [posseBusy, setPosseBusy] = useState(false);
-  const [posseError, setPosseError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [stage, setStage] = useState<SendStage | null>(null);
   const [submittedHash, setSubmittedHash] = useState<string | null>(null);
@@ -248,8 +224,6 @@ export function HorfHorseSend({
   const canClaimReward = Boolean(address && reward?.status === "ready" && reward.asOf && reward.sourceComplete && reward.claimReady &&
     reward.vaultAddress && /^KT1[1-9A-HJ-NP-Za-km-z]{33}$/.test(reward.vaultAddress) &&
     /^\d+$/.test(reward.claimableRaw) && BigInt(reward.claimableRaw) > 0n);
-  const posseScopeDenied = isApiRequestError(posseQuery.error) && posseQuery.error.status === 403;
-  const posseRestricted = posseScopeDenied && /restricted|blacklist/i.test(posseQuery.error?.message ?? "");
   const busy = stage !== null;
 
   function setRow(id: number, patch: Partial<HorfRecipient>) {
@@ -275,46 +249,6 @@ export function HorfHorseSend({
       setRows(combined.map((row) => ({ ...row, id: nextRowId.current++ })));
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "The CSV could not be read.");
-    }
-  }
-
-  async function addPosse(event: FormEvent) {
-    event.preventDefault();
-    if (posseBusy) return;
-    setPosseError(null);
-    try {
-      if (!address) throw new Error("Connect and verify a wallet before saving your posse.");
-      const partner = assertTraderAddress(posseAddress);
-      if (partner === address) throw new Error("Your own wallet is not a trading partner.");
-      setPosseBusy(true);
-      await api.post("/api/horf/posse", { ownerAddress: address, address: partner, nickname: posseNickname.trim() || undefined });
-      setPosseAddress("");
-      setPosseNickname("");
-      await qc.invalidateQueries({ queryKey: ["horf", "posse"] });
-      logClientSystemEvent({ eventType: "horf.posse.added", message: "Trader added to Horf posse", metadata: { address: partner } });
-    } catch (cause) {
-      setPosseError(cause instanceof Error ? cause.message : "Could not save this trader.");
-    } finally {
-      setPosseBusy(false);
-    }
-  }
-
-  async function removePosse(id: number, partner: string) {
-    if (posseBusy) return;
-    setPosseError(null);
-    try {
-      setPosseBusy(true);
-      const response = await fetchWithCsrf(`/api/horf/posse/${id}`, { method: "DELETE" });
-      if (!response.ok) {
-        const body = await response.json().catch(() => ({}));
-        throw new Error(body.error || "Could not remove this trader.");
-      }
-      await qc.invalidateQueries({ queryKey: ["horf", "posse"] });
-      logClientSystemEvent({ eventType: "horf.posse.removed", message: "Trader removed from Horf posse", metadata: { address: partner } });
-    } catch (cause) {
-      setPosseError(cause instanceof Error ? cause.message : "Could not remove this trader.");
-    } finally {
-      setPosseBusy(false);
     }
   }
 
@@ -384,7 +318,7 @@ export function HorfHorseSend({
   }
 
   return (
-    <Shell id="horf-horse-send" data-horf-region="horse-send" aria-label="Send HORSE and manage your posse">
+    <Shell id="horf-horse-send" data-horf-region="horse-send" aria-label="Send HORSE">
       <Header>
         <div>
           <small>Pass the reins · Tezos Mainnet</small>
@@ -424,7 +358,7 @@ export function HorfHorseSend({
       {claimStage && <Note role="status" aria-live="polite">{claimStage === "permit" ? "Requesting your cumulative HORSE claim permit…" : claimStage === "preflight" ? "Checking wallet and Tezos Mainnet…" : claimStage === "preparing" ? "Preparing the vault claim…" : claimStage === "wallet" ? "Approve the vault claim and XTZ gas in your wallet…" : "Waiting for Tezos confirmation…"} {claimHash && <a href={`https://tzkt.io/${encodeURIComponent(claimHash)}`} target="_blank" rel="noopener noreferrer">View submitted claim</a>}</Note>}
       {claimError && <Note $error role="alert">{claimError}</Note>}
       {claimSuccess && <Note role="status">{claimSuccess} {claimHash && <a href={`https://tzkt.io/${encodeURIComponent(claimHash)}`} target="_blank" rel="noopener noreferrer">View transaction</a>}</Note>}
-      {!address && <Note $error>Connect and verify a Tezos wallet before sending or managing a posse. <Action type="button" onClick={() => void connectWallet()} disabled={isConnecting}>{isConnecting ? "Connecting…" : signedIn ? "Connect wallet" : "Connect and verify wallet"}</Action></Note>}
+      {!address && <Note $error>Connect and verify a Tezos wallet before sending HORSE. <Action type="button" onClick={() => void connectWallet()} disabled={isConnecting}>{isConnecting ? "Connecting…" : signedIn ? "Connect wallet" : "Connect and verify wallet"}</Action></Note>}
       <Columns>
         <Panel data-horf-horse-form>
           <h3>Make one send</h3>
@@ -468,32 +402,6 @@ export function HorfHorseSend({
             <Action data-horf-horse-send type="submit" $primary disabled={!address || !ready || busy || claimStage !== null}>Send $HORSE</Action>
             <p>Your wallet signs one Mainnet transaction. Tezos gas applies. The final token balance is checked on-chain.</p>
           </form>
-        </Panel>
-        <Panel data-horf-posse>
-          <h3>Your posse</h3>
-          <p>Round up your regular riders once, then choose them for $HORSE sends or direct horse art trades and gifts.</p>
-          <form onSubmit={(event) => void addPosse(event)}>
-            <label htmlFor="horf-posse-address">Trader wallet address</label>
-            <input id="horf-posse-address" data-horf-posse-address value={posseAddress} onChange={(event) => setPosseAddress(event.target.value)} placeholder="tz1…" disabled={posseBusy} />
-            <label htmlFor="horf-posse-name" style={{ marginTop: 9 }}>Nickname (optional)</label>
-            <Compact>
-              <input id="horf-posse-name" value={posseNickname} onChange={(event) => setPosseNickname(event.target.value)} placeholder="Sir Canter" disabled={posseBusy} />
-              <Action data-horf-posse-add type="submit" disabled={!address || posseBusy || !posseAddress.trim()}>Add to posse</Action>
-            </Compact>
-          </form>
-          {posseError && <Note $error role="alert">{posseError}</Note>}
-          {posseQuery.isPending && address && <p>Finding your posse…</p>}
-          {posseScopeDenied ? <Note $error role="alert">
-            {posseRestricted ? "This wallet is restricted from Horf private features. Check Trader standing by the race board." : "Your Horf wallet proof is missing or expired. Reconnect and verify this wallet to open your posse."}
-            {!posseRestricted && <> <Action type="button" onClick={() => void connectWallet()} disabled={isConnecting}>{isConnecting ? "Connecting…" : "Reconnect and verify wallet"}</Action></>}
-          </Note> : posseQuery.isError && <p role="alert">Posse list unavailable. Refresh this app to try again.</p>}
-          {partners.length ? <PosseList>{partners.map((partner) => (
-            <li key={partner.id} data-horf-posse-member>
-              <span><a href={`https://objkt.com/profile/${encodeURIComponent(partner.address)}`} target="_blank" rel="noopener noreferrer">{partner.nickname || shortAddress(partner.address)}</a><small>{partner.address}</small></span>
-              <Action type="button" onClick={() => void removePosse(partner.id, partner.address)} disabled={posseBusy}>Remove</Action>
-            </li>
-          ))}</PosseList> : address && !posseQuery.isPending && !posseQuery.isError && <p>No traders saved yet. Add a wallet above.</p>}
-          {!address && <p>Verify your wallet to see and manage its saved traders.</p>}
         </Panel>
       </Columns>
       {stage && <Note role="status" aria-live="polite">{sendStatus(stage)} {submittedHash && <a href={`https://tzkt.io/${encodeURIComponent(submittedHash)}`} target="_blank" rel="noopener noreferrer">View transaction</a>}</Note>}

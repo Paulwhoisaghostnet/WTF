@@ -98,7 +98,7 @@ test.describe("Horf Stables", () => {
       }),
     }));
 
-    await page.goto("/horf");
+    await page.goto("/horf/marshals-market");
     const stables = page.locator('[data-horf-region="stables"]');
     const marshalsMarket = page.locator('[data-horf-region="marshals-market"]');
     await expect(marshalsMarket).toContainText("Marshal’s Market");
@@ -177,7 +177,7 @@ test.describe("Horf Stables", () => {
       });
     });
 
-    await page.goto("/horf");
+    await page.goto("/horf/stable");
     const personal = page.locator('[data-horf-region="personal-stable"]');
     await expect(personal.locator("[data-horf-personal-token] option")).toHaveCount(2);
     await personal.locator("[data-horf-personal-token]").selectOption(`${tokenContract}:7`);
@@ -190,22 +190,29 @@ test.describe("Horf Stables", () => {
     expect(submissions).toEqual([{ address: traderWallet, tokenContract, tokenId: "7" }]);
     await expect(personal).toContainText("An inspector has this token in the review queue");
     await expect(personal.locator("[data-horf-inspection-submit]")).toBeDisabled();
+    await expect(page.locator('[data-horf-region="stables"]')).toHaveCount(0);
+    await page.goto("/horf/marshals-market");
     const inspectedStables = page.locator('[data-horf-region="stables"]');
     await inspectedStables.locator("[data-horf-owned-select]").selectOption(`${tokenContract}:7`);
     await inspectedStables.getByRole("button", { name: "Add owned horse" }).click();
     await expect(inspectedStables.locator("[data-horf-stable-deposit-row]")).toContainText("Inspection required · pending");
     await expect(inspectedStables.locator("[data-horf-stable-submit]")).toBeDisabled();
-    const directTrade = page.locator('[data-horf-region="gifts"]');
+    await expect(page.locator('[data-horf-region="personal-stable"]')).toHaveCount(0);
+    await page.goto("/horf/outlaw-corral");
     const outlawCorral = page.locator('[data-horf-region="outlaw-corral"]');
     await expect(outlawCorral).toContainText("Outlaw Corral");
     await expect(outlawCorral).toContainText("without inspection");
     await expect(outlawCorral).toContainText("no Horf escrow");
+    await page.goto("/horf/gifts");
+    const directTrade = page.locator('[data-horf-region="gifts"]');
     await directTrade.locator("[data-horf-gift-owned]").selectOption(`${tokenContract}:7`);
     await directTrade.locator('[data-horf-art-send-kind] input[value="trade"]').check();
     await directTrade.locator("[data-horf-gift-recipient]").fill(otherTrader);
     await expect(directTrade.locator("[data-horf-gift-submit]")).toHaveText("Trade this horse");
     await expect(directTrade.locator("[data-horf-gift-submit]")).toBeEnabled();
     await expect(directTrade).toContainText("Direct trades count when the season ledger scans the transfer");
+    await page.goto("/horf/stable");
+    await expect(personal.locator("[data-horf-personal-saved-row]")).toHaveCount(1);
     await personal.scrollIntoViewIfNeeded();
     await page.screenshot({ path: "test-results/horf-personal-stable-pending.png", fullPage: true });
     await page.setViewportSize({ width: 390, height: 844 });
@@ -266,7 +273,7 @@ test.describe("Horf Stables", () => {
           reason: "New custody concern", existingPermitsMayRemainValid: true }) });
     });
 
-    await page.goto("/horf");
+    await page.goto("/horf/marshals-market");
     const desk = page.locator('[data-horf-region="inspector-desk"]');
     await expect(desk.locator("[data-horf-inspection-queue-row]")).toHaveCount(1);
     await desk.locator("[data-horf-inspection-open]").click();
@@ -337,7 +344,7 @@ test.describe("Horf Stables", () => {
       });
     });
 
-    await page.goto("/horf");
+    await page.goto("/horf/marshals-market");
     const stables = page.locator('[data-horf-region="stables"]');
     await expect(stables).toBeVisible();
     await expect(stables.locator("[data-horf-stable-credits]")).toContainText("Reciprocal claims: 0");

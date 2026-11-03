@@ -814,6 +814,10 @@ export const DOMAIN_WORKFLOWS = [
       "horf.navigation.selected",
       "horf.context_rail.opened",
       "horf.wtf_home.opened",
+      "horf.season_art.previous",
+      "horf.season_art.next",
+      "horf.season_art.rotation_toggled",
+      "horf.season_art.objkt_opened",
       "swap.submitted",
     ],
     behaviorAssertionIds: ["gameshow.private-project-pages"],
@@ -882,9 +886,20 @@ export const DOMAIN_WORKFLOWS = [
     ],
   },
   {
+    name: "horf trader directory, profile, and horse criteria loop",
+    domain: "Market, Exchange, Inventory, and Commerce",
+    routes: ["/horf/traders", "/horf/traders/tz1VSUr8wwNhLAzempoch5d6hLRiTh8Cjcjb", "/horf/info"],
+    eventHandles: ["horf.traders.viewed", "horf.trader_profile.viewed", "horf.trader_profile.tab_selected", "horf.trader_offer.selected", "horf.info.viewed"],
+    apiProbes: [
+      { method: "GET", path: "/api/horf/traders/tz1VSUr8wwNhLAzempoch5d6hLRiTh8Cjcjb/offers", expectedStatuses: [200, 503] },
+      { method: "GET", path: "/api/horf/traders/tz1VSUr8wwNhLAzempoch5d6hLRiTh8Cjcjb/horses?offset=0", expectedStatuses: [200, 503] },
+      { method: "GET", path: "/api/horf/open-range/offers", expectedStatuses: [200, 503] },
+    ],
+  },
+  {
     name: "horf guest wallet proof and ownership",
     domain: "Market, Exchange, Inventory, and Commerce",
-    routes: ["/horf"],
+    routes: ["/horf", "/horf/stable", "/horf/send-horse", "/horf/gifts", "/horf/posse"],
     eventHandles: ["horf.wallet.verified", "horf.wallet.selected"],
     apiProbes: [
       { method: "GET", path: "/api/horf/wallet/session", expectedStatuses: [200] },
@@ -897,7 +912,7 @@ export const DOMAIN_WORKFLOWS = [
   {
     name: "horf trader standing and admin moderation loop",
     domain: "Market, Exchange, Inventory, and Commerce",
-    routes: ["/horf"],
+    routes: ["/horf/outlaw-corral"],
     eventHandles: ["horf.trader_status.viewed", "horf.blacklist.added", "horf.blacklist.removed", "horf.blacklist.chain_updated"],
     apiProbes: [
       { method: "GET", path: "/api/horf/trader-status?address=tz1VSUr8wwNhLAzempoch5d6hLRiTh8Cjcjb", expectedStatuses: [200, 503] },
@@ -909,7 +924,7 @@ export const DOMAIN_WORKFLOWS = [
   {
     name: "horf personal stable and inspection request loop",
     domain: "Market, Exchange, Inventory, and Commerce",
-    routes: ["/horf"],
+    routes: ["/horf/stable"],
     eventHandles: ["horf.personal_stable.selected", "horf.personal_stable.removed", "horf.inspection.submitted"],
     apiProbes: [
       { method: "GET", path: "/api/horf/stable-selections?address=tz1VSUr8wwNhLAzempoch5d6hLRiTh8Cjcjb", expectedStatuses: [200, 403, 503] },
@@ -922,7 +937,7 @@ export const DOMAIN_WORKFLOWS = [
   {
     name: "horf marshal inspection and approval loop",
     domain: "Market, Exchange, Inventory, and Commerce",
-    routes: ["/horf", "/admin"],
+    routes: ["/horf/marshals-market", "/admin"],
     eventHandles: ["horf.inspection.decided", "horf.inspection.approval_revoked"],
     apiProbes: [
       { method: "GET", path: "/api/horf/inspectors/status", expectedStatuses: [200] },
@@ -937,7 +952,7 @@ export const DOMAIN_WORKFLOWS = [
   {
     name: "horf stable trading loop",
     domain: "Market, Exchange, Inventory, and Commerce",
-    routes: ["/horf"],
+    routes: ["/horf/marshals-market"],
     eventHandles: [
       "horf.stable.deposited",
       "horf.stable.claimed",
@@ -957,7 +972,7 @@ export const DOMAIN_WORKFLOWS = [
   {
     name: "horf HORSE distribution and posse loop",
     domain: "Market, Exchange, Inventory, and Commerce",
-    routes: ["/horf"],
+    routes: ["/horf/send-horse", "/horf/posse"],
     eventHandles: [
       "horf.horse.sent",
       "horf.horse.reward_claimed",
@@ -965,6 +980,7 @@ export const DOMAIN_WORKFLOWS = [
       "horf.posse.added",
       "horf.posse.removed",
       "horf.posse.selected",
+      "horf.trader_offer.selected",
     ],
     apiProbes: [
       { method: "GET", path: "/api/horf/horse/config?address=tz1VSUr8wwNhLAzempoch5d6hLRiTh8Cjcjb", expectedStatuses: [200, 503] },
@@ -979,7 +995,7 @@ export const DOMAIN_WORKFLOWS = [
   {
     name: "horf gift book loop",
     domain: "Market, Exchange, Inventory, and Commerce",
-    routes: ["/horf"],
+    routes: ["/horf/gifts", "/horf/outlaw-corral"],
     eventHandles: [
       "horf.trade.sent",
       "horf.gift.sent",

@@ -94,7 +94,7 @@ const Rail = styled.nav`
   .wtf-statement { display: block; margin-top: 5px; color: #b9d1c8; font-size: 9px; line-height: 1.2; }
   .wtf-statement strong { display: block; margin-top: 2px; color: #fff; font-weight: 800; }
   .brand { display: flex; align-items: center; gap: 8px; padding: 4px 6px 24px; color: #fff; font: 700 clamp(22px, 2vw, 32px)/1 var(--horf-display); letter-spacing: -0.03em; }
-  .brand img { width: 34px; height: 34px; object-fit: contain; }
+  .brand img { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; object-position: center 38%; }
   .brand small { display: block; color: #a9c6be; font: 700 9px/1.1 var(--horf-font); letter-spacing: .08em; text-transform: uppercase; }
   .nav-caption { margin: 0 7px 8px; color: #a9c6be; font: 700 10px/1.2 var(--horf-font); letter-spacing: .08em; text-transform: uppercase; }
   .links { display: flex; flex-direction: column; gap: 3px; }
@@ -280,7 +280,7 @@ export function HorfFrame({ title, children, aside }: HorfFrameProps) {
     <SkipLink href="#horf-main-content">Skip to horse trading content</SkipLink>
     <Rail data-horf-left-nav aria-label="Horf navigation" inert={asideOpen}>
       <a className="wtf-origin" data-horf-wtf-home href="/" onClick={openWtfHome} aria-label="Brought to you by wtfOS.app — visit WTF OS home" title="Visit wtfOS.app"><span className="wtf-mark" aria-hidden="true">WTF<span>OS</span></span><span className="wtf-statement">Brought to you by <strong>wtfOS.app</strong></span></a>
-      <a className="brand" href={`/horf${season ? `?season=${encodeURIComponent(season)}` : ""}`} onClick={(event) => navigateTo(event, `/horf${season ? `?season=${encodeURIComponent(season)}` : ""}`)} aria-label="Horf home"><img src="/horf-art/galloping-horse.webp" alt="" /><span>HORF<small>Horse trading</small></span></a>
+      <a className="brand" href={`/horf${season ? `?season=${encodeURIComponent(season)}` : ""}`} onClick={(event) => navigateTo(event, `/horf${season ? `?season=${encodeURIComponent(season)}` : ""}`)} aria-label="Horf home"><img src="/horf-art/horse-portrait-photo.jpg" alt="" /><span>HORF<small>Horse trading</small></span></a>
       <span className="nav-caption">The trails</span>
       <div className="links">{links.map((link) => {
         const href = `${link.path}${season ? `?season=${encodeURIComponent(season)}` : link.section === "range" ? "?season=current-2026" : ""}`;

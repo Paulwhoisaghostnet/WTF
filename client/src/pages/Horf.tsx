@@ -8,6 +8,7 @@ import { HorfHorseSend } from "../features/horf/HorfHorseSend";
 import { HorfGifts } from "../features/horf/HorfGifts";
 import { HorfPosse } from "../features/horf/HorfPosse";
 import { HorfTradeHorseCarousel } from "../features/horf/HorfTradeHorseCarousel";
+import { HorfSeasonArt } from "../features/horf/HorfSeasonArt";
 import { HorfTraderStatus } from "../features/horf/HorfTraderStatus";
 import { HorfPersonalStable } from "../features/horf/HorfPersonalStable";
 import { HorfInspectorDesk } from "../features/horf/HorfInspectorDesk";
@@ -260,8 +261,8 @@ const WantedPoster = styled.aside`
   font-family: var(--horf-font, ui-sans-serif, system-ui, sans-serif);
   .wanted { display: block; color: #173732; font: 900 12px/1.2 ui-sans-serif, system-ui, sans-serif; text-transform: uppercase; letter-spacing: .18em; }
   .traders { display: block; margin: 5px 0 0; color: #734a39; font: 750 11px/1.35 ui-sans-serif, system-ui, sans-serif; text-transform: uppercase; letter-spacing: .07em; }
-  .horse-art { display: flex; align-items: center; justify-content: center; height: clamp(135px, 15cqw, 185px); min-height: 0; overflow: hidden; margin: 4px 0 8px; background: radial-gradient(circle at center, #ffda9d 0 34%, transparent 70%); }
-  .horse-art img { display: block; width: auto; height: 100%; max-width: 90%; max-height: 100%; object-fit: contain; filter: drop-shadow(0 8px 8px rgba(71, 36, 19, .2)); }
+  .horse-art { height: clamp(135px, 15cqw, 185px); min-height: 0; overflow: hidden; margin: 9px 0 12px; border: 3px solid #7a4630; border-radius: 6px; background: #725340; }
+  .horse-art img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center 34%; filter: sepia(.28) saturate(1.13) contrast(1.06); }
   h2 { margin: 0 0 10px; font: 800 clamp(22px, 2.2cqw, 30px)/1.05 var(--horf-display, Georgia, serif); letter-spacing: -.04em; overflow-wrap: anywhere; }
   .reward { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0 0 10px; padding: 11px 13px; border-radius: 12px; background: #153f3b; color: #fff9ea; }
   .reward strong { display: block; font: 800 clamp(22px, 2.2cqw, 30px)/1 var(--horf-display, sans-serif); white-space: nowrap; }
@@ -542,7 +543,7 @@ const Runner = styled.div`
   margin-top: -24px;
   color: #b8603b;
   transition: left 700ms ease-out;
-  img { display: block; width: 58px; height: 48px; object-fit: contain; filter: drop-shadow(0 3px 2px rgba(73, 55, 37, .16)); }
+  span { display: block; width: 58px; height: 48px; font-size: 35px; line-height: 48px; text-align: center; filter: drop-shadow(0 3px 2px rgba(73, 55, 37, .16)); }
   @media (prefers-reduced-motion: reduce) { transition: none; }
 `;
 
@@ -614,8 +615,9 @@ const TraderList = styled.ul`
 
 const DirectoryGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
+  @container (max-width: 720px) { grid-template-columns: 1fr; }
 `;
 
 const DirectoryCard = styled.article`
@@ -756,7 +758,7 @@ function tokenUrl(token: HorfReceipt["token"]): string {
 }
 
 function HorseGlyph() {
-  return <img src="/horf-art/galloping-horse.webp" alt="" aria-hidden="true" />;
+  return <span aria-hidden="true">🐎</span>;
 }
 
 function TraderLink({ address, name }: { address: string; name?: string | null }) {
@@ -807,7 +809,7 @@ export function Horf() {
   const pagePath = useContext(WindowPathContext);
   const routePath = location.split("?")[0]?.split("#")[0] || "/horf";
   const profileAddress = routePath.match(/^\/horf\/traders\/([^/]+)$/)?.[1] ?? null;
-  const validProfileAddress = profileAddress && /^tz[1-4][1-9A-HJ-NP-Za-km-z]{33}$/.test(profileAddress) ? profileAddress : null;
+  const validProfileAddress = profileAddress && /^tz[1-5][1-9A-HJ-NP-Za-km-z]{33}$/.test(profileAddress) ? profileAddress : null;
   const routeSection = routePath === "/horf/traders" ? "traders"
     : profileAddress ? "profile"
     : routePath === "/horf/info" ? "info"
@@ -1026,7 +1028,7 @@ export function Horf() {
           <WantedPoster data-horf-wanted-poster aria-label={`${seasonDisplayName} horse trader notice`}>
             <span className="wanted">Wanted</span>
             <span className="traders">Horse traders · all riders welcome</span>
-            <div className="horse-art"><img src="/horf-art/horse-portrait.webp" alt="" /></div>
+            <div className="horse-art"><img src="/horf-art/horse-portrait-photo.jpg" alt="A chestnut horse peers out from the wanted poster" /></div>
             <h2>{seasonDisplayName}</h2>
             {selectedSeasonKey === CURRENT_SEASON_KEY ? <>
               <span className="reward"><strong>10 $HORSE</strong><span>per recognized horse trade/send</span></span>
@@ -1037,6 +1039,8 @@ export function Horf() {
             </>}
           </WantedPoster>
         </Masthead>}
+
+        {routeSection === "race" && <HorfSeasonArt />}
 
         <WalletStatus data-horf-wallet-status role="status">
           {address ? `${isGuest ? "Horf wallet verified" : "WTF OS wallet selected"}: ${shortAddress(address)} · Tezos Mainnet`
@@ -1132,16 +1136,16 @@ export function Horf() {
                 </ProfileHorseGrid> : <LedgerPanel><h3>No trade signs up</h3><p>This rider has no horses offered for direct trade on Horf right now.</p></LedgerPanel>}
               </> : <>
                 <p>Every currently held token that passes Horf’s <Link href="/horf/info">Is It a Horse? Test</Link>, across mint dates. Balances come from Tezos Mainnet.</p>
-                {profileHorsesQuery.isPending ? <p>Checking this rider’s stable…</p> : profileHorsesQuery.isError ? <Warning role="alert">This rider’s horses could not be loaded. Try again shortly.</Warning> : profileHorses.length ? <>
-                  <ProfileHorseGrid>{profileHorses.map((horse) => {
+                {profileHorsesQuery.isPending ? <p>Checking this rider’s stable…</p> : profileHorsesQuery.isError ? <Warning role="alert">This rider’s horses could not be loaded. Try again shortly.</Warning> : <>
+                  {profileHorses.length > 0 ? <ProfileHorseGrid>{profileHorses.map((horse) => {
                     const name = horse.name || `Horse token #${horse.tokenId}`;
                     return <ProfileHorseCard key={`${horse.contract}:${horse.tokenId}`} data-horf-profile-horse>
                       <div className="art"><ProfileArt image={horse.image} name={name} /></div>
                       <div className="copy"><h3>{name}</h3><p>{horse.balance} {horse.balance === "1" ? "edition held" : "editions held"} · {shortAddress(horse.contract)} / #{horse.tokenId}</p><a href={objktTokenUrl(horse.contract, horse.tokenId)} target="_blank" rel="noopener noreferrer">View token on Objkt ↗</a></div>
                     </ProfileHorseCard>;
-                  })}</ProfileHorseGrid>
+                  })}</ProfileHorseGrid> : <LedgerPanel><h3>No qualifying horses on the scanned pages</h3><p>{profileHorsesQuery.hasNextPage ? "This wallet has more editions to check. Load the next page to keep looking." : "There are no current balances that pass the horse test for this wallet."}</p></LedgerPanel>}
                   {profileHorsesQuery.hasNextPage && <Action type="button" onClick={() => void profileHorsesQuery.fetchNextPage()} disabled={profileHorsesQuery.isFetchingNextPage}>{profileHorsesQuery.isFetchingNextPage ? "Rounding up more horses…" : "Load more horses"}</Action>}
-                </> : <LedgerPanel><h3>No qualifying horses held</h3><p>There are no current balances that pass the horse test for this wallet.</p></LedgerPanel>}
+                </>}
               </>}
             </div>
           </> : <LedgerPanel><h3>That rider’s address is off trail</h3><p>Choose a Tezos wallet from the trader directory to see its horse profile.</p><Link href={`/horf/traders?season=${encodeURIComponent(selectedSeasonKey)}`}>Return to other traders</Link></LedgerPanel>}

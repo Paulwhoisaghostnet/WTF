@@ -13786,3 +13786,23 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: The event name and reward were present but hard to read in the opening view.
 
 **Rule**: Bound decorative artwork inside its own panel, inspect the rendered desktop and narrow layouts, and check that key reward copy is visibly clear before shipping.
+
+---
+
+## 2026-11-03 - Horse trading navigation needs pages and real horse art
+
+**What happened**: Horf's left menu jumped between anchors on one long page, and its prominent horses were generated illustrations. The owner could not focus on one trading task and found the art out of step with the community's actual horses.
+
+**Why it mattered**: A sidebar looked like navigation while behaving like a table of contents, and generic horse art displaced the minted work that gives the event its identity.
+
+**Rule**: Give each primary Horf task its own route, keep the selected page focused, and feature actual event token art with credited horse photographs as resilient fallbacks. Verify the rendered desktop and mobile pages, not only route text.
+
+---
+
+## 2026-11-03 - Filtered wallet pages must keep pagination reachable
+
+**What happened**: The new trader profile filtered each raw TzKT balance page through Horf's horse test, but showed its “Load more” button only when the current pages contained a qualifying horse. A wallet whose first page held no horses could not reach qualifying editions on later pages. The profile also rejected `tz5` addresses accepted by the server.
+
+**Why it mattered**: An apparently empty stable could hide real horses, and a valid trader could appear in discovery without an openable profile.
+
+**Rule**: Base pagination controls on the upstream cursor, independent of the filtered result count. Keep client and server address validation aligned, and exercise empty filtered pages and every accepted address prefix in profile tests.

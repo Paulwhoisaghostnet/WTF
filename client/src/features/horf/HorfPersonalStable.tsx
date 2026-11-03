@@ -131,7 +131,7 @@ const SavedHorseGlyph = styled.span`
   border: 1px solid var(--horf-line, #d6ded8);
   border-radius: 10px;
   background: var(--horf-canvas, #edf1ef);
-  img { display: block; width: 64px; height: 58px; object-fit: contain; }
+  img { display: block; width: 100%; height: 100%; border-radius: 9px; object-fit: cover; }
 `;
 
 const HorseArt = styled.img`
@@ -297,7 +297,7 @@ export function HorfPersonalStable({ address, connectWallet, isConnecting }: {
           const name = item.token?.name || `Horse token #${item.tokenId}`;
           const art = item.token?.image ? resolveTokenThumbnail({ thumbnail: item.token.image }) : null;
           return <li key={item.id} data-horf-personal-saved-row>
-            {art ? <SavedHorseArt src={art.src} alt={`${name} artwork`} onError={(event) => { if (!advanceResolvedMediaFallback(event.currentTarget, art)) { event.currentTarget.src = "/horf-art/galloping-horse.webp"; event.currentTarget.alt = "Illustrated horse placeholder"; } }} /> : <SavedHorseGlyph aria-hidden="true"><img src="/horf-art/galloping-horse.webp" alt="" /></SavedHorseGlyph>}
+            {art ? <SavedHorseArt src={art.src} alt={`${name} artwork`} onError={(event) => { if (!advanceResolvedMediaFallback(event.currentTarget, art)) { event.currentTarget.src = "/horf-art/horse-portrait-photo.jpg"; event.currentTarget.style.objectFit = "cover"; event.currentTarget.alt = "Horse photograph placeholder"; } }} /> : <SavedHorseGlyph aria-hidden="true"><img src="/horf-art/horse-portrait-photo.jpg" alt="" /></SavedHorseGlyph>}
             <div><strong><a href={objktTokenUrl(item.tokenContract, item.tokenId)} target="_blank" rel="noopener noreferrer">{name}</a> · {item.inspectionStatus}</strong>
             <small>{shortAddress(item.tokenContract)} / #{item.tokenId} · saved {new Date(item.selectedAt).toLocaleDateString()}</small>
             <Action type="button" onClick={() => void removeSelection(item)} disabled={busy}>Remove selection</Action></div>

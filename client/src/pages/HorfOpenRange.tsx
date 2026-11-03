@@ -92,9 +92,10 @@ const Masthead = styled.header`
   h1 { margin: 9px 0 12px; font-family: var(--horf-display, "Avenir Next", sans-serif); font-size: clamp(44px, 6cqw, 78px); line-height: .98; font-weight: 700; letter-spacing: -.035em; text-wrap: balance; }
   h1 span { display: inline-block; margin-left: 12px; font-size: .58em; vertical-align: 8%; transform: rotate(-10deg); }
   p { max-width: 65ch; margin: 0; color: var(--range-muted); font-size: 16px; line-height: 1.55; text-wrap: pretty; }
-  .range-hero-art { display: grid; place-items: center; align-self: stretch; min-height: 175px; border-radius: 22px; background: radial-gradient(ellipse at 50% 55%, #d9e9e0 0 34%, transparent 72%); }
-  .range-hero-art img { display: block; width: min(100%, 280px); max-height: 205px; object-fit: contain; transform: rotate(-5deg); filter: drop-shadow(0 12px 12px #183b3028); }
-  @container (max-width: 640px) { .range-hero { grid-template-columns: 1fr 110px; min-height: 150px; } .range-hero-art { min-height: 120px; } .range-hero-art img { max-height: 140px; } h1 { font-size: clamp(40px, 7cqw, 58px); } }
+  .range-hero-art { position: relative; display: grid; place-items: center; align-self: stretch; min-height: 175px; margin: 0; border-radius: 18px; overflow: hidden; background: #1c2d2d; }
+  .range-hero-art img { display: block; width: 100%; height: 100%; min-height: 175px; object-fit: cover; object-position: 50% 60%; }
+  .range-hero-art figcaption { position: absolute; right: 8px; bottom: 8px; left: 8px; padding: 5px 7px; border-radius: 4px; background: #102b2bb8; color: #fff; font-size: 9px; font-weight: 700; line-height: 1.2; }
+  @container (max-width: 640px) { .range-hero { grid-template-columns: 1fr 110px; min-height: 150px; } .range-hero-art { min-height: 120px; } .range-hero-art img { min-height: 120px; } .range-hero-art figcaption { display: none; } h1 { font-size: clamp(40px, 7cqw, 58px); } }
   @container (max-width: 460px) { .range-hero { grid-template-columns: 1fr; } .range-hero-art { display: none; } .range-topline { align-items: flex-start; } }
 `;
 
@@ -216,7 +217,7 @@ const Glyph = styled.div`
   aspect-ratio: 4 / 3;
   border-radius: 10px;
   background: #dbe9df;
-  img { display: block; width: 80%; max-height: 90%; object-fit: contain; }
+  img { display: block; width: 100%; height: 100%; object-fit: cover; }
 `;
 
 const CardFlags = styled.div`
@@ -257,7 +258,7 @@ const HorseDetail = styled.dialog`
   .detail-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 28px; }
   .detail-grid > img, .detail-grid > .detail-glyph { display: block; width: 100%; max-height: 68vh; object-fit: contain; border-radius: 12px; background: #e0e9e3; }
   .detail-glyph { display: grid; place-items: center; min-height: 230px; }
-  .detail-glyph img { display: block; width: 85%; max-height: 48vh; object-fit: contain; }
+  .detail-glyph img { display: block; width: 100%; max-height: 48vh; object-fit: cover; }
   p { margin: 0 0 12px; line-height: 1.5; }
   small { display: block; margin: 0 0 10px; color: #53665f; overflow-wrap: anywhere; }
   a { color: #155f56; }
@@ -449,7 +450,7 @@ export function HorfOpenRange() {
     {success && <Note role="status">{success}</Note>}
     {railHorse ? <>
       <span className="aside-eyebrow">Horse in your sights 🐎</span>
-      <img src={selectedArt?.src ?? "/horf-art/galloping-horse.webp"} alt="" onError={(event) => { if (!selectedArt || !advanceResolvedMediaFallback(event.currentTarget, selectedArt)) event.currentTarget.src = "/horf-art/galloping-horse.webp"; }} />
+      <img src={selectedArt?.src ?? "/horf-art/horse-gallop-photo.jpg"} alt="" onError={(event) => { if (!selectedArt || !advanceResolvedMediaFallback(event.currentTarget, selectedArt)) event.currentTarget.src = "/horf-art/horse-gallop-photo.jpg"; }} />
       <h3>{railHorse.name || `Horse token #${railHorse.tokenId}`}</h3>
       <p>{railHorse.mintedAt ? `Minted ${new Date(railHorse.mintedAt).toLocaleDateString()}` : "Mint date unknown"} · #{railHorse.tokenId}</p>
       <StatusFrame $kind="traded" $active={railHorse.tradedThroughHorf}>{railHorse.tradedThroughHorf ? "Traded through Horf" : "No Horf trade yet"}</StatusFrame>
@@ -480,7 +481,7 @@ export function HorfOpenRange() {
         </div>
         <div className="range-hero">
           <div><span className="range-eyebrow">Public horse art · Tezos Mainnet</span><h1>The Open Range<span aria-hidden="true">🐎</span></h1><p>Meet the horses minted across our trading seasons. Follow a favorite, check its papers, and see who is ready to ride.</p></div>
-          <div className="range-hero-art" aria-hidden="true"><img src="/horf-art/galloping-horse.webp" alt="" /></div>
+          <figure className="range-hero-art"><img src="/horf-art/horse-beach-photo.jpg" alt="Horses crossing a beach at sunset" /><figcaption>Yudi Susilo · CC0 horse photograph</figcaption></figure>
         </div>
       </Masthead>
       {walletError && <Note $error role="alert">{walletError}</Note>}
@@ -497,7 +498,7 @@ export function HorfOpenRange() {
         const art = horseArt(horse);
         return <Card key={`${horse.contract}:${horse.tokenId}`} data-horf-open-range-horse data-horf-frame-traded={horse.tradedThroughHorf} data-horf-frame-offered={horse.activelyForTradeOnHorf} data-horf-frame-approved={horse.approvedForMarshalsMarket} $traded={horse.tradedThroughHorf} $offered={horse.activelyForTradeOnHorf} $approved={horse.approvedForMarshalsMarket}>
           <ArtButton data-horf-open-range-view-horse type="button" onClick={() => viewHorse(horse)} aria-label={`View ${horse.name || `horse token #${horse.tokenId}`} details`}>
-            {art ? <Art src={art.src} alt="" onError={(event) => { if (!advanceResolvedMediaFallback(event.currentTarget, art)) event.currentTarget.src = "/horf-art/galloping-horse.webp"; }} /> : <Glyph aria-hidden="true"><img src="/horf-art/galloping-horse.webp" alt="" /></Glyph>}
+            {art ? <Art src={art.src} alt="" onError={(event) => { if (!advanceResolvedMediaFallback(event.currentTarget, art)) event.currentTarget.src = "/horf-art/horse-gallop-photo.jpg"; }} /> : <Glyph aria-hidden="true"><img src="/horf-art/horse-gallop-photo.jpg" alt="" /></Glyph>}
           </ArtButton>
           <h2><a href={objktTokenUrl(horse.contract, horse.tokenId)} target="_blank" rel="noopener noreferrer">{horse.name || `Horse token #${horse.tokenId}`}</a></h2>
           {horse.description && <p className="horse-description">{horse.description}</p>}
@@ -521,7 +522,7 @@ export function HorfOpenRange() {
         {detailHorse && <>
           <div className="detail-head"><div><small>🐎 Open Range · horse papers</small><h2>{detailHorse.name || `Horse token #${detailHorse.tokenId}`}</h2></div><Action type="button" onClick={() => setDetailHorse(null)}>Close details</Action></div>
           <div className="detail-grid">
-            {horseArt(detailHorse) ? <img src={horseArt(detailHorse)!.src} alt={`${detailHorse.name || `Horse token #${detailHorse.tokenId}`} artwork`} onError={(event) => { const resolved = horseArt(detailHorse); if (!resolved || !advanceResolvedMediaFallback(event.currentTarget, resolved)) { event.currentTarget.src = "/horf-art/galloping-horse.webp"; event.currentTarget.alt = "Illustrated horse placeholder"; } }} /> : <div className="detail-glyph" aria-hidden="true"><img src="/horf-art/galloping-horse.webp" alt="" /></div>}
+            {horseArt(detailHorse) ? <img src={horseArt(detailHorse)!.src} alt={`${detailHorse.name || `Horse token #${detailHorse.tokenId}`} artwork`} onError={(event) => { const resolved = horseArt(detailHorse); if (!resolved || !advanceResolvedMediaFallback(event.currentTarget, resolved)) { event.currentTarget.src = "/horf-art/horse-gallop-photo.jpg"; event.currentTarget.alt = "Horse photograph placeholder"; } }} /> : <div className="detail-glyph" aria-hidden="true"><img src="/horf-art/horse-gallop-photo.jpg" alt="" /></div>}
             <div><p>{detailHorse.description || "This horse has no description from Objkt yet."}</p><CardFlags><StatusFrame $kind="traded" $active={detailHorse.tradedThroughHorf}>{detailHorse.tradedThroughHorf ? "Traded through Horf" : "No Horf trade yet"}</StatusFrame><StatusFrame $kind="offered" $active={detailHorse.activelyForTradeOnHorf}>{detailHorse.activelyForTradeOnHorf ? "For direct trade now" : "No active Horf offer"}</StatusFrame><StatusFrame $kind="approved" $active={detailHorse.approvedForMarshalsMarket}>{detailHorse.approvedForMarshalsMarket ? "Marshal approved" : "Not Marshal approved"}</StatusFrame></CardFlags><small>{detailHorse.mintedAt ? `Minted ${new Date(detailHorse.mintedAt).toLocaleDateString()}` : "Mint date unknown"} · {detailHorse.contract} / #{detailHorse.tokenId}</small>{detailHorse.creatorAddress && <small>Creator: <a href={`https://objkt.com/profile/${encodeURIComponent(detailHorse.creatorAddress)}`} target="_blank" rel="noopener noreferrer">{shortAddress(detailHorse.creatorAddress)}</a></small>}{detailHorse.offers.map((offer) => <p key={offer.id}>🤠 <a href={`https://objkt.com/profile/${encodeURIComponent(offer.ownerAddress)}`} target="_blank" rel="noopener noreferrer">{shortAddress(offer.ownerAddress)}</a> offers {offer.amount} · {policyLabel(offer.acceptedTokenPolicy)}</p>)}<p>Offers are owner preferences, not escrow protection. Confirm terms before any direct wallet transfer.</p><a href={objktTokenUrl(detailHorse.contract, detailHorse.tokenId)} target="_blank" rel="noopener noreferrer">View this horse on Objkt ↗</a></div>
           </div>
         </>}
