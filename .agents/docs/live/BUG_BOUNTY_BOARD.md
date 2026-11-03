@@ -177,7 +177,7 @@ Total: **727** · Open: **7** · Claimed: **42** · In Progress: **16** · Block
 | WTF-BB-040 | Fixed | Swarm A7 | 2026-04-28 | TV microapp / background jobs | P1 | 12 | 282 | 3 | 4 | 1 | Auto-refresh can be called concurrently from stream read-path traffic |
 | WTF-BB-036 | Fixed | Codex TV integrity pass | 2026-05-04 | TV microapp / data integrity | P1 | 12 | 282 | 3 | 4 | 1 | Channel-video insert path is non-atomic with concurrent requests |
 | WTF-BB-029 | Fixed | Codex modular architecture refactor | 2026-05-05 | Data quality / scalability | P1 | 12 | 282 | 3 | 4 | 1 | `/api/w/timeline` loads all verified users before paging or cursoring |
-| WTF-BB-761 | Fixed | Codex coLILseum sponsored-room recovery | 2026-11-03 | coLILseum / signer deployment parity | P1 | 11 | 394 | 2 | 4 | 1 | App deployment leaves sponsored prize claims unsupported by the live signer |
+| WTF-BB-761 | Fixed | Codex coLILseum signer response hardening | 2026-11-03 | coLILseum / signer deployment parity | P1 | 11 | 394 | 2 | 4 | 1 | Sponsored escrow signer deployment and response liveness |
 | WTF-BB-760 | Fixed | Codex coLILseum sponsored-room recovery | 2026-11-03 | coLILseum / deployment guard | P1 | 11 | 394 | 2 | 4 | 1 | Deployment guard omits sponsored escrow bindings for active funded rooms |
 | WTF-BB-700 | Fixed | Codex WTFIAP Shadownet delivery | 2026-10-22 | WTFIAP escrow / reconciliation scheduling | P1 | 11 | 394 | 2 | 4 | 1 | Continuous chain heads starve funded-room Recheck requests |
 | WTF-BB-651 | Fixed | Codex full-send release verification | - | E2E live puppets / release verification | P1 | 11 | 394 | 3 | 4 | 0 | Live puppet script reuses stale port-3000 server |
@@ -3925,12 +3925,12 @@ Total: **727** · Open: **7** · Claimed: **42** · In Progress: **16** · Block
   - `npm run check` exited 0 on 2026-05-05.
   - `npx tsx -e "import('./server/lib/timeline-db.ts').then(async (m) => { const w = await m.loadWTimelineAuthorWindow(5); console.log(JSON.stringify({ accounts: w.accounts.length, handles: w.handlesLower, totalHandles: w.totalHandles, skippedAccounts: w.skippedAccounts, rowLimit: w.rowLimit })); process.exit(0); }).catch((err) => { console.error(err); process.exit(1); });"` exited 0 against the local sandbox DB and returned a bounded `rowLimit`.
 
-### WTF-BB-761 - App deployment leaves sponsored prize claims unsupported by the live signer
+### WTF-BB-761 - Sponsored escrow signer deployment and response liveness
 
 - Category: coLILseum / signer deployment parity
 - Priority: P1
 - Status: Fixed
-- Owner/Session: Codex coLILseum sponsored-room recovery
+- Owner/Session: Codex coLILseum signer response hardening
 - Last touched: 2026-11-03
 - Score: C2 + F4 + S1 + P1(4) = 11
 - Evidence (2026-11-03): After a funded Shadownet sponsored Party match settled, its `claim_cash` intent remained `submission-unknown` without an operation hash or signer journal. The live signer bundle lacked `claim_cash` and `claim_lot` while the app supported them. The former app deployment never synchronized the isolated signer.
@@ -3939,6 +3939,15 @@ Total: **727** · Open: **7** · Claimed: **42** · In Progress: **16** · Block
 - Recovery (2026-11-03): The signer was rebuilt through its standard deploy path. After confirming the exact claim had no signer journal or on-chain payment, the same intent was reset under locks and normal reconciliation claimed 10,000 mutez for Bert. Operation `ooZceWwAJrN9YVFqAx8KtLffhaJWTuLtp9snPjrJSY3aiwH9ta1` applied; finalized chain state shows claimed and zero XTZ held.
 - Verification: Focused signer health probe tests accept the current signer, wait through a transient post-restart socket close, and reject missing claim support and wallet-policy drift; signer typecheck/build and shell syntax pass. CI deployment gate awaits promotion.
 - Score: P1(4)+C2/F4/S1=11; funded prize payout was blocked, with no evidence of custody loss.
+- 2026-11-03 signer queue liveness: A Mainnet sponsored Tournament create operation landed on chain, but the app timed out before receiving its hash. The next register_entrant request waited behind that operation's signer confirmation; its journal was absent at first and appeared minutes later under the same request ID. No sponsor or entrant deposit was duplicated.
+- Why this new gap matters: Missing signer journal at the app timeout does not prove a request is safe to retry. The room can appear stalled while the exact original request is still queued.
+- Additional correction: Return a fsynced operation hash promptly while retaining wallet-lane serialization until inclusion or protocol expiry; use only chain-pinned configured RPC fallbacks for read-only preparation and confirmation. Keep ambiguous sends blocked for reconciliation.
+- Additional verification: Hold confirmation while asserting early hash response and blocked next-wallet operation; cover dropped replies, primary 503 with same-chain fallback, mismatched chain, and an ambiguous send without replay.
+- Local signer-response verification (2026-11-03): `npm run operator-signer:test` passed 36 tests, including durable hash before confirmation, retained wallet queue order, dropped-reply same-ID recovery, ambiguous-send no replay, primary-503 Mainnet fallback, wrong-chain fallback rejection, protocol-TTL confirmation, cross-endpoint fork recovery, same-endpoint reorg rescan, and steady-state incremental reads with block-hash continuity. Signer typecheck and build passed. A hosted post-deploy check remains pending.
+- Sponsored wallet checkpoint UX (2026-11-03): The funding panel compared wallet transfer checkpoints with referee escrow intent hashes, so a verified deposit could still look pending. The client now distinguishes wallet submission from chain observation, re-observes while pending, and has server/browser regression coverage.
+- Additional wallet retry gap (2026-11-03): A finalized failed wallet transaction left its saved browser checkpoint blocked indefinitely, while a malformed checkpoint could be misread as no pending payment. Wallet retries now require the configured network RPC to prove the exact manager call failed, backtracked, or skipped in a finalized block. Unavailable readers and unrelated, unfinalized, applied, or wrong-chain operations stay pending; malformed or unwritable local storage blocks new signing.
+- Focused proof: Sponsor service tests passed 9/9, chain proof tests passed 3/3, browser safety tests passed 4/4 (including transient read recovery), and the production build passed. No existing escrow contract or room route changed.
+- Optional failure-proof liveness (2026-11-03): If exact-call failure verification loses RPC access after the escrow room read succeeds, reconciliation now leaves the wallet checkpoint pending and retains verified room actions. The sponsor service regression passes 10/10; primary escrow read failures remain fail-closed.
 
 ### WTF-BB-760 - Deployment guard omits sponsored escrow bindings for active funded rooms
 

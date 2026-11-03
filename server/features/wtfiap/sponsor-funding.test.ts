@@ -25,6 +25,8 @@ const freePlan: SponsorPlan = { mode: "fixed", minimumHumans: 2,
 function fixture(plan = freePlan, enabled = true) {
   const rows = new Map<string, SponsorRecord>();
   const submissions: string[] = [];
+  let failures: Array<{ userId: string; action: string; operationHash: string; blockHash: string; level: number }> = [];
+  let failureReadUnavailable = false;
   const saved: any = { roomCode: "sponsor-room", hostPlayerId: "p1",
     sponsorAccountId: "1", config: { roomType: "tournament", sponsorNetwork: "mainnet",
       sponsorCompetes: true, sponsor: clone(plan) }, phase: "lobby",
@@ -56,6 +58,11 @@ function fixture(plan = freePlan, enabled = true) {
     ...(enabled ? {} : { reason: "Sponsor contract has not been deployed." }) };
   const service = createSponsorFundingService({ store, game,
     chain: { read: async () => clone(chainRoom),
+      failedObservations: async (_record, _observed, pending) => {
+        if (failureReadUnavailable) throw Error("Failed-operation proof RPC unavailable");
+        return failures.filter(failure => pending.some(item => item.userId === failure.userId &&
+          item.action === failure.action && item.operationHash === failure.operationHash));
+      },
       submit: async (_record, intent) => {
         submissions.push(intent.kind);
         return { operationHash: "o" + "1".repeat(50) };
@@ -67,7 +74,10 @@ function fixture(plan = freePlan, enabled = true) {
     onWake: () => undefined,
   });
   const setChain = (room: SponsorChainRoom | null) => { chainRoom = clone(room); };
-  return { rows, store, game, saved, setChain, submissions, service };
+  const setFailures = (value: typeof failures) => { failures = clone(value); };
+  const setFailureReadUnavailable = (value: boolean) => { failureReadUnavailable = value; };
+  return { rows, store, game, saved, setChain, setFailures,
+    setFailureReadUnavailable, submissions, service };
 }
 
 function observed(record: SponsorRecord): SponsorChainRoom {
@@ -152,6 +162,87 @@ test("paid sponsor tournament verifies prize, house fee, and every entrant befor
   await f.service.close();
 });
 
+test("wallet observation stays pending until its entry or sponsor deposit is visible on chain", async () => {
+  const plan: SponsorPlan = { ...clone(freePlan),
+    entry: { currency: "XTZ", entryAtomic: "1000000", poolNumerator: "0",
+      poolDenominator: "1", designatedWallet: treasuryWallet } };
+  const f = fixture(plan);
+  await f.service.bind("sponsor-room", "1", sponsorWallet);
+  await f.service.open("sponsor-room", "1");
+  await f.service.drain();
+  const chain = observed(f.rows.get("sponsor-room")!);
+  f.setChain(chain); await f.service.drain();
+  const sponsorHash = "o" + "2".repeat(50);
+  await f.service.observe("sponsor-room", "1", { action: "sponsorXtz", operationHash: sponsorHash });
+  let view = await f.service.view("sponsor-room", "1");
+  assert.equal(view.self.pendingOperations[0].status, "pending");
+  assert.equal(view.self.pendingOperations[0].operationHash, sponsorHash);
+  chain.sponsorXtzFunded = true; chain.heldXtz = "1500000";
+  f.setChain(chain); await f.service.drain();
+  view = await f.service.view("sponsor-room", "1");
+  assert.equal(view.self.pendingOperations[0].status, "applied");
+
+  f.saved.players.push({ playerId: "p2", accountId: "2", name: "Entrant", isAI: false });
+  await f.service.bind("sponsor-room", "2", entrantWallet);
+  await f.service.drain();
+  chain.entrants = [sponsorWallet, entrantWallet];
+  f.setChain(chain); await f.service.drain();
+  const entryHash = "o" + "3".repeat(50);
+  await f.service.observe("sponsor-room", "2", { action: "entry", operationHash: entryHash });
+  view = await f.service.view("sponsor-room", "2");
+  assert.equal(view.self.pendingOperations[0].status, "pending");
+  assert.equal(view.depositedCount, 0);
+  chain.paid = [entrantWallet]; chain.heldXtz = "2500000";
+  f.setChain(chain); await f.service.drain();
+  view = await f.service.view("sponsor-room", "2");
+  assert.equal(view.self.pendingOperations[0].status, "applied");
+  assert.equal(view.depositedCount, 1);
+  await f.service.close();
+});
+
+test("wallet retry is exposed only after a failed operation has finalized branch proof", async () => {
+  const f = fixture();
+  await f.service.bind("sponsor-room", "1", sponsorWallet);
+  await f.service.open("sponsor-room", "1");
+  await f.service.drain();
+  const chain = observed(f.rows.get("sponsor-room")!);
+  f.setChain(chain); await f.service.drain();
+  const operationHash = "o" + "4".repeat(50);
+  await f.service.observe("sponsor-room", "1", { action: "sponsorXtz", operationHash });
+  await f.service.drain();
+  assert.equal((await f.service.view("sponsor-room", "1")).self.pendingOperations[0].status, "pending");
+  f.setFailures([{ userId: "1", action: "sponsorXtz", operationHash,
+    blockHash: "Bfailed", level: 19 }]);
+  await f.service.drain();
+  const observation = (await f.service.view("sponsor-room", "1")).self.pendingOperations[0];
+  assert.equal(observation.status, "failed");
+  assert.deepEqual(observation.proof, { kind: "finalized-failed-operation",
+    blockHash: "Bfailed", level: 19 });
+  assert.equal((await f.service.view("sponsor-room", "1")).self.actions.sponsorXtz.amountMutez,
+    "1000000");
+  await f.service.close();
+});
+
+test("unavailable optional failed-operation proof keeps the room usable and wallet checkpoint pending", async () => {
+  const f = fixture();
+  await f.service.bind("sponsor-room", "1", sponsorWallet);
+  await f.service.open("sponsor-room", "1");
+  await f.service.drain();
+  f.setChain(observed(f.rows.get("sponsor-room")!));
+  await f.service.drain();
+  const operationHash = "o" + "6".repeat(50);
+  await f.service.observe("sponsor-room", "1", { action: "sponsorXtz", operationHash });
+  f.setFailureReadUnavailable(true);
+  await f.service.drain();
+  const view = await f.service.view("sponsor-room", "1");
+  assert.equal(view.self.pendingOperations[0].status, "pending");
+  assert.equal(view.self.pendingOperations[0].operationHash, operationHash);
+  assert.equal(view.self.actions.sponsorXtz.amountMutez, "1000000");
+  assert.equal(view.error, null);
+  assert.equal(f.service.health.error, null);
+  await f.service.close();
+});
+
 test("disabled sponsor deployment gives a readable non-payment state", async () => {
   const f = fixture(freePlan, false);
   const view = await f.service.view("sponsor-room", "1");
@@ -193,9 +284,14 @@ test("settled sponsor prizes are claimed automatically and only once per recorde
   assert.equal(f.submissions.at(-1), "claim_cash");
   assert.equal(f.rows.get("sponsor-room")?.intents.filter(intent => intent.kind === "claim_cash").length, 1);
 
+  const claimHash = "o" + "6".repeat(50);
+  await f.service.observe("sponsor-room", "1", { action: "cashClaim:XTZ", operationHash: claimHash });
+  assert.equal((await f.service.view("sponsor-room", "1")).self.pendingOperations[0].status, "pending");
+
   chain.cashClaims[sponsorWallet + ":XTZ"].claimed = true;
   f.setChain(chain);
   await f.service.drain();
+  assert.equal((await f.service.view("sponsor-room", "1")).self.pendingOperations[0].status, "applied");
   assert.equal(f.submissions.at(-1), "claim_lot");
 
   chain.lotClaims[0].claimed = true;
@@ -208,6 +304,70 @@ test("settled sponsor prizes are claimed automatically and only once per recorde
   assert.equal(f.submissions.length, count);
   assert(f.rows.get("sponsor-room")?.intents.filter(intent =>
     intent.kind === "claim_cash" || intent.kind === "claim_lot").every(intent => intent.status === "applied"));
+  await f.service.close();
+});
+
+test("legacy currency-free cash and index-free lot observations wait for every relevant claim", async () => {
+  const plan: SponsorPlan = { ...clone(freePlan),
+    places: [{ place: 1, xtzAtomic: "1000000", wtfAtomic: "100000000", poolWeight: "0" }],
+    deposit: { xtzAtomic: "1000000", wtfAtomic: "100000000" },
+    tokens: [0, 1].map(index => ({ contract: token, tokenId: String(index), amount: "1", place: 1 })) };
+  const f = fixture(plan);
+  await f.service.bind("sponsor-room", "1", sponsorWallet);
+  await f.service.open("sponsor-room", "1");
+  const chain = observed(f.rows.get("sponsor-room")!);
+  chain.status = "settled";
+  chain.cashClaims[sponsorWallet + ":XTZ"] = { amount: "1000000", claimed: true };
+  chain.cashClaims[sponsorWallet + ":WTF"] = { amount: "100000000", claimed: false };
+  chain.lotClaims[0] = { recipient: sponsorWallet, claimed: true };
+  chain.lotClaims[1] = { recipient: sponsorWallet, claimed: false };
+  await f.store.mutate("sponsor-room", old => {
+    assert(old); old.chain = clone(chain); return { record: old, value: undefined };
+  });
+  await f.service.observe("sponsor-room", "1", { action: "cashClaim", operationHash: "o" + "7".repeat(50) });
+  await f.service.observe("sponsor-room", "1", { action: "lotClaim", operationHash: "o" + "8".repeat(50) });
+  let statuses = (await f.service.view("sponsor-room", "1")).self.pendingOperations.map(item => item.status);
+  assert.deepEqual(statuses, ["pending", "pending"]);
+  chain.cashClaims[sponsorWallet + ":WTF"].claimed = true;
+  chain.lotClaims[1].claimed = true;
+  await f.store.mutate("sponsor-room", old => {
+    assert(old); old.chain = clone(chain); return { record: old, value: undefined };
+  });
+  statuses = (await f.service.view("sponsor-room", "1")).self.pendingOperations.map(item => item.status);
+  assert.deepEqual(statuses, ["applied", "applied"]);
+  chain.cashClaims[sponsorWallet + ":WTF"] = { amount: "0", claimed: false };
+  await f.store.mutate("sponsor-room", old => {
+    assert(old); old.chain = clone(chain); return { record: old, value: undefined };
+  });
+  assert.equal((await f.service.view("sponsor-room", "1")).self.pendingOperations[0].status, "applied");
+  await f.service.close();
+});
+
+test("legacy index-free FA2 refund stays pending while any sponsor lot remains funded", async () => {
+  const plan: SponsorPlan = { ...clone(freePlan),
+    tokens: [0, 1].map(index => ({ contract: token, tokenId: String(index), amount: "1", place: 1 })) };
+  const f = fixture(plan);
+  await f.service.bind("sponsor-room", "1", sponsorWallet);
+  await f.service.open("sponsor-room", "1");
+  const chain = observed(f.rows.get("sponsor-room")!);
+  chain.status = "voided";
+  chain.fundedLots = [0, 1];
+  await f.store.mutate("sponsor-room", old => {
+    assert(old); old.chain = clone(chain); return { record: old, value: undefined };
+  });
+  await f.service.observe("sponsor-room", "1", { action: "refundSponsorLot", operationHash: "o" + "9".repeat(50) });
+  const status = async () => (await f.service.view("sponsor-room", "1")).self.pendingOperations[0].status;
+  assert.equal(await status(), "pending");
+  chain.fundedLots = [1];
+  await f.store.mutate("sponsor-room", old => {
+    assert(old); old.chain = clone(chain); return { record: old, value: undefined };
+  });
+  assert.equal(await status(), "pending");
+  chain.fundedLots = [];
+  await f.store.mutate("sponsor-room", old => {
+    assert(old); old.chain = clone(chain); return { record: old, value: undefined };
+  });
+  assert.equal(await status(), "applied");
   await f.service.close();
 });
 

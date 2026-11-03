@@ -50,3 +50,48 @@ test("wallet queue serializes counter-consuming calls and survives an earlier fa
   await assert.rejects(first); await second;
   assert.deepEqual(order, ["first", "second"]);
 });
+
+test("fsynced hash reaches the caller before confirmation while the wallet lane stays occupied", async (t) => {
+  const dir = await mkdtemp(join(tmpdir(), "wtfiap-early-hash-"));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const queue = new WtfIapSigningQueue();
+  const order: string[] = [];
+  const detachedErrors: unknown[] = [];
+  let release!: () => void;
+  const confirmation = new Promise<void>(resolve => { release = resolve; });
+  const first = queue.runWithAcknowledgement("referee", async acknowledge => {
+    const durable = await journalWtfIapSend(dir, envelope, async () => response);
+    acknowledge(durable);
+    order.push("confirming");
+    await confirmation;
+    order.push("confirmed");
+    return durable;
+  }, error => detachedErrors.push(error));
+  assert.deepEqual(await first, response);
+  const files = await readdir(dir);
+  assert.equal(files.length, 1);
+  assert.match(await readFile(join(dir, files[0]), "utf8"), /operation-hash/u);
+  const second = queue.run("referee", async () => { order.push("next"); });
+  await Promise.resolve(); await Promise.resolve();
+  assert.deepEqual(order, ["confirming"]);
+  release(); await second;
+  assert.deepEqual(order, ["confirming", "confirmed", "next"]);
+  assert.deepEqual(detachedErrors, []);
+});
+
+test("caller disconnect after the early hash leaves one journaled send", async (t) => {
+  const dir = await mkdtemp(join(tmpdir(), "wtfiap-disconnect-"));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const queue = new WtfIapSigningQueue();
+  let sends = 0;
+  const lostReply = queue.runWithAcknowledgement("referee", async acknowledge => {
+    const durable = await journalWtfIapSend(dir, envelope, async () => { sends++; return response; });
+    acknowledge(durable); return durable;
+  }, () => assert.fail("post-acknowledgement work failed"));
+  await lostReply; // The transport discards these bytes after the signer has journaled them.
+  const recovered = await journalWtfIapSend(dir, envelope, async () => {
+    sends++; throw new Error("duplicate broadcast");
+  });
+  assert.deepEqual(JSON.parse(JSON.stringify(recovered)), JSON.parse(JSON.stringify(response)));
+  assert.equal(sends, 1);
+});
