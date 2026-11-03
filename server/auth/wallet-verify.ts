@@ -7,12 +7,13 @@ import { WTFOS_WALLET_LOGIN_CHALLENGE_PREFIX } from "@shared/platform-branding";
 
 const CHALLENGE_PREFIX = WTFOS_WALLET_LOGIN_CHALLENGE_PREFIX;
 
-export type WalletProofAction = "login" | "register" | "link";
+export type WalletProofAction = "login" | "register" | "link" | "horf";
 
 const WALLET_PROOF_ACTION_LABELS: Record<WalletProofAction, string> = {
   login: "Sign in",
   register: "Create account",
   link: "Link wallet",
+  horf: "Use Horf on Tezos Mainnet",
 };
 
 export function normalizeWalletProofOrigin(candidate: unknown): string {

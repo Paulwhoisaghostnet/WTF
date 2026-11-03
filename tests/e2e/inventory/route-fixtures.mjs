@@ -35,6 +35,8 @@ export const ROUTE_FIXTURES = [
   { pattern: "/rat-race", path: "/rat-race", title: "Rat Race", domain: "commerce", subdomain: "Tezos urgency shopping channel", auth: true },
   { pattern: "/map-lab", path: "/map-lab", title: "WTF Map Lab", domain: "desktop-os", subdomain: "System maps and roadmaps", auth: false },
   { pattern: "/trade-boards", path: "/trade-boards", title: "Trade Boards", domain: "commerce", subdomain: "Trade boards/barter", auth: true },
+  { pattern: "/horf", path: "/horf", title: "Horf", domain: "commerce", subdomain: "Horf horse trading", auth: false },
+  { pattern: "/horf/open-range", path: "/horf/open-range", title: "Horf Open Range", domain: "commerce", subdomain: "Public horse trading market", auth: false },
   { pattern: "/w", path: "/w", title: "W Feed", domain: "social", subdomain: "W timeline", auth: true },
   { pattern: "/skywire", path: "/skywire", title: "Skywire", domain: "social", subdomain: "Skywire AT Protocol bridge", auth: false },
   { pattern: "/live/r/:roomId", path: "/live/r/wtf-live", title: "WTF LIVE Room", domain: "social", subdomain: "WTF LIVE public guest room", auth: false },

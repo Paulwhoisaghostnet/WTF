@@ -1,0 +1,11 @@
+{
+  "chain": "tezos-l1",
+  "network": "mainnet",
+  "protocol": "tallinn",
+  "smartpy": "0.24.1",
+  "sourceSha256": "97805700402b4bcfaa33f8fd8fd68577fef5b80ba7f8eb1efac7ec527f0b19b4",
+  "contractJsonSha256": "38084d10617c1a70dc474ebe9a2069380d44ed1f66db02c97c5b3bf5d8fd50bb",
+  "contractTzSha256": "4b102d8cc72d8c605ac522b355d13c3d4ae5daad78675f9e2b0c55c249345083",
+  "storageFixtureSha256": "b10bf9cae9c52f0e33e93f013d65338b59af01f3d6953522d0c02b1805303020",
+  "storage": "storage.fixture.json contains public test-account identifiers and must be replaced by prepare-origination.mjs before origination."
+}

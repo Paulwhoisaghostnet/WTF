@@ -1,0 +1,236 @@
+parameter (or (or (unit %bump_oracle_epoch) (pair %claim (nat %total_raw) (signature %signature))) (or (unit %default) (key %set_oracle_key)));
+storage   (pair (address %admin) (pair (big_map %claimed_raw address nat) (pair (address %horse_contract) (pair (nat %horse_token_id) (pair (nat %oracle_epoch) (key %oracle_key))))));
+code
+  {
+    UNPAIR;     # @parameter : @storage
+    IF_LEFT
+      {
+        IF_LEFT
+          {
+            DROP;       # @storage
+            # == bump_oracle_epoch ==
+            # assert sp.amount == sp.mutez(0), "NO_XTZ_IN" # @storage
+            PUSH mutez 0; # mutez : @storage
+            AMOUNT;     # @amount : mutez : @storage
+            COMPARE;    # int : @storage
+            EQ;         # bool : @storage
+            IF
+              {}
+              {
+                PUSH string "NO_XTZ_IN"; # string : @storage
+                FAILWITH;   # FAILED
+              }; # @storage
+            # assert sp.sender == self.data.admin, "NOT_ADMIN" # @storage
+            DUP;        # @storage : @storage
+            CAR;        # address : @storage
+            SENDER;     # @sender : address : @storage
+            COMPARE;    # int : @storage
+            EQ;         # bool : @storage
+            IF
+              {}
+              {
+                PUSH string "NOT_ADMIN"; # string : @storage
+                FAILWITH;   # FAILED
+              }; # @storage
+            # self.data.oracle_epoch += 1 # @storage
+            DUP;        # @storage : @storage
+            GET 9;      # nat : @storage
+            PUSH nat 1; # nat : nat : @storage
+            ADD;        # nat : @storage
+            UPDATE 9;   # @storage
+            # sp.emit(self.data.oracle_epoch, tag="horse_claim_oracle_epoch_bumped") # @storage
+            NIL operation; # list operation : @storage
+            DUP 2;      # @storage : list operation : @storage
+            GET 9;      # nat : list operation : @storage
+            EMIT %horse_claim_oracle_epoch_bumped nat; # operation : list operation : @storage
+            CONS;       # list operation : @storage
+          }
+          {
+            # == claim ==
+            # assert sp.amount == sp.mutez(0), "NO_XTZ_IN" # @parameter%claim : @storage
+            PUSH mutez 0; # mutez : @parameter%claim : @storage
+            AMOUNT;     # @amount : mutez : @parameter%claim : @storage
+            COMPARE;    # int : @parameter%claim : @storage
+            EQ;         # bool : @parameter%claim : @storage
+            IF
+              {}
+              {
+                PUSH string "NO_XTZ_IN"; # string : @parameter%claim : @storage
+                FAILWITH;   # FAILED
+              }; # @parameter%claim : @storage
+            # previous = self.data.claimed_raw.get(sp.sender, default=sp.nat(0)) # @parameter%claim : @storage
+            DUP 2;      # @storage : @parameter%claim : @storage
+            GET 3;      # big_map address nat : @parameter%claim : @storage
+            SENDER;     # @sender : big_map address nat : @parameter%claim : @storage
+            GET;        # option nat : @parameter%claim : @storage
+            IF_NONE
+              {
+                PUSH nat 0; # nat : @parameter%claim : @storage
+              }
+              {}; # nat : @parameter%claim : @storage
+            # assert params.total_raw > previous, "NOTHING_TO_CLAIM" # nat : @parameter%claim : @storage
+            DUP;        # nat : nat : @parameter%claim : @storage
+            DUP 3;      # @parameter%claim : nat : nat : @parameter%claim : @storage
+            CAR;        # nat : nat : nat : @parameter%claim : @storage
+            COMPARE;    # int : nat : @parameter%claim : @storage
+            GT;         # bool : nat : @parameter%claim : @storage
+            IF
+              {}
+              {
+                PUSH string "NOTHING_TO_CLAIM"; # string : nat : @parameter%claim : @storage
+                FAILWITH;   # FAILED
+              }; # nat : @parameter%claim : @storage
+            # payload = ( # nat : @parameter%claim : @storage
+            DUP 3;      # @storage : nat : @parameter%claim : @storage
+            GET 9;      # nat : nat : @parameter%claim : @storage
+            DUP 3;      # @parameter%claim : nat : nat : @parameter%claim : @storage
+            CAR;        # nat : nat : nat : @parameter%claim : @storage
+            PAIR;       # pair nat nat : nat : @parameter%claim : @storage
+            SENDER;     # @sender : pair nat nat : nat : @parameter%claim : @storage
+            PAIR;       # pair @sender (pair nat nat) : nat : @parameter%claim : @storage
+            SELF_ADDRESS; # @self : pair @sender (pair nat nat) : nat : @parameter%claim : @storage
+            PAIR;       # pair @self (pair @sender (pair nat nat)) : nat : @parameter%claim : @storage
+            CHAIN_ID;   # chain_id : pair @self (pair @sender (pair nat nat)) : nat : @parameter%claim : @storage
+            PAIR;       # pair chain_id (pair @self (pair @sender (pair nat nat))) : nat : @parameter%claim : @storage
+            # assert sp.check_signature( # pair chain_id (pair @self (pair @sender (pair nat nat))) : nat : @parameter%claim : @storage
+            PACK;       # bytes : nat : @parameter%claim : @storage
+            DUP 3;      # @parameter%claim : bytes : nat : @parameter%claim : @storage
+            CDR;        # signature : bytes : nat : @parameter%claim : @storage
+            DUP 5;      # @storage : signature : bytes : nat : @parameter%claim : @storage
+            GET 10;     # key : signature : bytes : nat : @parameter%claim : @storage
+            CHECK_SIGNATURE; # bool : nat : @parameter%claim : @storage
+            IF
+              {}
+              {
+                PUSH string "BAD_CLAIM_PERMIT"; # string : nat : @parameter%claim : @storage
+                FAILWITH;   # FAILED
+              }; # nat : @parameter%claim : @storage
+            # delta = sp.as_nat(params.total_raw - previous) # nat : @parameter%claim : @storage
+            DUP 2;      # @parameter%claim : nat : @parameter%claim : @storage
+            CAR;        # nat : nat : @parameter%claim : @storage
+            SUB;        # int : @parameter%claim : @storage
+            ISNAT;      # option nat : @parameter%claim : @storage
+            IF_NONE
+              {
+                PUSH int 70; # int : @parameter%claim : @storage
+                FAILWITH;   # FAILED
+              }
+              {}; # @some : @parameter%claim : @storage
+            # self.data.claimed_raw[sp.sender] = params.total_raw # @some : @parameter%claim : @storage
+            DIG 2;      # @storage : @some : @parameter%claim
+            DUP;        # @storage : @storage : @some : @parameter%claim
+            GET 3;      # big_map address nat : @storage : @some : @parameter%claim
+            DUP 4;      # @parameter%claim : big_map address nat : @storage : @some : @parameter%claim
+            CAR;        # nat : big_map address nat : @storage : @some : @parameter%claim
+            SOME;       # option nat : big_map address nat : @storage : @some : @parameter%claim
+            SENDER;     # @sender : option nat : big_map address nat : @storage : @some : @parameter%claim
+            UPDATE;     # big_map address nat : @storage : @some : @parameter%claim
+            UPDATE 3;   # @storage : @some : @parameter%claim
+            DUG 2;      # @some : @parameter%claim : @storage
+            # transfer_ep = sp.contract( # @some : @parameter%claim : @storage
+            DUP 3;      # @storage : @some : @parameter%claim : @storage
+            GET 5;      # address : @some : @parameter%claim : @storage
+            CONTRACT %transfer (list (pair (address %from_) (list %txs (pair (address %to_) (pair (nat %token_id) (nat %amount)))))); # option (contract (list (pair (address %from_) (list %txs (pair (address %to_) (pair (nat %token_id) (nat %amount))))))) : @some : @parameter%claim : @storage
+            IF_NONE
+              {
+                PUSH string "HORSE_TRANSFER_MISSING"; # string : @some : @parameter%claim : @storage
+                FAILWITH;   # FAILED
+              }
+              {}; # @some : @some : @parameter%claim : @storage
+            # sp.transfer( # @some : @some : @parameter%claim : @storage
+            NIL operation; # list operation : @some : @some : @parameter%claim : @storage
+            SWAP;       # @some : list operation : @some : @parameter%claim : @storage
+            PUSH mutez 0; # mutez : @some : list operation : @some : @parameter%claim : @storage
+            NIL (pair address (list (pair address (pair nat nat)))); # list (pair address (list (pair address (pair nat nat)))) : mutez : @some : list operation : @some : @parameter%claim : @storage
+            NIL (pair address (pair nat nat)); # list (pair address (pair nat nat)) : list (pair address (list (pair address (pair nat nat)))) : mutez : @some : list operation : @some : @parameter%claim : @storage
+            DUP 6;      # @some : list (pair address (pair nat nat)) : list (pair address (list (pair address (pair nat nat)))) : mutez : @some : list operation : @some : @parameter%claim : @storage
+            DUP 9;      # @storage : @some : list (pair address (pair nat nat)) : list (pair address (list (pair address (pair nat nat)))) : mutez : @some : list operation : @some : @parameter%claim : @storage
+            GET 7;      # nat : @some : list (pair address (pair nat nat)) : list (pair address (list (pair address (pair nat nat)))) : mutez : @some : list operation : @some : @parameter%claim : @storage
+            SENDER;     # @sender : nat : @some : list (pair address (pair nat nat)) : list (pair address (list (pair address (pair nat nat)))) : mutez : @some : list operation : @some : @parameter%claim : @storage
+            PAIR 3;     # pair @sender (pair nat @some) : list (pair address (pair nat nat)) : list (pair address (list (pair address (pair nat nat)))) : mutez : @some : list operation : @some : @parameter%claim : @storage
+            CONS;       # list (pair address (pair nat nat)) : list (pair address (list (pair address (pair nat nat)))) : mutez : @some : list operation : @some : @parameter%claim : @storage
+            SELF_ADDRESS; # @self : list (pair address (pair nat nat)) : list (pair address (list (pair address (pair nat nat)))) : mutez : @some : list operation : @some : @parameter%claim : @storage
+            PAIR;       # pair @self (list (pair address (pair nat nat))) : list (pair address (list (pair address (pair nat nat)))) : mutez : @some : list operation : @some : @parameter%claim : @storage
+            CONS;       # list (pair address (list (pair address (pair nat nat)))) : mutez : @some : list operation : @some : @parameter%claim : @storage
+            TRANSFER_TOKENS; # operation : list operation : @some : @parameter%claim : @storage
+            CONS;       # list operation : @some : @parameter%claim : @storage
+            # sp.emit( # list operation : @some : @parameter%claim : @storage
+            DIG 2;      # @parameter%claim : list operation : @some : @storage
+            CAR;        # nat : list operation : @some : @storage
+            DIG 2;      # @some : nat : list operation : @storage
+            SENDER;     # @sender : @some : nat : list operation : @storage
+            PAIR 3;     # pair @sender (pair @some nat) : list operation : @storage
+            EMIT %horse_reward_claimed (pair (address %claimant) (pair (nat %amount_raw) (nat %total_raw))); # operation : list operation : @storage
+            CONS;       # list operation : @storage
+          }; # list operation : @storage
+      }
+      {
+        IF_LEFT
+          {
+            PUSH string "DEFAULT_DISABLED"; # string : @parameter%default : @storage
+            FAILWITH;   # FAILED
+          }
+          {
+            # == set_oracle_key ==
+            # assert sp.amount == sp.mutez(0), "NO_XTZ_IN" # @parameter%set_oracle_key : @storage
+            PUSH mutez 0; # mutez : @parameter%set_oracle_key : @storage
+            AMOUNT;     # @amount : mutez : @parameter%set_oracle_key : @storage
+            COMPARE;    # int : @parameter%set_oracle_key : @storage
+            EQ;         # bool : @parameter%set_oracle_key : @storage
+            IF
+              {}
+              {
+                PUSH string "NO_XTZ_IN"; # string : @parameter%set_oracle_key : @storage
+                FAILWITH;   # FAILED
+              }; # @parameter%set_oracle_key : @storage
+            # assert sp.sender == self.data.admin, "NOT_ADMIN" # @parameter%set_oracle_key : @storage
+            DUP 2;      # @storage : @parameter%set_oracle_key : @storage
+            CAR;        # address : @parameter%set_oracle_key : @storage
+            SENDER;     # @sender : address : @parameter%set_oracle_key : @storage
+            COMPARE;    # int : @parameter%set_oracle_key : @storage
+            EQ;         # bool : @parameter%set_oracle_key : @storage
+            IF
+              {}
+              {
+                PUSH string "NOT_ADMIN"; # string : @parameter%set_oracle_key : @storage
+                FAILWITH;   # FAILED
+              }; # @parameter%set_oracle_key : @storage
+            # self.data.oracle_key = new_key # @parameter%set_oracle_key : @storage
+            UPDATE 10;  # @storage
+            # self.data.oracle_epoch += 1 # @storage
+            DUP;        # @storage : @storage
+            GET 9;      # nat : @storage
+            PUSH nat 1; # nat : nat : @storage
+            ADD;        # nat : @storage
+            UPDATE 9;   # @storage
+            # sp.emit(self.data.oracle_epoch, tag="horse_claim_oracle_rotated") # @storage
+            NIL operation; # list operation : @storage
+            DUP 2;      # @storage : list operation : @storage
+            GET 9;      # nat : list operation : @storage
+            EMIT %horse_claim_oracle_rotated nat; # operation : list operation : @storage
+            CONS;       # list operation : @storage
+          }; # list operation : @storage
+      }; # list operation : @storage
+    NIL operation; # list operation : list operation : @storage
+    SWAP;       # list operation : list operation : @storage
+    ITER
+      {
+        CONS;       # list operation : @storage
+      }; # list operation : @storage
+    PAIR;       # pair (list operation) @storage
+  };
+view
+  "get_claimed_raw" address nat
+  {
+    UNPAIR;     # @parameter : @storage
+    SWAP;       # @storage : @parameter
+    # return self.data.claimed_raw.get(claimant, default=sp.nat(0)) # @storage : @parameter
+    GET 3;      # big_map address nat : @parameter
+    SWAP;       # @parameter : big_map address nat
+    GET;        # option nat
+    IF_NONE
+      {
+        PUSH nat 0; # nat
+      }
+      {}; # nat
+  };

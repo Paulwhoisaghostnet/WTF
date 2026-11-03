@@ -8,10 +8,13 @@ Commerce and wallet systems handle marketplace activity, in-app purchases, WTF t
 
 Marketplace, swap, in-app market checkout, and wallet tray/status surfaces run inside WTF OS. User purchases and approvals must use the connected user wallet, not a cached address alone.
 
+Horf is the read-only Tezos mainnet horse trading desk. It shows season transfer receipts, outstanding return rides, and an all-trader race board. Wallet connection selects the personal ledger; it never submits a transfer.
+
 ## Main Code
 
 - `client/src/lib/tezos`
 - `client/src/lib/wallet-context.tsx`
+- `client/src/pages/Horf.tsx`
 - `server/routes/marketplace.ts`
 - `server/routes/in-app-market.ts`
 - `server/features/in-app-market`

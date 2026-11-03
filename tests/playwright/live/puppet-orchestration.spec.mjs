@@ -3,6 +3,7 @@ import { access, mkdir } from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
 import { test, expect } from "@playwright/test";
+import pg from "pg";
 import { DOMAIN_WORKFLOWS } from "../../e2e/inventory/domain-workflows.mjs";
 import { ROUTE_FIXTURES } from "../../e2e/inventory/route-fixtures.mjs";
 import { actorForWorkflow } from "../../e2e/puppets/registry.mjs";
@@ -259,6 +260,53 @@ async function signChallenge(actor, message) {
   return JSON.parse(stdout.trim());
 }
 
+async function horfGuestWalletContext(playwright, baseURL, actor) {
+  const request = await playwright.request.newContext({ baseURL });
+  try {
+    const headers = await csrfHeaders(request);
+    const challenge = await expectOkJson(
+      await request.post("/api/horf/wallet/challenge", {
+        data: { walletAddress: actor.walletAddress }, headers,
+      }),
+      `Horf wallet challenge for ${actor.id}`
+    );
+    expect(challenge.action).toBe("horf");
+    expect(challenge.nonce).toBeTruthy();
+    const signed = await signChallenge(actor, challenge.message);
+    expect(signed.walletAddress).toBe(actor.walletAddress);
+    const verification = await expectOkJson(
+      await request.post("/api/horf/wallet/verify", {
+        data: {
+          walletAddress: actor.walletAddress,
+          publicKey: signed.publicKey,
+          signature: signed.signature,
+          nonce: challenge.nonce,
+        },
+        headers: await csrfHeaders(request),
+      }),
+      `Horf wallet verification for ${actor.id}`
+    );
+    expect(verification).toMatchObject({
+      walletAddress: actor.walletAddress,
+      verified: true,
+      source: "wallet-proof",
+    });
+    return { request, challenge, signed };
+  } catch (error) {
+    await request.dispose();
+    throw error;
+  }
+}
+
+function isLocalHorfLiveTarget(baseURL) {
+  try {
+    const local = new Set(["localhost", "127.0.0.1", "::1"]);
+    return local.has(new URL(baseURL).hostname) && local.has(new URL(process.env.DATABASE_URL).hostname);
+  } catch {
+    return false;
+  }
+}
+
 test.describe("live E2E puppet orchestration", () => {
   test.beforeAll(async ({ playwright, baseURL }) => {
     puppetCredentials = applyActorFilter(await readPuppetCredentials());
@@ -325,6 +373,852 @@ test.describe("live E2E puppet orchestration", () => {
       expect(metric.uniqueAccounts).toBeGreaterThanOrEqual(1);
     } finally {
       await loginRequest.dispose();
+    }
+  });
+
+  test("Horf is public to a guest and wallet proof creates only a scoped wallet session", async ({
+    playwright,
+    browser,
+    baseURL,
+  }) => {
+    const actor = actorByRole(puppetCredentials, "contestant");
+    const witness = actorByRole(puppetCredentials, "witness");
+    const guest = await playwright.request.newContext({ baseURL });
+    const context = await browser.newContext({ baseURL });
+    let resumed;
+    try {
+      expect((await guest.get("/api/auth/user")).status()).toBe(401);
+      const page = await context.newPage();
+      await page.goto("/horf", { waitUntil: "domcontentloaded" });
+      await expect(page.locator("[data-horf-app]")).toBeVisible();
+      await expect(page).toHaveURL(/\/horf(?:\?season=current-2026)?$/);
+
+      const season = await expectOkJson(await guest.get("/api/horf/season"), "public Horf season");
+      expect(season.season?.key).toBe("current-2026");
+      expect(Array.isArray(season.leaderboard)).toBe(true);
+      const stable = await expectOkJson(await guest.get("/api/horf/stables"), "public Horf stables");
+      expect(stable.network).toBe("mainnet");
+      const horse = await expectOkJson(await guest.get("/api/horf/horse/config"), "public HORSE config");
+      expect(horse.chainId).toBe("NetXdQprcVkpaWU");
+      const tokenResponse = await guest.get(`/api/horf/wallet/tokens?address=${encodeURIComponent(actor.walletAddress)}&offset=0`);
+      expect([200, 503], "public owned-token read is not gated by WTF sign-in").toContain(tokenResponse.status());
+      if (tokenResponse.ok()) {
+        const tokens = await tokenResponse.json();
+        expect(Array.isArray(tokens.items)).toBe(true);
+        expect(typeof tokens.pagination?.hasMore).toBe("boolean");
+      } else {
+        expect((await tokenResponse.json()).error).toMatch(/temporarily unavailable/i);
+      }
+
+      const before = await expectOkJson(await guest.get("/api/horf/wallet/session"), "guest Horf wallet session");
+      expect(before).toMatchObject({ walletAddress: null, verified: false });
+      const noProof = await guest.get(`/api/horf/posse?address=${encodeURIComponent(actor.walletAddress)}`);
+      expect(noProof.status()).toBe(403);
+      expect((await noProof.json()).error).toMatch(/wallet|verify|proof/i);
+
+      const noCsrf = await guest.post("/api/horf/wallet/challenge", {
+        data: { walletAddress: actor.walletAddress },
+      });
+      expect(noCsrf.status()).toBe(403);
+      expect((await noCsrf.json()).error).toMatch(/CSRF/i);
+
+      const headers = await csrfHeaders(guest);
+      const challenge = await expectOkJson(
+        await guest.post("/api/horf/wallet/challenge", {
+          data: { walletAddress: actor.walletAddress }, headers,
+        }),
+        "guest Horf wallet challenge"
+      );
+      expect(challenge.action).toBe("horf");
+      expect(challenge.origin).toBeTruthy();
+      expect(Number.isFinite(Date.parse(challenge.expiresAt))).toBe(true);
+      const wrongSigner = await signChallenge(witness, challenge.message);
+      const forged = await guest.post("/api/horf/wallet/verify", {
+        data: {
+          walletAddress: actor.walletAddress,
+          publicKey: wrongSigner.publicKey,
+          signature: wrongSigner.signature,
+          nonce: challenge.nonce,
+        },
+        headers: await csrfHeaders(guest),
+      });
+      expect(forged.status(), "another puppet cannot claim the challenged wallet").toBe(403);
+      const signed = await signChallenge(actor, challenge.message);
+      const verificationBody = {
+        walletAddress: actor.walletAddress,
+        publicKey: signed.publicKey,
+        signature: signed.signature,
+        nonce: challenge.nonce,
+      };
+      const verified = await expectOkJson(
+        await guest.post("/api/horf/wallet/verify", {
+          data: verificationBody,
+          headers: await csrfHeaders(guest),
+        }),
+        "guest Horf wallet verification"
+      );
+      expect(verified).toMatchObject({ walletAddress: actor.walletAddress, verified: true, source: "wallet-proof" });
+      expect((await guest.get("/api/auth/user")).status()).toBe(401);
+      const replay = await guest.post("/api/horf/wallet/verify", {
+        data: verificationBody,
+        headers: await csrfHeaders(guest),
+      });
+      expect(replay.status(), "a consumed Horf wallet challenge cannot verify twice").toBe(403);
+
+      resumed = await playwright.request.newContext({ baseURL, storageState: await guest.storageState() });
+      const session = await expectOkJson(await resumed.get("/api/horf/wallet/session"), "resumed Horf guest wallet session");
+      expect(session).toMatchObject({ walletAddress: actor.walletAddress, verified: true });
+      const disconnected = await resumed.post("/api/horf/wallet/disconnect", { headers: await csrfHeaders(resumed) });
+      expect(disconnected.ok()).toBeTruthy();
+      const after = await expectOkJson(await resumed.get("/api/horf/wallet/session"), "disconnected Horf wallet session");
+      expect(after).toMatchObject({ walletAddress: null, verified: false });
+    } finally {
+      await resumed?.dispose();
+      await context.close();
+      await guest.dispose();
+    }
+  });
+
+  test("Horf reads the current season for a linked puppet wallet", async ({
+    playwright,
+    baseURL,
+  }) => {
+    const actor = actorByRole(puppetCredentials, "contestant");
+    const request = await actorRequestContext(playwright, baseURL, actor);
+    try {
+      const payload = await expectOkJson(
+        await request.get(`/api/horf/season?address=${encodeURIComponent(actor.walletAddress)}`),
+        `Horf season for ${actor.username}`
+      );
+      expect(payload.season?.startsAt).toBe("2026-11-01T00:00:00.000Z");
+      expect(payload.season?.endsAt).toBeNull();
+      expect(payload.season?.key).toBe("current-2026");
+      expect(payload.seasons?.some((season) => season.key === "neighvember-2025")).toBe(true);
+      expect(["ready", "syncing", "error"]).toContain(payload.status);
+      expect(Array.isArray(payload.leaderboard)).toBe(true);
+      if (payload.currentUser) {
+        expect(payload.currentUser.address.toLowerCase()).toBe(actor.walletAddress.toLowerCase());
+        expect(Array.isArray(payload.currentUser.waitingHorses)).toBe(true);
+      }
+      const archive = await expectOkJson(
+        await request.get(`/api/horf/season?season=neighvember-2025&address=${encodeURIComponent(actor.walletAddress)}`),
+        `Horf archive for ${actor.username}`
+      );
+      expect(archive.season?.key).toBe("neighvember-2025");
+      expect(archive.season?.endsAt).toBeTruthy();
+      expect(Array.isArray(archive.leaderboard)).toBe(true);
+      if (archive.currentUser) {
+        expect(archive.currentUser.address.toLowerCase()).toBe(actor.walletAddress.toLowerCase());
+      }
+    } finally {
+      await request.dispose();
+    }
+  });
+
+  test("Horf Stables keeps linked and unlinked puppet wallets behind the permit boundary", async ({
+    playwright,
+    baseURL,
+  }) => {
+    const actor = actorByRole(puppetCredentials, "contestant");
+    const unlinkedWallet = actorByRole(puppetCredentials, "witness").walletAddress;
+    const request = await actorRequestContext(playwright, baseURL, actor);
+    const permit = {
+      mode: 0,
+      tokenContract: "KT1U4p17VUNcinntAzUULBhzpPK7f2a4Ht4P",
+      tokenId: "23",
+      amount: "1",
+    };
+    try {
+      const headers = await csrfHeaders(request);
+      const snapshot = await expectOkJson(
+        await request.get(`/api/horf/stables?address=${encodeURIComponent(actor.walletAddress)}`),
+        `Horf Stables snapshot for ${actor.username}`
+      );
+      expect(snapshot.network).toBe("mainnet");
+      expect(snapshot.chainId).toBe("NetXdQprcVkpaWU");
+      expect(snapshot.status).toBe("unconfigured");
+      expect(snapshot.contractAddress).toBeNull();
+      expect(snapshot.permitReady).toBe(false);
+      expect(snapshot.reciprocalCredits).toBe("0");
+      expect(snapshot.groupCredits).toBe("0");
+      expect(snapshot.listings).toEqual([]);
+
+      const unlinked = await request.post("/api/horf/stables/permit", {
+        data: { ...permit, address: unlinkedWallet },
+        headers,
+      });
+      expect(unlinked.status(), "a valid wallet linked to a different actor cannot obtain a permit").toBe(403);
+      const unlinkedBody = await unlinked.json();
+      expect(unlinkedBody.error).toMatch(/verify this wallet/i);
+
+      const linked = await request.post("/api/horf/stables/permit", {
+        data: { ...permit, address: actor.walletAddress },
+        headers,
+      });
+      expect(linked.status(), "an uninspected token cannot receive a Mainnet Stable permit").toBe(422);
+      const linkedBody = await linked.json();
+      expect(linkedBody.code).toBe("HORF_CUSTODY_UNTRUSTED");
+    } finally {
+      await request.dispose();
+    }
+  });
+
+  test("Horf HORSE reads and posse contacts stay with their signed-in actor", async ({
+    playwright,
+    baseURL,
+  }) => {
+    const actor = actorByRole(puppetCredentials, "contestant");
+    const witness = actorByRole(puppetCredentials, "witness");
+    const request = await actorRequestContext(playwright, baseURL, actor);
+    const witnessRequest = await actorRequestContext(playwright, baseURL, witness);
+    let partnerId = null;
+    let headers = null;
+    try {
+      headers = await csrfHeaders(request);
+      const config = await expectOkJson(
+        await request.get(`/api/horf/horse/config?address=${encodeURIComponent(actor.walletAddress)}`),
+        `Horf HORSE config for ${actor.username}`
+      );
+      expect(config.network).toBe("mainnet");
+      expect(config.chainId).toBe("NetXdQprcVkpaWU");
+      expect(["ready", "unconfigured"]).toContain(config.status);
+      if (config.status === "ready") {
+        expect(config.token?.symbol).toBe("HORSE");
+        expect(config.token?.tokenId).toBe("0");
+        expect(config.token?.decimals).toBe(8);
+        expect(config.balanceRaw).toMatch(/^\d+$/);
+      } else {
+        expect(config.token).toBeNull();
+        expect(config.balanceRaw).toBeNull();
+      }
+      const activity = await expectOkJson(
+        await request.get(`/api/horf/horse/activity?address=${encodeURIComponent(actor.walletAddress)}`),
+        `Horf HORSE activity for ${actor.username}`
+      );
+      expect(activity.network).toBe("mainnet");
+      expect(activity.chainId).toBe("NetXdQprcVkpaWU");
+      for (const field of ["receivedRaw", "sentRaw", "awardedRaw"]) {
+        expect(activity[field]).toMatch(/^\d+$/);
+      }
+
+      const saved = await expectOkJson(
+        await request.post("/api/horf/posse", {
+          data: { ownerAddress: actor.walletAddress, address: witness.walletAddress, nickname: "Elmo horse trader" },
+          headers,
+        }),
+        `Horf posse save for ${actor.username}`
+      );
+      partnerId = saved.id;
+      expect(Number.isSafeInteger(partnerId)).toBe(true);
+      expect(saved.address).toBe(witness.walletAddress);
+      expect(saved.nickname).toBe("Elmo horse trader");
+
+      const ownPosse = await expectOkJson(await request.get(`/api/horf/posse?address=${encodeURIComponent(actor.walletAddress)}`), "owner Horf posse");
+      expect(ownPosse.partners.some((partner) => partner.id === partnerId && partner.address === witness.walletAddress)).toBe(true);
+      const otherPosse = await expectOkJson(await witnessRequest.get(`/api/horf/posse?address=${encodeURIComponent(witness.walletAddress)}`), "other actor Horf posse");
+      expect(otherPosse.partners.some((partner) => partner.id === partnerId)).toBe(false);
+
+      const removed = await request.delete(`/api/horf/posse/${partnerId}`, { headers });
+      expect(removed.status()).toBe(204);
+      const afterRemoval = await expectOkJson(await request.get(`/api/horf/posse?address=${encodeURIComponent(actor.walletAddress)}`), "Horf posse after removal");
+      expect(afterRemoval.partners.some((partner) => partner.id === partnerId)).toBe(false);
+      partnerId = null;
+    } finally {
+      if (partnerId !== null && headers) await request.delete(`/api/horf/posse/${partnerId}`, { headers }).catch(() => null);
+      await request.dispose();
+      await witnessRequest.dispose();
+    }
+  });
+
+  test("Horf exposes sender-only HORSE accrual and scopes cumulative claim permits to the trader wallet", async ({ playwright, baseURL }) => {
+    const anonymous = await playwright.request.newContext({ baseURL });
+    const actor = actorByRole(puppetCredentials, "contestant");
+    const witness = actorByRole(puppetCredentials, "witness");
+    const linked = await actorRequestContext(playwright, baseURL, actor);
+    try {
+      for (const role of ["contestant", "witness"]) {
+        const trader = actorByRole(puppetCredentials, role);
+        const rewards = await expectOkJson(
+          await anonymous.get(`/api/horf/horse/rewards?address=${encodeURIComponent(trader.walletAddress)}`),
+          `public HORSE rewards for ${role}`
+        );
+        expect(rewards).toMatchObject({ season: "current-2026", rateHorse: "10", rateRaw: "1000000000" });
+        for (const key of ["countedUnits", "accruedRaw", "totalRaw", "claimableRaw", "claimedRaw", "sourceDiscrepancies"]) {
+          expect(rewards[key], `${key} is a separate nonnegative integer string`).toMatch(/^\d+$/);
+        }
+        expect(BigInt(rewards.accruedRaw), "10 HORSE per rewardable outbound edition").toBe(
+          BigInt(rewards.countedUnits) * BigInt(rewards.rateRaw)
+        );
+        expect(rewards.totalRaw).toBe(rewards.accruedRaw);
+        expect(BigInt(rewards.claimableRaw)).toBe(
+          BigInt(rewards.accruedRaw) > BigInt(rewards.claimedRaw)
+            ? BigInt(rewards.accruedRaw) - BigInt(rewards.claimedRaw)
+            : 0n
+        );
+        expect(["ready", "syncing", "error"]).toContain(rewards.status);
+        expect(rewards.asOf === null || typeof rewards.asOf === "string").toBe(true);
+        expect(typeof rewards.sourceComplete).toBe("boolean");
+        expect(typeof rewards.claimReady).toBe("boolean");
+        expect(rewards.vaultAddress === null || /^KT1[1-9A-HJ-NP-Za-km-z]{33}$/.test(rewards.vaultAddress)).toBe(true);
+        if (rewards.claimReady) {
+          expect(rewards.status).toBe("ready");
+          expect(rewards.sourceComplete).toBe(true);
+          expect(rewards.vaultAddress).toBeTruthy();
+          expect(BigInt(rewards.claimableRaw)).toBeGreaterThan(0n);
+        }
+      }
+
+      const noProof = await anonymous.post("/api/horf/horse/claim-permit", {
+        data: { address: actor.walletAddress }, headers: await csrfHeaders(anonymous),
+      });
+      expect(noProof.status(), "a public reward read cannot authorize a claim signature").toBe(403);
+
+      const wrongWallet = await linked.post("/api/horf/horse/claim-permit", {
+        data: { address: witness.walletAddress }, headers: await csrfHeaders(linked),
+      });
+      expect(wrongWallet.status(), "a linked trader cannot request another wallet's claim signature").toBe(403);
+
+      const ownPermit = await linked.post("/api/horf/horse/claim-permit", {
+        data: { address: actor.walletAddress }, headers: await csrfHeaders(linked),
+      });
+      if (ownPermit.ok()) {
+        const permit = await ownPermit.json();
+        expect(permit).toMatchObject({ chainId: "NetXdQprcVkpaWU" });
+        expect(permit.contractAddress).toMatch(/^KT1[1-9A-HJ-NP-Za-km-z]{33}$/);
+        expect(permit.signature).toMatch(/^(?:edsig|spsig1|p2sig|sig)[1-9A-HJ-NP-Za-km-z]+$/);
+        expect(permit.totalRaw).toMatch(/^\d+$/);
+        expect(permit.claimedRaw).toMatch(/^\d+$/);
+        expect(permit.claimableRaw).toMatch(/^\d+$/);
+        expect(BigInt(permit.claimableRaw)).toBe(BigInt(permit.totalRaw) - BigInt(permit.claimedRaw));
+      } else {
+        expect(ownPermit.status(), "no claim signature is issued before the source and vault are ready").toBe(503);
+        expect(["HORF_HORSE_REWARD_SYNCING", "HORF_HORSE_CLAIM_UNCONFIGURED"])
+          .toContain((await ownPermit.json()).code);
+      }
+    } finally {
+      await anonymous.dispose();
+      await linked.dispose();
+    }
+  });
+
+  test("Horf gift book rejects an unlinked wallet and keeps the linked inbox private", async ({
+    playwright,
+    baseURL,
+  }) => {
+    const actor = actorByRole(puppetCredentials, "contestant");
+    const witness = actorByRole(puppetCredentials, "witness");
+    const request = await actorRequestContext(playwright, baseURL, actor);
+    try {
+      const headers = await csrfHeaders(request);
+      const inbox = await expectOkJson(
+        await request.get(`/api/horf/gifts?address=${encodeURIComponent(actor.walletAddress)}`),
+        `Horf gift inbox for ${actor.username}`
+      );
+      expect(Array.isArray(inbox.gifts)).toBe(true);
+
+      const otherInbox = await request.get(`/api/horf/gifts?address=${encodeURIComponent(witness.walletAddress)}`);
+      expect(otherInbox.status(), "another actor's linked wallet must not expose its gift inbox").toBe(403);
+
+      const unlinked = await request.post("/api/horf/gifts/confirm", {
+        headers,
+        data: {
+          address: witness.walletAddress,
+          opHash: `o${"A".repeat(50)}`,
+          gifts: [{ recipient: actor.walletAddress, tokenContract: "KT1U4p17VUNcinntAzUULBhzpPK7f2a4Ht4P", tokenId: "23", amount: "1" }],
+        },
+      });
+      expect(unlinked.status(), "an actor cannot classify another wallet's transfer as their gift").toBe(403);
+      const unlinkedTrade = await request.post("/api/horf/trades/confirm", {
+        headers,
+        data: {
+          address: witness.walletAddress,
+          opHash: `o${"B".repeat(50)}`,
+          trades: [{ recipient: actor.walletAddress, tokenContract: "KT1U4p17VUNcinntAzUULBhzpPK7f2a4Ht4P", tokenId: "23", amount: "1" }],
+        },
+      });
+      expect(unlinkedTrade.status(), "an actor cannot classify another wallet's transfer as their direct trade").toBe(403);
+
+      const invalidMark = await request.post("/api/horf/gifts/0/returned", { data: { returnedFavor: true }, headers });
+      expect(invalidMark.status()).toBe(400);
+    } finally {
+      await request.dispose();
+    }
+  });
+
+  test("Horf guest posse persists by verified wallet and stable permits respect that scope", async ({
+    playwright,
+    baseURL,
+  }) => {
+    const actor = actorByRole(puppetCredentials, "contestant");
+    const witness = actorByRole(puppetCredentials, "witness");
+    const unproved = await playwright.request.newContext({ baseURL });
+    let guest;
+    let otherGuest;
+    let signedIn;
+    let partnerId = null;
+    try {
+      guest = (await horfGuestWalletContext(playwright, baseURL, actor)).request;
+      otherGuest = (await horfGuestWalletContext(playwright, baseURL, witness)).request;
+      signedIn = await actorRequestContext(playwright, baseURL, actor);
+      const signedChallenge = await expectOkJson(await signedIn.post("/api/horf/wallet/challenge", {
+        data: { walletAddress: actor.walletAddress },
+        headers: await csrfHeaders(signedIn),
+      }), "linked account Horf wallet challenge");
+      const signedProof = await signChallenge(actor, signedChallenge.message);
+      const signedVerified = await expectOkJson(await signedIn.post("/api/horf/wallet/verify", {
+        data: {
+          walletAddress: actor.walletAddress,
+          publicKey: signedProof.publicKey,
+          signature: signedProof.signature,
+          nonce: signedChallenge.nonce,
+        },
+        headers: await csrfHeaders(signedIn),
+      }), "linked account Horf wallet proof");
+      expect(signedVerified).toMatchObject({ walletAddress: actor.walletAddress, verified: true, source: "linked" });
+      const stillSignedIn = await expectOkJson(await signedIn.get("/api/auth/user"), "WTF account after Horf wallet proof");
+      expect(stillSignedIn.username).toBe(actor.username);
+
+      const rejected = await unproved.post("/api/horf/stables/permit", {
+        data: { address: actor.walletAddress, mode: 0, tokenContract: "KT1U4p17VUNcinntAzUULBhzpPK7f2a4Ht4P", tokenId: "23", amount: "1" },
+        headers: await csrfHeaders(unproved),
+      });
+      expect(rejected.status()).toBe(403);
+      expect((await rejected.json()).error).toMatch(/wallet|verify|proof/i);
+
+      const saved = await expectOkJson(await guest.post("/api/horf/posse", {
+        data: { ownerAddress: actor.walletAddress, address: witness.walletAddress, nickname: "Guest horse posse" },
+        headers: await csrfHeaders(guest),
+      }), "guest Horf posse save");
+      partnerId = saved.id;
+      expect(saved.address).toBe(witness.walletAddress);
+      const path = `/api/horf/posse?address=${encodeURIComponent(actor.walletAddress)}`;
+      const own = await expectOkJson(await guest.get(path), "guest Horf posse");
+      expect(own.partners.some((partner) => partner.id === partnerId)).toBe(true);
+      const shared = await expectOkJson(await signedIn.get(path), "linked account Horf posse");
+      expect(shared.partners.some((partner) => partner.id === partnerId)).toBe(true);
+      const privateList = await otherGuest.get(path);
+      expect(privateList.status()).toBe(403);
+      const foreignDelete = await otherGuest.delete(`/api/horf/posse/${partnerId}`, {
+        headers: await csrfHeaders(otherGuest),
+      });
+      expect(foreignDelete.status()).toBe(403);
+
+      const permit = { mode: 0, tokenContract: "KT1U4p17VUNcinntAzUULBhzpPK7f2a4Ht4P", tokenId: "23", amount: "1" };
+      const foreignPermit = await guest.post("/api/horf/stables/permit", {
+        data: { ...permit, address: witness.walletAddress },
+        headers: await csrfHeaders(guest),
+      });
+      expect(foreignPermit.status()).toBe(403);
+      const ownPermit = await guest.post("/api/horf/stables/permit", {
+        data: { ...permit, address: actor.walletAddress },
+        headers: await csrfHeaders(guest),
+      });
+      expect(ownPermit.status(), "proved guest reaches the inspection gate before Mainnet configuration").toBe(422);
+      expect((await ownPermit.json()).code).toBe("HORF_CUSTODY_UNTRUSTED");
+
+      const removed = await guest.delete(`/api/horf/posse/${partnerId}`, {
+        headers: await csrfHeaders(guest),
+      });
+      expect(removed.status()).toBe(204);
+      const removedId = partnerId;
+      partnerId = null;
+      const after = await expectOkJson(await signedIn.get(path), "linked account Horf posse after guest removal");
+      expect(after.partners.some((partner) => partner.id === removedId)).toBe(false);
+    } finally {
+      if (partnerId !== null && guest) {
+        await guest.delete(`/api/horf/posse/${partnerId}`, { headers: await csrfHeaders(guest) }).catch(() => null);
+      }
+      await unproved.dispose();
+      await guest?.dispose();
+      await otherGuest?.dispose();
+      await signedIn?.dispose();
+    }
+  });
+
+  test("Horf guest and linked wallet share gift notes while another wallet cannot change them", async ({
+    playwright,
+    baseURL,
+  }) => {
+    test.skip(!isLocalHorfLiveTarget(baseURL), "Synthetic gift fixture is limited to the local live puppet database.");
+    const actor = actorByRole(puppetCredentials, "contestant");
+    const witness = actorByRole(puppetCredentials, "witness");
+    const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
+    let guest;
+    let otherGuest;
+    let signedIn;
+    let giftId = null;
+    try {
+      guest = (await horfGuestWalletContext(playwright, baseURL, actor)).request;
+      otherGuest = (await horfGuestWalletContext(playwright, baseURL, witness)).request;
+      signedIn = await actorRequestContext(playwright, baseURL, actor);
+      const inserted = await pool.query(
+        `INSERT INTO horf_gift_transfers
+          (tzkt_transfer_id, operation_hash, from_address, to_address, token_contract, token_id, amount, token_name, occurred_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW()) RETURNING id`,
+        [
+          -(Date.now() * 1000 + Math.floor(Math.random() * 1000)),
+          `o${"G".repeat(50)}`,
+          witness.walletAddress,
+          actor.walletAddress,
+          "KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton",
+          "7",
+          1,
+          "Live puppet Neighvember gift",
+        ]
+      );
+      giftId = Number(inserted.rows[0].id);
+      expect(Number.isSafeInteger(giftId)).toBe(true);
+      const inboxPath = `/api/horf/gifts?address=${encodeURIComponent(actor.walletAddress)}`;
+      const guestInbox = await expectOkJson(await guest.get(inboxPath), "guest gift inbox");
+      expect(guestInbox.gifts.some((gift) => gift.id === giftId && gift.returnedFavor === false)).toBe(true);
+      expect((await otherGuest.get(inboxPath)).status()).toBe(403);
+
+      const foreignMark = await otherGuest.post(`/api/horf/gifts/${giftId}/returned`, {
+        data: { returnedFavor: true },
+        headers: await csrfHeaders(otherGuest),
+      });
+      expect(foreignMark.status()).toBe(403);
+      const foreignConfirmation = await otherGuest.post("/api/horf/gifts/confirm", {
+        data: {
+          address: actor.walletAddress,
+          opHash: `o${"H".repeat(50)}`,
+          gifts: [{ recipient: witness.walletAddress, tokenContract: "KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton", tokenId: "7", amount: "1" }],
+        },
+        headers: await csrfHeaders(otherGuest),
+      });
+      expect(foreignConfirmation.status()).toBe(403);
+
+      const marked = await expectOkJson(await guest.post(`/api/horf/gifts/${giftId}/returned`, {
+        data: { returnedFavor: true },
+        headers: await csrfHeaders(guest),
+      }), "guest returned-favor mark");
+      expect(marked.returnedFavor).toBe(true);
+      const linkedInbox = await expectOkJson(await signedIn.get(inboxPath), "linked wallet gift inbox");
+      expect(linkedInbox.gifts.some((gift) => gift.id === giftId && gift.returnedFavor === true)).toBe(true);
+      await expectOkJson(await signedIn.post(`/api/horf/gifts/${giftId}/returned`, {
+        data: { returnedFavor: false },
+        headers: await csrfHeaders(signedIn),
+      }), "linked wallet undo of guest favor note");
+      const after = await expectOkJson(await guest.get(inboxPath), "guest gift inbox after linked undo");
+      expect(after.gifts.some((gift) => gift.id === giftId && gift.returnedFavor === false)).toBe(true);
+    } finally {
+      if (giftId !== null) await pool.query("DELETE FROM horf_gift_transfers WHERE id = $1", [giftId]);
+      await pool.end();
+      await guest?.dispose();
+      await otherGuest?.dispose();
+      await signedIn?.dispose();
+    }
+  });
+
+  test("Horf blacklist is admin governed, publicly visible, and blocks wallet-scoped actions", async ({
+    playwright,
+    baseURL,
+  }) => {
+    // This proves the database/API gate. Direct stable deposit/claim requires a
+    // separate wtf.tez-signed on-chain blacklist operation before it is blocked.
+    test.skip(!isLocalHorfLiveTarget(baseURL), "Blacklist mutation is limited to the local live puppet database.");
+    const actor = actorByRole(puppetCredentials, "contestant");
+    const witness = actorByRole(puppetCredentials, "witness");
+    const administrator = actorByRole(puppetCredentials, "admin");
+    const admin = await actorRequestContext(playwright, baseURL, administrator);
+    const anonymous = await playwright.request.newContext({ baseURL });
+    let guest;
+    const statusPath = `/api/horf/trader-status?address=${encodeURIComponent(actor.walletAddress)}`;
+    const deletePath = `/api/horf/admin/blacklist/${encodeURIComponent(actor.walletAddress)}`;
+    try {
+      const initial = await expectOkJson(await anonymous.get(statusPath), "public Horf trader status");
+      expect(initial.address).toBe(actor.walletAddress);
+      if (initial.blacklisted) {
+        const cleared = await admin.delete(deletePath, { headers: await csrfHeaders(admin) });
+        expect(cleared.ok(), "clear a leftover local puppet blacklist entry").toBeTruthy();
+      }
+      guest = (await horfGuestWalletContext(playwright, baseURL, actor)).request;
+      const deniedAdminRead = await guest.get("/api/horf/admin/blacklist");
+      expect(deniedAdminRead.status()).toBe(403);
+      const deniedAdminWrite = await guest.post("/api/horf/admin/blacklist", {
+        data: { address: witness.walletAddress, reason: "A guest must not moderate traders" },
+        headers: await csrfHeaders(guest),
+      });
+      expect(deniedAdminWrite.status()).toBe(403);
+
+      const reason = "Repeated fraudulent stable claims in a local Horf test";
+      const listed = await expectOkJson(await admin.post("/api/horf/admin/blacklist", {
+        data: { address: actor.walletAddress, reason },
+        headers: await csrfHeaders(admin),
+      }), "admin Horf trader restriction");
+      expect(listed).toMatchObject({ address: actor.walletAddress, active: true, reason });
+      const adminList = await expectOkJson(await admin.get("/api/horf/admin/blacklist"), "admin Horf blacklist");
+      expect(adminList.entries.some((entry) => entry.address === actor.walletAddress && entry.active === true)).toBe(true);
+      const publicStatus = await expectOkJson(await anonymous.get(statusPath), "public restricted trader status");
+      expect(publicStatus).toMatchObject({ address: actor.walletAddress, blacklisted: true, reason });
+
+      const privatePaths = [
+        `/api/horf/posse?address=${encodeURIComponent(actor.walletAddress)}`,
+        `/api/horf/gifts?address=${encodeURIComponent(actor.walletAddress)}`,
+      ];
+      for (const path of privatePaths) {
+        const blocked = await guest.get(path);
+        expect(blocked.status(), `${path} must reject a restricted wallet`).toBe(403);
+        expect((await blocked.json()).code).toBe("HORF_BLACKLISTED");
+      }
+      const blockedPosse = await guest.post("/api/horf/posse", {
+        data: { ownerAddress: actor.walletAddress, address: witness.walletAddress, nickname: "Blocked contact" },
+        headers: await csrfHeaders(guest),
+      });
+      expect(blockedPosse.status()).toBe(403);
+      expect((await blockedPosse.json()).code).toBe("HORF_BLACKLISTED");
+      const blockedPermit = await guest.post("/api/horf/stables/permit", {
+        data: { address: actor.walletAddress, mode: 0, tokenContract: "KT1U4p17VUNcinntAzUULBhzpPK7f2a4Ht4P", tokenId: "23", amount: "1" },
+        headers: await csrfHeaders(guest),
+      });
+      expect(blockedPermit.status()).toBe(403);
+      expect((await blockedPermit.json()).code).toBe("HORF_BLACKLISTED");
+      const publicSeason = await expectOkJson(
+        await anonymous.get(`/api/horf/season?address=${encodeURIComponent(actor.walletAddress)}`),
+        "public Horf race while trader is restricted"
+      );
+      expect(Array.isArray(publicSeason.leaderboard)).toBe(true);
+      if (publicSeason.currentUser) expect(publicSeason.currentUser.blacklisted).toBe(true);
+
+      const cleared = await expectOkJson(await admin.delete(deletePath, { headers: await csrfHeaders(admin) }), "admin Horf unrestriction");
+      expect(cleared.active).toBe(false);
+      const after = await expectOkJson(await anonymous.get(statusPath), "public cleared trader status");
+      expect(after.blacklisted).toBe(false);
+      const restored = await expectOkJson(
+        await guest.get(`/api/horf/posse?address=${encodeURIComponent(actor.walletAddress)}`),
+        "unrestricted guest Horf posse"
+      );
+      expect(Array.isArray(restored.partners)).toBe(true);
+    } finally {
+      const current = await anonymous.get(statusPath).then((response) => response.json()).catch(() => null);
+      if (current?.blacklisted) await admin.delete(deletePath, { headers: await csrfHeaders(admin) }).catch(() => null);
+      await guest?.dispose();
+      await anonymous.dispose();
+      await admin.dispose();
+    }
+  });
+
+  test("Horf MARSHAL is an account role, and revocation immediately removes inspection authority", async ({
+    playwright,
+    baseURL,
+  }) => {
+    test.skip(!isLocalHorfLiveTarget(baseURL), "Synthetic inspection evidence is limited to the local live puppet database.");
+    const trader = actorByRole(puppetCredentials, "contestant");
+    const administrator = actorByRole(puppetCredentials, "admin");
+    const traderId = Number(sessionFor(trader).user.id);
+    const rolePath = `/api/admin/users/${traderId}/roles`;
+    const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
+    const signedIn = await actorRequestContext(playwright, baseURL, trader);
+    const admin = await actorRequestContext(playwright, baseURL, administrator);
+    let guest;
+    let inspectionId = null;
+    let roleAssigned = false;
+    try {
+      guest = (await horfGuestWalletContext(playwright, baseURL, trader)).request;
+      const guestStatus = await expectOkJson(await guest.get("/api/horf/inspectors/status"), "guest marshal status");
+      expect(guestStatus).toEqual({ active: false, role: null });
+      const guestQueue = await guest.get("/api/horf/inspections/pending");
+      expect(guestQueue.status()).toBe(403);
+      expect((await guestQueue.json()).code).toBe("HORF_MARSHAL_REQUIRED");
+      const guestAssignment = await guest.post(rolePath, {
+        data: { role: "horf_marshal" }, headers: await csrfHeaders(guest),
+      });
+      expect([401, 403]).toContain(guestAssignment.status());
+      const before = await expectOkJson(await signedIn.get("/api/horf/inspectors/status"), "unassigned marshal status");
+      expect(before).toEqual({ active: false, role: null });
+
+      const tokenId = String(Date.now());
+      const contract = "KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton";
+      const inserted = await pool.query(
+        `INSERT INTO horf_inspection_requests
+          (submitter_address, token_contract, token_id, status, objkt_metadata, chain_evidence)
+         VALUES ($1, $2, $3, 'pending', $4::jsonb, $5::jsonb) RETURNING id`,
+        [trader.walletAddress, contract, tokenId,
+          JSON.stringify({ source: "local puppet", name: "Marshal review fixture", tags: [] }),
+          JSON.stringify({ source: "local puppet", note: "Synthetic review evidence for role boundary" })]
+      );
+      inspectionId = Number(inserted.rows[0].id);
+      const guestDecision = await guest.post(`/api/horf/inspections/${inspectionId}/decision`, {
+        data: { decision: "reject", reason: "Guest wallets cannot inspect" }, headers: await csrfHeaders(guest),
+      });
+      expect(guestDecision.status()).toBe(403);
+      expect((await guestDecision.json()).code).toBe("HORF_MARSHAL_REQUIRED");
+
+      const assigned = await expectOkJson(await admin.post(rolePath, {
+        data: { role: "horf_marshal" }, headers: await csrfHeaders(admin),
+      }), "admin HORF MARSHAL role assignment");
+      roleAssigned = true;
+      expect(assigned.roles).toContain("horf_marshal");
+      const active = await expectOkJson(await signedIn.get("/api/horf/inspectors/status"), "assigned marshal status");
+      expect(active).toEqual({ active: true, role: "horf_marshal" });
+      const stillGuest = await expectOkJson(await guest.get("/api/horf/inspectors/status"), "same-wallet guest marshal status");
+      expect(stillGuest).toEqual({ active: false, role: null });
+      const queue = await expectOkJson(await signedIn.get("/api/horf/inspections/pending"), "marshal inspection queue");
+      expect(queue.inspections.some((row) => row.id === inspectionId)).toBe(true);
+      const detail = await expectOkJson(await signedIn.get(`/api/horf/inspections/${inspectionId}`), "marshal inspection detail");
+      expect(detail).toMatchObject({ id: inspectionId, status: "pending", token: { contract, tokenId } });
+      const decision = await expectOkJson(await signedIn.post(`/api/horf/inspections/${inspectionId}/decision`, {
+        data: { decision: "reject", reason: "Contract transfer evidence is insufficient" },
+        headers: await csrfHeaders(signedIn),
+      }), "marshal inspection rejection");
+      expect(decision).toMatchObject({ id: inspectionId, status: "rejected", reviewedByUserId: traderId });
+      const stored = await pool.query("SELECT status, reviewed_by_user_id FROM horf_inspection_requests WHERE id = $1", [inspectionId]);
+      expect(stored.rows[0]).toMatchObject({ status: "rejected", reviewed_by_user_id: traderId });
+
+      const revoked = await expectOkJson(await admin.delete(`${rolePath}/horf_marshal`, {
+        headers: await csrfHeaders(admin),
+      }), "admin HORF MARSHAL role removal");
+      roleAssigned = false;
+      expect(revoked.roles).not.toContain("horf_marshal");
+      const after = await expectOkJson(await signedIn.get("/api/horf/inspectors/status"), "revoked marshal status");
+      expect(after).toEqual({ active: false, role: null });
+      const deniedQueue = await signedIn.get("/api/horf/inspections/pending");
+      expect(deniedQueue.status()).toBe(403);
+      const deniedDecision = await signedIn.post(`/api/horf/inspections/${inspectionId}/decision`, {
+        data: { decision: "approve", reason: "Role has been revoked" }, headers: await csrfHeaders(signedIn),
+      });
+      expect(deniedDecision.status()).toBe(403);
+      expect((await deniedDecision.json()).code).toBe("HORF_MARSHAL_REQUIRED");
+    } finally {
+      if (roleAssigned) await admin.delete(`${rolePath}/horf_marshal`, { headers: await csrfHeaders(admin) }).catch(() => null);
+      if (inspectionId !== null) await pool.query("DELETE FROM horf_inspection_requests WHERE id = $1", [inspectionId]);
+      await pool.end();
+      await guest?.dispose();
+      await signedIn.dispose();
+      await admin.dispose();
+    }
+  });
+
+  test("Horf Stable permits require an active exact Mainnet inspection approval", async ({ playwright, baseURL }) => {
+    test.skip(!isLocalHorfLiveTarget(baseURL), "A synthetic approval must only be seeded in the local live puppet database.");
+    const trader = actorByRole(puppetCredentials, "contestant");
+    const administrator = actorByRole(puppetCredentials, "admin");
+    const contract = "KT1XaCf6gkjFnKg3QmPfn6gep53moMvjkj1E";
+    const tokenId = "49589";
+    const creator = "tz1TWrPXuG3T3rR9NR5EqsBegJMwiMcobjkt";
+    const codeHash = 964496845;
+    const codeSha256 = "fe6270753f1fefbbb4e52e65c804024172f58e7bedaf0fc94dc73ce298bb4677";
+    const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
+    const admin = await actorRequestContext(playwright, baseURL, administrator);
+    let guest;
+    let inspectionId = null;
+    let createdApproval = false;
+    try {
+      const existing = await pool.query(
+        "SELECT inspection_id FROM horf_inspection_approvals WHERE token_contract = $1 AND token_id = $2",
+        [contract, tokenId]
+      );
+      expect(existing.rows, "the local positive permit fixture must not replace a real inspection approval").toHaveLength(0);
+      guest = (await horfGuestWalletContext(playwright, baseURL, trader)).request;
+      const permit = { address: trader.walletAddress, mode: 1, tokenContract: contract, tokenId, amount: "1" };
+      const before = await guest.post("/api/horf/stables/permit", {
+        data: permit, headers: await csrfHeaders(guest),
+      });
+      expect(before.status()).toBe(422);
+      expect((await before.json()).code).toBe("HORF_CUSTODY_UNTRUSTED");
+
+      const inserted = await pool.query(
+        `INSERT INTO horf_inspection_requests
+          (submitter_address, token_contract, token_id, status, objkt_metadata, chain_evidence,
+           reviewed_by_user_id, reviewed_at, review_reason)
+         VALUES ($1, $2, $3, 'approved', $4::jsonb, $5::jsonb, $6, NOW(), $7) RETURNING id`,
+        [trader.walletAddress, contract, tokenId,
+          JSON.stringify({ source: "local puppet", name: "Mainnet horse fingerprint", tags: [] }),
+          JSON.stringify({ source: "Tezos Mainnet TzKT and RPC", identity: { contract, creatorAddress: creator, codeHash, codeSha256 } }),
+          Number(sessionFor(administrator).user.id), "Local positive permit gate proof"]
+      );
+      inspectionId = Number(inserted.rows[0].id);
+      await pool.query(
+        `INSERT INTO horf_inspection_approvals
+          (token_contract, token_id, active, inspection_id, inspector_user_id, approved_at,
+           creator_address, code_hash, code_sha256)
+         VALUES ($1, $2, true, $3, $4, NOW(), $5, $6, $7)`,
+        [contract, tokenId, inspectionId, Number(sessionFor(administrator).user.id), creator, codeHash, codeSha256]
+      );
+      createdApproval = true;
+      const publicStatus = await expectOkJson(
+        await guest.get(`/api/horf/inspections/status?contract=${contract}&tokenId=${tokenId}`),
+        "public approved Mainnet horse status"
+      );
+      expect(publicStatus).toMatchObject({ contract, tokenId, status: "approved", inspectionId });
+      const approved = await guest.post("/api/horf/stables/permit", {
+        data: permit, headers: await csrfHeaders(guest),
+      });
+      expect(approved.status(), "exact inspected Mainnet token reaches Stable configuration without a signature").toBe(503);
+      expect((await approved.json()).error).toMatch(/not configured for Tezos mainnet/i);
+
+      const revoked = await expectOkJson(await admin.post(
+        `/api/horf/admin/inspection-approvals/${contract}/${tokenId}/revoke`,
+        { data: { reason: "Local permit gate revocation" }, headers: await csrfHeaders(admin) }
+      ), "admin inspection approval revocation");
+      expect(revoked).toMatchObject({ contract, tokenId, status: "revoked", existingPermitsMayRemainValid: true });
+      const after = await guest.post("/api/horf/stables/permit", {
+        data: permit, headers: await csrfHeaders(guest),
+      });
+      expect(after.status()).toBe(422);
+      expect((await after.json()).code).toBe("HORF_CUSTODY_UNTRUSTED");
+    } finally {
+      if (createdApproval) await pool.query(
+        "DELETE FROM horf_inspection_approvals WHERE token_contract = $1 AND token_id = $2 AND inspection_id = $3",
+        [contract, tokenId, inspectionId]
+      );
+      if (inspectionId !== null) await pool.query("DELETE FROM horf_inspection_requests WHERE id = $1", [inspectionId]);
+      await pool.end();
+      await guest?.dispose();
+      await admin.dispose();
+    }
+  });
+
+  test("Horf Open Range offers are public but only the verified owner may remove one", async ({ playwright, baseURL }) => {
+    test.skip(!isLocalHorfLiveTarget(baseURL), "Synthetic Open Range offers are limited to the local live puppet database.");
+    const trader = actorByRole(puppetCredentials, "contestant");
+    const witness = actorByRole(puppetCredentials, "witness");
+    const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
+    const anonymous = await playwright.request.newContext({ baseURL });
+    let ownerGuest;
+    let otherGuest;
+    let offerId = null;
+    try {
+      ownerGuest = (await horfGuestWalletContext(playwright, baseURL, trader)).request;
+      otherGuest = (await horfGuestWalletContext(playwright, baseURL, witness)).request;
+      const tokenId = String(Date.now());
+      const inserted = await pool.query(
+        `INSERT INTO horf_open_range_offers (owner_wallet_address, token_contract, token_id, amount)
+         VALUES ($1, $2, $3, $4) RETURNING id`,
+        [trader.walletAddress, "KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton", tokenId, "2"]
+      );
+      offerId = Number(inserted.rows[0].id);
+      const publicOffers = await expectOkJson(await anonymous.get("/api/horf/open-range/offers"), "public Open Range offers");
+      expect(publicOffers.offers.some((offer) => offer.id === offerId && offer.ownerAddress === trader.walletAddress)).toBe(true);
+      const wrongOwner = await otherGuest.delete(`/api/horf/open-range/offers/${offerId}`, {
+        headers: await csrfHeaders(otherGuest),
+      });
+      expect(wrongOwner.status()).toBe(403);
+      const unprovedPost = await anonymous.post("/api/horf/open-range/offers", {
+        data: { address: trader.walletAddress, tokenContract: "KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton", tokenId, amount: "1" },
+        headers: await csrfHeaders(anonymous),
+      });
+      expect(unprovedPost.status()).toBe(403);
+      const foreignPost = await ownerGuest.post("/api/horf/open-range/offers", {
+        data: { address: witness.walletAddress, tokenContract: "KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton", tokenId, amount: "1" },
+        headers: await csrfHeaders(ownerGuest),
+      });
+      expect(foreignPost.status()).toBe(403);
+      const removed = await ownerGuest.delete(`/api/horf/open-range/offers/${offerId}`, {
+        headers: await csrfHeaders(ownerGuest),
+      });
+      expect(removed.status()).toBe(204);
+      const stored = await pool.query("SELECT active, removed_at FROM horf_open_range_offers WHERE id = $1", [offerId]);
+      expect(stored.rows[0].active).toBe(false);
+      expect(stored.rows[0].removed_at).not.toBeNull();
+      const after = await expectOkJson(await anonymous.get("/api/horf/open-range/offers"), "public Open Range offers after removal");
+      expect(after.offers.some((offer) => offer.id === offerId)).toBe(false);
+    } finally {
+      if (offerId !== null) await pool.query("DELETE FROM horf_open_range_offers WHERE id = $1", [offerId]);
+      await pool.end();
+      await anonymous.dispose();
+      await ownerGuest?.dispose();
+      await otherGuest?.dispose();
     }
   });
 

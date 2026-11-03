@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "mode": "read-only",
+  "network": "mainnet",
+  "chainId": "NetXdQprcVkpaWU",
+  "rpcUrl": "https://tezos-mainnet.octez.io/",
+  "block": "BLpe4eXbs2Da5yshZmEPGZz6hB4V5WUGKgjjdUfTmPbh91cxgU7",
+  "level": 15657784,
+  "protocol": "PsUshuai9QapM5TGj1JpuVGkdxz5GykdnEvS6Rh8SUVrARvZLCY",
+  "sourceWtfContract": "KT1DUZ2nf4Dd1F2BNm3zeg1TwAnA1iKZXbHD",
+  "sourceWtfCodeSha256": "970be34899bd647cf41a0e12abff20595ecfb47521b5723b5833e5c682241fc7",
+  "sourceWtfTzktCodeHash": 1454653741,
+  "sourceWallet": "tz1cVRngZw42KZ42VQF2ZCy2CJSPNG3H7Cgt",
+  "sourceDomain": "wtf.tez",
+  "token": {
+    "name": "HORSE",
+    "symbol": "HORSE",
+    "tokenId": "0",
+    "decimals": 8,
+    "initialRawSupply": "100000000000000",
+    "initialSupply": "1000000"
+  },
+  "initSha256": "03c88bd7f9f8d3e5f3d70dee7e266ad1ac2e2f6338154563a333714eb2e89d95",
+  "sourceBalanceMutez": "154850623",
+  "scriptSize": {
+    "script_size": 269336
+  },
+  "estimate": {
+    "suggestedFeeMutez": "5637",
+    "burnFeeMutez": "1412000",
+    "gasLimit": "4074",
+    "storageLimit": "5648",
+    "requiredMutez": "1417637"
+  }
+}

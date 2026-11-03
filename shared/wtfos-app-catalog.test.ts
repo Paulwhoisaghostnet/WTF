@@ -39,6 +39,7 @@ test("core apps and private role-gated apps keep their intended wtfOS placement"
     "game-studio",
     "studio",
     "gallery",
+    "horf",
     "mail",
     "admin-inbox",
   ]);

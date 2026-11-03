@@ -9,6 +9,7 @@ Launchable commerce surfaces include:
 - WTF IAM
 - portfolio
 - Rat Race
+- Horf
 - Trade Boards
 - Casino
 - Club Dues
@@ -26,6 +27,7 @@ Core event families:
 - `wtfiam.*`
 - `marketplace.*`
 - `rat_race.*`
+- `horf.*` view logs
 - `trade_board.*`
 - `casino.*`
 - `club_dues.*`
@@ -34,6 +36,7 @@ Core event families:
 
 Registry rule:
 
+- Horf view handles are diagnostic client logs; reading the board or connecting a wallet does not grant rewards or move tokens.
 - Any value-moving surface must have explicit preflight, rollback, and user-visible confirmation behavior.
 - Price or membership state changes must not be hidden behind passive UI updates.
 

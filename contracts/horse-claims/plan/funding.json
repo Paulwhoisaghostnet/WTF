@@ -1,0 +1,10 @@
+{
+  "network": "tezos-mainnet",
+  "chainId": "NetXdQprcVkpaWU",
+  "vaultAddress": "KT1KH1xShHGtNpfqwK8SsdfMxGZTPYs8aDpT",
+  "horseContract": "KT1E9s2ncE5vXjofmzqwE6gEg9JPruTRBdrM",
+  "horseTokenId": 0,
+  "vaultContractJsonSha256": "38084d10617c1a70dc474ebe9a2069380d44ed1f66db02c97c5b3bf5d8fd50bb",
+  "admin": "tz1cVRngZw42KZ42VQF2ZCy2CJSPNG3H7Cgt",
+  "oraclePublicKey": "edpkv5vGcno1bQEwzPNpUqg3eLBi7j23WrfSjfi7X9DGdBsLXiVThL"
+}

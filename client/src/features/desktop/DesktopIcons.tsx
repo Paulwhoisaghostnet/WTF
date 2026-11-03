@@ -204,6 +204,16 @@ const DuesDeskIcon = styled(ConsoleDeskIcon)`
   }
 `;
 
+const HorfDeskIcon = styled(ConsoleDeskIcon)`
+  background: linear-gradient(180deg, #f8da82 0%, #ce642b 100%);
+  color: #3e1a16;
+  font-size: 19px;
+
+  &::after {
+    background: #f8da82;
+  }
+`;
+
 const TVDeskIcon = styled.div`
   width: 36px;
   height: 26px;
@@ -864,6 +874,15 @@ export function buildDesktopIconDefs(
       defaultY: 188,
       enabled: canOpenApps && (apps["rat-race"] || canOpenDisabledApps),
       openPath: "/rat-race",
+    },
+    {
+      key: "horf",
+      label: "Horf",
+      icon: <HorfDeskIcon aria-hidden="true">🐎</HorfDeskIcon>,
+      defaultX: 732,
+      defaultY: 188,
+      enabled: canOpenApps && (apps.horf || canOpenDisabledApps),
+      openPath: "/horf",
     },
     {
       key: "map-lab",

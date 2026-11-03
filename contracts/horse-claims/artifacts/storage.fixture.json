@@ -1,0 +1,19 @@
+{
+  "prim": "Pair",
+  "args": [
+    { "string": "tz1arVVLysPvzms55N4oJjdvUGSgKZbdQyDf" },
+    {
+      "prim": "Pair",
+      "args": [
+        [],
+        {
+          "prim": "Pair",
+          "args": [
+            { "string": "KT1E9s2ncE5vXjofmzqwE6gEg9JPruTRBdrM" },
+            { "prim": "Pair", "args": [ { "int": "0" }, { "prim": "Pair", "args": [ { "int": "0" }, { "string": "edpkuJF9xkpJNUZkXzuGn21HKUf3UvgobqBfuQHrn8xaPt6r8uY1tC" } ] } ] }
+          ]
+        }
+      ]
+    }
+  ]
+}

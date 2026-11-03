@@ -34,6 +34,17 @@ export default defineConfig({
       { find: "node:crypto", replacement: emptyModule },
     ],
   },
+  server: {
+    proxy: {
+      // Local HORSE/Stables origination handoffs use a same-origin Mainnet RPC.
+      // The signed operation still comes from the connected browser wallet.
+      "/horf-mainnet-rpc": {
+        target: process.env.HORF_MAINNET_RPC_URL || "https://tezos-mainnet.octez.io/",
+        changeOrigin: true,
+        rewrite: (url: string) => url.replace(/^\/horf-mainnet-rpc/, ""),
+      },
+    },
+  },
   build: {
     outDir: "dist/public",
     emptyOutDir: true,

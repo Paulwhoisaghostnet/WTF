@@ -1,0 +1,156 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import {
+  approvedHorseTags,
+  HORF_SEASON_START,
+  isHorseRelatedTag,
+  normalizeHorfTransfer,
+  summarizeSeason,
+  tokenQualifies,
+  type HorfTransfer,
+  type ObjktTransferEvent,
+} from "./model";
+
+const alice = "tz1Qi77tcJn9foeHHP1QHj6UX1m1vLVLMbuY";
+const bob = "tz1fjdv69hHYx457eLfdWh4n3n4xzmJF9j7T";
+const carol = "tz1LNDLoU3Juoc6sWeKbHRsoCNtP1GTJXvRQ";
+const contract = "KT1L7PSeJpnj79MEaybcEiDtbHM43g5DZe12";
+
+function event(overrides: Partial<ObjktTransferEvent> = {}): ObjktTransferEvent {
+  return {
+    id: 76425265,
+    event_type: "transfer",
+    marketplace_event_type: null,
+    marketplace_contract: null,
+    reverted: false,
+    timestamp: "2026-11-02T10:34:40Z",
+    creator_address: alice,
+    recipient_address: bob,
+    amount: 1,
+    token: {
+      fa_contract: contract,
+      token_id: "12",
+      name: "All Stirred Up",
+      decimals: 0,
+      thumbnail_uri: "ipfs://bafybeiczy64hx2xhzvhvsoae4k7zdjmler3sewql2eazn2vt2qtixv3ufi",
+      tags: [{ tag: { name: "neighvember", token_count: 190 } }],
+    },
+    ...overrides,
+  };
+}
+
+test("listed mint keywords and year suffixes qualify without a group-size gate", () => {
+  for (const value of [
+    "horse", "horseart", "horse art", "horsetrade", "horse trade",
+    "horse trader", "horse trading", "horsetraders", "haha", "horf",
+    "neighvember", "neighvember2025", "horse of july 2024", "horseofjuly2026",
+  ]) {
+    assert.equal(tokenQualifies({ name: value }, new Set()), true, value);
+  }
+  assert.equal(tokenQualifies({ tags: [{ tag: { name: "#horsetrading 2024", token_count: 1 } }] }, new Set()), true);
+});
+
+test("unrelated substring collisions do not count as horse mint keywords", () => {
+  for (const value of ["shahabvfx", "nightmare", "neighborhood", "horsepower", "coltrane"]) {
+    assert.equal(tokenQualifies({ name: value }, new Set()), false, value);
+    assert.equal(isHorseRelatedTag(value), false, value);
+  }
+});
+
+test("additional horse-family Objkt tags require more than five indexed tokens", () => {
+  const approved = approvedHorseTags([
+    { name: "HorseRacing", token_count: 662 },
+    { name: "racehorse", token_count: 17 },
+    { name: "yearofthehorse", token_count: 17 },
+    { name: "horseback", token_count: 26 },
+    { name: "seahorse", token_count: 182 },
+    { name: "horse4horse", token_count: 19 },
+    { name: "saddle", token_count: 5 },
+    { name: "neighborhood", token_count: 866 },
+    { name: "horsepower", token_count: 82 },
+  ]);
+  assert.deepEqual(approved, ["horseracing", "horse4horse", "horseback", "racehorse", "seahorse", "yearofthehorse"].sort());
+  assert.equal(tokenQualifies({ tags: [{ tag: { name: "HorseRacing" } }] }, new Set(approved)), true);
+  assert.equal(tokenQualifies({ tags: [{ tag: { name: "saddle" } }] }, new Set(approved)), false);
+});
+
+test("only direct non-reverted Tezos wallet transfers after season start enter ledger", () => {
+  const approved = new Set<string>();
+  const accepted = normalizeHorfTransfer(event({ amount: 3 }), approved);
+  assert.equal(accepted?.amount, 3);
+  assert.equal(accepted?.from, alice);
+  assert.equal(accepted?.to, bob);
+  assert.match(accepted?.token.image || "", /^https:\/\//);
+  assert.equal(normalizeHorfTransfer(event({ creator_address: null }), approved), null);
+  assert.equal(normalizeHorfTransfer(event({ creator_address: contract }), approved), null);
+  assert.equal(normalizeHorfTransfer(event({ recipient_address: contract }), approved), null);
+  assert.equal(normalizeHorfTransfer(event({ recipient_address: "tz1burnburnburnburnburnburnburjAYjjX" }), approved), null);
+  assert.equal(normalizeHorfTransfer(event({ recipient_address: alice }), approved), null);
+  assert.equal(normalizeHorfTransfer(event({ marketplace_event_type: "list_buy" }), approved), null);
+  assert.equal(normalizeHorfTransfer(event({ marketplace_contract: contract }), approved), null);
+  assert.equal(normalizeHorfTransfer(event({ reverted: true }), approved), null);
+  assert.equal(normalizeHorfTransfer(event({ timestamp: "2026-10-31T23:59:59Z" }), approved), null);
+  assert.equal(normalizeHorfTransfer(event({ timestamp: HORF_SEASON_START }), approved)?.id, 76425265);
+  assert.equal(normalizeHorfTransfer(event(), approved, HORF_SEASON_START, null, contract), null,
+    "configured HORSE reward transfers must not count as horse-art trades");
+});
+
+test("season totals count token units and pairwise net horse obligations", () => {
+  const base = normalizeHorfTransfer(event({ amount: 2 }), new Set())!;
+  const rows: HorfTransfer[] = [
+    { ...base, from: bob, to: alice },
+    { ...base, id: 76425266, timestamp: "2026-11-02T12:00:00Z", from: alice, to: bob, amount: 1 },
+    { ...base, id: 76425267, timestamp: "2026-11-03T12:00:00Z", from: alice, to: carol, amount: 3 },
+    { ...base, id: 76425268, timestamp: "2026-11-03T13:00:00Z", from: carol, to: alice, amount: 1 },
+  ];
+  const result = summarizeSeason(rows, alice);
+  assert.deepEqual(result.leaderboard.map(({ address, trades, received, sent }) => ({ address, trades, received, sent })), [
+    { address: alice, trades: 7, received: 3, sent: 4 },
+    { address: carol, trades: 4, received: 3, sent: 1 },
+    { address: bob, trades: 3, received: 1, sent: 2 },
+  ]);
+  assert.deepEqual(result.currentUser?.owedTo, [{ address: bob, name: null, count: 1 }]);
+  assert.deepEqual(result.currentUser?.owedBy, [{ address: carol, name: null, count: 2 }]);
+  assert.deepEqual(result.currentUser?.waitingHorses.map(({ id, from, amount }) => ({ id, from, amount })), [
+    { id: 76425265, from: bob, amount: 1 },
+  ]);
+  assert.equal(result.currentUser?.recent[0]?.id, 76425268);
+  assert.equal(result.currentUser?.recent[0]?.direction, "in");
+});
+
+test("waiting horse receipts use FIFO cancellation and earlier sends cover later receipts", () => {
+  const base = normalizeHorfTransfer(event(), new Set())!;
+  const rows: HorfTransfer[] = [
+    { ...base, id: 1, timestamp: "2026-11-01T01:00:00Z", from: bob, to: alice, amount: 2 },
+    { ...base, id: 2, timestamp: "2026-11-01T02:00:00Z", from: bob, to: alice, amount: 3 },
+    { ...base, id: 3, timestamp: "2026-11-01T03:00:00Z", from: alice, to: bob, amount: 4 },
+    { ...base, id: 4, timestamp: "2026-11-01T04:00:00Z", from: alice, to: carol, amount: 2 },
+    { ...base, id: 5, timestamp: "2026-11-01T05:00:00Z", from: carol, to: alice, amount: 3 },
+  ];
+  const own = summarizeSeason(rows, alice).currentUser!;
+  assert.deepEqual(own.waitingHorses.map(({ id, from, amount }) => ({ id, from, amount })), [
+    { id: 5, from: carol, amount: 1 },
+    { id: 2, from: bob, amount: 1 },
+  ]);
+  assert.deepEqual(own.owedTo.map(({ address, count }) => ({ address, count })), [
+    { address: bob, count: 1 },
+    { address: carol, count: 1 },
+  ]);
+  assert.deepEqual(own.owedBy, []);
+});
+
+test("stable claims advance the race without creating a return obligation", () => {
+  const base = normalizeHorfTransfer(event(), new Set())!;
+  const rows: HorfTransfer[] = [
+    { ...base, id: 10, timestamp: "2026-11-02T01:00:00Z", from: bob, to: alice },
+    { ...base, id: -11, timestamp: "2026-11-02T02:00:00Z", from: carol, to: alice,
+      settlement: "stable", stableMode: 1 },
+  ];
+  const { leaderboard, currentUser } = summarizeSeason(rows, alice);
+  assert.equal(leaderboard.find((row) => row.address === alice)?.trades, 2);
+  assert.equal(leaderboard.find((row) => row.address === carol)?.sent, 1);
+  assert.deepEqual(currentUser?.owedTo, [{ address: bob, name: null, count: 1 }]);
+  assert.deepEqual(currentUser?.waitingHorses.map((horse) => horse.id), [10]);
+  assert.equal(currentUser?.recent[0]?.settlement, "stable");
+  assert.equal(currentUser?.recent[0]?.stableMode, 1);
+});

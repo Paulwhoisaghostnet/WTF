@@ -48,6 +48,7 @@ export const START_MENU_APP_GATES: Record<string, DesktopAppKey> = {
   "/crp-nominate": "crp-nominations",
   "/wtf-subdomains": "wtf-subdomains",
   "/rat-race": "rat-race",
+  "/horf": "horf",
   "/map-lab": "map-lab",
   "/agent": "agent",
   "/applications": "applications",

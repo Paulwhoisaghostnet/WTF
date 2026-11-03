@@ -3953,7 +3953,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list health.",
     "declaredAccess": "Public/handler",
     "sources": [
-      "server/routes.ts:233"
+      "server/routes.ts:240"
     ]
   },
   {
@@ -3962,7 +3962,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list health diagnostics.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes.ts:254"
+      "server/routes.ts:261"
     ]
   },
   {
@@ -3971,7 +3971,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list health disk.",
     "declaredAccess": "Session",
     "sources": [
-      "server/routes.ts:304"
+      "server/routes.ts:311"
     ]
   },
   {
@@ -3980,7 +3980,349 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list health ready.",
     "declaredAccess": "Public/handler",
     "sources": [
-      "server/routes.ts:239"
+      "server/routes.ts:246"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/horf/admin/blacklist",
+    "purpose": "Read or list horf admin blacklist.",
+    "declaredAccess": "Public/handler",
+    "sources": [
+      "server/routes/horf-moderation.ts:56"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/horf/admin/blacklist",
+    "purpose": "Create, submit, or run horf admin blacklist.",
+    "declaredAccess": "Public/handler",
+    "sources": [
+      "server/routes/horf-moderation.ts:67"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/horf/admin/blacklist/:address",
+    "purpose": "Delete, revoke, or stop horf admin blacklist address.",
+    "declaredAccess": "Public/handler",
+    "sources": [
+      "server/routes/horf-moderation.ts:91"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/horf/admin/inspection-approvals/:contract/:tokenId/revoke",
+    "purpose": "Create, submit, or run horf admin inspection approvals contract tokenId revoke.",
+    "declaredAccess": "Public/handler",
+    "sources": [
+      "server/routes/horf-inspections.ts:266"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/horf/gifts",
+    "purpose": "Read or list horf gifts.",
+    "declaredAccess": "Public/handler",
+    "sources": [
+      "server/routes/horf-social.ts:255"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/horf/gifts/:id/returned",
+    "purpose": "Create, submit, or run horf gifts id returned.",
+    "declaredAccess": "Public/handler",
+    "sources": [
+      "server/routes/horf-social.ts:270"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/horf/gifts/confirm",
+    "purpose": "Create, submit, or run horf gifts confirm.",
+    "declaredAccess": "Public/handler",
+    "sources": [
+      "server/routes/horf-social.ts:190"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/horf/horse/activity",
+    "purpose": "Read or list horf horse activity.",
+    "declaredAccess": "Public/handler",
+    "sources": [
+      "server/routes/horf-social.ts:71"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/horf/horse/claim-permit",
+    "purpose": "Create, submit, or run horf horse claim permit.",
+    "declaredAccess": "Public/handler",
+    "sources": [
+      "server/routes/horf-social.ts:93"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/horf/horse/config",
+    "purpose": "Read or list horf horse config.",
+    "declaredAccess": "Public/handler",
+    "sources": [
+      "server/routes/horf-social.ts:60"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/horf/horse/rewards",
+    "purpose": "Read or list horf horse rewards.",
+    "declaredAccess": "Public/handler",
+    "sources": [
+      "server/routes/horf-social.ts:82"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/horf/inspections",
+    "purpose": "Create, submit, or run horf inspections.",
+    "declaredAccess": "Public/handler",
+    "sources": [
+      "server/routes/horf-inspections.ts:157"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/horf/inspections/:id",
+    "purpose": "Read or list horf inspections id.",
+    "declaredAccess": "Public/handler",
+    "sources": [
+      "server/routes/horf-inspections.ts:199"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/horf/inspections/:id/decision",
+    "purpose": "Create, submit, or run horf inspections id decision.",
+    "declaredAccess": "Public/handler",
+    "sources": [
+      "server/routes/horf-inspections.ts:212"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/horf/inspections/pending",
+    "purpose": "Read or list horf inspections pending.",
+    "declaredAccess": "Public/handler",
+    "sources": [
+      "server/routes/horf-inspections.ts:186"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/horf/inspections/status",
+    "purpose": "Read or list horf inspections status.",
+    "declaredAccess": "Public/handler",
+    "sources": [
+      "server/routes/horf-inspections.ts:147"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/horf/inspectors/status",
+    "purpose": "Read or list horf inspectors status.",
+    "declaredAccess": "Public/handler",
+    "sources": [
+      "server/routes/horf-inspections.ts:77"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/horf/open-range",
+    "purpose": "Read or list horf open range.",
+    "declaredAccess": "Public/handler",
+    "sources": [
+      "server/routes/horf-open-range.ts:23"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/horf/open-range/offers",
+    "purpose": "Read or list horf open range offers.",
+    "declaredAccess": "Public/handler",
+    "sources": [
+      "server/routes/horf-open-range.ts:88"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/horf/open-range/offers",
+    "purpose": "Create, submit, or run horf open range offers.",
+    "declaredAccess": "Public/handler",
+    "sources": [
+      "server/routes/horf-open-range.ts:103"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/horf/open-range/offers/:id",
+    "purpose": "Delete, revoke, or stop horf open range offers id.",
+    "declaredAccess": "Public/handler",
+    "sources": [
+      "server/routes/horf-open-range.ts:140"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/horf/posse",
+    "purpose": "Read or list horf posse.",
+    "declaredAccess": "Public/handler",
+    "sources": [
+      "server/routes/horf-social.ts:131"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/horf/posse",
+    "purpose": "Create, submit, or run horf posse.",
+    "declaredAccess": "Public/handler",
+    "sources": [
+      "server/routes/horf-social.ts:148"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/horf/posse/:id",
+    "purpose": "Delete, revoke, or stop horf posse id.",
+    "declaredAccess": "Public/handler",
+    "sources": [
+      "server/routes/horf-social.ts:172"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/horf/season",
+    "purpose": "Read or list horf season.",
+    "declaredAccess": "Public/handler",
+    "sources": [
+      "server/routes/horf.ts:11"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/horf/stable-selections",
+    "purpose": "Read or list horf stable selections.",
+    "declaredAccess": "Public/handler",
+    "sources": [
+      "server/routes/horf-inspections.ts:87"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/horf/stable-selections",
+    "purpose": "Create, submit, or run horf stable selections.",
+    "declaredAccess": "Public/handler",
+    "sources": [
+      "server/routes/horf-inspections.ts:109"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/horf/stable-selections/:id",
+    "purpose": "Delete, revoke, or stop horf stable selections id.",
+    "declaredAccess": "Public/handler",
+    "sources": [
+      "server/routes/horf-inspections.ts:131"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/horf/stables",
+    "purpose": "Read or list horf stables.",
+    "declaredAccess": "Public/handler",
+    "sources": [
+      "server/features/horf/stables/routes.ts:38"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/horf/stables/permit",
+    "purpose": "Create, submit, or run horf stables permit.",
+    "declaredAccess": "Public/handler",
+    "sources": [
+      "server/features/horf/stables/routes.ts:52"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/horf/token-eligibility",
+    "purpose": "Read or list horf token eligibility.",
+    "declaredAccess": "Public/handler",
+    "sources": [
+      "server/routes/horf-social.ts:111"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/horf/trader-status",
+    "purpose": "Read or list horf trader status.",
+    "declaredAccess": "Public/handler",
+    "sources": [
+      "server/routes/horf-moderation.ts:37"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/horf/trades/confirm",
+    "purpose": "Create, submit, or run horf trades confirm.",
+    "declaredAccess": "Public/handler",
+    "sources": [
+      "server/routes/horf-social.ts:190"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/horf/wallet/challenge",
+    "purpose": "Create, submit, or run horf wallet challenge.",
+    "declaredAccess": "Public/handler",
+    "sources": [
+      "server/routes/horf-wallet.ts:23"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/horf/wallet/disconnect",
+    "purpose": "Create, submit, or run horf wallet disconnect.",
+    "declaredAccess": "Public/handler",
+    "sources": [
+      "server/routes/horf-wallet.ts:129"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/horf/wallet/session",
+    "purpose": "Read or list horf wallet session.",
+    "declaredAccess": "Public/handler",
+    "sources": [
+      "server/routes/horf-wallet.ts:113"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/horf/wallet/tokens",
+    "purpose": "Read or list horf wallet tokens.",
+    "declaredAccess": "Public/handler",
+    "sources": [
+      "server/routes/horf-wallet.ts:141"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/horf/wallet/verify",
+    "purpose": "Create, submit, or run horf wallet verify.",
+    "declaredAccess": "Public/handler",
+    "sources": [
+      "server/routes/horf-wallet.ts:37"
     ]
   },
   {
@@ -5096,7 +5438,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list metrics.",
     "declaredAccess": "Public/handler",
     "sources": [
-      "server/routes.ts:272"
+      "server/routes.ts:279"
     ]
   },
   {
@@ -5717,7 +6059,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list public.",
     "declaredAccess": "Public/handler",
     "sources": [
-      "server/routes.ts:216"
+      "server/routes.ts:223"
     ]
   },
   {
@@ -5726,7 +6068,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list public capabilities.",
     "declaredAccess": "Public/handler",
     "sources": [
-      "server/routes.ts:216"
+      "server/routes.ts:223"
     ]
   },
   {
@@ -5735,7 +6077,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list public docs.",
     "declaredAccess": "Public/handler",
     "sources": [
-      "server/routes.ts:226"
+      "server/routes.ts:233"
     ]
   },
   {
@@ -5744,7 +6086,7 @@ export const WTFOS_PUBLIC_API_ROUTES =
     "purpose": "Read or list public openapi.json.",
     "declaredAccess": "Public/handler",
     "sources": [
-      "server/routes.ts:221"
+      "server/routes.ts:228"
     ]
   },
   {

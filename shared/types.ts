@@ -174,6 +174,7 @@ export type UserRoleInput = UserRole | readonly UserRole[] | null | undefined;
 
 export const ADMIN_PANEL_ROLES: UserRole[] = ["admin", "host", "cohost"];
 export const COBWEBSAINTS_FULL_USER_ROLE = "cobwebsaints_full_user" as const;
+export const HORF_MARSHAL_ROLE = "horf_marshal" as const;
 
 const SPECIAL_ROLE_SORT_RANKS: Record<string, number> = {
   [COBWEBSAINTS_FULL_USER_ROLE]: 3.5,
@@ -296,6 +297,18 @@ export const DEFAULT_ROLE_CATALOG: RoleDefinition[] = [
     sortOrder: 65,
     color: "#1f7a5b",
     icon: "archive",
+    defaultWtfOsAccess: true,
+    isSystem: true,
+    isAssignable: true,
+  },
+  {
+    slug: HORF_MARSHAL_ROLE,
+    label: "HORF MARSHAL",
+    category: "moderation",
+    purpose: "Inspect qualifying horse tokens and approve them for Horf trading stables.",
+    description: "Scoped inspection role. It grants no general admin or wallet authority; the holder must sign in to WTF OS to review horses.",
+    accessLevel: 0,
+    sortOrder: 1000,
     defaultWtfOsAccess: true,
     isSystem: true,
     isAssignable: true,
@@ -481,6 +494,7 @@ export const DESKTOP_APPS = [
   "crp-nominations",
   "wtf-subdomains",
   "rat-race",
+  "horf",
   "map-lab",
   "agent",
   "applications",
@@ -517,6 +531,7 @@ export const DESKTOP_APP_LABELS: Record<DesktopAppKey, string> = {
   "crp-nominations": "CRP Nominations",
   "wtf-subdomains": "WTF Domains",
   "rat-race": "Rat Race",
+  horf: "Horf",
   "map-lab": "WTF Map Lab",
   agent: "Agent",
   applications: "Applications",
