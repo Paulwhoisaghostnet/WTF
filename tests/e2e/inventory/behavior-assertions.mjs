@@ -194,13 +194,13 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     domain: "Entry, Authentication, and Account Identity",
     platformOwner: "auth-session",
     ownerSpec:
-      "server/auth/storage.ts; server/auth/welcome-event.ts; server/auth/welcome-dm.ts; server/auth/welcome-dm.test.ts; client/src/features/desktop/DesktopIcons.tsx; tests/playwright/inventory/starter-welcome-dm.spec.mjs",
+      "server/auth/storage.ts; server/auth/welcome-event.ts; server/auth/welcome-dm.ts; server/auth/welcome-dm.test.ts; server/auth/welcome-dm.integration.test.ts; client/src/features/desktop/DesktopIcons.tsx; tests/playwright/inventory/starter-welcome-dm.spec.mjs",
     verificationCommand:
-      "npx tsx --test server/auth/welcome-dm.test.ts && npm run build && npx playwright test tests/playwright/inventory/starter-welcome-dm.spec.mjs && npm run test:e2e:inventory:coverage",
+      "npx tsx --test server/auth/welcome-dm.test.ts server/auth/welcome-dm.integration.test.ts && npm run build && npx playwright test tests/playwright/inventory/starter-welcome-dm.spec.mjs && npm run test:e2e:inventory:coverage",
     userVisibleAssertion:
       "A newly registered starter-desktop account sees an unread Inbox badge and one wtf-admin direct message with steps for Profile, identity proof, verified EXP actions, and the Green Room contestant milestone. The message explains where Stuffs and Paul are; EXP tier changes alone do not promise a role.",
     durableSideEffectAssertion:
-      "Registration stores starter desktop mode; the auth welcome hook retries an idempotent, admin-authored DM after login, leaving the recipient unread and publishing a comms item linked to the conversation. Legacy classic accounts and a missing canonical admin are skipped. The policy test checks these rules; a DB-backed live user story is still needed to prove delivery and badge behavior end to end.",
+      "Registration stores starter desktop mode; the auth welcome hook retries an idempotent, admin-authored DM after login, leaving the recipient unread and publishing a comms item linked to the conversation. Legacy classic accounts and a missing or non-admin canonical sender are skipped. Policy and isolated PostgreSQL integration tests cover delivery, sender authority, concurrent idempotency, unread/read transition, and legacy-account skip; browser checks cover Inbox and WIM presentation. Production account delivery is still to be verified after rollout.",
   },
   {
     id: "auth.classic-first-run-task-wayfinder",

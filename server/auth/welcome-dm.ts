@@ -8,6 +8,7 @@ import {
 } from "@shared/schema";
 import { db } from "../db";
 import { publishCommunicationItemBestEffort } from "../features/comms/publisher";
+import { listUserRoles } from "../lib/user-roles";
 import {
   isStarterDesktopAppearance,
   starterWelcomeMessage,
@@ -42,13 +43,16 @@ export async function ensureStarterWelcomeDm(targetUserId: number): Promise<bool
   if (!isStarterDesktopAppearance(settings?.appearance)) return false;
 
   const [admin] = await db
-    .select({ id: users.id })
+    .select({ id: users.id, role: users.role })
     .from(users)
     .where(eq(users.username, ADMIN_USERNAME))
     .limit(1);
   // Some local environments have not provisioned the canonical admin yet.
   // The next login retries without creating an impersonating sender account.
   if (!admin || admin.id === targetUserId) return false;
+  // A username alone is not authority: fail closed if an ordinary account
+  // claimed this name before the canonical admin was provisioned.
+  if (!(await listUserRoles(admin.id, admin.role)).includes("admin")) return false;
   const [smallerUserId, largerUserId] = admin.id < targetUserId
     ? [admin.id, targetUserId]
     : [targetUserId, admin.id];

@@ -14036,3 +14036,23 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: A prose marker looked like an unregistered interaction, blocking the required inventory gate without identifying a real missing event.
 
 **Rule**: List only canonical event handles in the Primary handles cell. Describe metadata markers in plain text outside handle syntax and rerun inventory coverage after editing the row.
+
+---
+
+## 2026-11-03 - Verify admin authority before sending automated DMs
+
+**What happened**: The starter welcome sender lookup selected `wtf-admin` by username alone. Registration did not reserve that name, so an ordinary account could have claimed it before the platform admin was provisioned.
+
+**Why it mattered**: The welcome would appear to come from a trusted platform account even though its sender lacked administrative authority.
+
+**Rule**: Check the sender's assigned admin role as well as its canonical username before emitting an automated admin DM. If the account is absent or untrusted, skip delivery and retry later; cover the spoofed-name case in a database test.
+
+---
+
+## 2026-11-03 - Distinguish exact admin from staff access helpers
+
+**What happened**: The first sender-authority fix called the shared `isAdmin` helper. That helper intentionally treats host and cohost as admin-panel roles, so it would have allowed a host named `wtf-admin` to author the automated platform welcome.
+
+**Why it mattered**: Access to an admin screen is broader than authority to impersonate the platform's canonical admin sender.
+
+**Rule**: For system-authored messages that claim the platform admin identity, require the exact `admin` role in the role set. Test witness and host name claims against the database before allowing delivery.

@@ -53,6 +53,8 @@ const Title = styled.h2`
 
   @media (max-width: 600px) {
     padding: 3px 6px 2px;
+    font-size: 10px;
+    line-height: 1.1;
   }
 `;
 
