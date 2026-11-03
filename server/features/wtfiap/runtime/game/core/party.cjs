@@ -540,7 +540,8 @@
       return { ...cherub, col: cherub.side === 'player' ? point.col : state.board.columns - 1 - point.col,
         row: cherub.side === 'player' ? point.row : state.board.rows - 1 - point.row };
     }) } : {};
-    if (state.roundNumber < 5) return { roundNumber: state.roundNumber, chests: [], ...cherubTerms };
+    if (state.roundNumber < 5) return { roundNumber: state.roundNumber,
+      ...(treasureOn(state) ? {} : { treasureEnabled: false }), chests: [], ...cherubTerms };
     const chests = treasureOn(state) ? ['player', 'enemy'].map(side => {
       const player = side === 'enemy' && npc ? npc : playerFor(state, side === 'player' ? pair.playerId : pair.enemyId), units = side === 'player' ? game.field : game.opponents;
       const health = units.length ? ChestHealth.calculateChestHealth(referenceFor(state), units.map(unit => unit.heroId)) : null;
@@ -557,7 +558,8 @@
         maxHp: chests.find(entry => entry.side === side)?.maxHp ?? ((side === 'player' ? game.field : game.opponents).length
           ? ChestHealth.calculateChestHealth(referenceFor(state), (side === 'player' ? game.field : game.opponents).map(unit => unit.heroId)).maxHp : null) });
     }
-    return { roundNumber: state.roundNumber, ...(itemsOn(state) ? { itemRulesVersion: 1 } : {}),
+    return { roundNumber: state.roundNumber, ...(treasureOn(state) ? {} : { treasureEnabled: false }),
+      ...(itemsOn(state) ? { itemRulesVersion: 1 } : {}),
       ...(state.itemChestPlacementVersion === 2 ? { itemChestPlacementVersion: 2 } : {}), ...cherubTerms, chests };
   }
   function makeCombat(state, pair) {

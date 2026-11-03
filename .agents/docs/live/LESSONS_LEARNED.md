@@ -13346,3 +13346,33 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: Mainnet sponsors could not fund valid free-entry or WTF-entry prize rooms containing XTZ, even though the deployed escrow accepted those room terms.
 
 **Rule**: Derive the wallet amount from the same pinned room terms and fee condition as the server. Cover paid XTZ, free, and WTF-entry plans in the wallet-call regression suite before enabling the Mainnet sponsor lane.
+
+---
+
+## 2026-11-03 — Optional treasure must be explicit at the combat boundary
+
+**What happened**: A funded Shadownet sponsored Party match using Ancient rules reached round five and both authenticated player views and its event stream returned HTTP 500. The Party layer correctly omitted gold chests because treasure was disabled, but the engine required two gold chests for every round from five onward. The funded room and escrow remained active.
+
+**Why it mattered**: An ordinary game-mode choice blocked a real funded match from continuing to settlement.
+
+**Rule**: Carry the room's pinned treasure setting into combat configuration. Validate gold and item chests according to their separate enabled rules, then replay both the disabled and default-enabled paths through the first affected round. Preserve the existing room and resume it after a compatible deployment.
+
+---
+
+## 2026-11-03 — Include sponsored escrow in the funded-room deployment guard
+
+**What happened**: The replacement guard read durable legacy tournament and open-duel funding records, but omitted sponsored-room escrow rows. Its game-volume scan still saw the funded sponsored room, so a safe hotfix would have been rejected as a game lock with no matching escrow binding.
+
+**Why it mattered**: The normal deploy path could not repair the blocked match while keeping the guard's funding commitments intact.
+
+**Rule**: Every escrow lane that can attach a game funding lock must appear in the deployment snapshot. Compare the exact lock version, room, terms, match, network, contract, and pinned rules against its durable record before replacing the app; test missing and mismatched bindings as well as the live-compatible case.
+
+---
+
+## 2026-11-03 — Regenerate environment inventory when adding a source test file
+
+**What happened**: The sponsored-room recovery PR passed local gameplay and build checks, but CI stopped at environment inventory. The new regression test contained no environment variables, yet the generated inventory also records the number of scanned source files and was one file stale. A separate untracked local puppet script changed local scan output but was absent from clean CI.
+
+**Why it mattered**: The exact-head quality gate rejected a correct hotfix before running its aggregate tests.
+
+**Rule**: Regenerate the environment inventory from the tracked candidate file set whenever adding a source file, then run its check in the same clean-file view. Keep unrelated untracked local scripts out of generated release metadata.
