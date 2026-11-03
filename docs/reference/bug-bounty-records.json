@@ -11747,7 +11747,7 @@
     },
     {
       "id": "WTF-BB-776",
-      "status": "Fixed",
+      "status": "Verified",
       "owner": "Codex Horf Stable wallet-token response correction",
       "lastTouched": "2026-11-03",
       "category": "Horf / wallet-token profile display",
@@ -11758,7 +11758,7 @@
       "points": 10,
       "rank": 492,
       "title": "Horf rejects nonempty wallet-token pages and leaves linked riders with an empty Stable",
-      "body": "- Evidence (2026-11-03): The signed-in Horf Stable displayed 'Wallet tokens are unavailable' for a connected wallet. A direct Mainnet API read returned 48 balances, including qualifying horse tokens. The client `parseHorfOwnedTokenPage` required `walletAddress` on every item, but `/api/horf/wallet/tokens` omitted it on both normal and search responses.\n- Correction: Add the requested wallet to each token DTO on both endpoint paths; show the Stable's connection state and scan every holdings page automatically.\n- Verification idea: Parse a nonempty Mainnet response in the Stable, then verify the user's current wallet shows qualifying horse cards and edition counts after the production deploy.\n- Score: P1(4)+C1/F5/S0=10; the defect blocked owned-horse actions across Horf."
+      "body": "- Evidence (2026-11-03): The signed-in Horf Stable displayed 'Wallet tokens are unavailable' for a connected wallet. A direct Mainnet API read returned 48 balances, including qualifying horse tokens. The client `parseHorfOwnedTokenPage` required `walletAddress` on every item, but `/api/horf/wallet/tokens` omitted it on both normal and search responses.\n- Correction: Add the requested wallet to each token DTO on both endpoint paths; show the Stable's connection state and scan every holdings page automatically.\n- Verification (2026-11-03): Production deploy 41738565118 succeeded at commit 01da9622 with healthy readiness checks. The live wallet-token API returned 48 balances carrying the requested wallet address. In the connected Chrome Stable, cards appeared with edition counts, the Neighvember 2026 badge appeared on a November mint, and the mint-season selector narrowed the view to that horse before All horses restored the broader Stable.\n- Score: P1(4)+C1/F5/S0=10; the defect blocked owned-horse actions across Horf."
     }
   ]
 }
