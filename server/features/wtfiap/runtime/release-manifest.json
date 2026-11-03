@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "title": "coLILseum",
   "appKey": "wtfiap",
-  "generatorSha256": "2d3f8ad9217447e46f0dc6684d30f193f0a648f5adb441547457dc7a47928274",
+  "generatorSha256": "f7693d5211f3910ba80971a76a3e1e2430feee84479c6df2d96c060e4c460593",
   "sourceProject": "lil-guys-autobattler",
   "sourceCast": "CAST-v2.md / Lil-Guys-Hero-Cast-v2.pdf",
   "castHeroes": 50,
@@ -19,9 +19,9 @@
     {
       "path": "public/games/installed/wtfiap/generator.html",
       "sourcePath": "dist/generator.html",
-      "sourceSha256": "2d3f8ad9217447e46f0dc6684d30f193f0a648f5adb441547457dc7a47928274",
-      "sha256": "2d3f8ad9217447e46f0dc6684d30f193f0a648f5adb441547457dc7a47928274",
-      "bytes": 12948660
+      "sourceSha256": "f7693d5211f3910ba80971a76a3e1e2430feee84479c6df2d96c060e4c460593",
+      "sha256": "f7693d5211f3910ba80971a76a3e1e2430feee84479c6df2d96c060e4c460593",
+      "bytes": 12948881
     },
     {
       "path": "public/games/installed/wtfiap/cast.html",
@@ -529,9 +529,9 @@
     {
       "path": "server/features/wtfiap/runtime/game/core/party.cjs",
       "sourcePath": "game/core/party.cjs",
-      "sourceSha256": "d9eca1f39a11cd8e65b7f49cf7317b2136eff405c51d5562dda68d7e60349450",
-      "sha256": "d9eca1f39a11cd8e65b7f49cf7317b2136eff405c51d5562dda68d7e60349450",
-      "bytes": 82493
+      "sourceSha256": "88e3544844917b3d34911c2bef85da98c1c021c0e44e29693def64e6604c36df",
+      "sha256": "88e3544844917b3d34911c2bef85da98c1c021c0e44e29693def64e6604c36df",
+      "bytes": 82621
     },
     {
       "path": "server/features/wtfiap/runtime/game/core/preparation.cjs",
@@ -592,9 +592,9 @@
     {
       "path": "server/features/wtfiap/runtime/source/engine.js",
       "sourcePath": "source/engine.js",
-      "sourceSha256": "3c401b5bb57e5971f0e44b4b4b60958e803cb1e61b6201526c45a613068fa0c9",
-      "sha256": "3c401b5bb57e5971f0e44b4b4b60958e803cb1e61b6201526c45a613068fa0c9",
-      "bytes": 110160
+      "sourceSha256": "420ee2a67eb868da68236564b0e36f9e78393664a3f0be75a77548ad13731d2c",
+      "sha256": "420ee2a67eb868da68236564b0e36f9e78393664a3f0be75a77548ad13731d2c",
+      "bytes": 110381
     },
     {
       "path": "server/features/wtfiap/runtime/source/hero-catalog.js",

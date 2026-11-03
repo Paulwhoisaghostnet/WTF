@@ -27,6 +27,11 @@ export function assertFundingCompatibility(records, locks, incomingRules) {
       throw new Error(`Funded game ${lock.roomCode} has inconsistent open-duel escrow commitments.`);
     if (record.source === 'open-duel' && lock.version !== 3)
       throw new Error(`Funded game ${lock.roomCode} has the wrong escrow binding version.`);
+    if (lock.version === 4 && (record.source !== 'sponsor' ||
+      ['roomId', 'termsHash', 'matchId', 'network', 'escrowContract'].some(key => record[key] !== lock[key])))
+      throw new Error(`Funded game ${lock.roomCode} has inconsistent sponsor escrow commitments.`);
+    if (record.source === 'sponsor' && lock.version !== 4)
+      throw new Error(`Funded game ${lock.roomCode} has the wrong sponsor escrow binding version.`);
   }
   for (const record of records.filter(record => record.hasLock)) {
     const terminal = record.status === 'settled' && record.hasFinalResult || hasVerifiedTechnicalVoid(record);
@@ -76,6 +81,17 @@ WITH escrow_bindings AS (
   'matchId',document->>'matchId','network',document->>'network',
   'escrowContract',document->>'contract') AS binding
  FROM wtfiap_open_duels
+ UNION ALL
+ SELECT jsonb_build_object(
+  'source','sponsor','roomCode',room_code,
+  'hasLock',jsonb_typeof(document->'lock')='object',
+  'rulesHash',document->'config'->>'rulesHash','status',document->>'status',
+  'hasFinalResult',jsonb_typeof(document->'finalResult')='object',
+  'roomId',document->>'roomId','termsHash',document->>'termsHash',
+  'matchId',document->'lock'->>'matchId',
+  'network',document->'config'->>'network',
+  'escrowContract',document->'config'->>'escrowContract') AS binding
+ FROM wtfiap_sponsor_funding
 )
 SELECT 'WTFIAP_SNAPSHOT:' || COALESCE(jsonb_agg(binding),'[]'::jsonb)::text FROM escrow_bindings;
 `);
