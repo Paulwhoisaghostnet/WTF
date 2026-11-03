@@ -11787,8 +11787,8 @@
       "securityDanger": 0,
       "points": 7,
       "rank": 694,
-      "title": "Nine Horf routes are missing from shared browser route metadata",
-      "body": "- Evidence (2026-11-03): Quality Gates fails the route sync test because nine Horf pages exist in PAGE_DEFS but not BROWSER_ROUTE_META. The omission also leaves CLI/browser access metadata incomplete for those routes.\n- Correction direction: Add matching public route metadata for all nine patterns using PAGE_DEFS titles and auth policy.\n- Verification idea: Run the route sync test, TypeScript check, inventory coverage, and exact-head Quality Gates.\n- Verification (2026-11-03): The route sync test passes with all nine Horf patterns. Each metadata entry mirrors the public auth policy and title in PAGE_DEFS; exact-head Quality Gates and production smoke remain part of release promotion."
+      "title": "Horf routes are missing from shared browser route metadata",
+      "body": "- Evidence (2026-11-03): Quality Gates fails the route sync test because nine Horf pages exist in PAGE_DEFS but not BROWSER_ROUTE_META. The omission also leaves CLI/browser access metadata incomplete for those routes.\n- Correction direction: Add matching public route metadata for all nine patterns using PAGE_DEFS titles and auth policy.\n- Verification idea: Run the route sync test, TypeScript check, inventory coverage, and exact-head Quality Gates.\n- Verification (2026-11-03): The route sync test passes with all nine Horf patterns. Each metadata entry mirrors the public auth policy and title in PAGE_DEFS; exact-head Quality Gates and production smoke remain part of release promotion.\n- Later regression (2026-11-03): Main added the public `/horf/race` page after the first nine routes were fixed, but omitted its shared browser route metadata. Exact-head Quality Gates run `41739826361` found this single aggregate unit failure after 2,894 passing tests.\n- Correction and verification: Added `/horf/race` with the matching public auth policy and Horf Horse Race title; the focused route sync test passes."
     },
     {
       "id": "WTF-BB-781",

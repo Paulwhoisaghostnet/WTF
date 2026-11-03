@@ -723,7 +723,7 @@ Total: **745** · Open: **9** · Claimed: **42** · In Progress: **16** · Block
 | WTF-BB-096 | Verified | Codex in-app market cart pass | 2026-05-05 | In-app market / listing IDs | P2 | 8 | 639 | 1 | 3 | 1 | Seeded item listing id collides with cart router sentinel |
 | WTF-BB-079 | Verified | Codex deploy hardening pass | 2026-05-03 | Deploy / release metadata | P2 | 8 | 639 | 2 | 3 | 0 | `server-deploy.sh` can inherit a stale `COMMIT_SHA` and mislabel the live revision |
 | WTF-BB-043 | Verified | Codex TV refresh query reconciliation | 2026-09-02 | TV microapp / refresh scale | P2 | 8 | 639 | 2 | 2 | 1 | WTF TV refresh currently sorts all wallet rows randomly |
-| WTF-BB-780 | Verified | Codex Reggie release-gate repair | 2026-11-03 | Browser route metadata / CI | P2 | 7 | 694 | 1 | 3 | 0 | Nine Horf routes are missing from shared browser route metadata |
+| WTF-BB-780 | Verified | Codex Reggie release-gate repair | 2026-11-03 | Browser route metadata / CI | P2 | 7 | 694 | 1 | 3 | 0 | Horf routes are missing from shared browser route metadata |
 | WTF-BB-774 | Verified | Codex Paul portrait ghost correction | 2026-11-03 | Desktop OS / Paul character silhouette | P2 | 7 | 694 | 2 | 2 | 0 | Paul needs the approved compact portrait ghost and 90-pose desktop animation |
 | WTF-BB-763 | Verified | Codex Horf HORSE social backend | 2026-11-03 | Horf / reward currency and race separation | P2 | 7 | 694 | 1 | 3 | 0 | HORSE reward sends can inflate horse-art race and reciprocal debts |
 | WTF-BB-758 | Verified | Codex coLILseum sponsor-prize rollout | 2026-11-02 | coLILseum / sponsored prize wallet amounts | P2 | 7 | 694 | 1 | 3 | 0 | Free-entry Mainnet XTZ prize includes a paid-room fee in the wallet prompt |
@@ -15722,7 +15722,7 @@ Copy this when adding a new issue:
   - Focused policy suite passes 2/2, proving the refresh source contains no SQL `RANDOM()`, the deterministic order is present, and migration/schema index definitions agree. `1ac70168` is an ancestor of live production commit `1238a78d`; public health is alive.
   - The unbounded random-sort condition described by this record is absent, so WTF-BB-043 is Verified.
 
-### WTF-BB-780 - Nine Horf routes are missing from shared browser route metadata
+### WTF-BB-780 - Horf routes are missing from shared browser route metadata
 
 - Category: Browser route metadata / CI
 - Priority: P2
@@ -15734,6 +15734,8 @@ Copy this when adding a new issue:
 - Correction direction: Add matching public route metadata for all nine patterns using PAGE_DEFS titles and auth policy.
 - Verification idea: Run the route sync test, TypeScript check, inventory coverage, and exact-head Quality Gates.
 - Verification (2026-11-03): The route sync test passes with all nine Horf patterns. Each metadata entry mirrors the public auth policy and title in PAGE_DEFS; exact-head Quality Gates and production smoke remain part of release promotion.
+- Later regression (2026-11-03): Main added the public `/horf/race` page after the first nine routes were fixed, but omitted its shared browser route metadata. Exact-head Quality Gates run `41739826361` found this single aggregate unit failure after 2,894 passing tests.
+- Correction and verification: Added `/horf/race` with the matching public auth policy and Horf Horse Race title; the focused route sync test passes.
 
 ### WTF-BB-774 - Paul needs the approved compact portrait ghost and 90-pose desktop animation
 

@@ -34,6 +34,7 @@ export const BROWSER_ROUTE_META: readonly BrowserRouteMeta[] = [
   { pattern: "/marketplace", auth: true, title: "On Chain Market" },
   { pattern: "/rat-race", auth: true, title: "Rat Race" },
   { pattern: "/horf", auth: false, title: "Horf" },
+  { pattern: "/horf/race", auth: false, title: "Horf Horse Race" },
   { pattern: "/horf/traders", auth: false, title: "Horf Traders" },
   { pattern: "/horf/traders/:address", auth: false, title: "Horf Trader Profile" },
   { pattern: "/horf/info", auth: false, title: "Horf Is It a Horse?" },

@@ -14056,3 +14056,13 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: Admin workflows failed with duplicate controls and lost the one-window navigation model.
 
 **Rule**: When a focused app changes only its query state, replace that window key and keep its geometry and focus. Keep independently opened unrelated routes as separate windows, and assert the window count after deep links in browser tests.
+
+---
+
+## 2026-11-03 - Recheck route parity after integrating a moving main
+
+**What happened**: The Reggie release branch fixed nine missing Horf browser routes and passed locally, then merged a newer main that added `/horf/race` without matching shared browser metadata. Exact-head Quality Gates failed the route sync test again.
+
+**Why it mattered**: A previously proven release gate became stale when the source route registry changed under the branch.
+
+**Rule**: After each final main integration, rerun route parity together with generated inventory checks on that exact tree before pushing. Mirror every new page's pattern, title, and auth policy in shared browser metadata.
