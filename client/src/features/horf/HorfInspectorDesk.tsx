@@ -236,7 +236,7 @@ export function HorfInspectorDesk({ isGuest, isAdmin }: {
       await api.post(`/api/horf/admin/inspection-approvals/${encodeURIComponent(token.contract)}/${encodeURIComponent(token.tokenId)}/revoke`, { reason: revokeReason.trim() });
       setRevokeLink(""); setRevokeReason("");
       await qc.invalidateQueries({ queryKey: ["horf", "inspection-status", token.contract, token.tokenId] });
-      setSuccess("Approval revoked for new Stable permits. Already signed one-use permits may remain valid until the Stable administrator bumps the on-chain oracle epoch.");
+      setSuccess("Approval revoked for new Stable and HORSE Market listings. Existing signed Stable permits may remain valid until the Stable admin bumps the oracle epoch. Existing HORSE Market listings stay buyable by direct contract calls until the Market admin signs set_token_blocked for this horse.");
       logClientSystemEvent({ eventType: "horf.inspection.approval_revoked", message: "Horf token inspection approval revoked", metadata: { tokenContract: token.contract, tokenId: token.tokenId } });
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Could not revoke this token approval."); }
     finally { setBusy(false); }
@@ -290,7 +290,7 @@ export function HorfInspectorDesk({ isGuest, isAdmin }: {
       <p>Grant or revoke HORF MARSHAL on a WTF OS user’s Passport in the standard admin role screen. A wallet alone cannot approve or reject inspections.</p>
       <Action data-horf-marshal-roles-open type="button" onClick={() => windowManager.openPage("/admin")}>Open WTF OS role administration</Action>
       <h3>Revoke a token approval</h3>
-      <p>Revoking approval stops new Stable permits. A previously signed one-use permit may remain valid until the Stable administrator bumps the on-chain oracle epoch.</p>
+                                        <p>Revoking approval stops new Stable permits and HORSE Market listings. A previously signed Stable permit may remain valid until its admin bumps the on-chain oracle epoch. An existing HORSE Market listing remains buyable by direct contract call until the Market admin signs <code>set_token_blocked</code> for that horse.</p>
       <form onSubmit={(event) => void revokeApproval(event)}><label htmlFor="horf-approval-link">Approved Objkt token link</label><input id="horf-approval-link" data-horf-approval-link value={revokeLink} onChange={(event) => setRevokeLink(event.target.value)} placeholder="https://objkt.com/tokens/KT1…/123" disabled={busy} /><label htmlFor="horf-approval-reason">Revocation reason</label><textarea id="horf-approval-reason" data-horf-approval-reason value={revokeReason} onChange={(event) => setRevokeReason(event.target.value)} disabled={busy} /><Action data-horf-approval-revoke type="submit" $danger disabled={busy || !revokeLink.trim() || !revokeReason.trim()}>Revoke token approval</Action></form>
     </AdminPanel>}
     {error && <Note $error role="alert">{error}</Note>}

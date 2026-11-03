@@ -14,6 +14,8 @@ import {
   isLastHorfEventPage,
 } from "./source";
 import { getStableClaimSnapshot } from "./stable-ledger";
+import { getHorseMarketSaleSnapshot } from "./horse-market/sale-ledger";
+import { getHorfObjktPurchaseSnapshot } from "./horse-market/objkt-intents";
 import { horseContractAddress } from "./horse-config";
 import { HORF_MAINNET_BLOCK_MS } from "./mainnet";
 
@@ -336,6 +338,8 @@ export async function getHorfSeasonSnapshot(address: string | null, season: Horf
   const effectiveStatus = invalidSnapshot || (due && state.status === "ready") ? "syncing" : state.status;
   const asOf = !invalidSnapshot && state.as_of ? new Date(state.as_of).toISOString() : null;
   const stableClaims = await getStableClaimSnapshot(season);
+  const marketSales = await getHorseMarketSaleSnapshot(season);
+  const objktPurchases = await getHorfObjktPurchaseSnapshot(season);
   let directTransfers: HorfTransfer[] = [];
   let leaderboard: ReturnType<typeof summarizeSeason>["leaderboard"] = [];
   let currentUser: ReturnType<typeof summarizeSeason>["currentUser"] = null;
@@ -360,27 +364,27 @@ export async function getHorfSeasonSnapshot(address: string | null, season: Horf
     );
     directTransfers = applyGiftSettlements(result.rows.map(readStoredTransfer), gifts.rows);
   }
-  ({ leaderboard, currentUser } = summarizeSeason([...directTransfers, ...stableClaims.transfers], address));
+  ({ leaderboard, currentUser } = summarizeSeason([...directTransfers, ...stableClaims.transfers,
+    ...marketSales.transfers, ...objktPurchases.transfers], address));
   if (due) kickSync(season);
   const reference = effectiveStatus === "ready" ? state.as_of : state.updated_at;
   const dueAt = reference ? new Date(reference).getTime() + MAINNET_BLOCK_MS : now + MAINNET_BLOCK_MS;
   const nextRefreshAt = season.endsAt && effectiveStatus === "ready"
     ? null
     : new Date(Math.max(now + MAINNET_BLOCK_MS, dueAt)).toISOString();
-  const status = effectiveStatus === "error" || stableClaims.status === "error" ? "error"
-    : effectiveStatus === "syncing" || stableClaims.status === "syncing" ? "syncing" : "ready";
-  const combinedAsOf = asOf && stableClaims.asOf
-    ? new Date(Math.min(Date.parse(asOf), Date.parse(stableClaims.asOf))).toISOString()
-    : asOf;
-  const refreshCandidates = [nextRefreshAt, stableClaims.nextRefreshAt].filter((value): value is string => !!value);
+  const status = effectiveStatus === "error" || stableClaims.status === "error" || marketSales.status === "error" ? "error"
+    : effectiveStatus === "syncing" || stableClaims.status === "syncing" || marketSales.status === "syncing" ? "syncing" : "ready";
+  const sourceTimes = [asOf, stableClaims.asOf, marketSales.asOf].filter((value): value is string => !!value);
+  const combinedAsOf = sourceTimes.length ? new Date(Math.min(...sourceTimes.map(Date.parse))).toISOString() : null;
+  const refreshCandidates = [nextRefreshAt, stableClaims.nextRefreshAt, marketSales.nextRefreshAt].filter((value): value is string => !!value);
   return {
     season,
     seasons: HORF_SEASONS,
     asOf: combinedAsOf,
     status,
-    error: state.error || stableClaims.error,
+    error: state.error || stableClaims.error || marketSales.error,
     nextRefreshAt: refreshCandidates.length ? refreshCandidates.sort()[0] : null,
-    countingRule: "Each whole horse token unit sent directly between wallets or claimed from a Horf Stable counts for both traders; only direct pairwise sends create return rides.",
+    countingRule: "Each whole horse sent directly or claimed from a Horf Stable counts for both traders. A verified HORSE market sale or Objkt purchase made in Horf counts once for each trader, even when several editions sell; only direct pairwise sends create return rides.",
     leaderboard,
     currentUser,
   };

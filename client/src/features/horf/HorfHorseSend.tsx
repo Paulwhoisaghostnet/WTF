@@ -8,6 +8,7 @@ import { sendHorfTokenTransfer, type HorfSendProgress } from "../../lib/tezos/ho
 import { claimHorfRewards, HORF_CLAIM_CHAIN_ID } from "../../lib/tezos/horf-claim";
 import {
   HORF_RECIPIENT_LIMIT,
+  assertTraderAddress,
   formatHorseAmount,
   parseHorseRecipientCsv,
   validateHorseRecipients,
@@ -16,6 +17,7 @@ import {
 import type { HorfHorseActivity, HorfHorseConfig, HorfPosseResponse } from "./social-types";
 
 type RecipientRow = HorfRecipient & { id: number };
+type CommunityCrpCategory = "helping-hand" | "influencer";
 type SendStage = "preflight" | "preparing" | "wallet" | "confirming";
 type HorseRewards = {
   season: string;
@@ -110,6 +112,31 @@ const Note = styled.div<{ $error?: boolean }>`
   font: 600 13px/1.5 var(--horf-font, "Avenir Next", sans-serif);
   overflow-wrap: anywhere;
 `;
+
+const CommunityAwards = styled.section`
+  margin-top: 22px;
+  padding: clamp(17px, 2.5cqw, 24px);
+  border: 1px solid #acd5c6;
+  border-radius: 16px;
+  background: #eaf7f3;
+  h3 { margin: 0 0 7px; color: #173d36; font: 750 clamp(22px, 2.4cqw, 30px)/1.15 var(--horf-display, Georgia, serif); }
+  > p { max-width: 78ch; margin-bottom: 15px; }
+  .awards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .award { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; padding: 16px; border: 1px solid #c9dfd3; border-radius: 12px; background: #fff; }
+  .award small { color: #16796b; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .07em; }
+  .award h4 { margin: 5px 0 7px; color: #1d3e37; font: 750 21px/1.15 var(--horf-display, Georgia, serif); }
+  .award p { flex: 1; margin-bottom: 14px; }
+  .award a { display: inline-flex; align-items: center; text-decoration: none; }
+  .nominee-note { margin: 12px 0 0; color: #315a50; font-size: 12px; overflow-wrap: anywhere; }
+  @container (max-width: 680px) { .awards { grid-template-columns: 1fr; } }
+`;
+
+function firstValidRecipientWallet(rows: HorfRecipient[]): string | null {
+  for (const row of rows) {
+    try { return assertTraderAddress(row.address); } catch { /* Keep looking for a valid recipient. */ }
+  }
+  return null;
+}
 
 const ReceiptStrip = styled.div`
   display: grid;
@@ -225,6 +252,22 @@ export function HorfHorseSend({
     reward.vaultAddress && /^KT1[1-9A-HJ-NP-Za-km-z]{33}$/.test(reward.vaultAddress) &&
     /^\d+$/.test(reward.claimableRaw) && BigInt(reward.claimableRaw) > 0n);
   const busy = stage !== null;
+  const awardNominee = firstValidRecipientWallet(rows);
+
+  function crpNominationHref(category: CommunityCrpCategory): string {
+    const params = new URLSearchParams({ category });
+    if (awardNominee) params.set("nominee", awardNominee);
+    return `/crp-nominate?${params.toString()}`;
+  }
+
+  function openCrpNomination(category: CommunityCrpCategory) {
+    windowManager.openPage(crpNominationHref(category));
+    logClientSystemEvent({
+      eventType: "horf.crp_nominations.opened",
+      message: "CRP Nominations opened from Horf",
+      metadata: { categoryId: category, nominee: awardNominee },
+    });
+  }
 
   function setRow(id: number, patch: Partial<HorfRecipient>) {
     setRows((current) => current.map((row) => row.id === id ? { ...row, ...patch } : row));
@@ -407,9 +450,23 @@ export function HorfHorseSend({
       {stage && <Note role="status" aria-live="polite">{sendStatus(stage)} {submittedHash && <a href={`https://tzkt.io/${encodeURIComponent(submittedHash)}`} target="_blank" rel="noopener noreferrer">View transaction</a>}</Note>}
       {error && <Note $error role="alert">{error}</Note>}
       {success && <Note role="status">$HORSE confirmed for {success.count} {success.count === 1 ? "trader" : "traders"}. <a href={`https://tzkt.io/${encodeURIComponent(success.hash)}`} target="_blank" rel="noopener noreferrer">View transaction</a>.</Note>}
-      <Note>Community helpers keep the horse scene moving even when they do not trade. Send them $HORSE, or nominate them for a Helping Hand Award in the existing CRP Nominations app. {signedIn
-        ? <Action data-horf-crp-open type="button" onClick={() => { windowManager.openPage("/crp-nominate"); logClientSystemEvent({ eventType: "horf.crp_nominations.opened", message: "CRP Nominations opened from Horf" }); }}>Nominate a helping hand</Action>
-        : <a data-horf-crp-sign-in href="/login">Sign in to use CRP Nominations</a>}</Note>
+      <CommunityAwards data-horf-crp-awards aria-label="Nominate horse community helpers for Tezos CRP">
+        <h3>Tip your hat to a good rider 🤠🐎</h3>
+        <p>Some folks keep the horse scene galloping without making a trade. Send them $HORSE or saddle up a nomination in the existing Tezos CRP app. Helping Hand and Influencer are Tezos CRP categories, separate from the HAHA community awards.</p>
+        <div className="awards">
+          <div className="award"><small>For the helpful hands</small><h4>Helping Hand Award 🤝</h4><p>Know a rider who guides newcomers, shares know-how, or helps the herd find its feet?</p>
+            {signedIn
+              ? <Action data-horf-crp-open type="button" onClick={() => openCrpNomination("helping-hand")}>Nominate a helping hand ↗</Action>
+              : <Action as="a" data-horf-crp-sign-in href={`/login?return=${encodeURIComponent(crpNominationHref("helping-hand"))}`}>Sign in to nominate a helping hand ↗</Action>}
+          </div>
+          <div className="award"><small>For the loud and proud</small><h4>Influencer Award 📣</h4><p>Know a voice that champions horse art and carries the Tezos story far down the trail?</p>
+            {signedIn
+              ? <Action data-horf-crp-influencer-open type="button" onClick={() => openCrpNomination("influencer")}>Nominate an influencer ↗</Action>
+              : <Action as="a" data-horf-crp-influencer-sign-in href={`/login?return=${encodeURIComponent(crpNominationHref("influencer"))}`}>Sign in to nominate an influencer ↗</Action>}
+          </div>
+        </div>
+        <p className="nominee-note">{awardNominee ? <>The first valid recipient wallet above, <strong>{shortAddress(awardNominee)}</strong>, will be prefilled as nominee. You can review and change it in CRP.</> : "Enter a recipient wallet above to prefill a nominee, or choose someone in CRP."}</p>
+      </CommunityAwards>
     </Shell>
   );
 }

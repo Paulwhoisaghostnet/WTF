@@ -215,6 +215,8 @@ const links = [
   { path: "/horf/outlaw-corral", label: "Outlaw Corral", icon: "↗", section: "outlaw" },
   { path: "/horf/stable", label: "My stable", icon: "♞", section: "stable" },
   { path: "/horf/send-horse", label: "Send $HORSE", icon: "◈", section: "horse" },
+  { path: "/horf/horse-market", label: "HORSE Market", icon: "🪙", section: "horse-market" },
+  { path: "/horf/haha-crp", label: "HAHA Awards", icon: "🏆", section: "haha" },
   { path: "/horf/gifts", label: "Gifts", icon: "♡", section: "gifts" },
   { path: "/horf/posse", label: "Posse", icon: "🤠", section: "posse" },
   { path: "/horf/info", label: "Is It a Horse?", icon: "?", section: "info" },

@@ -103,6 +103,29 @@ async function mockHorf(page, { readyHorse = false, initialPosse = [], initialGi
   return { marks };
 }
 
+async function mockOfficialCrpPrefill(page, nomineeAddress) {
+  const resolvedQueries = [];
+  await page.route("**/api/crp-nominations/viewed", (route) => json(route, { ok: true }));
+  await page.route("**/api/crp-nominations/categories", (route) => json(route, {
+    categories: [
+      { id: "helping-hand", label: "Helping Hand Award", hashtag: "TezosCRP", description: "Helping people onboard and use Tezos." },
+      { id: "influencer", label: "Influencer Award", hashtag: "TezosCRP", description: "Social engagement, awareness, and education." },
+    ],
+  }));
+  await page.route("**/api/crp-nominations/mine", (route) => json(route, { nominations: [], anonymousNominationCredits: 0 }));
+  await page.route("**/api/crp-nominations/resolve", (route) => {
+    const query = route.request().postDataJSON()?.query;
+    resolvedQueries.push(query);
+    const bundle = { id: "horse-helper", tezosAddress: nomineeAddress, tezosDomain: null,
+      displayName: "Sir Canter", xHandle: null, bskyHandle: null, sources: ["tzkt"] };
+    return json(route, {
+      query, kind: "wallet", wallets: [{ address: nomineeAddress, displayName: "Sir Canter", tezosDomain: null, sources: ["tzkt"] }],
+      xHandles: [], bskyHandles: [], bundles: [bundle],
+    });
+  });
+  return resolvedQueries;
+}
+
 test.describe("Horf HORSE, posse, and horse gifts", () => {
   test("allows posse and CSV preparation while HORSE sends are unconfigured", async ({ page, request }) => {
     await seedTrader(request);
@@ -191,12 +214,71 @@ test.describe("Horf HORSE, posse, and horse gifts", () => {
     await expect(send.getByRole("alert")).toContainText("$HORSE supports up to 8 decimal places");
     await send.scrollIntoViewIfNeeded();
     await page.screenshot({ path: "test-results/horf-horse-ready-desktop.png", fullPage: true });
+    await send.locator('[data-horf-crp-awards]').scrollIntoViewIfNeeded();
+    await page.screenshot({ path: "test-results/horf-crp-awards-desktop.png" });
     await page.setViewportSize({ width: 390, height: 844 });
-    await send.scrollIntoViewIfNeeded();
+    await send.locator('[data-horf-crp-awards]').scrollIntoViewIfNeeded();
+    await expect(page.locator('[data-horf-right-rail]')).toBeHidden();
     expect(await send.evaluate((element) => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(1);
     await page.screenshot({ path: "test-results/horf-horse-ready-narrow.png", fullPage: true });
+    await page.screenshot({ path: "test-results/horf-crp-awards-narrow.png" });
+    const resolvedQueries = await mockOfficialCrpPrefill(page, leadWallet);
     await send.locator("[data-horf-crp-open]").click();
-    await expect(page).toHaveURL(/\/crp-nominate$/);
+    await expect(page).toHaveURL(new RegExp(`/crp-nominate\\?category=helping-hand&nominee=${leadWallet}$`));
+    await expect(page.locator('[data-crp-surface="nomination-appview"]')).toHaveCount(1);
+    await expect(page.locator('[data-crp-region="query-input"]')).toHaveValue(leadWallet);
+    await expect(page.locator('[data-crp-region="category-select"]')).toHaveValue("helping-hand");
+    await expect(page.locator('[data-crp-region="card"]')).toContainText("Sir Canter");
+    expect(resolvedQueries).toContain(leadWallet);
+  });
+
+  test("opens the official Influencer Award with the selected trader prefilled", async ({ page, request }) => {
+    await seedTrader(request);
+    await mockHorf(page);
+    const resolvedQueries = await mockOfficialCrpPrefill(page, leadWallet);
+    await page.goto("/horf/send-horse");
+    await page.locator('[data-horf-horse-row] [data-horf-horse-address]').first().fill(leadWallet);
+    await page.locator('[data-horf-crp-influencer-open]').click();
+    await expect(page).toHaveURL(new RegExp(`/crp-nominate\\?category=influencer&nominee=${leadWallet}$`));
+    await expect(page.locator('[data-crp-surface="nomination-appview"]')).toHaveCount(1);
+    await expect(page.locator('[data-crp-region="query-input"]')).toHaveValue(leadWallet);
+    await expect(page.locator('[data-crp-region="category-select"]')).toHaveValue("influencer");
+    await expect(page.locator('[data-crp-region="card"]')).toContainText("Sir Canter");
+    expect(resolvedQueries).toContain(leadWallet);
+  });
+
+  test("keeps a guest's award and nominee through WTF OS sign-in", async ({ page, request }) => {
+    await seedTrader(request);
+    const logout = await request.post("/api/auth/logout");
+    expect(logout.ok()).toBeTruthy();
+    await mockHorf(page);
+    await mockOfficialCrpPrefill(page, leadWallet);
+    await page.goto("/horf/send-horse");
+    await page.locator('[data-horf-horse-row] [data-horf-horse-address]').first().fill(leadWallet);
+    const target = `/crp-nominate?category=influencer&nominee=${leadWallet}`;
+    const signInLink = page.locator('[data-horf-crp-influencer-sign-in]');
+    await expect(signInLink).toHaveAttribute("href", `/login?return=${encodeURIComponent(target)}`);
+    await signInLink.click();
+    await expect(page).toHaveURL(new RegExp(`/login\\?return=${encodeURIComponent(target)}$`));
+    await page.getByLabel("Username").fill("wtf-admin");
+    await page.getByLabel("Password").fill("any-password");
+    await page.getByRole("button", { name: "Log In" }).click();
+    await expect(page).toHaveURL(new RegExp(`/crp-nominate\\?category=influencer&nominee=${leadWallet}$`));
+    await expect(page.locator('[data-crp-surface="nomination-appview"]')).toHaveCount(1);
+    await expect(page.locator('[data-crp-region="query-input"]')).toHaveValue(leadWallet);
+    await expect(page.locator('[data-crp-region="category-select"]')).toHaveValue("influencer");
+  });
+
+  test("rejects an outside return target during award sign-in", async ({ page, request }) => {
+    await seedTrader(request);
+    const logout = await request.post("/api/auth/logout");
+    expect(logout.ok()).toBeTruthy();
+    await page.goto("/login?return=%2F%2Fevil.example");
+    await page.getByLabel("Username").fill("wtf-admin");
+    await page.getByLabel("Password").fill("any-password");
+    await page.getByRole("button", { name: "Log In" }).click();
+    await expect(page).toHaveURL(/\/$/);
+    expect(new URL(page.url()).hostname).toBe("127.0.0.1");
   });
 
   test("chooses an owned horse, blocks ineligible gifts, and toggles a received favor note", async ({ page, request }) => {

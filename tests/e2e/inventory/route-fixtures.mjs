@@ -43,6 +43,8 @@ export const ROUTE_FIXTURES = [
   { pattern: "/horf/send-horse", path: "/horf/send-horse", title: "Send HORSE", domain: "commerce", subdomain: "Horf HORSE sends, claims, and posse", auth: false },
   { pattern: "/horf/gifts", path: "/horf/gifts", title: "Horse Gifts", domain: "commerce", subdomain: "Horf horse trades and gifts", auth: false },
   { pattern: "/horf/posse", path: "/horf/posse", title: "Horf Posse", domain: "commerce", subdomain: "Horf HORSE sends, claims, and posse", auth: false },
+  { pattern: "/horf/haha-crp", path: "/horf/haha-crp", title: "HAHA CRP", domain: "commerce", subdomain: "HAHA horse community awards", auth: false },
+  { pattern: "/horf/horse-market", path: "/horf/horse-market", title: "HORSE Market", domain: "commerce", subdomain: "Horf HORSE market", auth: false },
   { pattern: "/horf/traders", path: "/horf/traders", title: "Horse Traders", domain: "commerce", subdomain: "Horf trader directory", auth: false },
   { pattern: "/horf/traders/:address", path: "/horf/traders/tz1VSUr8wwNhLAzempoch5d6hLRiTh8Cjcjb", title: "Horse Trader", domain: "commerce", subdomain: "Horf trader directory", auth: false },
   { pattern: "/horf/info", path: "/horf/info", title: "Is It a Horse?", domain: "commerce", subdomain: "Horf horse eligibility info", auth: false },

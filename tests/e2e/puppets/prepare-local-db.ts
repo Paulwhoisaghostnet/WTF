@@ -73,6 +73,9 @@ const REQUIRED_LOCAL_MIGRATIONS = [
   "drizzle/0145_horf_direct_trade_confirmations.sql",
   "drizzle/0146_horf_horse_rewards.sql",
   "drizzle/0147_horf_offer_partner_policy.sql",
+  "drizzle/0148_haha_crp_nominations.sql",
+  "drizzle/0149_horf_horse_market_sales.sql",
+  "drizzle/0150_horf_objkt_purchase_intents.sql",
   "supabase/migrations/20260531120000_enable_skywire_desktop_app.sql",
   "supabase/migrations/20260531220000_wtf_live_app_registry.sql",
 ];

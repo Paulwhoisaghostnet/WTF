@@ -1,0 +1,73 @@
+{
+  "network": "tezos-mainnet",
+  "chainId": "NetXdQprcVkpaWU",
+  "rpc": "https://tcinfra.net/rpc/tezos/mainnet",
+  "contractJsonSha256": "e93442735c7fcfa7c1530064f2635d666f95d6a0765377f5a4ae31adc8121358",
+  "contractTzSha256": "709d234464f5f55e34d4ec092890298ae9a412993e6a32ade51163556345f216",
+  "sourceSha256": "892dfbcbce3a05d5ea1d8f1276e7527cfcd425d50b9f4db9dff2ff96ba221b93",
+  "storageFixtureSha256": "55e300e0002fc173dae077d34b5248f77012c85bb9f479c41e7ffc2fa9299d04",
+  "admin": "tz1cVRngZw42KZ42VQF2ZCy2CJSPNG3H7Cgt",
+  "oraclePublicKey": "edpkvZL5ek6Njb9RWQVtnUMkV2HJQtNFsycFdrgDjTnshrsXmzEzVy",
+  "horseContract": "KT1E9s2ncE5vXjofmzqwE6gEg9JPruTRBdrM",
+  "horseTokenId": 0,
+  "source": "artifacts/contract.json",
+  "storage": {
+    "prim": "Pair",
+    "args": [
+      {
+        "string": "tz1cVRngZw42KZ42VQF2ZCy2CJSPNG3H7Cgt"
+      },
+      {
+        "prim": "Pair",
+        "args": [
+          [],
+          {
+            "prim": "Pair",
+            "args": [
+              [],
+              {
+                "prim": "Pair",
+                "args": [
+                  {
+                    "string": "KT1E9s2ncE5vXjofmzqwE6gEg9JPruTRBdrM"
+                  },
+                  {
+                    "prim": "Pair",
+                    "args": [
+                      [],
+                      {
+                        "prim": "Pair",
+                        "args": [
+                          {
+                            "int": "0"
+                          },
+                          {
+                            "prim": "Pair",
+                            "args": [
+                              {
+                                "int": "0"
+                              },
+                              {
+                                "prim": "Pair",
+                                "args": [
+                                  {
+                                    "string": "edpkvZL5ek6Njb9RWQVtnUMkV2HJQtNFsycFdrgDjTnshrsXmzEzVy"
+                                  },
+                                  []
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

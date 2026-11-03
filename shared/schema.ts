@@ -119,6 +119,7 @@ export * from "./schema-objkt-operator";
 export * from "./schema-admin-inbox";
 export * from "./schema-wtfiap";
 export * from "./schema-horf";
+export * from "./schema-haha-crp";
 
 // TODO(schema modularization): keep the cross-domain user relation fan-out
 // in the compatibility barrel until the relation graph has domain-owned edges.

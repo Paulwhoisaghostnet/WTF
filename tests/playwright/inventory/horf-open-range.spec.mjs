@@ -22,9 +22,76 @@ async function mockSeasons(page) {
     body: JSON.stringify({ season: current, seasons: modes, status: "ready", asOf: now,
       error: null, nextRefreshAt: null, leaderboard: [], currentUser: null }),
   }));
+  await page.route(/\/api\/horf\/horse-market\/objkt-listings(?:\?.*)?$/, (route) => route.fulfill({
+    status: 200, contentType: "application/json", body: JSON.stringify({ listings: [], nextCursor: null }),
+  }));
 }
 
 test.describe("Horf Open Range", () => {
+  test("restores a submitted Objkt intent and retries season proof after reload", async ({ page, request }) => {
+    expect((await request.post("/__test/state", { data: { userRole: "admin" } })).ok()).toBeTruthy();
+    const pending = { intentId: "intent-7", opHash: "oo-submitted-7", buyerAddress: owner, tokenContract: contract, tokenId: "77" };
+    await page.addInitScript(({ address, record }) => {
+      window.localStorage.setItem("wtf:wallet-session", JSON.stringify({ address, providerName: "octez.connect" }));
+      window.localStorage.setItem("horf:objkt-pending-purchases", JSON.stringify([record]));
+    }, { address: owner, record: pending });
+    await page.route("**/api/wallets", (route) => route.fulfill({
+      status: 200, contentType: "application/json", body: JSON.stringify([{ walletAddress: owner }]),
+    }));
+    await mockSeasons(page);
+    await page.route("**/api/horf/open-range?*", (route) => route.fulfill({
+      status: 200, contentType: "application/json", body: JSON.stringify({
+        season: current, items: [horse("77")], nextCursor: null, hasMore: false, asOf: now,
+      }),
+    }));
+    let confirmedBody = null;
+    await page.route("**/api/horf/horse-market/objkt-confirm", (route) => {
+      confirmedBody = route.request().postDataJSON();
+      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({
+        status: "verified", operationHash: pending.opHash, tradeCounted: true,
+      }) });
+    });
+    await page.goto("/horf/open-range");
+    await page.locator("[data-horf-open-range-view-horse]").click();
+    const buy = page.locator("[data-horf-open-range-objkt-buy]");
+    await expect(buy).toContainText("Trade proof is pending");
+    await buy.locator("[data-horf-open-range-retry-objkt]").click();
+    expect(confirmedBody).toEqual({ buyerAddress: owner, intentId: pending.intentId, opHash: pending.opHash });
+    await expect(buy).toContainText("seller’s 10 HORSE reward");
+    await expect(buy.locator("[data-horf-open-range-retry-objkt]")).toHaveCount(0);
+  });
+
+  test("offers an in-page Objkt XTZ buy for a qualifying horse with no HORSE Market listing", async ({ page, request }) => {
+    expect((await request.post("/__test/state", { data: { userRole: "admin" } })).ok()).toBeTruthy();
+    await page.addInitScript(({ address }) => {
+      window.localStorage.setItem("wtf:wallet-session", JSON.stringify({ address, providerName: "octez.connect" }));
+    }, { address: owner });
+    await page.route("**/api/wallets", (route) => route.fulfill({
+      status: 200, contentType: "application/json", body: JSON.stringify([{ walletAddress: owner }]),
+    }));
+    await mockSeasons(page);
+    await page.route("**/api/horf/open-range?*", (route) => route.fulfill({
+      status: 200, contentType: "application/json", body: JSON.stringify({
+        season: current, items: [horse("77")], nextCursor: null, hasMore: false, asOf: now,
+      }),
+    }));
+    await page.route(/\/api\/horf\/horse-market\/objkt-listings(?:\?.*)?$/, (route) => route.fulfill({
+      status: 200, contentType: "application/json", body: JSON.stringify({ listings: [{
+        listingId: "8669074", askId: "12802880", marketplaceContract: "KT1SwbTqhSKF6Pdokiu1K4Fpi17ahPPzmt1X",
+        version: "v6.2", entrypoint: "fulfill_ask", sellerAddress: owner, priceMutez: "12000000",
+        amountLeft: "9", tokenContract: contract, tokenId: "77",
+      }], nextCursor: null }),
+    }));
+
+    await page.goto("/horf/open-range");
+    await page.locator("[data-horf-open-range-view-horse]").click();
+    const detail = page.locator("[data-horf-open-range-detail]");
+    await expect(detail).toContainText("Horse #77");
+    await expect(detail.locator("[data-horf-open-range-objkt-buy]")).toContainText("12.0 XTZ");
+    await expect(detail.locator("[data-horf-open-range-buy-xtz]")).toBeVisible();
+    await expect(detail.locator("[data-horf-open-range-buy-xtz]")).toBeEnabled();
+  });
+
   test("lets a guest page through untraded mints and switch all range modes", async ({ page, request }) => {
     expect((await request.post("/__test/state", { data: { userRole: "anonymous" } })).ok()).toBeTruthy();
     await mockSeasons(page);
