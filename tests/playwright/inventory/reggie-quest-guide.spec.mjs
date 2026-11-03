@@ -79,6 +79,7 @@ test.describe("interaction inventory - Reggie quest guide", () => {
         return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(QUEST) });
       });
       await page.goto("/", { waitUntil: "domcontentloaded" });
+      await expect(page.getByTitle(`reggie-${role}`)).toBeVisible();
       await expect(page.locator('[data-wtf-desktop-content="true"]')).toBeVisible();
       await expect(page.getByRole("button", { name: "Reggie the quest guide hamster" })).toHaveCount(0);
       await expect(page.getByRole("dialog", { name: "Reggie quest guide" })).toHaveCount(0);
