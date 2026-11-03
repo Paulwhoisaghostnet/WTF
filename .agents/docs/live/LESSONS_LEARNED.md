@@ -13436,3 +13436,13 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: An unavailable failure-proof reader cannot authorize a retry, but it also cannot invalidate the escrow state already read. Hiding deposit and refund actions for the whole room makes a temporary RPC failure look like a broken wager.
 
 **Rule**: If optional exact-call failure proof is unavailable, leave the operation checkpoint pending and continue reconciling the verified room. Keep primary escrow reads and validation failures fail-closed; test the split failure path explicitly.
+
+---
+
+## 2026-11-03 — Generate the environment inventory from the release source set
+
+**What happened**: CI stopped at the environment inventory check after the sponsored-room indexer configuration gained another reference to existing variables. A local regeneration also picked up an unrelated untracked proof script, creating entries that would not exist in the pushed checkout.
+
+**Why it mattered**: A generated document based on local untracked files can pass locally and still fail the release job, obscuring the actual source change.
+
+**Rule**: Regenerate the environment inventory with local untracked scripts outside the scanned tree, restore those scripts afterward, and verify the generated diff reflects only tracked release sources before pushing.
