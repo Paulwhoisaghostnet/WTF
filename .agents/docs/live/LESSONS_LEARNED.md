@@ -14016,3 +14016,13 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: Assertions against incidental prose made the suite report product regressions where only wording changed.
 
 **Rule**: Update domain tests in the same pass as copy changes. Assert the relevant control and state directly, and use text checks only for user-facing terms that carry a behavior or safety rule.
+
+---
+
+## 2026-11-03 - Regenerate the environment inventory after integrating Horf source files
+
+**What happened**: The Horf release added 51 scanned source files and references to two new environment variables, but the checked-in environment inventory still described the earlier tree. Production deployed, while main Quality Gates stopped at `env:inventory:check` before TypeScript, build, and browser inventory.
+
+**Why it mattered**: A green production health check could not substitute for the independent release gates, and the stale generated reference hid new HORSE Market configuration from the environment inventory.
+
+**Rule**: After integrating new source files or environment references, regenerate `docs/reference/environment-variables.md` from the exact candidate tree and run its deterministic check and policy test before pushing main. Require the replacement Quality Gates run to pass before calling the release verified.
