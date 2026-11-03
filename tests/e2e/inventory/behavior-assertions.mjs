@@ -1172,7 +1172,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     verificationCommand:
       "npx tsx --test client/src/features/admin/admin-control-suite-policy.test.ts client/src/features/admin-os/admin-surface-registry.test.ts shared/wtf-browser-route-access.test.ts shared/role-system.test.ts server/features/admin/help-index-policy.test.ts && npm run build && npx playwright test tests/playwright/inventory/admin-control-suite.spec.mjs tests/playwright/inventory/system-integration.spec.mjs",
     userVisibleAssertion:
-      "Only a strict admin can discover or open the Admin Panel; an admin starts from task routing, searches URL-backed sections, reviews users in a sortable table with highest assigned role and level, opens a user name into a complete WTF Passport, reviews roles and curses in broad tables, and narrows into an acute record without hunting through one giant action row.",
+      "Only a strict admin can discover or open the Admin Panel; an admin starts from task routing, searches URL-backed sections, reviews users in a sortable table with highest assigned role and level, opens a user name into a complete WTF Passport in the same Admin Panel window, reviews roles and curses in broad tables, and narrows into an acute record without hunting through one giant action row.",
     durableSideEffectAssertion:
       "The focused source and browser harness assert the user Passport composes canonical roles, permissions, curses, wtfOS access, desktop settings, wallets, domains, and EXP activity; desktop settings saves use optimistic concurrency and audited admin routes; role and curse handoffs preserve the selected user context.",
   },

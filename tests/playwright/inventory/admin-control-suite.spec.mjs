@@ -55,6 +55,7 @@ test.describe("interaction inventory - admin broad and acute control suite", () 
 
     await page.getByRole("button", { name: "Open WTF Passport for complaint-user" }).click();
     await expect(page).toHaveURL(/section=users.*user=2/);
+    await expect(page.locator('[data-admin-surface="control-suite"]')).toHaveCount(1);
     const passport = page.locator('[data-admin-user-passport][data-admin-user-id="2"]');
     await expect(passport).toBeVisible();
     await expect(passport).toContainText("Complaint User · WTF Passport");

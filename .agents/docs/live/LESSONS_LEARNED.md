@@ -13946,3 +13946,13 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: A release branch with correct application code could not pass the mandatory clean CI gate.
 
 **Rule**: After the final main merge or rebase, regenerate tracked source inventories and run their equality checks on the exact branch head before pushing. Review the generated diff for secret values and unrelated changes.
+
+---
+
+## 2026-11-03 - Replace focused window keys on same-route query navigation
+
+**What happened**: URLSync used the full pathname and search as a window key. When Admin changed `section` or `user` query parameters, it opened a second Admin Panel instead of updating the focused one; Passport controls then appeared twice.
+
+**Why it mattered**: Admin workflows failed with duplicate controls and lost the one-window navigation model.
+
+**Rule**: When a focused app changes only its query state, replace that window key and keep its geometry and focus. Keep independently opened unrelated routes as separate windows, and assert the window count after deep links in browser tests.
