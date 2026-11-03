@@ -14056,3 +14056,13 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: Access to an admin screen is broader than authority to impersonate the platform's canonical admin sender.
 
 **Rule**: For system-authored messages that claim the platform admin identity, require the exact `admin` role in the role set. Test witness and host name claims against the database before allowing delivery.
+
+---
+
+## 2026-11-03 - Run the starter welcome hook on every account login path
+
+**What happened**: The standalone Skywire ATProto login created an account through the shared `createUser` path but completed its session through a separate helper. That helper emitted an auth event without calling the starter welcome hook, so this new account received the sparse desktop without the admin welcome message.
+
+**Why it mattered**: A first-login flow omitted the only visible first-step guidance and Inbox unread indicator promised by the starter desktop.
+
+**Rule**: When adding onboarding work to auth, enumerate every successful session-login path, including standalone app logins. Call the same idempotent welcome hook after session success, and keep login available if nonessential welcome delivery fails. When moving fixed desktop overlays, update compositor screenshot probes to sample clear wallpaper outside the new overlay.
