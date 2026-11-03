@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **745** · Open: **9** · Claimed: **42** · In Progress: **16** · Blocked: **4** · Fixed: **140** · Verified: **530** · Archived: **4**
+Total: **745** · Open: **9** · Claimed: **42** · In Progress: **16** · Blocked: **4** · Fixed: **139** · Verified: **531** · Archived: **4**
 
 ## Canonical Board
 
@@ -195,7 +195,6 @@ Total: **745** · Open: **9** · Claimed: **42** · In Progress: **16** · Block
 | WTF-BB-122 | Fixed | Codex wallet/RPC emergency pass | 2026-05-08 | Tezos wallet / checkout | P1 | 11 | 397 | 2 | 4 | 1 | Persisted wallet address can reach checkout without Taquito wallet provider |
 | WTF-BB-093 | Fixed | Codex TV creator workflow pass | 2026-05-04 | TV microapp / creator workflow UX | P1 | 11 | 397 | 3 | 4 | 0 | Playlist editing is trapped behind the active-playlist path, media management conflates detach with delete, and public bumper-pool removal is exposed only as destructive delete |
 | WTF-BB-091 | Fixed | Codex TV overlay metadata pass | 2026-05-04 | TV microapp / metadata UX | P1 | 11 | 397 | 3 | 4 | 0 | TV overlay credits fall back to wallet addresses, imported library tokens lose title-card metadata, and uploaded media cannot carry editable creator credits or Objkt links |
-| WTF-BB-776 | Fixed | Codex Horf Stable wallet-token response correction | 2026-11-03 | Horf / wallet-token profile display | P1 | 10 | 492 | 1 | 5 | 0 | Horf rejects nonempty wallet-token pages and leaves linked riders with an empty Stable |
 | WTF-BB-769 | Fixed | Codex coLILseum escrow completion | 2026-11-03 | coLILseum / sponsored prize settlement | P1 | 10 | 492 | 1 | 4 | 1 | Random sponsored prize allocation attempts to sort a frozen list |
 | WTF-BB-759 | Fixed | Codex coLILseum sponsored-room recovery | 2026-11-03 | coLILseum / optional treasure combat | P1 | 10 | 492 | 2 | 4 | 0 | Ancient mode stalls at round five because combat requires disabled treasure chests |
 | WTF-BB-746 | Fixed | Codex Pasta mainnet alpha integration | 2026-10-29 | Pasta Protocol / Macaroni V3.5 public collector CORS | P1 | 10 | 492 | 2 | 4 | 0 | Macaroni V3.5 public status and wake lose cross-origin access after CORS extraction |
@@ -562,6 +561,7 @@ Total: **745** · Open: **9** · Claimed: **42** · In Progress: **16** · Block
 | WTF-BB-047 | Verified | Swarm A5 | 2026-04-28 | Runtime / DB access path | P1 | 11 | 397 | 2 | 3 | 2 | W timeline actor cache grows without eviction |
 | WTF-BB-044 | Verified | Codex W identity ambiguity reconciliation | 2026-09-01 | Data integrity / identity | P1 | 11 | 397 | 3 | 3 | 1 | W identity resolution can collapse duplicate Twitter IDs into one row |
 | WTF-BB-034 | Verified | Codex stale security bounty reconciliation | 2026-09-01 | Data integrity / auth lifecycle | P1 | 11 | 397 | 2 | 3 | 2 | X token refresh updates users table without serialization |
+| WTF-BB-776 | Verified | Codex Horf Stable wallet-token response correction | 2026-11-03 | Horf / wallet-token profile display | P1 | 10 | 492 | 1 | 5 | 0 | Horf rejects nonempty wallet-token pages and leaves linked riders with an empty Stable |
 | WTF-BB-775 | Verified | Codex Horf HORSE Market origination correction | 2026-11-03 | Horf HORSE Market / Mainnet origination | P1 | 10 | 492 | 1 | 5 | 0 | An overlong event tag blocks HORSE Market origination |
 | WTF-BB-767 | Verified | Codex Horf production Open Range recovery | 2026-11-03 | Horf / Open Range historical pagination | P1 | 10 | 492 | 2 | 4 | 0 | All-seasons horse market returns 503 on the live Objkt archive query |
 | WTF-BB-739 | Verified | Codex Pasta alpha remaining release gates | 2026-10-27 | Macaroni V3.5 / creator setup idempotence | P1 | 10 | 492 | 1 | 4 | 1 | V3.5 next-action milestone conflicts with final-batch reconciliation |
@@ -4243,19 +4243,6 @@ Total: **745** · Open: **9** · Claimed: **42** · In Progress: **16** · Block
 - Verification: `node --import tsx/esm --test server/lib/tv-overlay-metadata.test.ts server/lib/tv-broadcast.test.ts client/src/lib/tv-playback.test.ts server/lib/tv-stream-snapshot-cache.test.ts server/lib/tv-telemetry.test.ts server/lib/tv-policy.test.ts`; `git diff --check`
 - Verification note: repo-wide `npm run check` is currently blocked by unrelated existing Desktop worktree errors in `client/src/components/layout/Desktop.tsx` (missing hamster/pet UI symbols), not by the TV overlay patch.
 - Verification idea: Imported token media added through the library should show human-readable creator credit plus Objkt links in TV, upload-backed media without custom credit should show `from <username>'s media`, and overlays should appear at viewer start and viewer end without sticking on screen the whole time.
-
-### WTF-BB-776 - Horf rejects nonempty wallet-token pages and leaves linked riders with an empty Stable
-
-- Category: Horf / wallet-token profile display
-- Priority: P1
-- Status: Fixed
-- Owner/Session: Codex Horf Stable wallet-token response correction
-- Last touched: 2026-11-03
-- Score: C1 + F5 + S0 + P1(4) = 10
-- Evidence (2026-11-03): The signed-in Horf Stable displayed 'Wallet tokens are unavailable' for a connected wallet. A direct Mainnet API read returned 48 balances, including qualifying horse tokens. The client `parseHorfOwnedTokenPage` required `walletAddress` on every item, but `/api/horf/wallet/tokens` omitted it on both normal and search responses.
-- Correction: Add the requested wallet to each token DTO on both endpoint paths; show the Stable's connection state and scan every holdings page automatically.
-- Verification idea: Parse a nonempty Mainnet response in the Stable, then verify the user's current wallet shows qualifying horse cards and edition counts after the production deploy.
-- Score: P1(4)+C1/F5/S0=10; the defect blocked owned-horse actions across Horf.
 
 ### WTF-BB-769 - Random sponsored prize allocation attempts to sort a frozen list
 
@@ -12346,6 +12333,19 @@ Copy this when adding a new issue:
 - Verification (2026-09-01):
   - `server/lib/x-oauth2-refresh-policy.test.ts` passes and proves the lock, locked re-read, freshness short-circuit, transactional write, and absence of the former unlocked helper.
   - Current route consumers use this serialized helper, satisfying the original stable-final-token criterion.
+
+### WTF-BB-776 - Horf rejects nonempty wallet-token pages and leaves linked riders with an empty Stable
+
+- Category: Horf / wallet-token profile display
+- Priority: P1
+- Status: Verified
+- Owner/Session: Codex Horf Stable wallet-token response correction
+- Last touched: 2026-11-03
+- Score: C1 + F5 + S0 + P1(4) = 10
+- Evidence (2026-11-03): The signed-in Horf Stable displayed 'Wallet tokens are unavailable' for a connected wallet. A direct Mainnet API read returned 48 balances, including qualifying horse tokens. The client `parseHorfOwnedTokenPage` required `walletAddress` on every item, but `/api/horf/wallet/tokens` omitted it on both normal and search responses.
+- Correction: Add the requested wallet to each token DTO on both endpoint paths; show the Stable's connection state and scan every holdings page automatically.
+- Verification (2026-11-03): Production deploy 41738565118 succeeded at commit 01da9622 with healthy readiness checks. The live wallet-token API returned 48 balances carrying the requested wallet address. In the connected Chrome Stable, cards appeared with edition counts, the Neighvember 2026 badge appeared on a November mint, and the mint-season selector narrowed the view to that horse before All horses restored the broader Stable.
+- Score: P1(4)+C1/F5/S0=10; the defect blocked owned-horse actions across Horf.
 
 ### WTF-BB-775 - An overlong event tag blocks HORSE Market origination
 
