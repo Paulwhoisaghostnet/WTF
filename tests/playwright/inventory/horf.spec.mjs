@@ -303,11 +303,32 @@ test.describe("Horf horse trading", () => {
     await seedTrader(request);
     const observedAddresses = [];
     await mockSeason(page, observedAddresses);
+    await page.setViewportSize({ width: 1440, height: 900 });
 
     await page.goto("/horf");
 
     const app = page.locator("[data-horf-app]");
     await expect(app).toBeVisible();
+    const frame = page.locator("[data-horf-frame]");
+    const leftNav = frame.locator("[data-horf-left-nav]");
+    const primary = frame.locator("[data-horf-primary]");
+    const rightRail = frame.locator("[data-horf-right-rail]");
+    await expect(frame).toBeVisible();
+    await expect(leftNav.getByRole("link", { name: "Open Range" })).toBeVisible();
+    await expect(rightRail).toContainText("Race leader");
+    await expect(page.locator("[data-wtf-desktop]")).toHaveCount(0);
+    await expect(page.locator("[data-bug-report-trigger]")).toHaveCount(0);
+    const layout = await frame.evaluate((element) => {
+      const bounds = element.getBoundingClientRect();
+      const left = element.querySelector("[data-horf-left-nav]").getBoundingClientRect();
+      const center = element.querySelector("[data-horf-primary]").getBoundingClientRect();
+      const right = element.querySelector("[data-horf-right-rail]").getBoundingClientRect();
+      return { width: bounds.width, leftRight: left.right, centerLeft: center.left,
+        centerRight: center.right, centerWidth: center.width, rightLeft: right.left };
+    });
+    expect(layout.leftRight).toBeLessThanOrEqual(layout.centerLeft + 1);
+    expect(layout.centerWidth).toBeGreaterThanOrEqual(layout.width * 0.75 - 1);
+    expect(layout.rightLeft).toBeGreaterThanOrEqual(layout.centerRight - 1);
     await expect(app.locator('[data-horf-region="intro"]')).toContainText(/horse trader/i);
     await expect(app.locator('[data-horf-region="intro"]')).toContainText("Find other riders");
     await expect(app.locator('[data-horf-region="intro"]')).toContainText("recent trades");
@@ -331,14 +352,29 @@ test.describe("Horf horse trading", () => {
     expect(observedAddresses).toContain(null);
     await page.screenshot({ path: "test-results/horf-race-desktop.png", fullPage: true });
     await page.setViewportSize({ width: 390, height: 844 });
+    await expect(rightRail).toBeHidden();
     await page.screenshot({ path: "test-results/horf-race-narrow.png", fullPage: true });
+    await poster.screenshot({ path: "test-results/horf-race-narrow-poster.png" });
     expect(await app.evaluate((element) => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(1);
+    await expect(leftNav).toBeVisible();
+    const updates = primary.getByRole("button", { name: "Trail updates" });
+    await updates.focus();
+    await page.keyboard.press("Enter");
+    await expect(updates).toHaveAttribute("aria-expanded", "true");
+    await expect(rightRail).toContainText("Guest rider");
+    await expect(rightRail).toBeVisible();
+    await page.screenshot({ path: "test-results/horf-race-narrow-rail.png" });
+    await page.keyboard.press("Escape");
+    await expect(rightRail).toBeHidden();
     const firstLane = app.locator("[data-horf-lane]").first();
     await expect(firstLane).not.toBeInViewport();
     await app.getByRole("button", { name: "Find horse traders" }).focus();
     await page.keyboard.press("Enter");
     await expect(firstLane).toBeInViewport();
     await page.screenshot({ path: "test-results/horf-race-narrow-lanes.png", fullPage: true });
+    await leftNav.getByRole("link", { name: "Open Range" }).click();
+    await expect(page).toHaveURL(/\/horf\/open-range\?season=current-2026$/);
+    await expect(page.locator("[data-horf-open-range]")).toBeVisible();
   });
 
   test("shows the connected trader's receipts, return ledger, and Objkt token links", async ({ page, request }) => {

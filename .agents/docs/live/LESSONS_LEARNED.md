@@ -13796,3 +13796,13 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: A visible desktop icon could be moved, but its position reset after settings were saved; the unrelated release could not pass its exact-head gate.
 
 **Rule**: When adding a native desktop icon, add its key to the shared persisted-layout registry and expected test fixture in the same change. Run both shared layout and desktop icon tests before promotion.
+
+---
+
+## 2026-11-03 - Constrain horse artwork inside reward panels
+
+**What happened**: The first modern Horf poster let its horse portrait overlap the Neighvember title and 10 $HORSE reward on a desktop viewport. Text assertions passed because the words remained in the DOM.
+
+**Why it mattered**: The event name and reward were present but hard to read in the opening view.
+
+**Rule**: Bound decorative artwork inside its own panel, inspect the rendered desktop and narrow layouts, and check that key reward copy is visibly clear before shipping.
