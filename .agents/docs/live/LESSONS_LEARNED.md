@@ -14026,3 +14026,13 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: A green production health check could not substitute for the independent release gates, and the stale generated reference hid new HORSE Market configuration from the environment inventory.
 
 **Rule**: After integrating new source files or environment references, regenerate `docs/reference/environment-variables.md` from the exact candidate tree and run its deterministic check and policy test before pushing main. Require the replacement Quality Gates run to pass before calling the release verified.
+
+---
+
+## 2026-11-03 - Register Horf subroutes in both browser route manifests
+
+**What happened**: Ten Horf subroutes were added to `PAGE_DEFS` and the inventory, but not to shared `BROWSER_ROUTE_META`. Main Quality Gates reached the aggregate unit suite and failed the route sync invariant.
+
+**Why it mattered**: Shared route discovery and access checks did not represent all public Horf pages, and a green production deploy still had a red independent quality signal.
+
+**Rule**: When adding a browser route, mirror its pattern, authentication gate, and title in `BROWSER_ROUTE_META` in the same change. Run the route sync and access tests before pushing the release candidate.
