@@ -813,6 +813,7 @@ export const DOMAIN_WORKFLOWS = [
       "horf.race.viewed",
       "horf.navigation.selected",
       "horf.context_rail.opened",
+      "horf.wtf_home.opened",
       "swap.submitted",
     ],
     behaviorAssertionIds: ["gameshow.private-project-pages"],

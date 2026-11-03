@@ -87,6 +87,12 @@ const Rail = styled.nav`
   overflow-y: auto;
   border-right: 1px solid #294446;
   a { text-decoration: none; }
+  .wtf-origin { display: block; margin: 0 2px 17px; padding: 9px 8px 10px; border: 1px solid #395857; border-radius: 12px; background: #203a39; color: #f8fbf8; }
+  .wtf-origin:hover { border-color: var(--horf-coral); background: #2a4845; }
+  .wtf-mark { display: block; color: #fff; font: 800 27px/1 var(--horf-display); letter-spacing: -.055em; }
+  .wtf-mark span { margin-left: 2px; color: var(--horf-coral); font-size: 12px; letter-spacing: -.02em; }
+  .wtf-statement { display: block; margin-top: 5px; color: #b9d1c8; font-size: 9px; line-height: 1.2; }
+  .wtf-statement strong { display: block; margin-top: 2px; color: #fff; font-weight: 800; }
   .brand { display: flex; align-items: center; gap: 8px; padding: 4px 6px 24px; color: #fff; font: 700 clamp(22px, 2vw, 32px)/1 var(--horf-display); letter-spacing: -0.03em; }
   .brand img { width: 34px; height: 34px; object-fit: contain; }
   .brand small { display: block; color: #a9c6be; font: 700 9px/1.1 var(--horf-font); letter-spacing: .08em; text-transform: uppercase; }
@@ -102,6 +108,10 @@ const Rail = styled.nav`
   @media (max-width: 1199px) {
     align-items: center;
     padding: 16px 5px 12px;
+    .wtf-origin { width: 54px; margin: 0 0 12px; padding: 7px 3px 8px; text-align: center; }
+    .wtf-mark { font-size: 20px; }
+    .wtf-mark span { font-size: 9px; }
+    .wtf-statement { font-size: 7px; line-height: 1.08; }
     .brand { padding: 1px 0 18px; }
     .brand img { width: 38px; height: 38px; }
     .brand span, .brand small, .nav-caption, .nav-label { display: none; }
@@ -109,6 +119,7 @@ const Rail = styled.nav`
     .links a, .exit { width: 48px; justify-content: center; padding: 8px 0; }
     .nav-icon { flex-basis: 22px; font-size: 18px; }
   }
+  @media (max-width: 600px) { .wtf-origin { width: 52px; } }
 `;
 
 const Primary = styled.div`
@@ -263,9 +274,18 @@ export function HorfFrame({ title, children, aside }: HorfFrameProps) {
     setAsideOpen(false);
   }
 
+  function openWtfHome(event: MouseEvent<HTMLAnchorElement>) {
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return;
+    event.preventDefault();
+    logClientSystemEvent({ eventType: "horf.wtf_home.opened", message: "WTF OS home opened from Horf" });
+    setAsideOpen(false);
+    navigate("/");
+  }
+
   return <Frame data-horf-frame>
     <SkipLink href="#horf-main-content">Skip to horse trading content</SkipLink>
     <Rail data-horf-left-nav aria-label="Horf navigation" inert={asideOpen}>
+      <a className="wtf-origin" data-horf-wtf-home href="/" onClick={openWtfHome} aria-label="Brought to you by wtfOS.app — visit WTF OS home" title="Visit wtfOS.app"><span className="wtf-mark" aria-hidden="true">WTF<span>OS</span></span><span className="wtf-statement">Brought to you by <strong>wtfOS.app</strong></span></a>
       <a className="brand" href="/horf" onClick={(event) => navigateTo(event, "/horf")} aria-label="Horf home"><img src="/horf-art/galloping-horse.webp" alt="" /><span>HORF<small>Horse trading</small></span></a>
       <span className="nav-caption">The trails</span>
       <div className="links">{links.map((link) => {

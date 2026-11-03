@@ -1,0 +1,49 @@
+{
+  "kind": "mainnet-origination-injection-reconciliation",
+  "network": "mainnet",
+  "chainId": "NetXdQprcVkpaWU",
+  "observedAt": "2026-11-03T20:02:52Z",
+  "attempt": {
+    "rpcUrl": "https://tezos-mainnet.octez.io/",
+    "reportedInjectionResult": "HTTP 504 at 2026-11-03T20:00:02Z",
+    "journalPath": "/var/lib/wtf/wtfiap-prepaid-mainnet-proof/origination.json",
+    "journalStatus": "prepared",
+    "preparedLevel": 15658984,
+    "journalHasOperationHash": false,
+    "source": "tz1hNbUXWdjPpUuGK3tMWM8uSJzBBGonWB5u"
+  },
+  "observations": {
+    "primaryHead": {
+      "level": 15659024,
+      "timestamp": "2026-11-03T20:02:49Z",
+      "sourceCounter": "209524167",
+      "sourceMempoolOperationCount": 0
+    },
+    "fallback": {
+      "rpcUrl": "https://tcinfra.net/rpc/tezos/mainnet",
+      "preparedLevelSourceCounter": "209524167",
+      "headSourceCounter": "209524167",
+      "sourceMempoolOperationCount": 0
+    },
+    "tzkt": {
+      "sourceOriginationsFromPreparedLevel": 0,
+      "latestSourceTransaction": {
+        "level": 15648120,
+        "timestamp": "2026-11-03T01:40:19Z",
+        "counter": 209524167,
+        "status": "applied"
+      }
+    }
+  },
+  "sourceUrls": [
+    "https://tezos-mainnet.octez.io/chains/main/blocks/head/header",
+    "https://tezos-mainnet.octez.io/chains/main/blocks/head/context/contracts/tz1hNbUXWdjPpUuGK3tMWM8uSJzBBGonWB5u/counter",
+    "https://tezos-mainnet.octez.io/chains/main/mempool/pending_operations",
+    "https://tcinfra.net/rpc/tezos/mainnet/chains/main/blocks/15658984/context/contracts/tz1hNbUXWdjPpUuGK3tMWM8uSJzBBGonWB5u/counter",
+    "https://tcinfra.net/rpc/tezos/mainnet/chains/main/blocks/head/context/contracts/tz1hNbUXWdjPpUuGK3tMWM8uSJzBBGonWB5u/counter",
+    "https://tcinfra.net/rpc/tezos/mainnet/chains/main/mempool/pending_operations",
+    "https://api.tzkt.io/v1/operations/originations?sender=tz1hNbUXWdjPpUuGK3tMWM8uSJzBBGonWB5u&level.ge=15658984&limit=10",
+    "https://api.tzkt.io/v1/operations/transactions?sender=tz1hNbUXWdjPpUuGK3tMWM8uSJzBBGonWB5u&limit=1&sort.desc=id"
+  ],
+  "assessment": "No applied or pending source operation was observed through level 15659024, forty blocks after the journal's prepared level. The original journal remains untouched; a distinct fallback journal is required for any fresh origination. This observation does not prove that no injection was ever attempted."
+}

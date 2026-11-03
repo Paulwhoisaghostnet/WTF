@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "network": "mainnet",
+  "chainId": "NetXdQprcVkpaWU",
+  "status": "applied",
+  "escrowContract": "KT1Nk9Sxz7P2Q2eb45AgJiMp3jnbrYT3J4Fm",
+  "operationHash": "opRm4oXAr9hZ8EExy5ghSay2rdFyVUR7bh4DVCHQewjUnkWr2Fr",
+  "inclusion": {
+    "level": 15659116,
+    "blockHash": "BLLMdBv3iekr8CKzJ6cRZXArxtyMfMnEUDGFYatnhRUtjntscvZ"
+  },
+  "finalized": {
+    "level": 15659116,
+    "blockHash": "BLLMdBv3iekr8CKzJ6cRZXArxtyMfMnEUDGFYatnhRUtjntscvZ"
+  },
+  "canonicalTypedScriptSha256": "26ff7d8db669e2eeefcdeacb8bd38d113ff402a2afb3aed819ace25053161c2f",
+  "artifactSha256": "45116ef39837aebaf08eabb4fab504c32839c7beb8d501420fd15faf746230e0",
+  "source": "tz1hNbUXWdjPpUuGK3tMWM8uSJzBBGonWB5u",
+  "treasuryAddress": "tz1cVRngZw42KZ42VQF2ZCy2CJSPNG3H7Cgt",
+  "preflight": {
+    "rpcUrl": "https://tcinfra.net/rpc/tezos/mainnet",
+    "level": 15659103,
+    "codeTypechecked": true,
+    "storageTypechecked": true,
+    "sourceBalanceMutez": "99882014",
+    "estimate": {
+      "suggestedFeeMutez": "11778",
+      "burnFeeMutez": "2829500",
+      "gasLimit": "6168",
+      "storageLimit": "11318",
+      "requiredMutez": "2841278",
+      "affordable": true
+    }
+  },
+  "storageConstants": {
+    "houseFeeMutez": "500000",
+    "entryQuantumMutez": "10000",
+    "creditDepositedMutez": "0",
+    "creditSpentMutez": "0",
+    "totalCreditMutez": "0"
+  },
+  "evidence": {
+    "sourceJournal": "/var/lib/wtf/wtfiap-prepaid-mainnet-fallback-proof/origination.json",
+    "operationUrl": "https://tzkt.io/opRm4oXAr9hZ8EExy5ghSay2rdFyVUR7bh4DVCHQewjUnkWr2Fr",
+    "contractUrl": "https://tzkt.io/KT1Nk9Sxz7P2Q2eb45AgJiMp3jnbrYT3J4Fm"
+  },
+  "observedOnChain": {
+    "status": "applied",
+    "originatedContract": "KT1Nk9Sxz7P2Q2eb45AgJiMp3jnbrYT3J4Fm",
+    "blockLevel": 15659116,
+    "blockHash": "BLLMdBv3iekr8CKzJ6cRZXArxtyMfMnEUDGFYatnhRUtjntscvZ"
+  }
+}

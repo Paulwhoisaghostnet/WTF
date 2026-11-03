@@ -668,6 +668,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "horf.race.viewed",
       "horf.navigation.selected",
       "horf.context_rail.opened",
+      "horf.wtf_home.opened",
       "horf.trader.viewed",
       "horf.trader_status.viewed",
       "horf.blacklist.added",
