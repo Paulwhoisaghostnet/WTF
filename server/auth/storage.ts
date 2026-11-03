@@ -1,7 +1,8 @@
 import { eq, and, gt, lt } from "drizzle-orm";
 import { db } from "../db";
-import { users, userWallets, walletAuthNonces } from "@shared/schema";
+import { users, userDesktopSettings, userWallets, walletAuthNonces } from "@shared/schema";
 import { isSystemUserRole, type UserRole } from "@shared/types";
+import { DEFAULT_DESKTOP_APPEARANCE } from "@shared/desktop";
 import { randomBytes } from "crypto";
 import { ensureUserRole, listUserRoles, setUserRoles } from "../lib/user-roles";
 import type { WalletProofAction } from "./wallet-verify";
@@ -54,8 +55,16 @@ export async function createUser(data: {
 }) {
   const { role, ...insertData } = data;
   const legacyRole = isSystemUserRole(role) ? role : "witness";
-  const [user] = await db.insert(users).values({ ...insertData, role: legacyRole }).returning();
-  if (user) await ensureUserRole(user.id, role || user.role);
+  const user = await db.transaction(async (tx) => {
+    const [created] = await tx.insert(users).values({ ...insertData, role: legacyRole }).returning();
+    if (!created) throw new Error("Failed to create user");
+    await tx.insert(userDesktopSettings).values({
+      userId: created.id,
+      appearance: { ...DEFAULT_DESKTOP_APPEARANCE, desktopIconMode: "starter" },
+    });
+    return created;
+  });
+  await ensureUserRole(user.id, role || user.role);
   return withRoleSet(user);
 }
 

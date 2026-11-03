@@ -761,11 +761,12 @@ export function buildDesktopIconDefs(
   const defs: DesktopIconDef[] = [
     {
       key: "recycle-bin",
-      label: "Recycle Bin",
+      label: "Wastebasket",
       icon: "🗑️",
       defaultX: 12,
       defaultY: 12,
       enabled: true,
+      openPath: "/wastebasket",
     },
     {
       key: "mission-control",

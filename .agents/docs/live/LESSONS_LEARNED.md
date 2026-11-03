@@ -13916,3 +13916,23 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: The deployed market could have appeared unconfigured while its Mainnet contract was ready.
 
 **Rule**: Let Horf's explicit Mainnet chain checks control Horf market availability. Do not gate a Mainnet sub-app on the desktop's unrelated default network setting; test the mixed-network configuration.
+
+---
+
+## 2026-11-03 - Keep first-login guidance unread until it is opened
+
+**What happened**: The desktop offered every native app to a new account, while its Recycle Bin could not open and shortcuts disappeared permanently when removed. Adding an admin welcome DM exposed another issue: Inbox fetched the first conversation's history as soon as it mounted, and the history endpoint marked that DM read before the new user opened it.
+
+**Why it mattered**: The first desktop was hard to scan, shortcut removal was irreversible, and the welcome indicator could vanish while a user merely previewed Inbox.
+
+**Rule**: Persist a starter icon mode when creating the account, keep app discovery in Stuffs, move shortcuts into a per-account Wastebasket with restore and confirmed emptying, and fetch DM history only after its conversation is opened. Browser tests must prove the welcome remains unread in the Inbox preview and becomes read after opening.
+
+---
+
+## 2026-11-03 - Keep inventory handles limited to canonical events
+
+**What happened**: The first starter welcome-DM inventory row put its metadata source marker in backticks inside the Primary handles cell. The inventory parser treated that marker as an event handle and failed coverage.
+
+**Why it mattered**: A prose marker looked like an unregistered interaction, blocking the required inventory gate without identifying a real missing event.
+
+**Rule**: List only canonical event handles in the Primary handles cell. Describe metadata markers in plain text outside handle syntax and rerun inventory coverage after editing the row.

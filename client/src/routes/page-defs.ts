@@ -32,6 +32,9 @@ const RecoveryModePage = lazy(() =>
 const FileManagerPage = lazy(() =>
   import("../pages/FileManager").then((m) => ({ default: m.FileManager }))
 );
+const WastebasketPage = lazy(() =>
+  import("../pages/Wastebasket").then((m) => ({ default: m.Wastebasket }))
+);
 const SystemSettingsPage = lazy(() =>
   import("../pages/SystemSettings").then((m) => ({ default: m.SystemSettings }))
 );
@@ -403,6 +406,13 @@ export const PAGE_DEFS: PageDef[] = [
     group: "desktop-os",
     startMenu: true,
     desktopIcon: true,
+  },
+  {
+    pattern: "/wastebasket",
+    component: WastebasketPage,
+    auth: true,
+    title: "Wastebasket",
+    group: "desktop-os",
   },
   {
     pattern: "/settings",

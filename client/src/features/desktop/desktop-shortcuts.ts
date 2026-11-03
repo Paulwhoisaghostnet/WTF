@@ -1,6 +1,7 @@
 export const START_MENU_SHORTCUT_MIME = "application/x-wtf-start-menu-item";
 export const DESKTOP_SHORTCUT_EVENT = "wtf-os:create-desktop-shortcut";
 export const DESKTOP_SHORTCUT_STORAGE_PREFIX = "wtf-os.desktop-shortcuts.v1";
+export const DESKTOP_SHORTCUT_LIMIT = 48;
 const SHORTCUT_ICON_W = 68;
 const SHORTCUT_ICON_H = 66;
 
@@ -132,5 +133,5 @@ export function normalizeDesktopShortcuts(
       createdAt,
     });
   }
-  return shortcuts.slice(0, 48);
+  return shortcuts.slice(0, DESKTOP_SHORTCUT_LIMIT);
 }

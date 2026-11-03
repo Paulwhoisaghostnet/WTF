@@ -10,52 +10,86 @@ type LoginAccountsResponse = {
 const Counter = styled.aside`
   position: absolute;
   right: 16px;
-  bottom: 16px;
+  top: 16px;
   z-index: 0;
-  min-width: 190px;
-  max-width: calc(100% - 32px);
-  border: 1px solid #101010;
-  background: var(--wtf-window-color, #c0c0c0);
-  color: var(--wtf-text-color, #101010);
-  box-shadow: inset 1px 1px 0 #ffffff, inset -1px -1px 0 #777777, 2px 2px 0 rgba(0, 0, 0, 0.35);
+  box-sizing: border-box;
+  width: 260px;
+  max-width: calc(100% - 100px);
+  border: 2px solid #161616;
+  background: #f4d247;
+  color: #161616;
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.52);
   font-family: var(--wtf-shell-font, "MS Sans Serif", "Segoe UI", Tahoma, sans-serif);
   pointer-events: none;
   user-select: none;
 
+  &::before,
+  &::after {
+    content: "";
+    display: block;
+    height: 6px;
+    background: repeating-linear-gradient(135deg, #161616 0 7px, #f4d247 7px 14px);
+  }
+
   @media (max-width: 600px) {
     right: 10px;
-    bottom: 10px;
-    min-width: 160px;
-    max-width: calc(100% - 20px);
+    top: 10px;
+    width: 240px;
+    max-width: calc(100% - 100px);
+
+    &::before,
+    &::after {
+      height: 4px;
+    }
   }
 `;
 
 const Title = styled.h2`
   margin: 0;
-  padding: 5px 8px;
-  background: var(--wtf-active-title, #000080);
-  color: var(--wtf-active-title-text, #ffffff);
-  font-size: 13px;
-  font-weight: 700;
-  line-height: 1.2;
+  padding: 5px 8px 4px;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.15;
+
+  @media (max-width: 600px) {
+    padding: 3px 6px 2px;
+  }
 `;
 
 const Body = styled.div`
   display: flex;
-  align-items: baseline;
-  gap: 8px;
-  padding: 7px 8px 8px;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  margin: 0 6px 5px;
+  padding: 2px 8px;
+  border: 2px inset #777;
+  background: #171a16;
+  color: #f9f4db;
+
+  @media (max-width: 600px) {
+    min-height: 32px;
+    margin: 0 5px 3px;
+    padding: 1px 6px;
+  }
 `;
 
 const Value = styled.span`
-  font-size: 30px;
-  font-weight: 700;
+  min-width: 4ch;
+  text-align: center;
+  font-size: 34px;
+  font-weight: 800;
   line-height: 1;
   font-variant-numeric: tabular-nums;
+
+  @media (max-width: 600px) {
+    font-size: 30px;
+  }
 `;
 
 const Period = styled.span`
-  font-size: 13px;
+  margin-left: 8px;
+  font-size: 12px;
   line-height: 1.2;
 `;
 
@@ -78,7 +112,7 @@ export function DesktopLoginAccounts() {
 
   const count = query.data?.uniqueAccounts;
   const value = query.isError ? "—" : count === undefined ? "…" : count.toLocaleString();
-  const period = query.isError ? "Unavailable" : query.isPending ? "Loading" : "Last 30 days";
+  const period = query.isError ? "Unavailable" : query.isPending ? "Loading" : null;
   const accessibleValue = query.isError
     ? "Account count unavailable"
     : count === undefined
@@ -87,7 +121,7 @@ export function DesktopLoginAccounts() {
 
   return (
     <Counter aria-label="Distinct accounts signed in to wtfOS in the last 30 days">
-      <Title>Accounts signed in</Title>
+      <Title>Unique users served (30 days):</Title>
       <Body>
         <Value
           data-testid="desktop-login-account-count"
@@ -97,7 +131,7 @@ export function DesktopLoginAccounts() {
         >
           {value}
         </Value>
-        <Period>{period}</Period>
+        {period ? <Period>{period}</Period> : null}
       </Body>
     </Counter>
   );
