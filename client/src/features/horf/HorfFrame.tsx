@@ -208,13 +208,16 @@ const Backdrop = styled.button`
 `;
 
 const links = [
-  { href: "/horf#horf-race", label: "The race", icon: "🏁", section: "race" },
-  { href: "/horf/open-range?season=current-2026", label: "Open Range", icon: "🐎", section: "range" },
-  { href: "/horf#horf-marshals-market", label: "Marshal’s Market", icon: "✦", section: "marshal" },
-  { href: "/horf#horf-outlaw-corral", label: "Outlaw Corral", icon: "↗", section: "outlaw" },
-  { href: "/horf#horf-personal-stable", label: "My stable", icon: "♞", section: "stable" },
-  { href: "/horf#horf-horse-send", label: "Send $HORSE", icon: "◈", section: "horse" },
-  { href: "/horf#horf-gifts", label: "Gifts & posse", icon: "♡", section: "gifts" },
+  { path: "/horf", label: "The race", icon: "🏁", section: "race" },
+  { path: "/horf/traders", label: "Find Other Traders", icon: "🧭", section: "traders" },
+  { path: "/horf/open-range", label: "Open Range", icon: "🐎", section: "range" },
+  { path: "/horf/marshals-market", label: "Marshal’s Market", icon: "✦", section: "marshal" },
+  { path: "/horf/outlaw-corral", label: "Outlaw Corral", icon: "↗", section: "outlaw" },
+  { path: "/horf/stable", label: "My stable", icon: "♞", section: "stable" },
+  { path: "/horf/send-horse", label: "Send $HORSE", icon: "◈", section: "horse" },
+  { path: "/horf/gifts", label: "Gifts", icon: "♡", section: "gifts" },
+  { path: "/horf/posse", label: "Posse", icon: "🤠", section: "posse" },
+  { path: "/horf/info", label: "Is It a Horse?", icon: "?", section: "info" },
 ];
 
 export function HorfFrame({ title, children, aside }: HorfFrameProps) {
@@ -222,10 +225,11 @@ export function HorfFrame({ title, children, aside }: HorfFrameProps) {
   const wm = useWindowManager();
   const pagePath = useContext(WindowPathContext);
   const [asideOpen, setAsideOpen] = useState(false);
+  const primaryRef = useRef<HTMLDivElement>(null);
   const updatesButtonRef = useRef<HTMLButtonElement>(null);
   const asideCloseRef = useRef<HTMLButtonElement>(null);
   const openedOnce = useRef(false);
-  const inRange = typeof window !== "undefined" && window.location.pathname.startsWith("/horf/open-range");
+  const pathname = typeof window !== "undefined" ? window.location.pathname : "/horf";
   const season = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("season") : null;
 
   useEffect(() => {
@@ -233,12 +237,7 @@ export function HorfFrame({ title, children, aside }: HorfFrameProps) {
     if (pagePath) wm.setTitle(pagePath, title);
   }, [pagePath, title]);
 
-  useEffect(() => {
-    const hash = window.location.hash.slice(1);
-    if (!hash) return;
-    const timer = window.setTimeout(() => document.getElementById(hash)?.scrollIntoView({ block: "start" }), 80);
-    return () => window.clearTimeout(timer);
-  }, [location]);
+  useEffect(() => { primaryRef.current?.scrollTo({ top: 0, behavior: "auto" }); }, [location]);
 
   useEffect(() => {
     if (!asideOpen) return;
@@ -264,13 +263,8 @@ export function HorfFrame({ title, children, aside }: HorfFrameProps) {
     if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return;
     event.preventDefault();
     const target = new URL(href, window.location.origin);
-    logClientSystemEvent({ eventType: "horf.navigation.selected", message: "Horf trail selected", metadata: { destination: target.pathname, section: target.hash.slice(1) || null } });
-    if (target.pathname === window.location.pathname) {
-      window.history.pushState(window.history.state, "", `${target.pathname}${target.search}${target.hash}`);
-      if (target.hash) document.getElementById(target.hash.slice(1))?.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
-    } else {
-      navigate(`${target.pathname}${target.search}${target.hash}`);
-    }
+    logClientSystemEvent({ eventType: "horf.navigation.selected", message: "Horf trail selected", metadata: { destination: target.pathname, section: links.find((link) => link.path === target.pathname)?.section ?? null } });
+    navigate(`${target.pathname}${target.search}`);
     setAsideOpen(false);
   }
 
@@ -286,16 +280,16 @@ export function HorfFrame({ title, children, aside }: HorfFrameProps) {
     <SkipLink href="#horf-main-content">Skip to horse trading content</SkipLink>
     <Rail data-horf-left-nav aria-label="Horf navigation" inert={asideOpen}>
       <a className="wtf-origin" data-horf-wtf-home href="/" onClick={openWtfHome} aria-label="Brought to you by wtfOS.app — visit WTF OS home" title="Visit wtfOS.app"><span className="wtf-mark" aria-hidden="true">WTF<span>OS</span></span><span className="wtf-statement">Brought to you by <strong>wtfOS.app</strong></span></a>
-      <a className="brand" href="/horf" onClick={(event) => navigateTo(event, "/horf")} aria-label="Horf home"><img src="/horf-art/galloping-horse.webp" alt="" /><span>HORF<small>Horse trading</small></span></a>
+      <a className="brand" href={`/horf${season ? `?season=${encodeURIComponent(season)}` : ""}`} onClick={(event) => navigateTo(event, `/horf${season ? `?season=${encodeURIComponent(season)}` : ""}`)} aria-label="Horf home"><img src="/horf-art/galloping-horse.webp" alt="" /><span>HORF<small>Horse trading</small></span></a>
       <span className="nav-caption">The trails</span>
       <div className="links">{links.map((link) => {
-        const href = link.section === "range" && season ? `/horf/open-range?season=${encodeURIComponent(season)}` : link.href;
-        return <a key={link.section} href={href} onClick={(event) => navigateTo(event, href)} aria-label={link.label} title={link.label} aria-current={inRange ? link.section === "range" ? "page" : undefined : link.section === "race" ? "page" : undefined}><span className="nav-icon" aria-hidden="true">{link.icon}</span><span className="nav-label">{link.label}</span></a>;
+        const href = `${link.path}${season ? `?season=${encodeURIComponent(season)}` : link.section === "range" ? "?season=current-2026" : ""}`;
+        return <a key={link.section} data-horf-nav={link.section} href={href} onClick={(event) => navigateTo(event, href)} aria-label={link.label} title={link.label} aria-current={pathname === link.path || (link.section === "traders" && pathname.startsWith("/horf/traders/")) ? "page" : undefined}><span className="nav-icon" aria-hidden="true">{link.icon}</span><span className="nav-label">{link.label}</span></a>;
       })}</div>
       <div className="spacer" />
       <a className="exit" href="/" aria-label="Back to WTF OS" title="Back to WTF OS"><span className="nav-icon" aria-hidden="true">↙</span><span className="nav-label">WTF OS</span></a>
     </Rail>
-    <Primary data-horf-primary inert={asideOpen}>
+    <Primary data-horf-primary ref={primaryRef} inert={asideOpen}>
       <Topline><div><span className="micro">Tezos horse trading</span><h1>{title}</h1></div><button ref={updatesButtonRef} type="button" aria-controls="horf-context-rail" aria-expanded={asideOpen} onClick={() => { setAsideOpen(true); logClientSystemEvent({ eventType: "horf.context_rail.opened", message: "Horf trail updates opened" }); }}><span aria-hidden="true">✦</span>Trail updates</button></Topline>
       <Body id="horf-main-content">{children}</Body>
     </Primary>

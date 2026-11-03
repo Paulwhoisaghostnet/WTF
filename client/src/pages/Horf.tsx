@@ -1,18 +1,23 @@
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { Link, useLocation } from "wouter";
 import styled from "styled-components";
 import { HorfFrame } from "../features/horf/HorfFrame";
 import { HorfStables } from "../features/horf/HorfStables";
 import { HorfHorseSend } from "../features/horf/HorfHorseSend";
 import { HorfGifts } from "../features/horf/HorfGifts";
+import { HorfPosse } from "../features/horf/HorfPosse";
+import { HorfTradeHorseCarousel } from "../features/horf/HorfTradeHorseCarousel";
 import { HorfTraderStatus } from "../features/horf/HorfTraderStatus";
 import { HorfPersonalStable } from "../features/horf/HorfPersonalStable";
 import { HorfInspectorDesk } from "../features/horf/HorfInspectorDesk";
 import { formatHorseAmount } from "../features/horf/recipient-input";
+import { objktTokenUrl } from "../features/horf/token-input";
 import { useHorfWallet } from "../features/horf/useHorfWallet";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth-context";
 import { logClientSystemEvent } from "../lib/system-log";
+import { advanceResolvedMediaFallback, resolveTokenThumbnail } from "../lib/media-resolve";
 import { useWindowManager, WindowPathContext } from "../lib/window-context";
 
 const CURRENT_SEASON_KEY = "current-2026";
@@ -83,6 +88,33 @@ type HorfSeasonResponse = {
   } | null;
 };
 
+type PublicOffer = {
+  id: number;
+  ownerAddress: string;
+  tokenContract: string;
+  tokenId: string;
+  amount: string;
+  acceptedTokenPolicy: "marshal_only" | "any_qualifying";
+  name: string | null;
+  image: string | null;
+};
+
+type PublicHeldHorse = {
+  contract: string;
+  tokenId: string;
+  balance: string;
+  name: string | null;
+  image: string | null;
+  description: string | null;
+  creatorAddress: string | null;
+};
+
+type PublicHorsePage = {
+  address: string;
+  items: PublicHeldHorse[];
+  pagination: { hasMore: boolean; nextOffset: number };
+};
+
 function parseSeasonResponse(value: unknown): HorfSeasonResponse {
   const data = value as Partial<HorfSeasonResponse> | null;
   const validSeason = (season: unknown): season is HorfSeason => {
@@ -121,7 +153,7 @@ function parseSeasonResponse(value: unknown): HorfSeasonResponse {
 }
 
 function isHorfLocation(): boolean {
-  return typeof window !== "undefined" && /(?:^|\/)horf\/?$/.test(window.location.pathname);
+  return typeof window !== "undefined" && /^\/horf(?:\/|$)/.test(window.location.pathname);
 }
 
 function readSeasonKeyFromUrl(): string {
@@ -580,6 +612,63 @@ const TraderList = styled.ul`
   strong { white-space: nowrap; }
 `;
 
+const DirectoryGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px;
+`;
+
+const DirectoryCard = styled.article`
+  min-width: 0;
+  padding: 20px;
+  border: 1px solid var(--horf-line);
+  border-radius: 17px;
+  background: #fff;
+  box-shadow: 0 8px 24px #183d3210;
+  .rider-rank { display: block; margin-bottom: 10px; color: #b95840; font-size: 10px; font-weight: 850; letter-spacing: .11em; text-transform: uppercase; }
+  a { display: block; color: #173d36; font: 750 22px/1.15 var(--horf-display, sans-serif); overflow-wrap: anywhere; }
+  p { margin: 9px 0 0; color: #5b6d66; font-size: 13px; }
+  strong { color: #144b3d; }
+`;
+
+const ProfileTabs = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 18px 0 20px;
+  button { min-height: 43px; padding: 8px 16px; border: 1px solid #cbd8d0; border-radius: 999px; background: #fff; color: #28443d; font-weight: 800; cursor: pointer; }
+  button[aria-selected="true"] { border-color: #153e35; background: #153e35; color: #fff; }
+`;
+
+const ProfileHorseGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(205px, 1fr));
+  gap: 16px;
+`;
+
+const ProfileHorseCard = styled.article`
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--horf-line);
+  border-radius: 17px;
+  background: #fff;
+  .art { display: grid; place-items: center; height: 205px; background: #e4eee7; }
+  img { display: block; width: 100%; height: 100%; object-fit: contain; }
+  .copy { padding: 14px 16px 17px; }
+  h3 { margin: 0 0 8px; color: #183e36; font: 750 19px/1.2 var(--horf-display, sans-serif); overflow-wrap: anywhere; }
+  p { margin: 0 0 8px; color: #5b6d66; font-size: 12px; line-height: 1.45; }
+  a { font-size: 12px; font-weight: 800; }
+`;
+
+const HorseTestList = styled.ul`
+  margin: 16px 0 0;
+  padding-left: 21px;
+  color: #425a51;
+  font-size: 14px;
+  line-height: 1.7;
+  li + li { margin-top: 8px; }
+`;
+
 const ReceiptList = styled.ol`
   list-style: none;
   margin: 0;
@@ -656,6 +745,12 @@ function profileUrl(address: string): string {
   return `https://objkt.com/profile/${encodeURIComponent(address)}`;
 }
 
+function horfTraderUrl(address: string): string {
+  const season = typeof window === "undefined" ? CURRENT_SEASON_KEY
+    : new URLSearchParams(window.location.search).get("season") || CURRENT_SEASON_KEY;
+  return `/horf/traders/${encodeURIComponent(address)}?season=${encodeURIComponent(season)}`;
+}
+
 function tokenUrl(token: HorfReceipt["token"]): string {
   return `https://objkt.com/tokens/${encodeURIComponent(token.contract)}/${encodeURIComponent(token.tokenId)}`;
 }
@@ -666,10 +761,17 @@ function HorseGlyph() {
 
 function TraderLink({ address, name }: { address: string; name?: string | null }) {
   return (
-    <a href={profileUrl(address)} target="_blank" rel="noopener noreferrer" title={`Open ${name?.trim() || address} on Objkt`}>
+    <Link href={horfTraderUrl(address)} data-horf-trader-profile-link title={`View ${name?.trim() || address} on Horf`}>
       {traderName(name, address)}
-    </a>
+    </Link>
   );
+}
+
+function ProfileArt({ image, name }: { image: string | null; name: string }) {
+  const resolved = image ? resolveTokenThumbnail({ thumbnail: image }) : null;
+  return <img src={resolved?.src ?? "/horf-art/horse-gallop-photo.jpg"} alt={`${name} horse token artwork`} onError={(event) => {
+    if (!resolved || !advanceResolvedMediaFallback(event.currentTarget, resolved)) event.currentTarget.src = "/horf-art/horse-gallop-photo.jpg";
+  }} />;
 }
 
 function TraderListPanel({ title, description, rows, empty, region }: {
@@ -699,14 +801,37 @@ function TraderListPanel({ title, description, rows, empty, region }: {
 
 export function Horf() {
   const { address, isGuest, isConnecting, walletError, guestSessionLoading, localWalletAddress, connectWallet, disconnectWallet } = useHorfWallet();
+  const [location, navigate] = useLocation();
   const { isAdmin } = useAuth();
   const windowManager = useWindowManager();
   const pagePath = useContext(WindowPathContext);
-  const raceRef = useRef<HTMLElement | null>(null);
+  const routePath = location.split("?")[0]?.split("#")[0] || "/horf";
+  const profileAddress = routePath.match(/^\/horf\/traders\/([^/]+)$/)?.[1] ?? null;
+  const validProfileAddress = profileAddress && /^tz[1-4][1-9A-HJ-NP-Za-km-z]{33}$/.test(profileAddress) ? profileAddress : null;
+  const routeSection = routePath === "/horf/traders" ? "traders"
+    : profileAddress ? "profile"
+    : routePath === "/horf/info" ? "info"
+    : routePath === "/horf/marshals-market" ? "marshal"
+    : routePath === "/horf/outlaw-corral" ? "outlaw"
+    : routePath === "/horf/stable" ? "stable"
+    : routePath === "/horf/send-horse" ? "horse"
+    : routePath === "/horf/posse" ? "posse"
+    : routePath === "/horf/gifts" ? "gifts" : "race";
+  const routeTitle = routeSection === "marshal" ? "Marshal’s Market"
+    : routeSection === "outlaw" ? "Outlaw Corral"
+    : routeSection === "stable" ? "My Stable"
+    : routeSection === "horse" ? "Send $HORSE"
+    : routeSection === "gifts" ? "Gifts"
+    : routeSection === "posse" ? "Posse"
+    : routeSection === "traders" ? "Find Other Traders"
+    : routeSection === "profile" ? "Trader Profile"
+    : routeSection === "info" ? "Is It a Horse?" : "Horf";
+  const traderFromUrl = typeof window === "undefined" ? null : new URLSearchParams(window.location.search).get("trader");
   const loggedViews = useRef(new Set<string>());
   const [selectedSeasonKey, setSelectedSeasonKey] = useState(readSeasonKeyFromUrl);
   const [seasonManifest, setSeasonManifest] = useState<HorfSeason[]>([]);
   const [statusAddress, setStatusAddress] = useState<string | null>(null);
+  const [profileTab, setProfileTab] = useState<"for-trade" | "all-horses">("for-trade");
   const query = useQuery({
     queryKey: ["horf", "season", selectedSeasonKey, address],
     queryFn: async () => {
@@ -726,6 +851,26 @@ export function Horf() {
     enabled: Boolean(address),
     refetchOnWindowFocus: true,
   });
+  const directoryOffersQuery = useQuery({
+    queryKey: ["horf", "directory-offers"],
+    queryFn: () => api.get<{ offers: PublicOffer[] }>("/api/horf/open-range/offers"),
+    enabled: routeSection === "traders",
+    refetchOnWindowFocus: true,
+  });
+  const profileOffersQuery = useQuery({
+    queryKey: ["horf", "trader-profile-offers", validProfileAddress],
+    queryFn: () => api.get<{ offers: PublicOffer[] }>(`/api/horf/traders/${encodeURIComponent(validProfileAddress!)}/offers`),
+    enabled: routeSection === "profile" && Boolean(validProfileAddress),
+    refetchOnWindowFocus: true,
+  });
+  const profileHorsesQuery = useInfiniteQuery({
+    queryKey: ["horf", "trader-profile-horses", validProfileAddress],
+    initialPageParam: 0,
+    queryFn: ({ pageParam }) => api.get<PublicHorsePage>(`/api/horf/traders/${encodeURIComponent(validProfileAddress!)}/horses?offset=${pageParam}`),
+    getNextPageParam: (page) => page.pagination.hasMore ? page.pagination.nextOffset : undefined,
+    enabled: routeSection === "profile" && Boolean(validProfileAddress) && profileTab === "all-horses",
+    refetchOnWindowFocus: true,
+  });
   const claimAlert = claimAlertQuery.data?.asOf && /^\d+$/.test(claimAlertQuery.data.claimableRaw) && BigInt(claimAlertQuery.data.claimableRaw) > 0n
     ? claimAlertQuery.data : null;
   const data = query.data;
@@ -736,6 +881,18 @@ export function Horf() {
     () => [...(data?.leaderboard ?? [])].sort((a, b) => b.trades - a.trades || a.address.localeCompare(b.address)),
     [data?.leaderboard],
   );
+  const directory = useMemo(() => {
+    const rows = new Map<string, { address: string; name: string | null; trades: number; offerCount: number }>();
+    for (const rider of leaderboard) rows.set(rider.address, { address: rider.address, name: rider.name, trades: rider.trades, offerCount: 0 });
+    for (const offer of directoryOffersQuery.data?.offers ?? []) {
+      const rider = rows.get(offer.ownerAddress) ?? { address: offer.ownerAddress, name: null, trades: 0, offerCount: 0 };
+      rider.offerCount += 1;
+      rows.set(offer.ownerAddress, rider);
+    }
+    return [...rows.values()].sort((a, b) => b.trades - a.trades || b.offerCount - a.offerCount || a.address.localeCompare(b.address));
+  }, [leaderboard, directoryOffersQuery.data?.offers]);
+  const profileRider = leaderboard.find((row) => row.address === validProfileAddress);
+  const profileHorses = profileHorsesQuery.data?.pages.flatMap((page) => page.items) ?? [];
   const leadTrades = leaderboard.reduce((lead, row) => Math.max(lead, row.trades), 1);
   const personal = address && data?.currentUser?.address === address
     ? data.currentUser
@@ -777,30 +934,58 @@ export function Horf() {
       loggedViews.current.add(`season:${key}`);
       logClientSystemEvent({ eventType: "horf.season.viewed", message: "Horf season opened", metadata: { season: data.season.label } });
     }
-    if (!loggedViews.current.has(`race:${key}`)) {
+    if (routeSection === "race" && !loggedViews.current.has(`race:${key}`)) {
       loggedViews.current.add(`race:${key}`);
       logClientSystemEvent({ eventType: "horf.race.viewed", message: "Horf race board viewed", metadata: { season: data.season.label } });
     }
-    if (personal && !loggedViews.current.has(`trader:${key}`)) {
+    if (routeSection === "stable" && personal && !loggedViews.current.has(`trader:${key}`)) {
       loggedViews.current.add(`trader:${key}`);
       logClientSystemEvent({ eventType: "horf.trader.viewed", message: "Horf trader ledger viewed", metadata: { season: data.season.label } });
     }
-  }, [address, data, personal]);
+  }, [address, data, personal, routeSection]);
 
-  function findTraders() {
-    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    raceRef.current?.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth", block: "start" });
-  }
+  useEffect(() => { setProfileTab("for-trade"); }, [profileAddress]);
 
-  function visitSection(id: string) {
-    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    document.getElementById(id)?.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth", block: "start" });
+  useEffect(() => {
+    const key = `${routeSection}:${profileAddress ?? ""}:${selectedSeasonKey}`;
+    if (loggedViews.current.has(key)) return;
+    if (routeSection === "traders") logClientSystemEvent({ eventType: "horf.traders.viewed", message: "Horf trader directory viewed", metadata: { seasonKey: selectedSeasonKey } });
+    else if (routeSection === "profile" && profileAddress) logClientSystemEvent({ eventType: "horf.trader_profile.viewed", message: "Horf trader profile viewed", metadata: { address: profileAddress, seasonKey: selectedSeasonKey } });
+    else if (routeSection === "info") logClientSystemEvent({ eventType: "horf.info.viewed", message: "Horf horse criteria viewed" });
+    else return;
+    loggedViews.current.add(key);
+  }, [routeSection, profileAddress, selectedSeasonKey]);
+
+  function navigateHorf(path: string, replace = false) {
+    navigate(`${path}?season=${encodeURIComponent(selectedSeasonKey)}`, { replace });
   }
 
   function viewTraderStatus(traderAddress: string) {
     setStatusAddress(traderAddress);
-    visitSection("horf-trader-status");
+    navigate(`/horf/outlaw-corral?season=${encodeURIComponent(selectedSeasonKey)}&trader=${encodeURIComponent(traderAddress)}`);
   }
+
+  function selectProfileTab(tab: "for-trade" | "all-horses") {
+    if (tab === profileTab) return;
+    setProfileTab(tab);
+    logClientSystemEvent({ eventType: "horf.trader_profile.tab_selected", message: "Horf trader horses tab selected", metadata: { address: profileAddress, tab } });
+  }
+
+  useEffect(() => {
+    if (routePath !== "/horf") return;
+    const oldHash = window.location.hash.slice(1);
+    const oldDestination: Record<string, string> = {
+      "horf-marshals-market": "/horf/marshals-market",
+      "horf-outlaw-corral": "/horf/outlaw-corral",
+      "horf-personal-stable": "/horf/stable",
+      "horf-horse-send": "/horf/send-horse",
+      "horf-gifts": "/horf/gifts",
+      "horf-posse": "/horf/posse",
+      "horf-trader-status": "/horf/outlaw-corral",
+    };
+    const destination = oldDestination[oldHash];
+    if (destination) navigateHorf(destination, true);
+  }, [routePath]);
 
   function selectSeason(key: string) {
     if (key === selectedSeasonKey) return;
@@ -815,24 +1000,25 @@ export function Horf() {
   }
 
   return (
-    <HorfFrame title={`Horf · ${seasonDisplayName}`} aside={<AsideRail>
+    <HorfFrame title={`${routeTitle} · ${seasonDisplayName}`} aside={<AsideRail>
       {walletError && <div className="rail-section" role="alert"><span className="eyebrow">Wallet alert</span><p>{walletError}</p></div>}
       {personal?.blacklisted === true && <div className="rail-section" role="alert"><span className="eyebrow">Trader standing</span><p>This wallet is restricted from private Horf actions. Review the public standing before trading.</p></div>}
       <div className="rail-section"><span className="eyebrow">🐎 Live trail</span><strong>{seasonDisplayName}</strong><p>{countsProvisional ? "The race is still scanning Mainnet." : hasError ? "Season totals need a refresh." : "Season ledger ready for the next ride."}</p></div>
       <div className="rail-section"><span className="eyebrow">Race leader</span><strong>{leaderboard[0] ? traderName(leaderboard[0].name, leaderboard[0].address) : "The starting gate"}</strong><p>{leaderboard[0] ? `${leaderboard[0].trades} ${leaderboard[0].trades === 1 ? "trade" : "trades"} this season` : "No riders ranked yet."}</p></div>
+      {routeSection === "profile" && validProfileAddress && <div className="rail-section"><span className="eyebrow">Trader in your sights</span><strong>{traderName(profileRider?.name, validProfileAddress)}</strong><p>{profileRider?.trades ?? 0} season trades · {profileOffersQuery.data?.offers.length ?? 0} active trade signs</p></div>}
       {statusAddress && <div className="rail-section"><span className="eyebrow">Trader in your sights</span><strong>{shortAddress(statusAddress)}</strong><p>Standing and inspection notes are open in the main trail.</p></div>}
       <div className="rail-section"><span className="eyebrow">Your saddle</span>{address ? <><strong>{shortAddress(address)}</strong><p>{personal ? `${personal.received} received · ${personal.sent} sent` : "Reading your horse ledger."}</p></> : <><strong>Guest rider</strong><p>Connect a wallet to see your horses, posse, and claim.</p></>}</div>
       {claimAlert && <div className="rail-section"><span className="eyebrow">HORSE waiting</span><span className="rail-number">{formatHorseAmount(claimAlert.claimableRaw, 8)}</span><p>Earned HORSE · your wallet pays XTZ gas to claim.</p></div>}
     </AsideRail>}>
-      <Shell data-horf-app>
-        <Masthead data-horf-region="intro">
+      <Shell data-horf-app data-horf-page={routeSection}>
+        {routeSection === "race" && <Masthead data-horf-region="intro">
           <div>
             <small>WTF OS · Tezos horse trading</small>
             <h1>HORF! <span aria-hidden="true">★</span></h1>
             <p>Howdy, horse trader. Find other riders, follow the race, and see your recent trades. Bring your wallet to Marshal’s Market for inspected horses or trade on trust in the Outlaw Corral. Your stable, return rides, and earned $HORSE are waiting.{isGuest ? " No WTF OS account is needed; the separate WTF Trade Boards app requires sign-in." : " You can also browse the WTF Trade Boards."}</p>
             <IntroActions>
-              <Action type="button" $primary onClick={findTraders}><span aria-hidden="true">🐎 </span>Find horse traders</Action>
-              <Action data-horf-open-range-open type="button" style={{ backgroundImage: "url('/horf-art/lasso.svg')", backgroundPosition: "8px center", backgroundSize: 18, backgroundRepeat: "no-repeat", paddingLeft: 31 }} onClick={() => windowManager.openPage(`/horf/open-range?season=${encodeURIComponent(selectedSeasonKey)}`)}>Browse the Open Range</Action>
+              <Action type="button" $primary onClick={() => navigateHorf("/horf/traders")}><span aria-hidden="true">🐎 </span>Find horse traders</Action>
+              <Action data-horf-open-range-open type="button" style={{ backgroundImage: "url('/horf-art/lasso.svg')", backgroundPosition: "8px center", backgroundSize: 18, backgroundRepeat: "no-repeat", paddingLeft: 31 }} onClick={() => navigateHorf("/horf/open-range")}>Browse the Open Range</Action>
               {!address && <Action data-horf-wallet-connect-intro type="button" onClick={() => void connectWallet()} disabled={isConnecting}>{isConnecting ? "Connecting wallet…" : isGuest ? "Connect and verify wallet" : "Connect Tezos wallet"}</Action>}
               {!isGuest && <Action type="button" onClick={() => windowManager.openPage("/trade-boards")}>Browse Trade Boards</Action>}
             </IntroActions>
@@ -850,7 +1036,7 @@ export function Horf() {
               <p>Follow the hoofprints from this earlier season.</p>
             </>}
           </WantedPoster>
-        </Masthead>
+        </Masthead>}
 
         <WalletStatus data-horf-wallet-status role="status">
           {address ? `${isGuest ? "Horf wallet verified" : "WTF OS wallet selected"}: ${shortAddress(address)} · Tezos Mainnet`
@@ -860,10 +1046,10 @@ export function Horf() {
             : "Connect your Tezos wallet to use your personal Horf ledger and wallet actions."}
           {isGuest && address && <button data-horf-wallet-disconnect type="button" onClick={() => void disconnectWallet()} disabled={isConnecting}>{isConnecting ? "Disconnecting…" : "Disconnect Horf wallet"}</button>}
         </WalletStatus>
-        {claimAlert && <ClaimNotice data-horf-claim-alert role="status" aria-live="polite"><span>🐎 Claim alert: {formatHorseAmount(claimAlert.claimableRaw, 8)} HORSE is shown as earned from this wallet’s qualifying horse sends{claimAlert.status !== "ready" ? " (provisional while Horf scans Mainnet)" : ""}. {claimAlert.claimReady ? "Claim it from the Mainnet vault; your wallet pays XTZ gas." : "Vault claiming is waiting for its Mainnet setup or season scan."}</span><button type="button" onClick={() => visitSection("horf-horse-send")}>See HORSE claim</button></ClaimNotice>}
+        {routeSection === "race" && claimAlert && <ClaimNotice data-horf-claim-alert role="status" aria-live="polite"><span>🐎 Claim alert: {formatHorseAmount(claimAlert.claimableRaw, 8)} HORSE is shown as earned from this wallet’s qualifying horse sends{claimAlert.status !== "ready" ? " (provisional while Horf scans Mainnet)" : ""}. {claimAlert.claimReady ? "Claim it from the Mainnet vault; your wallet pays XTZ gas." : "Vault claiming is waiting for its Mainnet setup or season scan."}</span><button type="button" onClick={() => navigateHorf("/horf/send-horse")}>See HORSE claim</button></ClaimNotice>}
         {walletError && <Warning role="alert">{walletError}</Warning>}
 
-        <SeasonPicker data-horf-region="season" aria-label="Trading season">
+        {(routeSection === "race" || routeSection === "stable" || routeSection === "traders") && <SeasonPicker data-horf-region="season" aria-label="Trading season">
           <div>
             <label htmlFor="horf-season-select">Trading season</label>
             <select
@@ -892,9 +1078,9 @@ export function Horf() {
               <small id="horf-season-inference">Archive dates are inferred from Objkt mint clusters and organizer posts. They may not match an official campaign calendar; the listed end date is the first day outside this window.</small>
             )}
           </div>
-        </SeasonPicker>
+        </SeasonPicker>}
 
-        <StatusBar aria-live="polite">
+        {(routeSection === "race" || routeSection === "stable" || routeSection === "traders") && <><StatusBar aria-live="polite">
           <span>
             {query.isPending ? "Reading the season ledger…" : hasError ? "Season ledger needs attention" : countsProvisional ? "Scanning Tezos history · counts are provisional" : "Season ledger ready"}
             {data?.asOf ? ` · As of ${formatDate(data.asOf)}` : " · Awaiting first snapshot"}
@@ -904,10 +1090,82 @@ export function Horf() {
           </button>
         </StatusBar>
         {countsProvisional && <Warning role="status">Horf is scanning mainnet transfers. Race positions, horse totals, and return rides may change as transfers are found.</Warning>}
-        {hasError && <Warning role="alert">Horf could not finish reading the season. Retry the ledger; any figures shown below are the last available snapshot.</Warning>}
+        {hasError && <Warning role="alert">Horf could not finish reading the season. Retry the ledger; any figures shown below are the last available snapshot.</Warning>}</>}
         {personal?.blacklisted === true && <Warning data-horf-wallet-restricted role="alert">This wallet is blacklisted from Horf private API features. Its historical trade totals remain visible. Direct Stable claims need a separate admin-signed contract restriction; Horf cannot reverse Tezos transfers.</Warning>}
 
-        <Section id="horf-race" ref={raceRef} data-horf-region="race" aria-label="Horse trader race leaderboard">
+        {routeSection === "traders" && <Section data-horf-region="trader-directory" aria-label="Find other Horf traders">
+          <SectionLabel>🤠 The horse trader directory</SectionLabel>
+          <h2>Find Other Traders</h2>
+          <p>Meet riders from {seasonDisplayName} and wallets with horses currently offered on Horf. Open a trader’s profile to see their trade signs and qualifying horses.</p>
+          {directoryOffersQuery.isError && <Warning role="status">Active trade signs are taking longer to load. The season riders are still listed below.</Warning>}
+          {directory.length ? <DirectoryGrid>
+            {directory.map((rider, index) => <DirectoryCard key={rider.address} data-horf-trader-card>
+              <span className="rider-rank">{rider.trades ? `Race position ${index + 1}` : "Rider with a trade sign"}</span>
+              <TraderLink address={rider.address} name={rider.name} />
+              <p><strong>{rider.trades}</strong> {rider.trades === 1 ? "season trade" : "season trades"} · <strong>{rider.offerCount}</strong> {rider.offerCount === 1 ? "horse offered" : "horses offered"}</p>
+              <HorfTradeHorseCarousel address={rider.address} />
+            </DirectoryCard>)}
+          </DirectoryGrid> : <LedgerPanel><h3>{query.isPending || directoryOffersQuery.isPending ? "Gathering the riders…" : "No riders at the rail yet"}</h3><p>Try another season or check the Open Range for new horse trade signs.</p></LedgerPanel>}
+        </Section>}
+
+        {routeSection === "profile" && <Section data-horf-region="trader-profile" aria-label="Horf trader profile">
+          <SectionLabel>🐎 Trader’s saddle</SectionLabel>
+          {validProfileAddress ? <>
+            <h2>{traderName(profileRider?.name, validProfileAddress)}</h2>
+            <p>{validProfileAddress} · {profileRider?.trades ?? 0} {profileRider?.trades === 1 ? "trade" : "trades"} in {seasonDisplayName}. <a href={profileUrl(validProfileAddress)} target="_blank" rel="noopener noreferrer">View wallet on Objkt ↗</a></p>
+            <Link href={`/horf/traders?season=${encodeURIComponent(selectedSeasonKey)}`}>← Back to other traders</Link>
+            <ProfileTabs role="tablist" aria-label="Trader horse collections">
+              <button type="button" role="tab" id="horf-profile-tab-for-trade" data-horf-profile-tab="for-trade" aria-selected={profileTab === "for-trade"} aria-controls="horf-profile-panel" onClick={() => selectProfileTab("for-trade")}>For trade on Horf</button>
+              <button type="button" role="tab" id="horf-profile-tab-all-horses" data-horf-profile-tab="all-horses" aria-selected={profileTab === "all-horses"} aria-controls="horf-profile-panel" onClick={() => selectProfileTab("all-horses")}>All horses held</button>
+            </ProfileTabs>
+            <div id="horf-profile-panel" role="tabpanel" aria-labelledby={profileTab === "for-trade" ? "horf-profile-tab-for-trade" : "horf-profile-tab-all-horses"}>
+              {profileTab === "for-trade" ? <>
+                <p>These horses have active direct-trade signs on Horf. A sign expresses a trader’s preference; the horse stays in their wallet until a transfer.</p>
+                {profileOffersQuery.isPending ? <p>Reading this rider’s trade signs…</p> : profileOffersQuery.isError ? <Warning role="alert">Trade signs could not be loaded. Try again shortly.</Warning> : profileOffersQuery.data?.offers.length ? <ProfileHorseGrid>
+                  {profileOffersQuery.data.offers.map((offer) => {
+                    const name = offer.name || `Horse token #${offer.tokenId}`;
+                    return <ProfileHorseCard key={offer.id} data-horf-profile-horse>
+                      <div className="art"><ProfileArt image={offer.image} name={name} /></div>
+                      <div className="copy"><h3>{name}</h3><p>{offer.amount} {offer.amount === "1" ? "edition" : "editions"} · {offer.acceptedTokenPolicy === "marshal_only" ? "Marshal-approved horse wanted" : "Any qualifying horse welcome"}</p><a href={objktTokenUrl(offer.tokenContract, offer.tokenId)} target="_blank" rel="noopener noreferrer">View token on Objkt ↗</a></div>
+                    </ProfileHorseCard>;
+                  })}
+                </ProfileHorseGrid> : <LedgerPanel><h3>No trade signs up</h3><p>This rider has no horses offered for direct trade on Horf right now.</p></LedgerPanel>}
+              </> : <>
+                <p>Every currently held token that passes Horf’s <Link href="/horf/info">Is It a Horse? Test</Link>, across mint dates. Balances come from Tezos Mainnet.</p>
+                {profileHorsesQuery.isPending ? <p>Checking this rider’s stable…</p> : profileHorsesQuery.isError ? <Warning role="alert">This rider’s horses could not be loaded. Try again shortly.</Warning> : profileHorses.length ? <>
+                  <ProfileHorseGrid>{profileHorses.map((horse) => {
+                    const name = horse.name || `Horse token #${horse.tokenId}`;
+                    return <ProfileHorseCard key={`${horse.contract}:${horse.tokenId}`} data-horf-profile-horse>
+                      <div className="art"><ProfileArt image={horse.image} name={name} /></div>
+                      <div className="copy"><h3>{name}</h3><p>{horse.balance} {horse.balance === "1" ? "edition held" : "editions held"} · {shortAddress(horse.contract)} / #{horse.tokenId}</p><a href={objktTokenUrl(horse.contract, horse.tokenId)} target="_blank" rel="noopener noreferrer">View token on Objkt ↗</a></div>
+                    </ProfileHorseCard>;
+                  })}</ProfileHorseGrid>
+                  {profileHorsesQuery.hasNextPage && <Action type="button" onClick={() => void profileHorsesQuery.fetchNextPage()} disabled={profileHorsesQuery.isFetchingNextPage}>{profileHorsesQuery.isFetchingNextPage ? "Rounding up more horses…" : "Load more horses"}</Action>}
+                </> : <LedgerPanel><h3>No qualifying horses held</h3><p>There are no current balances that pass the horse test for this wallet.</p></LedgerPanel>}
+              </>}
+            </div>
+          </> : <LedgerPanel><h3>That rider’s address is off trail</h3><p>Choose a Tezos wallet from the trader directory to see its horse profile.</p><Link href={`/horf/traders?season=${encodeURIComponent(selectedSeasonKey)}`}>Return to other traders</Link></LedgerPanel>}
+        </Section>}
+
+        {routeSection === "info" && <Section data-horf-region="horse-test-info" aria-label="Horf Is It a Horse Test">
+          <SectionLabel>🐴 The Horf field guide</SectionLabel>
+          <h2>Is It a Horse?</h2>
+          <p>Horf uses the same horse test for Open Range discovery and a trader’s “All horses held” profile tab. A Tezos Mainnet FA2 edition must be indexed by Objkt and be a whole token (zero or unset decimals). The profile shows qualifying editions the wallet currently holds.</p>
+          <LedgerPanel><h3>Words that open the stable gate</h3><HorseTestList>
+            <li>Whole-keyword matches in the minted name, description, or Objkt tag: horse, horseart, horse art, horsetrade, horse trade, horse trader, horse trading, haha, and horf.</li>
+            <li>Neighvember and Horse of July, including year-suffixed campaign names.</li>
+            <li>Other equine-related Objkt tag groups, such as pony, mare, or foal, when Objkt shows more than five tokens in that tag. Substrings such as “horsepower” and “neighbor” do not count.</li>
+          </HorseTestList></LedgerPanel>
+          <LedgerPanel><h3>What counts as a trade?</h3><HorseTestList>
+            <li>The horse edition must actually move between two different wallets on Tezos Mainnet during the selected trading season.</li>
+            <li>Horf ignores reverted transfers, marketplace or contract handoffs, non-positive amounts, and tokens with fractional decimals. The HORSE reward currency is excluded from horse trade counts.</li>
+            <li>A token’s mint date chooses its Open Range season. Its transfer date chooses which race season counts the ride.</li>
+            <li>Passing the horse test makes art discoverable and direct trades countable. Marshal inspection is a separate approval before an edition may enter an inspected escrow Stable.</li>
+          </HorseTestList></LedgerPanel>
+          <p><Link href="/horf/open-range?season=all-horse-search">Search every qualifying horse on the Open Range →</Link></p>
+        </Section>}
+
+        {routeSection === "race" && <Section id="horf-race" data-horf-region="race" aria-label="Horse trader race leaderboard">
           <SectionLabel><img src="/horf-art/horseshoe.svg" alt="" aria-hidden="true" width="20" height="20" style={{ verticalAlign: "middle", marginRight: 5 }} />Midway race board</SectionLabel>
           <h2>Who’s out in front?</h2>
           <p>Every counted horse trade gives a rider a little more giddyup. Rank and trade totals sit beside each horse, whether the trade rode through a Stable or crossed wallets directly.</p>
@@ -935,28 +1193,29 @@ export function Horf() {
               </p>
             )}
           </RaceFrame>
-        </Section>
+        </Section>}
 
-        <HorfTraderStatus selectedAddress={statusAddress ?? address} walletAddress={address} onSelect={viewTraderStatus} isAdmin={isAdmin} onChange={() => void query.refetch()} />
-
-        <HorfPersonalStable address={address} connectWallet={connectWallet} isConnecting={isConnecting} />
-        <HorfInspectorDesk isGuest={isGuest} isAdmin={isAdmin} />
+        {routeSection === "stable" && <HorfPersonalStable address={address} connectWallet={connectWallet} isConnecting={isConnecting} />}
+        {routeSection === "marshal" && <><HorfInspectorDesk isGuest={isGuest} isAdmin={isAdmin} />
         <TradingZone id="horf-marshals-market" data-horf-region="marshals-market">
           <small>Inspected horses · escrow route</small>
           <h2>Marshal’s Market</h2>
           <p>The marshal documents a human trust judgment on a token, its FA2 code, and observed history before it enters any of the three trading Stables. Active approval is required for every deposit, even Honor. The Stable is designed to hold deposited editions until a claim or cancellation; inspection is no cryptographic proof that arbitrary FA2 code will always transfer correctly.</p>
           <HorfStables address={address} connectWallet={connectWallet} isConnecting={isConnecting} />
-        </TradingZone>
-        <TradingZone id="horf-outlaw-corral" data-horf-region="outlaw-corral" $outlaw>
+        </TradingZone></>}
+        {routeSection === "outlaw" && <TradingZone id="horf-outlaw-corral" data-horf-region="outlaw-corral" $outlaw>
           <small>Qualifying horse art · direct wallet route</small>
           <h2>Outlaw Corral</h2>
           <p>Saddle up for a direct horse trade or gift. Qualifying Objkt horse art can ride wallet to wallet without inspection, and those confirmed transfers still count in the season race. These wallet transfers are irrevocable and have no Horf escrow: check the trader’s standing and the token’s details before you hit the trail.</p>
-          <ZoneAction type="button" onClick={() => windowManager.openPage(`/horf/open-range?season=${encodeURIComponent(selectedSeasonKey)}`)}>See every qualifying season mint on the Open Range</ZoneAction>
-          <HorfGifts address={address} isGuest={isGuest} connectWallet={connectWallet} isConnecting={isConnecting} />
-        </TradingZone>
-        <HorfHorseSend address={address} signedIn={!isGuest} connectWallet={connectWallet} isConnecting={isConnecting} />
+          <ZoneAction type="button" onClick={() => navigateHorf("/horf/open-range")}>Browse trust-based direct offers on the Open Range</ZoneAction>
+          <ZoneAction type="button" onClick={() => navigateHorf("/horf/gifts")}>Gift a horse or tend your posse</ZoneAction>
+          <HorfTraderStatus selectedAddress={traderFromUrl ?? statusAddress ?? address} walletAddress={address} onSelect={viewTraderStatus} isAdmin={isAdmin} onChange={() => void query.refetch()} />
+        </TradingZone>}
+        {routeSection === "horse" && <HorfHorseSend address={address} signedIn={!isGuest} connectWallet={connectWallet} isConnecting={isConnecting} />}
+        {routeSection === "gifts" && <HorfGifts address={address} isGuest={isGuest} connectWallet={connectWallet} isConnecting={isConnecting} />}
+        {routeSection === "posse" && <HorfPosse address={address} connectWallet={connectWallet} isConnecting={isConnecting} />}
 
-        <Section data-horf-region="trader-ledger" aria-label="Your horse trader ledger">
+        {routeSection === "stable" && <Section data-horf-region="trader-ledger" aria-label="Your horse trader ledger">
           <SectionLabel>Your stable</SectionLabel>
           <h2>Your horse trading ledger</h2>
           {!address ? (
@@ -1029,7 +1288,7 @@ export function Horf() {
               )}
             </>
           )}
-        </Section>
+        </Section>}
       </Shell>
     </HorfFrame>
   );

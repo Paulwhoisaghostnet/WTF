@@ -520,7 +520,16 @@ export const PAGE_DEFS: PageDef[] = [
   { pattern: "/marketplace", component: MarketplacePage, auth: true, title: "On Chain Market", group: "market", startMenu: true },
   { pattern: "/rat-race", component: RatRacePage, auth: true, title: "Rat Race", group: "market", startMenu: true, desktopIcon: true },
   { pattern: "/horf", component: HorfPage, auth: false, title: "Horf", group: "market", startMenu: true, desktopIcon: true },
+  { pattern: "/horf/traders", component: HorfPage, auth: false, title: "Horf Traders", group: "market" },
+  { pattern: "/horf/traders/:address", component: HorfPage, auth: false, title: "Horf Trader Profile", group: "market" },
+  { pattern: "/horf/info", component: HorfPage, auth: false, title: "Horf Is It a Horse?", group: "market" },
   { pattern: "/horf/open-range", component: HorfOpenRangePage, auth: false, title: "Horf Open Range", group: "market" },
+  { pattern: "/horf/marshals-market", component: HorfPage, auth: false, title: "Horf Marshal’s Market", group: "market" },
+  { pattern: "/horf/outlaw-corral", component: HorfPage, auth: false, title: "Horf Outlaw Corral", group: "market" },
+  { pattern: "/horf/stable", component: HorfPage, auth: false, title: "Horf My Stable", group: "market" },
+  { pattern: "/horf/send-horse", component: HorfPage, auth: false, title: "Horf Send HORSE", group: "market" },
+  { pattern: "/horf/gifts", component: HorfPage, auth: false, title: "Horf Gifts", group: "market" },
+  { pattern: "/horf/posse", component: HorfPage, auth: false, title: "Horf Posse", group: "market" },
   {
     pattern: "/map-lab",
     component: WtfMapLabPage,
@@ -740,7 +749,7 @@ export const PAGE_DEFS: PageDef[] = [
   },
 ];
 
-export const FULLSCREEN_ROUTES = new Set(["/", "/gamma", "/beta", "/login", "/register", "/cli", "/live/r/:roomId", "/horf", "/horf/open-range"]);
+export const FULLSCREEN_ROUTES = new Set(["/", "/gamma", "/beta", "/login", "/register", "/cli", "/live/r/:roomId", "/horf", "/horf/traders", "/horf/traders/:address", "/horf/info", "/horf/open-range", "/horf/marshals-market", "/horf/outlaw-corral", "/horf/stable", "/horf/send-horse", "/horf/gifts", "/horf/posse"]);
 
 function patternToRegex(pattern: string): {
   regex: RegExp;
