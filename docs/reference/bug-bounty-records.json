@@ -11642,7 +11642,7 @@
     },
     {
       "id": "WTF-BB-769",
-      "status": "In Progress",
+      "status": "Fixed",
       "owner": "Codex coLILseum escrow completion",
       "lastTouched": "2026-11-03",
       "category": "coLILseum / sponsored prize settlement",
@@ -11653,11 +11653,11 @@
       "points": 10,
       "rank": 492,
       "title": "Random sponsored prize allocation attempts to sort a frozen list",
-      "body": "- Evidence (2026-11-03): Seeded random sponsored settlement built a frozen prize-lot list, then attempted to sort it in place. A finished room with random assignment could stop before prize distribution.\n- Why it matters: Players can complete a funded match yet fail to receive the assigned prizes.\n- Correction direction: Sort a copy under the saved seed and replay the exact assignment in hosted settlement tests.\n- Verification idea: Complete fixed, random, and pick-assignment hosted settlements and check chain-pinned recipients without altering existing funded rooms."
+      "body": "- Evidence (2026-11-03): Seeded random sponsored settlement sorted a frozen FA2 lot list in place and could stop a completed funded room before payout.\n- Correction: Sort a copy of the committed list, preserving the saved seed and immutable prize plan.\n- Verification: Hosted settlement tests exercise fixed, random, and finish-place pick assignments with exact recipients and signer intents. Source correction is deployed; a live random-assignment settlement receipt remains to be collected."
     },
     {
       "id": "WTF-BB-770",
-      "status": "In Progress",
+      "status": "Fixed",
       "owner": "Codex coLILseum escrow completion",
       "lastTouched": "2026-11-03",
       "category": "coLILseum / sponsored prize recovery",
@@ -11668,11 +11668,11 @@
       "points": 12,
       "rank": 284,
       "title": "Hosted sponsored rooms cannot request an evidenced technical void",
-      "body": "- Evidence (2026-11-03): The sponsored escrow contract had a technical-void entrypoint but the hosted sponsor service could not request it after combat.\n- Why it matters: A server failure could leave sponsor and entrant deposits locked without the approved audited refund path.\n- Correction direction: Add an operator-only, evidence-bound intent that verifies the authoritative game audit and submits one journaled void through the existing signer.\n- Verification idea: Prove an ineligible room cannot void, a reproduced technical failure can void, and original funders can recover their respective assets."
+      "body": "- Evidence (2026-11-03): The sponsored contract had a technical-void entrypoint, but the hosted service could not request it after combat.\n- Correction: Added a private operator-only, evidence-bound request that checks the authoritative game audit, commits reason and evidence hashes, submits one journaled void through the existing signer, and persists finalized block proof for the deployment guard.\n- Verification: Service and deployment-guard tests cover ineligible rooms, evidenced failure, original-funder refund intent, and persisted void state. A live on-chain technical-void receipt remains to be collected."
     },
     {
       "id": "WTF-BB-771",
-      "status": "In Progress",
+      "status": "Fixed",
       "owner": "Codex coLILseum escrow completion",
       "lastTouched": "2026-11-03",
       "category": "coLILseum / wager wallet recovery",
@@ -11683,11 +11683,11 @@
       "points": 11,
       "rank": 397,
       "title": "A failed duel seat claim or rejected wallet prompt can lock the stake panel",
-      "body": "- Evidence (2026-11-03): A losing challenger in a seat race retains a pending claim after an on-chain failure, and a prepaid purchase checkpoint created before a wallet prompt can persist when that prompt is rejected before broadcast.\n- Why it matters: The player cannot retry an eligible seat or use direct staking even though no payment was applied.\n- Correction direction: Prove exact finalized failed room operations before clearing a sent claim; clear checkpoints on proven prebroadcast rejection and confine uncertain credit purchases to credit actions.\n- Verification idea: Exercise failed/backtracked/skipped claim, unknown submission, ordinary wallet cancel, reload, and direct-stake availability."
+      "body": "- Evidence (2026-11-03): A failed challenger seat claim or rejected wallet prompt could leave a pending checkpoint and lock the stake panel.\n- Correction: Checkpoints now begin at actual wallet submission; explicit prebroadcast rejection clears them; sent claims clear only after exact finalized failure evidence. Truly unknown submissions remain pending, while unrelated direct staking stays available.\n- Verification: Focused funding browser suite passed 23/23, including wallet rejection, failed operation, reload, and direct-stake controls. A live failed-seat race remains to be observed."
     },
     {
       "id": "WTF-BB-772",
-      "status": "In Progress",
+      "status": "Fixed",
       "owner": "Codex coLILseum escrow completion",
       "lastTouched": "2026-11-03",
       "category": "coLILseum / prepaid-credit custody",
@@ -11698,11 +11698,11 @@
       "points": 13,
       "rank": 191,
       "title": "Prepaid credit could be stranded by a contract rotation",
-      "body": "- Evidence (2026-11-03): Prepaid credit cannot be withdrawn to XTZ and is held in the v3 contract. Changing the active contract or payout mode would hide existing credit if deployment or restart did not check a durable binding.\n- Why it matters: A config-only rollout could make deposited credit unusable despite its remaining on chain.\n- Correction direction: Pin the first active prepaid contract and script in the mounted data directory, validate on app startup and guarded deploy, and fail closed on rotation.\n- Verification idea: Activate once, restart with matching settings, reject contract/script/mode changes, and preserve old room pins."
+      "body": "- Evidence (2026-11-03): Nonwithdrawable prepaid credit could be hidden by an active-contract rotation.\n- Correction: Fsync a durable contract/script binding on the mounted game volume and check it before app startup and guarded deployment; reject contract, script, or payout-mode rotation. When the deploy process creates the pin as root, assign it to the volume owner so the unprivileged app can read it.\n- Verification: Mainnet prepaid escrow KT1Nk9Sxz7P2Q2eb45AgJiMp3jnbrYT3J4Fm passed a funded lifecycle. The live app restarted with the matching binding and reports ready; old contract remains in the signer allowlist. Binding rotation guard tests pass. The ownership source patch still needs the final release deployment."
     },
     {
       "id": "WTF-BB-773",
-      "status": "In Progress",
+      "status": "Fixed",
       "owner": "Codex coLILseum escrow completion",
       "lastTouched": "2026-11-03",
       "category": "coLILseum / prepaid payout clarity",
@@ -11713,7 +11713,7 @@
       "points": 7,
       "rank": 691,
       "title": "Prepaid tie receipt says XTZ paid when the guest receives credit",
-      "body": "- Evidence (2026-11-03): In a prepaid Duel tie, the contract restores the guest entry as nonwithdrawable credit but the room panel labels the total distributed amount as XTZ paid automatically.\n- Why it matters: The player may believe XTZ reached their wallet when the refund is available only as WTFOS prepaid credit.\n- Correction direction: Label the total as pot distributed and identify the guest's refund medium from verified seat and settlement state.\n- Verification idea: Compare ordinary win, prepaid win, and prepaid tie receipts in the browser against the contract outcome."
+      "body": "- Evidence (2026-11-03): A prepaid Duel tie restored the guest entry as credit, while the room panel called the total XTZ paid.\n- Correction: Label the total pot as distributed and show the guest refund medium as prepaid credit from verified seat and settlement state.\n- Verification: Funding browser tests compare ordinary win, prepaid win, and prepaid tie receipts against the contract behavior. A live tie receipt remains to be observed."
     }
   ]
 }

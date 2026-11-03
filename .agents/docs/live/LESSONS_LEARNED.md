@@ -13489,6 +13489,26 @@ When shop and board are visible together, contextual help must prioritize a sele
 
 ---
 
+## 2026-11-03 — Reconcile uncertain Tezos injection before changing RPCs
+
+**What happened**: The Mainnet primary RPC returned HTTP 504 during prepaid escrow origination and again during a funded lifecycle offer. The journals had prepared intents but no operation hashes. An immediate retry could have duplicated a charge if either operation had reached the network.
+
+**Why it mattered**: A transport error says nothing conclusive about injection. Reusing a different endpoint without checking chain state would trade availability for possible duplicate custody actions.
+
+**Rule**: Preserve the first journal. Compare source counters at the prepared block and a later finalized head, inspect pending operations and the expected on-chain room, then save the reconciliation before an explicit fallback send. Keep a distinct origination journal, and make any resumed lifecycle send a one-use retry state so a second unknown outcome cannot be retried automatically.
+
+---
+
+## 2026-11-03 — Let the app user read root-created deployment pins
+
+**What happened**: The guarded deployment created `prepaid-credit.binding` as root with mode `0600` on a mounted game volume. The container starts as root but drops to the `node` user. Its ownership marker caused startup to skip a recursive chown, so the app failed to read the binding and restarted until the file was assigned to the volume owner.
+
+**Why it mattered**: The pin correctly blocked unsafe contract rotation but also blocked the entire app at the first Mainnet activation.
+
+**Rule**: When a root-run guard creates a durable file that an unprivileged runtime must read, assign the file to the volume's runtime owner before returning success. Verify readability as the actual app user during deployment, not only as root.
+
+---
+
 ## 2026-11-03 — Horse-return fixtures must balance pending receipts and counterpart totals
 
 **What happened**: The first Horf browser fixture displayed two horses owed back to Sir Canter but only one waiting horse in the received-token list. The UI rendered each response field faithfully, yet the screenshot implied a ledger state that FIFO reciprocal pairing cannot produce.

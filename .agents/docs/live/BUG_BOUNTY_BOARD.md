@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **739** · Open: **9** · Claimed: **42** · In Progress: **21** · Blocked: **4** · Fixed: **134** · Verified: **525** · Archived: **4**
+Total: **739** · Open: **9** · Claimed: **42** · In Progress: **16** · Blocked: **4** · Fixed: **139** · Verified: **525** · Archived: **4**
 
 ## Canonical Board
 
@@ -85,22 +85,17 @@ Total: **739** · Open: **9** · Claimed: **42** · In Progress: **21** · Block
 | WTF-BB-392 | In Progress | Codex Objkt Operator production verification | 2026-09-02 | Commerce / private Objkt operator availability | P1 | 15 | 94 | 4 | 5 | 2 | Private Objkt Operator is deployed with owner-gated PostgreSQL persistence and non-custodial signing boundaries |
 | WTF-BB-266 | In Progress | Codex gameshow production user-site serving | 2026-10-18 | Macaroni / PDS-backed user-site serving | P1 | 14 | 130 | 4 | 5 | 1 | App-side publish now writes renderable PDS snapshot/index records, flushes/checks exact outbox rows, and reports pending until PDS + public serving are ready; final `.me` renderer deployment remains blocked by missing SSH access to the `.me` host, while the per-host bridge keeps `paulwhoisaghost.wtfos.me` live |
 | WTF-BB-177 | In Progress | Codex WTFOS tz2at PDS/firehose pass | 2026-05-26 | AT Protocol architecture / identity boundary | P1 | 14 | 130 | 4 | 5 | 1 | Canonical user AT repos still carry WTFOS/tz2at state and no sovereign WTFOS DID boundary exists |
-| WTF-BB-772 | In Progress | Codex coLILseum escrow completion | 2026-11-03 | coLILseum / prepaid-credit custody | P1 | 13 | 191 | 2 | 4 | 3 | Prepaid credit could be stranded by a contract rotation |
 | WTF-BB-707 | In Progress | Codex coLILseum open-seat wagering | 2026-10-24 | WTFIAP escrow / open-seat admission | P1 | 13 | 191 | 3 | 4 | 2 | XTZ Duel wagers cannot be funded before a challenger takes a seat |
 | WTF-BB-701 | In Progress | Codex coLILseum dual-network wagering | 2026-10-23 | WTFIAP escrow / Mainnet admission | P1 | 13 | 191 | 3 | 4 | 2 | Mainnet WTF wagers lack a verified escrow and dedicated signer lane |
 | WTF-BB-622 | In Progress | Codex commission production wayfinding verification | 2026-09-02 | Desktop OS / commissioned app wayfinding and runtime state | P1 | 13 | 191 | 4 | 5 | 0 | Commissioned Classic OS journeys and app registrations are live, with Casino pass access separated from membership entry |
 | WTF-BB-342 | In Progress | Codex Pasta WTF.ME publisher continuation | 2026-10-30 | Pasta Protocol / WTF.ME host and pin recovery | P1 | 13 | 191 | 2 | 5 | 2 | Pasta WTF.ME public host and pin recovery remain unproven; live readiness checks remain in progress |
 | WTF-BB-025 | In Progress | Codex Tezos open-tools transplant | 2026-05-06 | API / reliability | P1 | 13 | 191 | 4 | 4 | 1 | Route-level Tezos fetches bypass shared upstream rate-limit control |
 | WTF-BB-005 | In Progress | Codex Tezos open-tools transplant | 2026-05-06 | Data integrity / analytics | P1 | 13 | 191 | 4 | 4 | 1 | `token_sales` duplicates make unique-index migrations impossible |
-| WTF-BB-770 | In Progress | Codex coLILseum escrow completion | 2026-11-03 | coLILseum / sponsored prize recovery | P1 | 12 | 284 | 2 | 4 | 2 | Hosted sponsored rooms cannot request an evidenced technical void |
 | WTF-BB-023 | In Progress | - | 2026-04-27 | Operations / workers | P1 | 12 | 284 | 3 | 3 | 2 | Add host-level heartbeat and native repo doctor backfill worker |
-| WTF-BB-771 | In Progress | Codex coLILseum escrow completion | 2026-11-03 | coLILseum / wager wallet recovery | P1 | 11 | 397 | 2 | 4 | 1 | A failed duel seat claim or rejected wallet prompt can lock the stake panel |
 | WTF-BB-127 | In Progress | Codex side quest UX claim pass | 2026-05-22 | Rewards / side quest automation | P1 | 11 | 397 | 2 | 4 | 1 | Side-quest auto-verification schema includes unimplemented reward handles |
-| WTF-BB-769 | In Progress | Codex coLILseum escrow completion | 2026-11-03 | coLILseum / sponsored prize settlement | P1 | 10 | 492 | 1 | 4 | 1 | Random sponsored prize allocation attempts to sort a frozen list |
 | WTF-BB-708 | In Progress | Codex coLILseum item-shop repair | 2026-10-24 | coLILseum / hosted item commands | P1 | 9 | 564 | 1 | 4 | 0 | Second item shop rejects purchases as unknown party actions |
 | WTF-BB-303 | In Progress | Codex architectural quick-wins pass | 2026-07-14 | Security / CSP hardening | P2 | 11 | 397 | 3 | 2 | 3 | Main app and user-site CSP policies remain broad for script/connect sources |
 | WTF-BB-027 | In Progress | Codex Tezos open-tools transplant | 2026-05-06 | Marketplace / data pipeline | P2 | 10 | 492 | 2 | 4 | 1 | External marketplace listing backfill returns empty by default |
-| WTF-BB-773 | In Progress | Codex coLILseum escrow completion | 2026-11-03 | coLILseum / prepaid payout clarity | P2 | 7 | 691 | 1 | 2 | 1 | Prepaid tie receipt says XTZ paid when the guest receives credit |
 | WTF-BB-568 | Blocked | Pinata credential owner / repository owner | 2026-09-02 | Public release boundary / credential exposure | P0 | 20 | 1 | 5 | 5 | 5 | A tracked browser bundle contains a client-side Pinata credential |
 | WTF-BB-765 | Blocked | Codex Horf security review; owner chose human inspection trust model | 2026-11-03 | Horf Stables / cross-asset escrow integrity | P0 | 18 | 12 | 3 | 5 | 5 | Metadata-only permits let a non-transferring FA2 mint unbacked stable claim credits |
 | WTF-BB-371 | Blocked | Repository owner / Twitter developer account | 2026-08-30 | Secrets / git history | P0 | 17 | 39 | 4 | 3 | 5 | A deleted tracked environment file in repository history contains a likely Twitter API credential that requires provider rotation before any coordinated history rewrite |
@@ -143,6 +138,7 @@ Total: **739** · Open: **9** · Claimed: **42** · In Progress: **21** · Block
 | WTF-BB-574 | Fixed | Codex human-alpha proof completion | - | Pasta Protocol / strict proof packaging | P0 | 12 | 284 | 2 | 5 | 0 | Macaroni recovery capability omits visual evidence |
 | WTF-BB-459 | Fixed | Codex Ravioli fresh-run gate | - | Pasta Protocol / browser proof reliability | P0 | 11 | 397 | 2 | 3 | 1 | Reused collector browser made Ravioli real-page coverage intermittently hang |
 | WTF-BB-082 | Fixed | Codex immutable off-host backup pass | 2026-08-30 | Backup / disaster recovery | P1 | 15 | 94 | 5 | 3 | 3 | Backup pipeline defaults do not create an immutable off-host dump |
+| WTF-BB-772 | Fixed | Codex coLILseum escrow completion | 2026-11-03 | coLILseum / prepaid-credit custody | P1 | 13 | 191 | 2 | 4 | 3 | Prepaid credit could be stranded by a contract rotation |
 | WTF-BB-710 | Fixed | Codex coLILseum claim release audit | 2026-10-24 | Production dependency audit / claim release | P1 | 13 | 191 | 3 | 3 | 3 | New runtime dependency advisories block the coLILseum claim release |
 | WTF-BB-641 | Fixed | Codex Rat Race diagnostics/supply pass | 2026-05-27 | Tezos / Rat Race data pipeline | P1 | 13 | 191 | 4 | 4 | 1 | Rat Race hot-edition feed is backed by an empty local market index |
 | WTF-BB-447 | Fixed | Codex accepted-live audit remediation | 2026-07-18 | Pasta Protocol / historical indexer evidence | P1 | 13 | 191 | 3 | 4 | 2 | Gnocchi's proof now has a signer-free, level-bound TzKT historical snapshot supplement with exact request/response hashes, supply/holder binding, later-mutation separation, IPFS pinning, and assembler enforcement; the accepted manifest remains untouched until supplement execution is authorized |
@@ -153,6 +149,7 @@ Total: **739** · Open: **9** · Claimed: **42** · In Progress: **21** · Block
 | WTF-BB-077 | Fixed | Codex TV storage pass | 2026-05-03 | TV microapp / storage pipeline | P1 | 13 | 191 | 4 | 4 | 1 | TV cache still treats IPFS/external fetch as canonical and does not persist all served TV media into object storage |
 | WTF-BB-076 | Fixed | Codex TV hardening pass | 2026-05-03 | TV microapp / source ownership | P1 | 13 | 191 | 3 | 4 | 2 | Canonical dial 03 WTF TV is overwritten with platform-wide mixed media instead of owner-scoped media |
 | WTF-BB-064 | Fixed | gardener session | 2026-04-27 | Kiln integration / deploy | P1 | 13 | 191 | 3 | 4 | 2 | Collection factory depended on sibling Kiln paths and local-only API defaults |
+| WTF-BB-770 | Fixed | Codex coLILseum escrow completion | 2026-11-03 | coLILseum / sponsored prize recovery | P1 | 12 | 284 | 2 | 4 | 2 | Hosted sponsored rooms cannot request an evidenced technical void |
 | WTF-BB-750 | Fixed | Codex Pasta consolidation | 2026-11-02 | Macaroni V3.5 / alpha network boundary | P1 | 12 | 284 | 2 | 5 | 1 | Hosted Macaroni V3.5 alpha could reach Mainnet when the native package alone enforced Shadownet |
 | WTF-BB-732 | Fixed | Codex Profile AT proof isolation | 2026-11-02 | AT Protocol / OAuth client grant isolation | P1 | 12 | 284 | 3 | 4 | 1 | Profile AT identity reverify can revoke an existing Skywire grant |
 | WTF-BB-731 | Fixed | Codex Profile social-link repair | 2026-11-02 | Profile / AT Protocol social identity proof | P1 | 12 | 284 | 3 | 4 | 1 | Profile AT Protocol linking has no coherent identity-proof and relink path |
@@ -185,6 +182,7 @@ Total: **739** · Open: **9** · Claimed: **42** · In Progress: **21** · Block
 | WTF-BB-040 | Fixed | Swarm A7 | 2026-04-28 | TV microapp / background jobs | P1 | 12 | 284 | 3 | 4 | 1 | Auto-refresh can be called concurrently from stream read-path traffic |
 | WTF-BB-036 | Fixed | Codex TV integrity pass | 2026-05-04 | TV microapp / data integrity | P1 | 12 | 284 | 3 | 4 | 1 | Channel-video insert path is non-atomic with concurrent requests |
 | WTF-BB-029 | Fixed | Codex modular architecture refactor | 2026-05-05 | Data quality / scalability | P1 | 12 | 284 | 3 | 4 | 1 | `/api/w/timeline` loads all verified users before paging or cursoring |
+| WTF-BB-771 | Fixed | Codex coLILseum escrow completion | 2026-11-03 | coLILseum / wager wallet recovery | P1 | 11 | 397 | 2 | 4 | 1 | A failed duel seat claim or rejected wallet prompt can lock the stake panel |
 | WTF-BB-761 | Fixed | Codex coLILseum signer response hardening | 2026-11-03 | coLILseum / signer deployment parity | P1 | 11 | 397 | 2 | 4 | 1 | Sponsored escrow signer deployment and response liveness |
 | WTF-BB-760 | Fixed | Codex coLILseum sponsored-room recovery | 2026-11-03 | coLILseum / deployment guard | P1 | 11 | 397 | 2 | 4 | 1 | Deployment guard omits sponsored escrow bindings for active funded rooms |
 | WTF-BB-700 | Fixed | Codex WTFIAP Shadownet delivery | 2026-10-22 | WTFIAP escrow / reconciliation scheduling | P1 | 11 | 397 | 2 | 4 | 1 | Continuous chain heads starve funded-room Recheck requests |
@@ -197,6 +195,7 @@ Total: **739** · Open: **9** · Claimed: **42** · In Progress: **21** · Block
 | WTF-BB-122 | Fixed | Codex wallet/RPC emergency pass | 2026-05-08 | Tezos wallet / checkout | P1 | 11 | 397 | 2 | 4 | 1 | Persisted wallet address can reach checkout without Taquito wallet provider |
 | WTF-BB-093 | Fixed | Codex TV creator workflow pass | 2026-05-04 | TV microapp / creator workflow UX | P1 | 11 | 397 | 3 | 4 | 0 | Playlist editing is trapped behind the active-playlist path, media management conflates detach with delete, and public bumper-pool removal is exposed only as destructive delete |
 | WTF-BB-091 | Fixed | Codex TV overlay metadata pass | 2026-05-04 | TV microapp / metadata UX | P1 | 11 | 397 | 3 | 4 | 0 | TV overlay credits fall back to wallet addresses, imported library tokens lose title-card metadata, and uploaded media cannot carry editable creator credits or Objkt links |
+| WTF-BB-769 | Fixed | Codex coLILseum escrow completion | 2026-11-03 | coLILseum / sponsored prize settlement | P1 | 10 | 492 | 1 | 4 | 1 | Random sponsored prize allocation attempts to sort a frozen list |
 | WTF-BB-759 | Fixed | Codex coLILseum sponsored-room recovery | 2026-11-03 | coLILseum / optional treasure combat | P1 | 10 | 492 | 2 | 4 | 0 | Ancient mode stalls at round five because combat requires disabled treasure chests |
 | WTF-BB-746 | Fixed | Codex Pasta mainnet alpha integration | 2026-10-29 | Pasta Protocol / Macaroni V3.5 public collector CORS | P1 | 10 | 492 | 2 | 4 | 0 | Macaroni V3.5 public status and wake lose cross-origin access after CORS extraction |
 | WTF-BB-725 | Fixed | Codex Docker readiness repair | 2026-10-29 | WTFIAP / funded-room deployment compatibility | P1 | 10 | 492 | 2 | 4 | 0 | Latest coLILseum manifest changes its rules hash without updating funded-room compatibility proof |
@@ -236,6 +235,7 @@ Total: **739** · Open: **9** · Claimed: **42** · In Progress: **21** · Block
 | WTF-BB-307 | Fixed | Codex local SSH bootstrap pass | 2026-06-21 | Ops / local SSH access | P2 | 8 | 637 | 2 | 3 | 0 | Codex repeatedly tried the wrong SSH path for Hetzner checks because the GitHub publish key path differs from this Mac's normal `ssh wtf` alias and Codex could not see the passphrase-loaded local identity; fixed with ignored `.codex/machine-ssh.env`, tracked `scripts/wtf-ssh.sh`, and project rules that force future agents through the local alias/agent bootstrap |
 | WTF-BB-170 | Fixed | Codex Skywire profile disconnect pass | 2026-05-24 | Profile / Identity bridge UX | P2 | 8 | 637 | 1 | 4 | 0 | Profile shows linked Skywire identity but lacks a manual disconnect action |
 | WTF-BB-157 | Fixed | Codex Skywire full-send gate repair | 2026-05-24 | Build / shared DTO typing | P2 | 8 | 637 | 1 | 4 | 0 | Communication route resolver leaks nullable browser policy reason into non-null DTO |
+| WTF-BB-773 | Fixed | Codex coLILseum escrow completion | 2026-11-03 | coLILseum / prepaid payout clarity | P2 | 7 | 691 | 1 | 2 | 1 | Prepaid tie receipt says XTZ paid when the guest receives credit |
 | WTF-BB-755 | Fixed | Codex release integration | 2026-11-02 | AT Protocol / Profile OAuth CI test precondition | P2 | 6 | 721 | 1 | 2 | 0 | Profile AT OAuth client metadata tests reject a clean CI local origin before assertions |
 | WTF-BB-747 | Fixed | Codex Pasta mainnet alpha integration | 2026-10-29 | Pasta Protocol / IPFS Pinning inventory test | P2 | 6 | 721 | 1 | 2 | 0 | Gamma pinning inventory waits for obsolete Connect Porcupin button |
 | WTF-BB-011 | Fixed | Codex warning cleanup pass | 2026-05-06 | Frontend bundle | P3 | 9 | 564 | 4 | 2 | 1 | Wallet/Tezos bundle chunks are huge and pull Node core externals |
@@ -1943,19 +1943,6 @@ Total: **739** · Open: **9** · Claimed: **42** · In Progress: **21** · Block
   - Added entity drilldown and analytics-to-firehose handoff inside the tz2at AppView, so operators can select any ranked address/contract/marketplace/token or flow endpoint, inspect related value flows and sample records, then scope analytics or open the read-only firehose with that entity filter.
   - The issue remains In Progress because live PDS secrets/DNS and the primary WTFOS repo credentials have not been verified, synthetic/system actor repos are not modeled yet, and older non-SystemEvent game/system publishers still need to be audited onto the normalized event spine.
 
-### WTF-BB-772 - Prepaid credit could be stranded by a contract rotation
-
-- Category: coLILseum / prepaid-credit custody
-- Priority: P1
-- Status: In Progress
-- Owner/Session: Codex coLILseum escrow completion
-- Last touched: 2026-11-03
-- Score: C2 + F4 + S3 + P1(4) = 13
-- Evidence (2026-11-03): Prepaid credit cannot be withdrawn to XTZ and is held in the v3 contract. Changing the active contract or payout mode would hide existing credit if deployment or restart did not check a durable binding.
-- Why it matters: A config-only rollout could make deposited credit unusable despite its remaining on chain.
-- Correction direction: Pin the first active prepaid contract and script in the mounted data directory, validate on app startup and guarded deploy, and fail closed on rotation.
-- Verification idea: Activate once, restart with matching settings, reject contract/script/mode changes, and preserve old room pins.
-
 ### WTF-BB-707 - XTZ Duel wagers cannot be funded before a challenger takes a seat
 
 - Category: WTFIAP escrow / open-seat admission
@@ -2136,19 +2123,6 @@ Total: **739** · Open: **9** · Claimed: **42** · In Progress: **21** · Block
 - Local verification: `node --import tsx/esm --test server/lib/portfolio-costing.test.ts server/lib/tzkt-ops.test.ts` passed.
 - Verification idea: Duplicate-count query returns zero before index creation; index creation succeeds on production-like data.
 
-### WTF-BB-770 - Hosted sponsored rooms cannot request an evidenced technical void
-
-- Category: coLILseum / sponsored prize recovery
-- Priority: P1
-- Status: In Progress
-- Owner/Session: Codex coLILseum escrow completion
-- Last touched: 2026-11-03
-- Score: C2 + F4 + S2 + P1(4) = 12
-- Evidence (2026-11-03): The sponsored escrow contract had a technical-void entrypoint but the hosted sponsor service could not request it after combat.
-- Why it matters: A server failure could leave sponsor and entrant deposits locked without the approved audited refund path.
-- Correction direction: Add an operator-only, evidence-bound intent that verifies the authoritative game audit and submits one journaled void through the existing signer.
-- Verification idea: Prove an ineligible room cannot void, a reproduced technical failure can void, and original funders can recover their respective assets.
-
 ### WTF-BB-023 - Add host-level heartbeat and native repo doctor backfill worker
 
 - Category: Operations / workers
@@ -2172,19 +2146,6 @@ Total: **739** · Open: **9** · Claimed: **42** · In Progress: **21** · Block
   - Create and persist the install plan in `WTF/REPO_DOCTOR_HEARTBEAT_PLAN.md`.
   - Validate `systemctl` starts, stops, and auto-restarts independent of the app container.
   - Confirm no overlapping worker runs via advisory lock and dedupe logging in run records.
-
-### WTF-BB-771 - A failed duel seat claim or rejected wallet prompt can lock the stake panel
-
-- Category: coLILseum / wager wallet recovery
-- Priority: P1
-- Status: In Progress
-- Owner/Session: Codex coLILseum escrow completion
-- Last touched: 2026-11-03
-- Score: C2 + F4 + S1 + P1(4) = 11
-- Evidence (2026-11-03): A losing challenger in a seat race retains a pending claim after an on-chain failure, and a prepaid purchase checkpoint created before a wallet prompt can persist when that prompt is rejected before broadcast.
-- Why it matters: The player cannot retry an eligible seat or use direct staking even though no payment was applied.
-- Correction direction: Prove exact finalized failed room operations before clearing a sent claim; clear checkpoints on proven prebroadcast rejection and confine uncertain credit purchases to credit actions.
-- Verification idea: Exercise failed/backtracked/skipped claim, unknown submission, ordinary wallet cancel, reload, and direct-stake availability.
 
 ### WTF-BB-127 - Side-quest auto-verification schema includes unimplemented reward handles
 
@@ -2213,19 +2174,6 @@ Total: **739** · Open: **9** · Claimed: **42** · In Progress: **21** · Block
   - 2026-05-22: Daily side quest automation now marks per-user current-UTC-day completions as claim-required instead of auto-disbursing, `/side-quests` renders the canonical daily quest cards with player counts and claim buttons, `/api/challenge-automation/daily-loops/:id/claim` performs idempotent reward action execution, Mission Control uses Side Quests language, and live puppet coverage now claims the messageboard check-in before asserting XP/WTF ledger side effects.
   - 2026-05-22 verification: `npm run check -- --pretty false`; `npx tsx --test client/src/pages/MissionControl.test.ts server/challenges/services/daily-loop-challenges.test.ts`; `npm run test:e2e:inventory:coverage`; `npm run test:e2e:inventory`; targeted live puppet command for `canonical side quests|gameshow launch surfaces` after fixing strict-mode duplicate text and same-UTC-day rerun idempotency in the spec.
   - Remaining direct side-quest work: each latent `auto_verify_type` still needs either a registry-backed side-quest adapter or explicit archival/removal before this bounty can be marked Fixed/Verified.
-
-### WTF-BB-769 - Random sponsored prize allocation attempts to sort a frozen list
-
-- Category: coLILseum / sponsored prize settlement
-- Priority: P1
-- Status: In Progress
-- Owner/Session: Codex coLILseum escrow completion
-- Last touched: 2026-11-03
-- Score: C1 + F4 + S1 + P1(4) = 10
-- Evidence (2026-11-03): Seeded random sponsored settlement built a frozen prize-lot list, then attempted to sort it in place. A finished room with random assignment could stop before prize distribution.
-- Why it matters: Players can complete a funded match yet fail to receive the assigned prizes.
-- Correction direction: Sort a copy under the saved seed and replay the exact assignment in hosted settlement tests.
-- Verification idea: Complete fixed, random, and pick-assignment hosted settlements and check chain-pinned recipients without altering existing funded rooms.
 
 ### WTF-BB-708 - Second item shop rejects purchases as unknown party actions
 
@@ -2281,19 +2229,6 @@ Total: **739** · Open: **9** · Claimed: **42** · In Progress: **21** · Block
 - Local verification: `git diff --check` passed for the changed transplant files; focused Tezos tests passed.
 - Verification idea:
   - After enabling, run a dry-run on known wallets and check `collection_items` for non-empty expected listing snapshots.
-
-### WTF-BB-773 - Prepaid tie receipt says XTZ paid when the guest receives credit
-
-- Category: coLILseum / prepaid payout clarity
-- Priority: P2
-- Status: In Progress
-- Owner/Session: Codex coLILseum escrow completion
-- Last touched: 2026-11-03
-- Score: C1 + F2 + S1 + P2(3) = 7
-- Evidence (2026-11-03): In a prepaid Duel tie, the contract restores the guest entry as nonwithdrawable credit but the room panel labels the total distributed amount as XTZ paid automatically.
-- Why it matters: The player may believe XTZ reached their wallet when the refund is available only as WTFOS prepaid credit.
-- Correction direction: Label the total as pot distributed and identify the guest's refund medium from verified seat and settlement state.
-- Verification idea: Compare ordinary win, prepaid win, and prepaid tie receipts in the browser against the contract outcome.
 
 ### WTF-BB-568 - A tracked browser bundle contains a client-side Pinata credential
 
@@ -3194,6 +3129,18 @@ Total: **739** · Open: **9** · Claimed: **42** · In Progress: **21** · Block
 - Remaining target-environment proof before Verified:
   - Configure a dedicated production bucket with Object Lock enabled, run the pipeline, delete the local dump in a controlled drill, restore from the remote-only object, and record row-count/media-manifest proof plus the actual RPO/RTO.
 
+### WTF-BB-772 - Prepaid credit could be stranded by a contract rotation
+
+- Category: coLILseum / prepaid-credit custody
+- Priority: P1
+- Status: Fixed
+- Owner/Session: Codex coLILseum escrow completion
+- Last touched: 2026-11-03
+- Score: C2 + F4 + S3 + P1(4) = 13
+- Evidence (2026-11-03): Nonwithdrawable prepaid credit could be hidden by an active-contract rotation.
+- Correction: Fsync a durable contract/script binding on the mounted game volume and check it before app startup and guarded deployment; reject contract, script, or payout-mode rotation. When the deploy process creates the pin as root, assign it to the volume owner so the unprivileged app can read it.
+- Verification: Mainnet prepaid escrow KT1Nk9Sxz7P2Q2eb45AgJiMp3jnbrYT3J4Fm passed a funded lifecycle. The live app restarted with the matching binding and reports ready; old contract remains in the signer allowlist. Binding rotation guard tests pass. The ownership source patch still needs the final release deployment.
+
 ### WTF-BB-710 - New runtime dependency advisories block the coLILseum claim release
 
 - Category: Production dependency audit / claim release
@@ -3372,6 +3319,18 @@ Total: **739** · Open: **9** · Claimed: **42** · In Progress: **21** · Block
   - Keep contract templates as versioned app assets or package artifacts; keep Kiln service URL/token/timeout explicit in deploy env.
 - Verification idea:
   - Build the app image, run a dry-run collection deployment against host Kiln, and confirm missing/slow Kiln fails fast with a 503 instead of hanging.
+
+### WTF-BB-770 - Hosted sponsored rooms cannot request an evidenced technical void
+
+- Category: coLILseum / sponsored prize recovery
+- Priority: P1
+- Status: Fixed
+- Owner/Session: Codex coLILseum escrow completion
+- Last touched: 2026-11-03
+- Score: C2 + F4 + S2 + P1(4) = 12
+- Evidence (2026-11-03): The sponsored contract had a technical-void entrypoint, but the hosted service could not request it after combat.
+- Correction: Added a private operator-only, evidence-bound request that checks the authoritative game audit, commits reason and evidence hashes, submits one journaled void through the existing signer, and persists finalized block proof for the deployment guard.
+- Verification: Service and deployment-guard tests cover ineligible rooms, evidenced failure, original-funder refund intent, and persisted void state. A live on-chain technical-void receipt remains to be collected.
 
 ### WTF-BB-750 - Hosted Macaroni V3.5 alpha could reach Mainnet when the native package alone enforced Shadownet
 
@@ -4044,6 +4003,18 @@ Total: **739** · Open: **9** · Claimed: **42** · In Progress: **21** · Block
   - `npm run check` exited 0 on 2026-05-05.
   - `npx tsx -e "import('./server/lib/timeline-db.ts').then(async (m) => { const w = await m.loadWTimelineAuthorWindow(5); console.log(JSON.stringify({ accounts: w.accounts.length, handles: w.handlesLower, totalHandles: w.totalHandles, skippedAccounts: w.skippedAccounts, rowLimit: w.rowLimit })); process.exit(0); }).catch((err) => { console.error(err); process.exit(1); });"` exited 0 against the local sandbox DB and returned a bounded `rowLimit`.
 
+### WTF-BB-771 - A failed duel seat claim or rejected wallet prompt can lock the stake panel
+
+- Category: coLILseum / wager wallet recovery
+- Priority: P1
+- Status: Fixed
+- Owner/Session: Codex coLILseum escrow completion
+- Last touched: 2026-11-03
+- Score: C2 + F4 + S1 + P1(4) = 11
+- Evidence (2026-11-03): A failed challenger seat claim or rejected wallet prompt could leave a pending checkpoint and lock the stake panel.
+- Correction: Checkpoints now begin at actual wallet submission; explicit prebroadcast rejection clears them; sent claims clear only after exact finalized failure evidence. Truly unknown submissions remain pending, while unrelated direct staking stays available.
+- Verification: Focused funding browser suite passed 23/23, including wallet rejection, failed operation, reload, and direct-stake controls. A live failed-seat race remains to be observed.
+
 ### WTF-BB-761 - Sponsored escrow signer deployment and response liveness
 
 - Category: coLILseum / signer deployment parity
@@ -4266,6 +4237,18 @@ Total: **739** · Open: **9** · Claimed: **42** · In Progress: **21** · Block
 - Verification: `node --import tsx/esm --test server/lib/tv-overlay-metadata.test.ts server/lib/tv-broadcast.test.ts client/src/lib/tv-playback.test.ts server/lib/tv-stream-snapshot-cache.test.ts server/lib/tv-telemetry.test.ts server/lib/tv-policy.test.ts`; `git diff --check`
 - Verification note: repo-wide `npm run check` is currently blocked by unrelated existing Desktop worktree errors in `client/src/components/layout/Desktop.tsx` (missing hamster/pet UI symbols), not by the TV overlay patch.
 - Verification idea: Imported token media added through the library should show human-readable creator credit plus Objkt links in TV, upload-backed media without custom credit should show `from <username>'s media`, and overlays should appear at viewer start and viewer end without sticking on screen the whole time.
+
+### WTF-BB-769 - Random sponsored prize allocation attempts to sort a frozen list
+
+- Category: coLILseum / sponsored prize settlement
+- Priority: P1
+- Status: Fixed
+- Owner/Session: Codex coLILseum escrow completion
+- Last touched: 2026-11-03
+- Score: C1 + F4 + S1 + P1(4) = 10
+- Evidence (2026-11-03): Seeded random sponsored settlement sorted a frozen FA2 lot list in place and could stop a completed funded room before payout.
+- Correction: Sort a copy of the committed list, preserving the saved seed and immutable prize plan.
+- Verification: Hosted settlement tests exercise fixed, random, and finish-place pick assignments with exact recipients and signer intents. Source correction is deployed; a live random-assignment settlement receipt remains to be collected.
 
 ### WTF-BB-759 - Ancient mode stalls at round five because combat requires disabled treasure chests
 
@@ -5102,6 +5085,18 @@ Total: **739** · Open: **9** · Claimed: **42** · In Progress: **21** · Block
   - `npm run check -- --pretty false`
   - `npm run test:e2e:inventory:coverage`
   - `HARNESS_PORT=4176 npm run test:e2e:inventory`
+
+### WTF-BB-773 - Prepaid tie receipt says XTZ paid when the guest receives credit
+
+- Category: coLILseum / prepaid payout clarity
+- Priority: P2
+- Status: Fixed
+- Owner/Session: Codex coLILseum escrow completion
+- Last touched: 2026-11-03
+- Score: C1 + F2 + S1 + P2(3) = 7
+- Evidence (2026-11-03): A prepaid Duel tie restored the guest entry as credit, while the room panel called the total XTZ paid.
+- Correction: Label the total pot as distributed and show the guest refund medium as prepaid credit from verified seat and settlement state.
+- Verification: Funding browser tests compare ordinary win, prepaid win, and prepaid tie receipts against the contract behavior. A live tie receipt remains to be observed.
 
 ### WTF-BB-755 - Profile AT OAuth client metadata tests reject a clean CI local origin before assertions
 

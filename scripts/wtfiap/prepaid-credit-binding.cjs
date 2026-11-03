@@ -35,7 +35,16 @@ function assertOrPinPrepaidBinding(env, dataDir) {
   fs.mkdirSync(dataDir, { recursive: true });
   try {
     const fd = fs.openSync(file, 'wx', 0o600);
-    try { fs.writeFileSync(fd, JSON.stringify(candidate) + '\n'); fs.fsyncSync(fd); }
+    try {
+      fs.writeFileSync(fd, JSON.stringify(candidate) + '\n');
+      // The guarded deploy runs as root; the app later reads this mounted
+      // file as the volume owner (UID 1000 in production).
+      if (process.getuid?.() === 0) {
+        const owner = fs.statSync(dataDir);
+        fs.fchownSync(fd, owner.uid, owner.gid);
+      }
+      fs.fsyncSync(fd);
+    }
     finally { fs.closeSync(fd); }
     const directory = fs.openSync(dataDir, 'r');
     try { fs.fsyncSync(directory); } finally { fs.closeSync(directory); }
