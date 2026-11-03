@@ -29,29 +29,29 @@ const Shell = styled.div`
   min-width: 0;
   margin-top: 12px;
   padding: 11px;
-  border: 1px solid var(--horf-line, #d6ded8);
+  border: 1px solid var(--horf-line, #3d5148);
   border-radius: 13px;
-  background: #edf4ef;
-  color: var(--horf-ink, #142526);
+  background: #2b3d34;
+  color: var(--horf-ink, #f4ead6);
   container-type: inline-size;
   .carousel-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
   .carousel-head strong { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
-  .carousel-head a { color: var(--horf-teal, #087e7a); font-size: 12px; font-weight: 800; }
-  .stage { display: grid; grid-template-columns: minmax(116px, 36%) minmax(0, 1fr); gap: 11px; min-height: 128px; overflow: hidden; border-radius: 10px; background: #fff; }
-  .art { position: relative; display: block; width: 100%; height: 100%; min-height: 128px; overflow: hidden; background: #d9e5dc; }
+  .carousel-head a { color: var(--horf-teal, #71b7a0); font-size: 12px; font-weight: 800; }
+  .stage { display: grid; grid-template-columns: minmax(116px, 36%) minmax(0, 1fr); gap: 11px; min-height: 128px; overflow: hidden; border-radius: 10px; background: var(--horf-surface, #1b2723); }
+  .art { position: relative; display: block; width: 100%; height: 100%; min-height: 128px; overflow: hidden; background: #2b3d34; }
   .art img { display: block; width: 100%; height: 100%; min-height: 128px; object-fit: cover; }
   .photo-note { position: absolute; right: 5px; bottom: 5px; left: 5px; padding: 3px 5px; border-radius: 3px; background: #132f2ddd; color: #fff; font-size: 9px; font-weight: 800; line-height: 1.2; }
   .details { min-width: 0; display: flex; flex-direction: column; align-items: start; justify-content: center; padding: 9px 10px 9px 0; }
-  .details a { color: var(--horf-ink, #142526); font: 700 17px/1.15 var(--horf-display, Georgia, serif); text-decoration: none; overflow-wrap: anywhere; }
-  .details a:hover { color: var(--horf-teal, #087e7a); text-decoration: underline; }
-  .details small { display: block; margin-top: 5px; color: var(--horf-muted, #50625e); font-size: 11px; line-height: 1.35; }
+  .details a { color: var(--horf-ink, #f4ead6); font: 700 17px/1.15 var(--horf-display, Georgia, serif); text-decoration: none; overflow-wrap: anywhere; }
+  .details a:hover { color: var(--horf-teal, #71b7a0); text-decoration: underline; }
+  .details small { display: block; margin-top: 5px; color: var(--horf-muted, #b7b5a7); font-size: 11px; line-height: 1.35; }
   .controls { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; }
-  .controls span { color: var(--horf-muted, #50625e); font-size: 11px; font-weight: 700; }
+  .controls span { color: var(--horf-muted, #b7b5a7); font-size: 11px; font-weight: 700; }
   .controls div { display: flex; gap: 5px; }
-  .controls button { width: 32px; height: 32px; border: 1px solid #b6c9bd; border-radius: 50%; background: #fff; color: var(--horf-ink, #142526); cursor: pointer; font-size: 16px; }
-  .controls button:hover:not(:disabled) { border-color: var(--horf-teal, #087e7a); background: #e4f5ee; }
+  .controls button { width: 32px; height: 32px; border: 1px solid #b6c9bd; border-radius: 50%; background: var(--horf-field, #24332d); color: var(--horf-ink, #f4ead6); cursor: pointer; font-size: 16px; }
+  .controls button:hover:not(:disabled) { border-color: var(--horf-teal, #71b7a0); background: #2b4b41; }
   .controls button:disabled { opacity: .4; cursor: default; }
-  .empty { margin: 0; padding: 13px 6px 5px; color: var(--horf-muted, #50625e); font-size: 12px; line-height: 1.4; }
+  .empty { margin: 0; padding: 13px 6px 5px; color: var(--horf-muted, #b7b5a7); font-size: 12px; line-height: 1.4; }
   @container (max-width: 390px) { .stage { grid-template-columns: 1fr; } .art, .art img { height: 150px; min-height: 150px; } .details { padding: 0 11px 11px; } }
 `;
 

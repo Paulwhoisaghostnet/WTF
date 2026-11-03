@@ -6,7 +6,7 @@ import {
   summarizeSeason,
   type HorfTransfer,
 } from "./model";
-import { HORF_SEASONS, type HorfSeason } from "./seasons";
+import { HORF_ALL_TIME_SEASON, HORF_SEASONS, HORF_SEASON_CHOICES, type HorfSeason } from "./seasons";
 import {
   discoverApprovedHorseTags,
   fetchHorfEventPage,
@@ -267,10 +267,14 @@ async function syncSeason(season: HorfSeason): Promise<void> {
   }
 }
 
-function dueForSync(state: SyncState, season: HorfSeason, now: number): boolean {
+export function dueForSync(state: SyncState, season: HorfSeason, now: number): boolean {
   if (state.policy_version !== policyVersion()) return true;
   if (boundaryChanged(state, season)) return true;
   if (state.status === "syncing") return true;
+  // A completed closed window contains immutable chain events. Keep its
+  // persisted ledger until a policy or boundary change requires replay.
+  // This prevents an All time read from starting every archive scan per block.
+  if (season.endsAt && state.status === "ready" && state.as_of) return false;
   const reference = state.status === "ready" ? state.as_of : state.updated_at;
   return !reference || now >= new Date(reference).getTime() + MAINNET_BLOCK_MS;
 }
@@ -379,7 +383,7 @@ export async function getHorfSeasonSnapshot(address: string | null, season: Horf
   const refreshCandidates = [nextRefreshAt, stableClaims.nextRefreshAt, marketSales.nextRefreshAt].filter((value): value is string => !!value);
   return {
     season,
-    seasons: HORF_SEASONS,
+    seasons: HORF_SEASON_CHOICES,
     asOf: combinedAsOf,
     status,
     error: state.error || stableClaims.error || marketSales.error,
@@ -388,4 +392,89 @@ export async function getHorfSeasonSnapshot(address: string | null, season: Horf
     leaderboard,
     currentUser,
   };
+}
+
+type HorfSeasonSnapshot = Awaited<ReturnType<typeof getHorfSeasonSnapshot>>;
+
+function assertDisjointHorfSeasons(seasons: readonly HorfSeason[]): void {
+  const ordered = [...seasons].sort((a, b) => a.startsAt.localeCompare(b.startsAt));
+  for (let i = 1; i < ordered.length; i++) {
+    const previous = ordered[i - 1]!;
+    if (!previous.endsAt || previous.endsAt > ordered[i]!.startsAt) {
+      throw new Error(`Horf tracked seasons overlap: ${previous.key} and ${ordered[i]!.key}`);
+    }
+  }
+}
+
+function sumCount(left: number, right: number): number {
+  const total = left + right;
+  if (!Number.isSafeInteger(total) || total < 0) throw new Error("Horf all-time count exceeds safe integer range");
+  return total;
+}
+
+/** Combine only named, nonoverlapping campaign snapshots; gaps remain outside the count. */
+export function combineHorfSeasonSnapshots(snapshots: readonly HorfSeasonSnapshot[], address: string | null) {
+  const totals = new Map<string, { received: number; sent: number; name: null }>();
+  for (const snapshot of snapshots) {
+    for (const rider of snapshot.leaderboard) {
+      const previous = totals.get(rider.address) || { received: 0, sent: 0, name: null };
+      previous.received = sumCount(previous.received, rider.received);
+      previous.sent = sumCount(previous.sent, rider.sent);
+      totals.set(rider.address, previous);
+    }
+  }
+  const leaderboard = [...totals].map(([wallet, counts]) => ({
+    address: wallet, name: counts.name,
+    received: counts.received, sent: counts.sent,
+    trades: sumCount(counts.received, counts.sent),
+  })).sort((a, b) => b.trades - a.trades || b.received - a.received || a.address.localeCompare(b.address));
+
+  // Return rides can settle a prior season's obligation. Rebuild this wallet's
+  // FIFO pair ledger from the original recent rows instead of summing debts.
+  const seenRecent = new Set<string>();
+  const personalTransfers: HorfTransfer[] = [];
+  if (address) {
+    for (const snapshot of snapshots) {
+      for (const row of snapshot.currentUser?.recent || []) {
+        const identity = [row.settlement || "direct", row.id, row.timestamp,
+          row.direction, row.counterparty, row.token.contract, row.token.tokenId,
+          row.amount].join("\u0000");
+        if (seenRecent.has(identity)) continue;
+        seenRecent.add(identity);
+        personalTransfers.push({
+          id: row.id, timestamp: row.timestamp,
+          from: row.direction === "out" ? address : row.counterparty,
+          to: row.direction === "out" ? row.counterparty : address,
+          token: row.token, amount: row.amount,
+          ...(row.settlement ? { settlement: row.settlement } : {}),
+          ...(row.stableMode !== undefined ? { stableMode: row.stableMode } : {}),
+        });
+      }
+    }
+  }
+  const currentUser = address ? summarizeSeason(personalTransfers, address).currentUser : null;
+  const status = snapshots.some((snapshot) => snapshot.status === "error") ? "error"
+    : snapshots.some((snapshot) => snapshot.status === "syncing") ? "syncing" : "ready";
+  const sourceTimes = snapshots.map((snapshot) => snapshot.asOf ? Date.parse(snapshot.asOf) : NaN);
+  const asOf = sourceTimes.length === snapshots.length && sourceTimes.every(Number.isFinite)
+    ? new Date(Math.min(...sourceTimes)).toISOString() : null;
+  const refreshTimes = snapshots.map((snapshot) => snapshot.nextRefreshAt ? Date.parse(snapshot.nextRefreshAt) : NaN)
+    .filter(Number.isFinite);
+  const nextRefreshAt = refreshTimes.length
+    ? new Date(Math.min(...refreshTimes)).toISOString()
+    : status === "ready" ? null : new Date(Date.now() + MAINNET_BLOCK_MS).toISOString();
+  const error = snapshots.find((snapshot) => snapshot.error)?.error || null;
+  return {
+    season: HORF_ALL_TIME_SEASON,
+    seasons: HORF_SEASON_CHOICES,
+    asOf, status, error, nextRefreshAt,
+    countingRule: `${snapshots[0]?.countingRule || "Each qualifying horse transfer counts for both traders."} All time combines only the named horse-trading seasons tracked by Horf; gaps between those campaigns are excluded. Return rides can settle a debt from an earlier season.`,
+    leaderboard, currentUser,
+  };
+}
+
+export async function getHorfAllTimeSnapshot(address: string | null) {
+  assertDisjointHorfSeasons(HORF_SEASONS);
+  const snapshots = await Promise.all(HORF_SEASONS.map((season) => getHorfSeasonSnapshot(address, season)));
+  return combineHorfSeasonSnapshots(snapshots, address);
 }

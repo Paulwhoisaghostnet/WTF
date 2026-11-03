@@ -23,6 +23,17 @@ export const HORF_SEASONS: readonly HorfSeason[] = [
 
 export const HORF_CURRENT_SEASON_KEY = "current-2026";
 
+/** A display scope, not a scan window: the ledger combines named seasons. */
+export const HORF_ALL_TIME_SEASON: HorfSeason = {
+  key: "all-time",
+  startsAt: HORF_SEASONS[0]!.startsAt,
+  endsAt: null,
+  label: "All time",
+  inferred: true,
+};
+
+export const HORF_SEASON_CHOICES: readonly HorfSeason[] = [HORF_ALL_TIME_SEASON, ...HORF_SEASONS];
+
 export function resolveHorfSeason(key: string | null | undefined): HorfSeason | null {
   const wanted = key || HORF_CURRENT_SEASON_KEY;
   return HORF_SEASONS.find((season) => season.key === wanted) || null;

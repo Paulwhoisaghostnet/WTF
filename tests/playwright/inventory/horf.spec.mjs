@@ -140,13 +140,15 @@ test.describe("Horf horse trading", () => {
 
     const links = page.locator("[data-horf-left-nav] [data-horf-nav]");
     const targets = [
-      ["race", "/horf", "intro"],
+      ["race", "/horf/race", "intro"],
       ["traders", "/horf/traders", "trader-directory"],
       ["range", "/horf/open-range", null],
       ["marshal", "/horf/marshals-market", "marshals-market"],
       ["outlaw", "/horf/outlaw-corral", "outlaw-corral"],
       ["stable", "/horf/stable", "personal-stable"],
       ["horse", "/horf/send-horse", "horse-send"],
+      ["horse-market", "/horf/horse-market", "horse-market"],
+      ["haha", "/horf/haha-crp", null],
       ["gifts", "/horf/gifts", "gifts"],
       ["posse", "/horf/posse", null],
       ["info", "/horf/info", "horse-test-info"],
@@ -158,6 +160,7 @@ test.describe("Horf horse trading", () => {
       await link.click();
       await expect(page).toHaveURL(new RegExp(`${path.replaceAll("/", "\\/")}\\?season=current-2026$`));
       if (section === "range") await expect(page.locator("[data-horf-open-range]")).toBeVisible();
+      else if (section === "haha") await expect(page.locator("[data-haha-crp]")).toBeVisible();
       else if (section === "posse") await expect(page.locator("[data-horf-posse]")).toBeVisible();
       else await expect(page.locator(`[data-horf-region="${region}"]`)).toBeVisible();
       if (section !== "race") await expect(page.locator('[data-horf-region="intro"]')).toHaveCount(0);
@@ -222,7 +225,7 @@ test.describe("Horf horse trading", () => {
     await expect(wtfHome).toBeVisible();
     await expect(wtfHome).toHaveAttribute("href", "/");
     await expect(wtfHome).toContainText("Brought to you by wtfOS.app");
-    await expect(app.locator('[data-horf-region="intro"]')).toContainText("No WTF OS account is needed");
+    await expect(app.locator('[data-horf-region="intro"]')).toContainText("No WTF OS sign-in needed");
     await expect(app.locator("[data-horf-wallet-status]")).toContainText("watch the race without signing in");
     await expect(app.locator('[data-horf-region="race"] [data-horf-lane]')).toHaveCount(3);
     await expect(app.locator("[data-horf-wallet-connect-intro]")).toHaveText("Connect and verify wallet");
@@ -233,7 +236,8 @@ test.describe("Horf horse trading", () => {
     await page.locator('[data-horf-left-nav] a[href^="/horf/stable"]').click();
     await expect(page).toHaveURL(/\/horf\/stable\?season=current-2026$/);
     await expect(app).toHaveAttribute("data-horf-page", "stable");
-    await expect(app.locator('[data-horf-region="personal-stable"]')).toContainText("Connect and verify your Tezos wallet");
+    await expect(app.locator('[data-horf-region="personal-stable"] [data-horf-stable-wallet-status]')).toContainText("No wallet selected");
+    await expect(app.locator('[data-horf-region="personal-stable"] [data-horf-profile-connect]')).toHaveText("Connect and verify wallet");
     await expect(app.locator('[data-horf-region="personal-stable"] [data-horf-personal-token]')).toBeDisabled();
     await expect(app.locator('[data-horf-region="trader-ledger"]')).toContainText("Connect and verify your Tezos wallet");
     await expect(app.locator('[data-horf-region="race"]')).toHaveCount(0);
@@ -423,8 +427,8 @@ test.describe("Horf horse trading", () => {
     expect(layout.centerWidth).toBeGreaterThanOrEqual(layout.width * 0.75 - 1);
     expect(layout.rightLeft).toBeGreaterThanOrEqual(layout.centerRight - 1);
     await expect(app.locator('[data-horf-region="intro"]')).toContainText(/horse trader/i);
-    await expect(app.locator('[data-horf-region="intro"]')).toContainText("Find other riders");
-    await expect(app.locator('[data-horf-region="intro"]')).toContainText("recent trades");
+    await expect(app.locator('[data-horf-region="intro"]')).toContainText("Find horses, trade with the posse");
+    await expect(app.locator('[data-horf-region="intro"]')).toContainText("open your stable and rider profile");
     const poster = app.locator("[data-horf-wanted-poster]");
     await expect(poster).toContainText("Wanted");
     await expect(poster).toContainText("Horse traders · all riders welcome");
@@ -526,7 +530,7 @@ test.describe("Horf horse trading", () => {
     await app.locator('[data-horf-region="recent"]').scrollIntoViewIfNeeded();
     await page.screenshot({ path: "test-results/horf-trader-recent-desktop.png", fullPage: true });
 
-    await page.goto("/horf?season=current-2026");
+    await page.goto("/horf/race?season=current-2026");
     const seasonSelect = app.locator("[data-horf-season-select]");
     await expect(seasonSelect).toHaveValue("current-2026");
     await seasonSelect.selectOption("neighvember-2025");
@@ -551,7 +555,7 @@ test.describe("Horf horse trading", () => {
     expect(await app.evaluate((element) => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(1);
     await page.screenshot({ path: "test-results/horf-archive-narrow.png", fullPage: true });
 
-    await page.goto("/horf?season=neighvember-2025");
+    await page.goto("/horf/race?season=neighvember-2025");
     await seasonSelect.selectOption("current-2026");
     await expect(page).toHaveURL(/\?season=current-2026$/);
     await expect(app.locator("[data-horf-lane]").first()).toContainText("Sir Canter");

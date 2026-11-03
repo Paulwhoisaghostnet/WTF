@@ -9,17 +9,17 @@ import { confirmHorfObjktPurchase, pendingObjktPurchaseFor, purchaseObjktHorseIn
 
 type Stage = "preflight" | "preparing" | "wallet" | "confirming";
 const Box = styled.div`
-  margin: 17px 0 0; padding: 14px; border: 1px solid #ddbd80; border-radius: 12px;
-  background: #fff6e7; color: #30291c;
-  h3 { margin: 0 0 5px; color: #422a13; font: 700 18px/1.15 var(--horf-display, Georgia, serif); }
-  p { margin: 6px 0; color: #614c35; font-size: 12px; line-height: 1.45; }
+  margin: 17px 0 0; padding: 14px; border: 1px solid #a37542; border-radius: 12px;
+  background: #382d20; color: var(--horf-ink, #f4ead6);
+  h3 { margin: 0 0 5px; color: var(--horf-ink, #f4ead6); font: 700 18px/1.15 var(--horf-display, Georgia, serif); }
+  p { margin: 6px 0; color: var(--horf-muted, #b7b5a7); font-size: 12px; line-height: 1.45; }
   button { width: 100%; min-height: 43px; margin: 8px 0 0; padding: 9px 12px; border: 1px solid #a55e1d; border-radius: 999px; background: #ffc46a; color: #33250e; cursor: pointer; font: 850 13px/1.2 var(--horf-font, sans-serif); }
   button:hover:not(:disabled) { background: #ffb84c; }
   button:disabled { opacity: .55; cursor: not-allowed; }
-  button:focus-visible, a:focus-visible { outline: 3px solid var(--horf-teal, #087e7a); outline-offset: 3px; }
-  .error { color: #9e3d25; font-weight: 700; }
-  .success { color: #245643; font-weight: 700; }
-  a { color: #0b746c; }
+  button:focus-visible, a:focus-visible { outline: 3px solid var(--horf-teal, #71b7a0); outline-offset: 3px; }
+  .error { color: #f0aa88; font-weight: 700; }
+  .success { color: #a5d9bd; font-weight: 700; }
+  a { color: var(--horf-teal, #71b7a0); }
 `;
 
 function formatXtz(raw: string): string {

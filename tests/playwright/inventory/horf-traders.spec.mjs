@@ -2,21 +2,23 @@ import { test, expect } from "@playwright/test";
 
 const leadWallet = "tz1VSUr8wwNhLAzempoch5d6hLRiTh8Cjcjb";
 const offerOnlyWallet = "tz1UakcrmXD82EinyTmZ4qLYE9ZGQwcXPt79";
+const viewerWallet = "tz1Qi77tcJn9foeHHP1QHj6UX1m1vLVLMbuY";
 const contract = "KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton";
 const season = { key: "current-2026", startsAt: "2026-11-01T00:00:00.000Z", endsAt: null, label: "Neighvember 2026", inferred: false };
+const archiveSeason = { key: "neighvember-2025", startsAt: "2025-11-01T00:00:00.000Z", endsAt: "2025-12-01T00:00:00.000Z", label: "Neighvember 2025", inferred: true };
 
 function json(route, body) {
   return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(body) });
 }
 
 const leadOffers = [
-  { id: 71, ownerAddress: leadWallet, tokenContract: contract, tokenId: "7", amount: "1", acceptedTokenPolicy: "marshal_only", createdAt: "2026-11-03T12:00:00.000Z", updatedAt: "2026-11-03T12:00:00.000Z", name: "Chestnut Neighvember", image: "/horf-art/horse-gallop-photo.jpg" },
-  { id: 72, ownerAddress: leadWallet, tokenContract: contract, tokenId: "8", amount: "2", acceptedTokenPolicy: "any_qualifying", createdAt: "2026-11-03T12:00:00.000Z", updatedAt: "2026-11-03T12:00:00.000Z", name: "Bay Neighvember", image: "/horf-art/horse-beach-photo.jpg" },
+  { id: 71, ownerAddress: leadWallet, tokenContract: contract, tokenId: "7", amount: "1", acceptedTokenPolicy: "marshal_only", createdAt: "2026-11-03T12:00:00.000Z", updatedAt: "2026-11-03T12:00:00.000Z", name: "Chestnut Neighvember", image: "/horf-art/horse-gallop-photo.jpg", ownerBalance: "2" },
+  { id: 72, ownerAddress: leadWallet, tokenContract: contract, tokenId: "8", amount: "2", acceptedTokenPolicy: "any_qualifying", createdAt: "2026-11-03T12:00:00.000Z", updatedAt: "2026-11-03T12:00:00.000Z", name: "Bay Neighvember", image: "/horf-art/horse-beach-photo.jpg", ownerBalance: "4" },
 ];
 
 async function mockPublicHorf(page) {
   await page.route("**/api/horf/season*", (route) => json(route, {
-    season, seasons: [season], asOf: "2026-11-03T12:00:00.000Z", status: "ready", error: null,
+    season, seasons: [season, archiveSeason], asOf: "2026-11-03T12:00:00.000Z", status: "ready", error: null,
     nextRefreshAt: null, currentUser: null,
     leaderboard: [{ address: leadWallet, name: "Sir Canter", trades: 7, received: 4, sent: 3 }],
   }));
@@ -33,9 +35,9 @@ async function mockPublicHorf(page) {
     const address = decodeURIComponent(url.pathname.split("/").at(-2));
     const offset = Number(url.searchParams.get("offset") || 0);
     const items = offset === 0
-      ? [{ contract, tokenId: "7", balance: "1", name: "Chestnut Neighvember", image: "/horf-art/horse-gallop-photo.jpg", description: "Horse art", creatorAddress: leadWallet },
-        { contract, tokenId: "91", balance: "3", name: "Unlisted Foal", image: "/horf-art/horse-portrait-photo.jpg", description: "Foal", creatorAddress: leadWallet }]
-      : [{ contract, tokenId: "92", balance: "1", name: "Older Pony", image: "/horf-art/horse-beach-photo.jpg", description: "Pony", creatorAddress: leadWallet }];
+      ? [{ contract, tokenId: "7", balance: "1", mintedAt: "2026-11-02T12:00:00.000Z", name: "Chestnut Neighvember", image: "/horf-art/horse-gallop-photo.jpg", description: "Horse art", creatorAddress: leadWallet },
+        { contract, tokenId: "91", balance: "3", mintedAt: null, name: "Unlisted Foal", image: "/horf-art/horse-portrait-photo.jpg", description: "Foal", creatorAddress: leadWallet }]
+      : [{ contract, tokenId: "92", balance: "1", mintedAt: "2025-11-03T12:00:00.000Z", name: "Older Pony", image: "/horf-art/horse-beach-photo.jpg", description: "Pony", creatorAddress: leadWallet }];
     return json(route, { address, items, pagination: { hasMore: offset === 0, nextOffset: offset === 0 ? 2 : null } });
   });
 }
@@ -72,17 +74,66 @@ test.describe("Horf trader discovery and horse test", () => {
     await expect(page.locator("[data-horf-app]")).toHaveAttribute("data-horf-page", "profile");
     await expect(profile.locator('[data-horf-profile-tab="for-trade"]')).toHaveAttribute("aria-selected", "true");
     await expect(profile.locator("[data-horf-profile-horse]")).toHaveCount(2);
+    await expect(profile.locator("[data-horf-mint-badge]")).toHaveCount(0);
+    await expect(profile.locator("[data-horf-profile-horse]").first().locator("[data-horf-edition-holdings]")).toHaveText("Trader owns 2 editions");
+    await expect(profile.locator("[data-horf-edition-holdings]").first()).not.toContainText("You own");
     await expect(profile).toContainText("Bay Neighvember");
     await expect(profile).not.toContainText("Unlisted Foal");
     await profile.locator('[data-horf-profile-tab="all-horses"]').click();
     await expect(profile.locator('[data-horf-profile-tab="all-horses"]')).toHaveAttribute("aria-selected", "true");
     await expect(profile.locator("[data-horf-profile-horse]")).toHaveCount(2);
+    await expect(profile.locator("[data-horf-profile-horse]").first().locator("[data-horf-edition-holdings]")).toHaveText("Trader owns 1 edition");
+    await expect(profile.locator("[data-horf-profile-horse]").first().locator("[data-horf-mint-badge]")).toHaveText(season.label);
+    await expect(profile.locator("[data-horf-profile-horse]").last().locator("[data-horf-mint-badge]")).toHaveCount(0);
     await expect(profile).toContainText("Unlisted Foal");
     await expect(profile).not.toContainText("Bay Neighvember");
     await profile.getByRole("button", { name: "Load more horses" }).click();
     await expect(profile.locator("[data-horf-profile-horse]")).toHaveCount(3);
     await expect(profile).toContainText("Older Pony");
+    await expect(profile.locator("[data-horf-profile-horse]").last().locator("[data-horf-mint-badge]")).toHaveText(archiveSeason.label);
     await expect(page.locator('[data-horf-region="trader-directory"]')).toHaveCount(0);
+  });
+
+  test("shows both traders' edition counts to a connected viewer on trade and held tabs", async ({ page, request }) => {
+    const state = await request.post("/__test/state", { data: { userRole: "admin" } });
+    expect(state.ok()).toBeTruthy();
+    await page.addInitScript(({ address }) => {
+      window.localStorage.setItem("wtf:wallet-session", JSON.stringify({ address, providerName: "octez.connect" }));
+    }, { address: viewerWallet });
+    await page.route("**/api/wallets", (route) => json(route, [{ walletAddress: viewerWallet }]));
+    await mockPublicHorf(page);
+    const offerViewers = [];
+    const horseViewers = [];
+    await page.route(/\/api\/horf\/traders\/[^/]+\/profile\?season=current-2026$/, (route) => json(route, {
+      address: leadWallet, seasonKey: season.key, imageUrl: null, description: "", updatedAt: null,
+      username: null, displayName: "Sir Canter", usernameSource: "wtf", canEditUsername: false,
+    }));
+    await page.route(/\/api\/horf\/traders\/[^/]+\/offers(?:\?.*)?$/, (route) => {
+      offerViewers.push(new URL(route.request().url()).searchParams.get("viewer"));
+      return json(route, { address: leadWallet, metadataStatus: "ready", offers: [
+        { ...leadOffers[0], viewerBalance: "1" },
+        { ...leadOffers[1], ownerBalance: null, viewerBalance: null },
+      ] });
+    });
+    await page.route(/\/api\/horf\/traders\/[^/]+\/horses(?:\?.*)?$/, (route) => {
+      horseViewers.push(new URL(route.request().url()).searchParams.get("viewer"));
+      return json(route, { address: leadWallet, items: [
+        { contract, tokenId: "7", balance: "2", viewerBalance: "1", name: "Chestnut Neighvember", image: "/horf-art/horse-gallop-photo.jpg", description: "Horse art", creatorAddress: leadWallet },
+        { contract, tokenId: "91", balance: "3", viewerBalance: "0", name: "Unlisted Foal", image: "/horf-art/horse-portrait-photo.jpg", description: "Foal", creatorAddress: leadWallet },
+      ], pagination: { hasMore: false, nextOffset: 2 } });
+    });
+
+    await page.goto(`/horf/traders/${leadWallet}?season=current-2026`);
+    const profile = page.locator('[data-horf-region="trader-profile"]');
+    await expect(profile.locator("[data-horf-profile-horse]")).toHaveCount(2);
+    expect(offerViewers).toContain(viewerWallet);
+    await expect(profile.locator("[data-horf-profile-horse]").first().locator("[data-horf-edition-holdings]")).toHaveText("Trader owns 2 editions · You own 1 edition");
+    await expect(profile.locator("[data-horf-profile-horse]").last().locator("[data-horf-edition-holdings]")).toHaveText("Trader holdings unavailable · Your holdings unavailable");
+    await profile.locator('[data-horf-profile-tab="all-horses"]').click();
+    await expect(profile.locator("[data-horf-profile-horse]")).toHaveCount(2);
+    expect(horseViewers).toContain(viewerWallet);
+    await expect(profile.locator("[data-horf-profile-horse]").first().locator("[data-horf-edition-holdings]")).toHaveText("Trader owns 2 editions · You own 1 edition");
+    await expect(profile.locator("[data-horf-profile-horse]").last().locator("[data-horf-edition-holdings]")).toHaveText("Trader owns 3 editions · You own 0 editions");
   });
 
   test("explains the exact Is It a Horse rules on its own route", async ({ page, request }) => {

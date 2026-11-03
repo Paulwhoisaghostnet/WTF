@@ -60,16 +60,16 @@ const Feature = styled.section`
   min-width: 0;
   min-height: 310px;
   overflow: hidden;
-  border: 1px solid #ccdbd1;
+  border: 1px solid var(--horf-line, #3d5148);
   border-radius: 18px;
   background: #132f2d;
   color: #f6f8f3;
-  box-shadow: 0 16px 30px #17383114;
+  box-shadow: 0 16px 30px #00000035;
 
   .art-pane { position: relative; min-height: 310px; overflow: hidden; background: #425b52; }
   .art-pane img { display: block; position: absolute; inset: 0; width: 100%; height: 100%; }
   .photo-layer { object-fit: cover; object-position: center; }
-  .token-layer { object-fit: contain; background: #e1ebe4; opacity: 0; transition: opacity 360ms ease; }
+  .token-layer { object-fit: contain; background: var(--horf-field, #24332d); opacity: 0; transition: opacity 360ms ease; }
   .token-layer.is-ready { opacity: 1; }
   .art-stamp { position: absolute; left: 18px; bottom: 18px; z-index: 2; padding: 6px 9px; border-radius: 4px; background: #132f2de8; color: #fff; font-size: 10px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
   .story { display: flex; flex-direction: column; justify-content: center; min-width: 0; padding: clamp(22px, 4vw, 42px); }

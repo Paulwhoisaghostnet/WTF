@@ -27,7 +27,7 @@ async function adminId(req: any): Promise<number | null> {
 
 function inspectionDto(row: typeof horfInspectionRequests.$inferSelect) {
   return {
-    id: row.id, submitterAddress: row.submitterAddress,
+    id: row.id, submitterAddress: row.submitterAddress, source: row.source,
     token: { contract: row.tokenContract, tokenId: row.tokenId },
     status: row.status, objktMetadata: row.objktMetadata, chainEvidence: row.chainEvidence,
     submittedAt: row.submittedAt.toISOString(), reviewedByWalletAddress: row.reviewedByWalletAddress,
@@ -173,11 +173,43 @@ router.post("/api/horf/inspections", requireHorfCsrf, async (req, res) => {
     if (pending) return res.json(inspectionDto(pending));
     const evidence = await loadInspectionEvidence(address, key.tokenContract, key.tokenId);
     const [row] = await db.insert(horfInspectionRequests).values({ submitterAddress: address,
-      ...key, status: "pending", ...evidence }).onConflictDoNothing().returning();
+      source: "owner_submission", ...key, status: "pending", ...evidence }).onConflictDoNothing().returning();
     if (row) return res.status(201).json(inspectionDto(row));
     const [concurrent] = await db.select().from(horfInspectionRequests)
       .where(and(eq(horfInspectionRequests.tokenContract, key.tokenContract),
         eq(horfInspectionRequests.tokenId, key.tokenId), eq(horfInspectionRequests.status, "pending"))).limit(1);
+    return concurrent ? res.json(inspectionDto(concurrent))
+      : res.status(409).json({ error: "Inspection state changed; refresh its status" });
+  } catch (error) { return sourceError(res, error); }
+});
+
+/** A Marshal can open an individual Open Range horse for review without an owner submission. */
+router.post("/api/horf/inspections/marshal", requireHorfCsrf, async (req, res) => {
+  const key = tokenKey(req.body);
+  if (!key) return res.status(400).json({ error: "An Open Range FA2 horse token is required" });
+  try {
+    if (!(await requireMarshal(req, res))) return;
+    const review = await status(key.tokenContract, key.tokenId);
+    if (review.status === "approved") {
+      return res.status(409).json({ code: "HORF_ALREADY_APPROVED", error: "This token is already approved globally" });
+    }
+    const [pending] = await db.select().from(horfInspectionRequests)
+      .where(and(eq(horfInspectionRequests.tokenContract, key.tokenContract),
+        eq(horfInspectionRequests.tokenId, key.tokenId), eq(horfInspectionRequests.status, "pending")))
+      .orderBy(desc(horfInspectionRequests.id)).limit(1);
+    if (pending) return res.json(inspectionDto(pending));
+
+    // The same fresh Objkt horse test used by Open Range and Stables is run
+    // here, while FA2 identity and transfer history are captured for judgment.
+    const evidence = await loadInspectionEvidence(null, key.tokenContract, key.tokenId);
+    const [row] = await db.insert(horfInspectionRequests).values({
+      submitterAddress: null, source: "open_range", ...key, status: "pending", ...evidence,
+    }).onConflictDoNothing().returning();
+    if (row) return res.status(201).json(inspectionDto(row));
+    const [concurrent] = await db.select().from(horfInspectionRequests)
+      .where(and(eq(horfInspectionRequests.tokenContract, key.tokenContract),
+        eq(horfInspectionRequests.tokenId, key.tokenId), eq(horfInspectionRequests.status, "pending")))
+      .limit(1);
     return concurrent ? res.json(inspectionDto(concurrent))
       : res.status(409).json({ error: "Inspection state changed; refresh its status" });
   } catch (error) { return sourceError(res, error); }

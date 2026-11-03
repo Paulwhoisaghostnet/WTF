@@ -37,6 +37,7 @@ export const ROUTE_FIXTURES = [
   { pattern: "/map-lab", path: "/map-lab", title: "WTF Map Lab", domain: "desktop-os", subdomain: "System maps and roadmaps", auth: false },
   { pattern: "/trade-boards", path: "/trade-boards", title: "Trade Boards", domain: "commerce", subdomain: "Trade boards/barter", auth: true },
   { pattern: "/horf", path: "/horf", title: "Horf", domain: "commerce", subdomain: "Horf horse trading", auth: false },
+  { pattern: "/horf/race", path: "/horf/race", title: "The Race", domain: "commerce", subdomain: "Horf horse trading", auth: false },
   { pattern: "/horf/open-range", path: "/horf/open-range", title: "Horf Open Range", domain: "commerce", subdomain: "Public horse trading market", auth: false },
   { pattern: "/horf/marshals-market", path: "/horf/marshals-market", title: "Marshal’s Market", domain: "commerce", subdomain: "Horf Stables", auth: false },
   { pattern: "/horf/outlaw-corral", path: "/horf/outlaw-corral", title: "Outlaw Corral", domain: "commerce", subdomain: "Horf horse trades and gifts", auth: false },

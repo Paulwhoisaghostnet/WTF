@@ -30,96 +30,95 @@ type TraderSeasonResponse = { leaderboard?: Array<{ address: string; name: strin
 type TraderOffersResponse = { offers?: Array<{ ownerAddress: string }> };
 
 const Shell = styled.section`
-  @font-face { font-family: "HAHA Fredoka"; src: url("/fonts/wtfos-soft-system/Fredoka-latin.woff2") format("woff2"); font-display: swap; }
-  @font-face { font-family: "HAHA Noto Sans"; src: url("/fonts/wtfos-soft-system/NotoSans-latin.woff2") format("woff2"); font-display: swap; }
-  --haha-ink: #17312e;
-  --haha-muted: #526962;
-  --haha-green: #174d42;
-  --haha-coral: #e86946;
-  --haha-line: #c8dcd2;
-  --haha-gold: #f3b44d;
-  --haha-font: "HAHA Noto Sans", "Avenir Next", sans-serif;
-  --haha-display: "HAHA Fredoka", "Avenir Next", sans-serif;
+  --haha-ink: var(--horf-ink, #f4ead6);
+  --haha-muted: var(--horf-muted, #b7b5a7);
+  --haha-green: #2e6655;
+  --haha-coral: var(--horf-coral, #e68761);
+  --haha-line: var(--horf-line, #3d5148);
+  --haha-gold: var(--horf-gold, #d8a34a);
+  --haha-font: var(--horf-font, "Avenir Next", sans-serif);
+  --haha-display: var(--horf-display, Georgia, serif);
   display: block;
   min-width: 0;
   padding: clamp(18px, 3cqw, 34px);
   border-radius: 18px;
-  background: #f3f7f1;
+  background: var(--horf-canvas, #101816);
   color: var(--haha-ink);
+  color-scheme: dark;
   font: 14px/1.5 var(--haha-font);
   container-type: inline-size;
   * { box-sizing: border-box; }
-  a { color: #16685c; font-weight: 800; text-underline-offset: 3px; }
+  a { color: var(--horf-teal, #71b7a0); font-weight: 800; text-underline-offset: 3px; }
   button, input, select, textarea { font: inherit; }
   button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
-  button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 3px solid #087e7a; outline-offset: 3px; }
+  button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 3px solid var(--horf-teal, #71b7a0); outline-offset: 3px; }
   h1, h2, h3, p { margin-top: 0; }
   p { color: var(--haha-muted); }
 
   .hero { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 18px; align-items: start; margin-bottom: 19px; }
-  .eyebrow { display: block; margin-bottom: 8px; color: #0e7667; font-size: 11px; font-weight: 850; letter-spacing: .1em; text-transform: uppercase; }
+  .eyebrow { display: block; margin-bottom: 8px; color: var(--horf-teal, #71b7a0); font-size: 11px; font-weight: 850; letter-spacing: .1em; text-transform: uppercase; }
   h1 { margin-bottom: 8px; font: 750 clamp(36px, 6cqw, 60px)/1 var(--haha-display); letter-spacing: -.04em; }
   .hero p { max-width: 68ch; margin-bottom: 0; font-size: 15px; }
-  .hero-mark { display: grid; place-items: center; width: clamp(70px, 10cqw, 112px); aspect-ratio: 1; border: 2px solid #bf7b44; border-radius: 50%; background: #f8ca81; color: #533825; box-shadow: 0 9px 0 #e9ba75; font-size: clamp(35px, 5cqw, 60px); transform: rotate(-10deg); }
+  .hero-mark { display: grid; place-items: center; width: clamp(70px, 10cqw, 112px); aspect-ratio: 1; border: 2px solid var(--haha-gold); border-radius: 50%; background: #3b3022; color: #f6cb7f; box-shadow: 0 9px 0 #0b1512; font-size: clamp(35px, 5cqw, 60px); transform: rotate(-10deg); }
   .season-strip { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 19px; }
-  .pill { display: inline-flex; align-items: center; min-height: 31px; padding: 5px 10px; border: 1px solid #bad3c6; border-radius: 999px; background: #fff; color: #214e43; font-size: 11px; font-weight: 800; }
-  .pill.open { border-color: #8cc3a4; background: #e7f5e9; }
+  .pill { display: inline-flex; align-items: center; min-height: 31px; padding: 5px 10px; border: 1px solid var(--haha-line); border-radius: 999px; background: var(--horf-surface, #1b2723); color: var(--haha-ink); font-size: 11px; font-weight: 800; }
+  .pill.open { border-color: #5a9076; background: #1f3b30; }
   .prizes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 0 0 12px; }
-  .prize { min-width: 0; padding: 17px 18px; border: 1px solid #315d50; border-radius: 14px; background: #153c34; color: #fff; }
-  .prize.runner { border-color: #d99c56; background: #6d472e; }
+  .prize { min-width: 0; padding: 17px 18px; border: 1px solid #42725e; border-radius: 14px; background: #1c3b31; color: var(--haha-ink); }
+  .prize.runner { border-color: #a37542; background: #382d20; }
   .prize small { display: block; margin-bottom: 7px; color: #f5c57d; font-size: 11px; font-weight: 850; letter-spacing: .09em; text-transform: uppercase; }
   .prize strong { display: block; font: 750 clamp(23px, 3cqw, 33px)/1.12 var(--haha-display); overflow-wrap: anywhere; }
-  .prize span { display: block; margin-top: 6px; color: #dcece4; font-size: 12px; }
-  .funding { margin: 0 0 20px; padding: 12px 14px; border: 1px solid #e2c89c; border-radius: 11px; background: #fff6e6; color: #654829; font-size: 12px; line-height: 1.5; }
-  .funding.funded { border-color: #a3d1b6; background: #e9f7ed; color: #27533d; }
+  .prize span { display: block; margin-top: 6px; color: var(--haha-muted); font-size: 12px; }
+  .funding { margin: 0 0 20px; padding: 12px 14px; border: 1px solid #806037; border-radius: 11px; background: #382d20; color: #f4d6aa; font-size: 12px; line-height: 1.5; }
+  .funding.funded { border-color: #477663; background: #1d3932; color: #c4e5d1; }
   .funding strong { color: inherit; }
   .work { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(280px, .95fr); gap: 15px; align-items: start; }
-  .panel { min-width: 0; padding: clamp(16px, 2cqw, 22px); border: 1px solid var(--haha-line); border-radius: 15px; background: #fff; box-shadow: 0 9px 22px #1540380b; }
+  .panel { min-width: 0; padding: clamp(16px, 2cqw, 22px); border: 1px solid var(--haha-line); border-radius: 15px; background: var(--horf-surface, #1b2723); box-shadow: 0 9px 22px #0000002e; }
   .panel h2 { margin-bottom: 7px; font: 750 clamp(22px, 3cqw, 31px)/1.1 var(--haha-display); }
   .panel > p { margin-bottom: 15px; font-size: 12px; }
   .form-grid { display: grid; gap: 13px; }
-  label { display: block; margin-bottom: 5px; color: #24473d; font-size: 12px; font-weight: 800; }
-  input, select, textarea { display: block; width: 100%; min-width: 0; min-height: 42px; padding: 9px 11px; border: 1px solid #a8c5b7; border-radius: 9px; background: #fff; color: var(--haha-ink); }
+  label { display: block; margin-bottom: 5px; color: var(--haha-ink); font-size: 12px; font-weight: 800; }
+  input, select, textarea { display: block; width: 100%; min-width: 0; min-height: 42px; padding: 9px 11px; border: 1px solid var(--haha-line); border-radius: 9px; background: var(--horf-field, #24332d); color: var(--haha-ink); }
   textarea { min-height: 83px; resize: vertical; }
   .field-help { margin: 5px 0 0; font-size: 11px; line-height: 1.4; }
   .button-row { display: flex; flex-wrap: wrap; gap: 8px; }
-  button { min-height: 40px; padding: 8px 14px; border: 1px solid var(--haha-green); border-radius: 9px; background: var(--haha-green); color: #fff; font-weight: 800; cursor: pointer; }
-  button:hover:not(:disabled) { background: #216652; }
-  button.secondary { border-color: #b8d3c2; background: #f4faf5; color: #244b3e; }
-  button.secondary:hover:not(:disabled) { background: #e7f4eb; }
-  button.primary { border-color: #c45136; background: var(--haha-coral); color: #fff; }
-  button.primary:hover:not(:disabled) { background: #d65c3e; }
-  button.remove { min-height: 32px; padding: 5px 8px; border-color: #dfb5aa; background: #fff5f2; color: #854733; font-size: 11px; }
-  button.remove:hover:not(:disabled) { background: #ffe9e3; }
+  button { min-height: 40px; padding: 8px 14px; border: 1px solid #5a9076; border-radius: 9px; background: var(--haha-green); color: #f4ead6; font-weight: 800; cursor: pointer; }
+  button:hover:not(:disabled) { background: #3c7b66; }
+  button.secondary { border-color: var(--haha-line); background: var(--horf-field, #24332d); color: var(--haha-ink); }
+  button.secondary:hover:not(:disabled) { background: #30443a; }
+  button.primary { border-color: var(--haha-gold); background: var(--haha-gold); color: #241a0f; }
+  button.primary:hover:not(:disabled) { background: #edbb61; }
+  button.remove { min-height: 32px; padding: 5px 8px; border-color: #8b5c50; background: #3b2723; color: #f3b7a1; font-size: 11px; }
+  button.remove:hover:not(:disabled) { background: #4c302a; }
   button:disabled { opacity: .5; cursor: not-allowed; }
-  .wallet-status, .message { margin: 0 0 14px; padding: 11px 13px; border: 1px solid #b9d9c6; border-radius: 10px; background: #edfaf0; color: #285346; font-size: 12px; }
-  .wallet-status.alert, .message.error { border-color: #e4ad9e; background: #fff2ef; color: #743c30; }
+  .wallet-status, .message { margin: 0 0 14px; padding: 11px 13px; border: 1px solid #477663; border-radius: 10px; background: #1d3932; color: #c4e5d1; font-size: 12px; }
+  .wallet-status.alert, .message.error { border-color: #8b5c50; background: #3b2723; color: #f3b7a1; }
   .wallet-status button { margin: 7px 0 0; }
   .message { margin: 12px 0 0; }
   .known { display: grid; gap: 4px; }
   .known p { margin: 0; font-size: 11px; }
   .chosen-list { display: grid; gap: 7px; margin: 8px 0 0; padding: 0; list-style: none; }
-  .chosen { display: flex; justify-content: space-between; gap: 9px; align-items: center; padding: 9px 10px; border: 1px solid #d4e2d7; border-radius: 9px; background: #f7faf6; }
+  .chosen { display: flex; justify-content: space-between; gap: 9px; align-items: center; padding: 9px 10px; border: 1px solid var(--haha-line); border-radius: 9px; background: var(--horf-field, #24332d); }
   .chosen strong, .chosen small { display: block; overflow-wrap: anywhere; }
   .chosen strong { font-size: 12px; }
-  .chosen small { margin-top: 2px; color: #62766e; font-size: 11px; }
-  .mine { margin-top: 16px; padding-top: 14px; border-top: 1px solid #dce8de; }
+  .chosen small { margin-top: 2px; color: var(--haha-muted); font-size: 11px; }
+  .mine { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--haha-line); }
   .mine h3 { margin-bottom: 8px; font: 750 18px/1.2 var(--haha-display); }
   .mine ul { margin: 0; padding-left: 19px; }
-  .mine li { margin-bottom: 6px; color: #476158; font-size: 11px; }
+  .mine li { margin-bottom: 6px; color: var(--haha-muted); font-size: 11px; }
   .standings-head { display: flex; justify-content: space-between; gap: 8px; align-items: start; }
   .standings-head button { flex: none; min-height: 33px; padding: 5px 8px; font-size: 11px; }
   .standings { display: grid; gap: 8px; margin: 12px 0 0; padding: 0; list-style: none; }
-  .standing { display: grid; grid-template-columns: 35px minmax(0, 1fr) auto; gap: 9px; align-items: center; padding: 10px; border: 1px solid #dce8df; border-radius: 10px; background: #f8fbf7; }
-  .standing.top { border-color: #e5bc7c; background: #fff6e6; }
-  .standing .rank { display: grid; place-items: center; width: 33px; height: 33px; border-radius: 50%; background: #dcebe0; color: #1b5340; font-weight: 850; }
-  .standing.top .rank { background: #f3bf67; color: #5a381c; }
+  .standing { display: grid; grid-template-columns: 35px minmax(0, 1fr) auto; gap: 9px; align-items: center; padding: 10px; border: 1px solid var(--haha-line); border-radius: 10px; background: var(--horf-field, #24332d); }
+  .standing.top { border-color: #a37542; background: #382d20; }
+  .standing .rank { display: grid; place-items: center; width: 33px; height: 33px; border-radius: 50%; background: #2e5142; color: #c4e5d1; font-weight: 850; }
+  .standing.top .rank { background: #d8a34a; color: #241a0f; }
   .standing strong, .standing small { display: block; overflow-wrap: anywhere; }
-  .standing strong { color: #183e35; font-size: 12px; }
-  .standing small { color: #6a7a72; font-size: 10px; }
-  .standing .count { color: #235e4d; font-size: 13px; font-weight: 850; white-space: nowrap; }
-  .empty { margin: 13px 0 0; color: #60736a; font-size: 12px; }
-  .footer { display: flex; flex-wrap: wrap; gap: 12px 20px; margin-top: 19px; padding-top: 13px; border-top: 1px solid #cddfd3; font-size: 12px; }
+  .standing strong { color: var(--haha-ink); font-size: 12px; }
+  .standing small { color: var(--haha-muted); font-size: 10px; }
+  .standing .count { color: var(--horf-teal, #71b7a0); font-size: 13px; font-weight: 850; white-space: nowrap; }
+  .empty { margin: 13px 0 0; color: var(--haha-muted); font-size: 12px; }
+  .footer { display: flex; flex-wrap: wrap; gap: 12px 20px; margin-top: 19px; padding-top: 13px; border-top: 1px solid var(--haha-line); font-size: 12px; }
   @container (max-width: 800px) { .work { grid-template-columns: 1fr; } }
   @container (max-width: 560px) { .hero { grid-template-columns: 1fr; } .hero-mark { display: none; } .prizes { grid-template-columns: 1fr; } }
 `;
@@ -284,7 +283,7 @@ export function HahaCrp() {
 
   return <Shell data-haha-crp data-haha-crp-season={seasonKey || "loading"} aria-label="HAHA horse trading community awards">
     <header className="hero">
-      <div><span className="eyebrow">Horse Art Horsetrading Association · HAHA</span><h1>Tip your hat to the herd 🤠</h1><p>Nominate the traders, artists, and Tezos neighbors who make horse trading worth the ride. Pick a category, find their wallet, and put their name on the honor roll.</p></div>
+      <div><span className="eyebrow">Horse Art Horsetrading Association · HAHA</span><h1>Tip your hat to the herd 🤠</h1><p>Nominate the riders, artists, and neighbors who keep horse trading alive.</p></div>
       <div className="hero-mark" aria-hidden="true">🐎</div>
     </header>
 
@@ -300,7 +299,7 @@ export function HahaCrp() {
 
     <div className="work">
       <section className="panel" data-haha-nomination-panel aria-labelledby="haha-nominate-heading">
-        <span className="eyebrow">Up to three riders per category</span><h2 id="haha-nominate-heading">Nominate a good horseperson</h2><p>Each verified wallet may nominate up to three different Tezos wallets in each HAHA category. Your wallet proof ties every pick to one rider.</p>
+        <span className="eyebrow">Up to three riders per category</span><h2 id="haha-nominate-heading">Nominate a good horseperson</h2><p>Pick up to three Tezos wallets per category.</p>
         {!address && <div className="wallet-status" role="status">{guestSessionLoading ? "Checking for your saved wallet proof…" : localWalletAddress ? `Wallet ${shortAddress(localWalletAddress)} is connected locally. Verify it to nominate.` : "Connect and verify a Tezos wallet to nominate. A WTF OS sign-in is optional."}<div><button data-haha-wallet-connect type="button" onClick={() => void connectWallet()} disabled={isConnecting}>{isConnecting ? "Connecting…" : isGuest ? "Connect and verify wallet" : "Connect Tezos wallet"}</button></div></div>}
         {address && <div className="wallet-status" data-haha-wallet-verified role="status">Rider verified: <strong>{shortAddress(address)}</strong> · Tezos Mainnet</div>}
         {walletError && <div className="wallet-status alert" role="alert">{walletError}</div>}

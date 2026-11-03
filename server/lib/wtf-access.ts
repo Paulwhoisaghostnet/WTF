@@ -119,6 +119,7 @@ export const WTF_STANDARD_API_ROUTES: WtfApiAccessRoute[] = [
   { method: "PATCH", path: "/api/dedrooms/admin/campaign", access: "role-gated-session", purpose: "Admin update Green Room intro campaign mode, target departures, and shared unlock progress inside DedRooms.", appGate: "dedrooms" },
   { method: "GET", path: "/api/marketplace", access: "public", purpose: "Active public marketplace listings." },
   { method: "GET", path: "/api/marketplace/trade-board", access: "public", purpose: "Public trade-board listing cache." },
+  { method: "POST", path: "/api/horf/inspections/marshal", access: "role-gated-session", purpose: "Start a CSRF-protected, individual Open Range horse inspection for a signed-in HORF MARSHAL or admin; the token is not approved until a separate decision." },
   { method: "GET", path: "/api/board/channels", access: "public", purpose: "Public-visible board channels." },
   { method: "GET", path: "/api/telegram-digest/messages", access: "public", purpose: "Public-visible Telegram digest messages." },
   { method: "GET", path: "/api/browser/allowlist", access: "browser-session", purpose: "Controlled browser allowlist." },

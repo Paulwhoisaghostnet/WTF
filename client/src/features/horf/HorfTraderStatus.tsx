@@ -32,17 +32,17 @@ const Shell = styled.section`
   border: 0;
   background: transparent;
   box-shadow: none;
-  color: var(--horf-ink, #142526);
+  color: var(--horf-ink, #f4ead6);
   font-family: var(--horf-font, "Avenir Next", "Segoe UI", sans-serif);
   min-width: 0;
   h2 { margin: 8px 0 10px; font: 700 clamp(30px, 4cqw, 48px)/1.06 var(--horf-display, Georgia, serif); letter-spacing: -.025em; text-wrap: balance; }
   h3 { margin: 0 0 9px; font-size: 21px; letter-spacing: -.02em; }
-  p { margin: 5px 0 12px; color: var(--horf-muted, #50625e); font-size: 14px; line-height: 1.55; }
+  p { margin: 5px 0 12px; color: var(--horf-muted, #b7b5a7); font-size: 14px; line-height: 1.55; }
   label { display: block; margin-bottom: 6px; font: 700 13px/1.3 var(--horf-font, "Avenir Next", sans-serif); }
-  input, textarea { width: 100%; min-width: 0; padding: 9px 11px; border: 1px solid #aebfba; border-radius: 9px; background: #fff; color: var(--horf-ink, #142526); font: 14px var(--horf-font, "Avenir Next", sans-serif); }
+  input, textarea { width: 100%; min-width: 0; padding: 9px 11px; border: 1px solid var(--horf-line, #3d5148); border-radius: 9px; background: var(--horf-field, #24332d); color: var(--horf-ink, #f4ead6); font: 14px var(--horf-font, "Avenir Next", sans-serif); }
   input { min-height: 42px; }
   textarea { min-height: 70px; resize: vertical; }
-  button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visible { outline: 3px solid var(--horf-teal, #087e7a); outline-offset: 2px; }
+  button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visible { outline: 3px solid var(--horf-teal, #71b7a0); outline-offset: 2px; }
 `;
 
 const Row = styled.div`
@@ -57,9 +57,9 @@ const Row = styled.div`
 const Action = styled.button<{ $danger?: boolean }>`
   min-height: 40px;
   padding: 9px 15px;
-  border: 1px solid ${(props) => props.$danger ? "#b74931" : "var(--horf-deep, #132326)"};
+  border: 1px solid ${(props) => props.$danger ? "#b74931" : "var(--horf-deep, #101816)"};
   border-radius: 999px;
-  background: ${(props) => props.$danger ? "#b74931" : "var(--horf-deep, #132326)"};
+  background: ${(props) => props.$danger ? "#b74931" : "var(--horf-deep, #101816)"};
   color: #fff;
   cursor: pointer;
   font: 750 13px/1.2 var(--horf-font, "Avenir Next", sans-serif);
@@ -72,9 +72,9 @@ const Action = styled.button<{ $danger?: boolean }>`
 const Report = styled.div<{ $listed?: boolean }>`
   margin: 13px 0;
   padding: 15px 17px;
-  border: 1px solid ${(props) => props.$listed ? "#e7a495" : "#9dd0c5"};
+  border: 1px solid ${(props) => props.$listed ? "#8b5c50" : "#477663"};
   border-radius: 12px;
-  background: ${(props) => props.$listed ? "#fff1ed" : "#eaf7f3"};
+  background: ${(props) => props.$listed ? "#3b2723" : "#1d3932"};
   overflow-wrap: anywhere;
   strong { display: block; margin-bottom: 4px; font: 700 17px/1.25 var(--horf-display, Georgia, serif); }
   small { display: block; margin-top: 7px; font: 12px/1.4 var(--horf-font, "Avenir Next", sans-serif); }
@@ -83,14 +83,14 @@ const Report = styled.div<{ $listed?: boolean }>`
 const AdminPanel = styled.div`
   margin-top: 18px;
   padding: 20px;
-  border: 1px solid var(--horf-line, #d6ded8);
+  border: 1px solid var(--horf-line, #3d5148);
   border-radius: 14px;
-  background: var(--horf-surface, #fff);
+  background: var(--horf-surface, #1b2723);
   > form { display: grid; gap: 8px; }
   ul { list-style: none; margin: 10px 0 0; padding: 0; }
-  li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 0; border-top: 1px solid var(--horf-line, #d6ded8); }
+  li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 0; border-top: 1px solid var(--horf-line, #3d5148); }
   li span { min-width: 0; overflow-wrap: anywhere; }
-  li small { display: block; color: var(--horf-muted, #50625e); font: 12px/1.4 var(--horf-font, "Avenir Next", sans-serif); }
+  li small { display: block; color: var(--horf-muted, #b7b5a7); font: 12px/1.4 var(--horf-font, "Avenir Next", sans-serif); }
 `;
 
 function shortAddress(address: string): string {
@@ -239,7 +239,7 @@ export function HorfTraderStatus({
   return (
     <Shell id="horf-trader-status" data-horf-region="trader-status" aria-label="Horf trader standing">
       <h2>Trader standing</h2>
-      <p>Review a wallet before trading. Horf shows historical activity even if a wallet is later blacklisted. This status restricts Horf private API features; direct Stable claims require a separate admin-signed on-chain restriction. No status can undo Tezos transfers.</p>
+      <p>Check a rider before trading. A Horf blacklist restricts app actions; Stable claims need a separate on-chain block. Past trades stay visible, and transfers cannot be undone.</p>
       <form onSubmit={search}>
         <label htmlFor="horf-status-wallet">Trader wallet address</label>
         <Row>
@@ -264,7 +264,7 @@ export function HorfTraderStatus({
 
       {isAdmin && <AdminPanel data-horf-admin-blacklist aria-label="Horf wallet blacklist administration">
         <h3>Admin · wallet blacklist</h3>
-        <p>Record a public reason before restricting a wallet from Horf private API features. This form does not set a Stable contract blacklist; an admin must sign that on-chain restriction separately before direct claims are blocked. Public trade history stays visible.</p>
+        <p>Add a public reason. This blocks private Horf actions; Stable claims need a separate on-chain block. Past trades stay visible.</p>
         <form onSubmit={(event) => void addBlacklist(event)}>
           <div><label htmlFor="horf-admin-blacklist-address">Wallet to blacklist</label><input id="horf-admin-blacklist-address" data-horf-admin-blacklist-address value={adminAddress} onChange={(event) => setAdminAddress(event.target.value)} placeholder="tz1…" disabled={adminBusy} /></div>
           <div><label htmlFor="horf-admin-blacklist-reason">Reason shown publicly</label><textarea id="horf-admin-blacklist-reason" data-horf-admin-blacklist-reason value={reason} onChange={(event) => setReason(event.target.value)} disabled={adminBusy} /></div>

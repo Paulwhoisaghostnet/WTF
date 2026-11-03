@@ -84,20 +84,20 @@ const Board = styled.section`
   border: 0;
   background: transparent;
   box-shadow: none;
-  color: var(--horf-ink, #142526);
+  color: var(--horf-ink, #f4ead6);
   font-family: var(--horf-font, "Avenir Next", "Segoe UI", sans-serif);
   h2 { margin: 8px 0 10px; font: 700 clamp(30px, 4cqw, 48px)/1.06 var(--horf-display, Georgia, serif); letter-spacing: -0.025em; text-wrap: balance; }
   h3 { margin: 0 0 10px; font-size: 21px; letter-spacing: -0.02em; }
   p { line-height: 1.55; }
   button, input, select { font: inherit; }
   button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible {
-    outline: 3px solid var(--horf-teal, #087e7a);
+    outline: 3px solid var(--horf-teal, #71b7a0);
     outline-offset: 2px;
   }
 `;
 
 const Eyebrow = styled.div`
-  color: var(--horf-teal, #087e7a);
+  color: var(--horf-teal, #71b7a0);
   font: 800 12px/1.2 var(--horf-font, "Avenir Next", sans-serif);
   text-transform: uppercase;
   letter-spacing: 0.13em;
@@ -109,20 +109,20 @@ const Header = styled.div`
   align-items: start;
   justify-content: space-between;
   gap: 14px;
-  > p { max-width: 62ch; margin: 0; color: var(--horf-muted, #50625e); font-size: 15px; }
+  > p { max-width: 62ch; margin: 0; color: var(--horf-muted, #b7b5a7); font-size: 15px; }
 `;
 
 const SmallButton = styled.button<{ $strong?: boolean }>`
   min-height: 40px;
   padding: 9px 15px;
-  border: 1px solid ${(p) => p.$strong ? "var(--horf-deep, #132326)" : "var(--horf-line, #d6ded8)"};
+  border: 1px solid ${(p) => p.$strong ? "var(--horf-gold, #d8a34a)" : "var(--horf-line, #3d5148)"};
   border-radius: 999px;
-  color: ${(p) => p.$strong ? "#fff" : "var(--horf-ink, #142526)"};
-  background: ${(p) => p.$strong ? "var(--horf-deep, #132326)" : "var(--horf-surface, #fff)"};
+  color: ${(p) => p.$strong ? "#241a0f" : "var(--horf-ink, #f4ead6)"};
+  background: ${(p) => p.$strong ? "var(--horf-gold, #d8a34a)" : "var(--horf-surface, #1b2723)"};
   cursor: pointer;
   font: 750 13px/1.2 var(--horf-font, "Avenir Next", sans-serif) !important;
   transition: background 160ms ease, transform 160ms ease;
-  &:hover:not(:disabled) { background: ${(p) => p.$strong ? "#294448" : "#edf4f0"}; transform: translateY(-1px); }
+  &:hover:not(:disabled) { background: ${(p) => p.$strong ? "#edbb61" : "var(--horf-field, #24332d)"}; transform: translateY(-1px); }
   &:disabled { opacity: 0.55; cursor: not-allowed; }
   @media (prefers-reduced-motion: reduce) { transition: none; &:hover:not(:disabled) { transform: none; } }
 `;
@@ -130,13 +130,13 @@ const SmallButton = styled.button<{ $strong?: boolean }>`
 const Status = styled.div<{ $warn?: boolean }>`
   margin-top: 13px;
   padding: 12px 14px;
-  border: 1px solid ${(p) => p.$warn ? "#e7a495" : "#9dd0c5"};
+  border: 1px solid ${(p) => p.$warn ? "#8b5c50" : "#477663"};
   border-radius: 12px;
-  background: ${(p) => p.$warn ? "#fff1ed" : "#eaf7f3"};
-  color: var(--horf-ink, #142526);
+  background: ${(p) => p.$warn ? "#3b2723" : "#1d3932"};
+  color: var(--horf-ink, #f4ead6);
   font: 600 13px/1.5 var(--horf-font, "Avenir Next", sans-serif);
   overflow-wrap: anywhere;
-  a { color: #9a3e27; }
+  a { color: #f0aa88; }
 `;
 
 const StableTabs = styled.div`
@@ -151,17 +151,17 @@ const StableTab = styled.button<{ $selected: boolean }>`
   min-width: 0;
   min-height: 118px;
   padding: 17px 18px;
-  border: 1px solid ${(p) => p.$selected ? "var(--horf-teal, #087e7a)" : "var(--horf-line, #d6ded8)"};
+  border: 1px solid ${(p) => p.$selected ? "var(--horf-teal, #71b7a0)" : "var(--horf-line, #3d5148)"};
   border-radius: 14px;
-  background: ${(p) => p.$selected ? "var(--horf-deep, #132326)" : "var(--horf-surface, #fff)"};
-  color: ${(p) => p.$selected ? "#f5fffb" : "var(--horf-ink, #142526)"};
+  background: ${(p) => p.$selected ? "var(--horf-field, #24332d)" : "var(--horf-surface, #1b2723)"};
+  color: ${(p) => p.$selected ? "#f5fffb" : "var(--horf-ink, #f4ead6)"};
   text-align: left;
   cursor: pointer;
   transition: border-color 160ms ease, transform 160ms ease;
-  small { display: block; color: ${(p) => p.$selected ? "#83d6c8" : "var(--horf-teal, #087e7a)"}; font: 800 11px/1.2 var(--horf-font, "Avenir Next", sans-serif); letter-spacing: .1em; }
+  small { display: block; color: ${(p) => p.$selected ? "#83d6c8" : "var(--horf-teal, #71b7a0)"}; font: 800 11px/1.2 var(--horf-font, "Avenir Next", sans-serif); letter-spacing: .1em; }
   strong { display: block; margin: 9px 0 5px; font: 700 19px/1.12 var(--horf-display, Georgia, serif); }
   span { display: block; font-size: 13px; line-height: 1.4; }
-  &:hover:not(:disabled) { transform: translateY(-2px); border-color: var(--horf-teal, #087e7a); }
+  &:hover:not(:disabled) { transform: translateY(-2px); border-color: var(--horf-teal, #71b7a0); }
   &:disabled { cursor: wait; }
   @media (prefers-reduced-motion: reduce) { transition: none; &:hover:not(:disabled) { transform: none; } }
 `;
@@ -171,7 +171,7 @@ const CreditStrip = styled.div`
   flex-wrap: wrap;
   gap: 8px;
   margin: 16px 0 0;
-  span { padding: 8px 12px; border: 1px solid var(--horf-line, #d6ded8); border-radius: 999px; background: var(--horf-surface, #fff); font: 700 13px/1.25 var(--horf-font, "Avenir Next", sans-serif); }
+  span { padding: 8px 12px; border: 1px solid var(--horf-line, #3d5148); border-radius: 999px; background: var(--horf-surface, #1b2723); font: 700 13px/1.25 var(--horf-font, "Avenir Next", sans-serif); }
 `;
 
 const Inside = styled.div`
@@ -185,20 +185,20 @@ const Inside = styled.div`
 const Panel = styled.div`
   min-width: 0;
   padding: 20px;
-  border: 1px solid var(--horf-line, #d6ded8);
+  border: 1px solid var(--horf-line, #3d5148);
   border-radius: 14px;
-  background: var(--horf-surface, #fff);
-  > p { margin: 0 0 14px; color: var(--horf-muted, #50625e); font-size: 14px; }
+  background: var(--horf-surface, #1b2723);
+  > p { margin: 0 0 14px; color: var(--horf-muted, #b7b5a7); font-size: 14px; }
   label { display: block; margin: 0 0 6px; font: 700 13px/1.25 var(--horf-font, "Avenir Next", sans-serif); }
   input, select {
     width: 100%;
     min-height: 42px;
     min-width: 0;
     padding: 9px 11px;
-    border: 1px solid #aebfba;
+    border: 1px solid var(--horf-line, #3d5148);
     border-radius: 9px;
-    color: var(--horf-ink, #142526);
-    background: #fff;
+    color: var(--horf-ink, #f4ead6);
+    background: var(--horf-field, #24332d);
   }
 `;
 
@@ -221,11 +221,11 @@ const DraftList = styled.ul`
     gap: 7px;
     align-items: end;
     padding: 9px 0;
-    border-top: 1px solid var(--horf-line, #d6ded8);
+    border-top: 1px solid var(--horf-line, #3d5148);
   }
   strong, small { display: block; overflow-wrap: anywhere; }
   strong { font-size: 13px; }
-  small { margin-top: 2px; color: var(--horf-muted, #50625e); font: 12px/1.3 var(--horf-font, "Avenir Next", sans-serif); }
+  small { margin-top: 2px; color: var(--horf-muted, #b7b5a7); font: 12px/1.3 var(--horf-font, "Avenir Next", sans-serif); }
   @container (max-width: 480px) { li { grid-template-columns: minmax(0, 1fr) 72px; } li button { grid-column: 1 / -1; } }
 `;
 
@@ -233,10 +233,10 @@ const ListingList = styled.ul`
   list-style: none;
   margin: 0;
   padding: 0;
-  li { padding: 13px 0; border-top: 1px solid var(--horf-line, #d6ded8); }
+  li { padding: 13px 0; border-top: 1px solid var(--horf-line, #3d5148); }
   li:first-child { border-top: 0; }
   strong { display: block; font-size: 14px; overflow-wrap: anywhere; }
-  small { display: block; margin: 4px 0 9px; color: var(--horf-muted, #50625e); font: 12px/1.4 var(--horf-font, "Avenir Next", sans-serif); overflow-wrap: anywhere; }
+  small { display: block; margin: 4px 0 9px; color: var(--horf-muted, #b7b5a7); font: 12px/1.4 var(--horf-font, "Avenir Next", sans-serif); overflow-wrap: anywhere; }
   p { margin: 5px 0 0; font-size: 12px; }
 `;
 
@@ -485,7 +485,7 @@ export function HorfStables({
         <div>
           <Eyebrow>Three ways to trade · Tezos Mainnet</Eyebrow>
           <h2>Horf Stables</h2>
-          <p>Deposit eligible horse editions or claim a horse another trader has shared. Every token identity needs active inspector approval before a deposit permit can be issued, including Honor Stable. The wallet still proves ownership and eligibility before signing.</p>
+          <p>Deposit or claim horse editions. Every Stable requires Marshal approval before deposit.</p>
         </div>
         <SmallButton type="button" onClick={() => void snapshotQuery.refetch()} disabled={snapshotQuery.isFetching}>Refresh stables</SmallButton>
       </Header>
@@ -526,7 +526,7 @@ export function HorfStables({
         <Panel data-horf-stable-deposit>
           <Eyebrow>Offer a horse</Eyebrow>
           <h3>Deposit in {activeStable.name}</h3>
-          <p>{activeStable.rule} Add several token rows to one wallet transaction. FA2 operator access is removed in the same transaction group.</p>
+          <p>{activeStable.rule} Add several horses in one wallet transaction. Operator access is removed with it.</p>
           {address ? (
             <>
               <form onSubmit={(event) => { event.preventDefault(); setOwnedSearch(ownedSearchDraft.trim()); setSelectedOwned(""); }}>
@@ -579,7 +579,7 @@ export function HorfStables({
             <SmallButton data-horf-stable-submit type="submit" $strong disabled={!address || !depositReady || !allRowsApproved || busy}>
               {busy && pending?.action === "deposit" ? "Deposit in progress…" : `Deposit in ${activeStable.name}`}
             </SmallButton>
-            <p>Only actively inspected token identities can be deposited into any Stable. Eligibility and your edition balance are checked again at permit request. Tezos transaction fees apply.</p>
+            <p>Deposits require active inspection and enough editions. Tezos fees apply.</p>
           </form>
         </Panel>
 

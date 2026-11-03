@@ -530,6 +530,7 @@ export const PAGE_DEFS: PageDef[] = [
   { pattern: "/marketplace", component: MarketplacePage, auth: true, title: "On Chain Market", group: "market", startMenu: true },
   { pattern: "/rat-race", component: RatRacePage, auth: true, title: "Rat Race", group: "market", startMenu: true, desktopIcon: true },
   { pattern: "/horf", component: HorfPage, auth: false, title: "Horf", group: "market", startMenu: true, desktopIcon: true },
+  { pattern: "/horf/race", component: HorfPage, auth: false, title: "Horf Horse Race", group: "market" },
   { pattern: "/horf/traders", component: HorfPage, auth: false, title: "Horf Traders", group: "market" },
   { pattern: "/horf/traders/:address", component: HorfPage, auth: false, title: "Horf Trader Profile", group: "market" },
   { pattern: "/horf/info", component: HorfPage, auth: false, title: "Horf Is It a Horse?", group: "market" },
@@ -761,7 +762,7 @@ export const PAGE_DEFS: PageDef[] = [
   },
 ];
 
-export const FULLSCREEN_ROUTES = new Set(["/", "/gamma", "/beta", "/login", "/register", "/cli", "/live/r/:roomId", "/horf", "/horf/traders", "/horf/traders/:address", "/horf/info", "/horf/open-range", "/horf/marshals-market", "/horf/outlaw-corral", "/horf/stable", "/horf/send-horse", "/horf/haha-crp", "/horf/horse-market", "/horf/gifts", "/horf/posse"]);
+export const FULLSCREEN_ROUTES = new Set(["/", "/gamma", "/beta", "/login", "/register", "/cli", "/live/r/:roomId", "/horf", "/horf/race", "/horf/traders", "/horf/traders/:address", "/horf/info", "/horf/open-range", "/horf/marshals-market", "/horf/outlaw-corral", "/horf/stable", "/horf/send-horse", "/horf/haha-crp", "/horf/horse-market", "/horf/gifts", "/horf/posse"]);
 
 function patternToRegex(pattern: string): {
   regex: RegExp;

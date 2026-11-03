@@ -27,15 +27,15 @@ const Shell = styled.section`
   border: 0;
   background: transparent;
   box-shadow: none;
-  color: var(--horf-ink, #142526);
+  color: var(--horf-ink, #f4ead6);
   font-family: var(--horf-font, "Avenir Next", "Segoe UI", sans-serif);
   min-width: 0;
   h2 { margin: 8px 0 10px; font: 700 clamp(30px, 4cqw, 48px)/1.06 var(--horf-display, Georgia, serif); letter-spacing: -.025em; text-wrap: balance; }
   h3 { margin: 0 0 9px; font-size: 21px; letter-spacing: -.02em; }
-  p { margin: 0 0 12px; color: var(--horf-muted, #50625e); font-size: 14px; line-height: 1.55; }
+  p { margin: 0 0 12px; color: var(--horf-muted, #b7b5a7); font-size: 14px; line-height: 1.55; }
   label { display: block; margin-bottom: 6px; font: 700 13px/1.3 var(--horf-font, "Avenir Next", sans-serif); }
-  input, select { width: 100%; min-width: 0; min-height: 42px; padding: 9px 11px; border: 1px solid #aebfba; border-radius: 9px; background: #fff; color: var(--horf-ink, #142526); font: 14px var(--horf-font, "Avenir Next", sans-serif); }
-  button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible { outline: 3px solid var(--horf-teal, #087e7a); outline-offset: 2px; }
+  input, select { width: 100%; min-width: 0; min-height: 42px; padding: 9px 11px; border: 1px solid var(--horf-line, #3d5148); border-radius: 9px; background: var(--horf-field, #24332d); color: var(--horf-ink, #f4ead6); font: 14px var(--horf-font, "Avenir Next", sans-serif); }
+  button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible { outline: 3px solid var(--horf-teal, #71b7a0); outline-offset: 2px; }
 `;
 
 const Header = styled.div`
@@ -44,16 +44,16 @@ const Header = styled.div`
   justify-content: space-between;
   gap: 14px 20px;
   align-items: start;
-  small { color: #a34731; font: 800 12px/1.2 var(--horf-font, "Avenir Next", sans-serif); letter-spacing: .12em; text-transform: uppercase; }
+  small { color: var(--horf-gold, #d8a34a); font: 800 12px/1.2 var(--horf-font, "Avenir Next", sans-serif); letter-spacing: .12em; text-transform: uppercase; }
   > div { max-width: 65ch; }
 `;
 
 const Reminder = styled.div`
   margin: 14px 0;
   padding: 16px 64px 16px 18px;
-  border: 1px solid #efc0a8;
+  border: 1px solid #8b5c50;
   border-radius: 13px;
-  background: url('/horf-art/lasso.svg') right 14px center / 38px 38px no-repeat, #fff3eb;
+  background: url('/horf-art/lasso.svg') right 14px center / 38px 38px no-repeat, #3b2723;
   font: 600 14px/1.5 var(--horf-font, "Avenir Next", sans-serif);
   strong { font: 700 21px/1.2 var(--horf-display, Georgia, serif); }
 `;
@@ -68,23 +68,23 @@ const Columns = styled.div`
 const Panel = styled.div`
   min-width: 0;
   padding: 20px;
-  border: 1px solid var(--horf-line, #d6ded8);
+  border: 1px solid var(--horf-line, #3d5148);
   border-radius: 14px;
-  background: var(--horf-surface, #fff);
+  background: var(--horf-surface, #1b2723);
   form > div { margin-bottom: 10px; }
 `;
 
 const Action = styled.button<{ $primary?: boolean }>`
   min-height: 40px;
   padding: 9px 15px;
-  border: 1px solid ${(p) => p.$primary ? "var(--horf-coral, #e26a45)" : "var(--horf-line, #d6ded8)"};
+  border: 1px solid ${(p) => p.$primary ? "var(--horf-gold, #d8a34a)" : "var(--horf-line, #3d5148)"};
   border-radius: 999px;
-  background: ${(p) => p.$primary ? "var(--horf-coral, #e26a45)" : "var(--horf-surface, #fff)"};
-  color: ${(p) => p.$primary ? "#fff" : "var(--horf-ink, #142526)"};
+  background: ${(p) => p.$primary ? "var(--horf-gold, #d8a34a)" : "var(--horf-surface, #1b2723)"};
+  color: ${(p) => p.$primary ? "#241a0f" : "var(--horf-ink, #f4ead6)"};
   cursor: pointer;
   font: 750 13px/1.2 var(--horf-font, "Avenir Next", sans-serif);
   transition: background 160ms ease, transform 160ms ease;
-  &:hover:not(:disabled) { transform: translateY(-1px); background: ${(p) => p.$primary ? "#ba4f30" : "#edf4f0"}; }
+  &:hover:not(:disabled) { transform: translateY(-1px); background: ${(p) => p.$primary ? "#edbb61" : "var(--horf-field, #24332d)"}; }
   &:disabled { cursor: not-allowed; opacity: 0.55; }
   @media (prefers-reduced-motion: reduce) { transition: none; &:hover:not(:disabled) { transform: none; } }
 `;
@@ -92,9 +92,9 @@ const Action = styled.button<{ $primary?: boolean }>`
 const Note = styled.div<{ $error?: boolean }>`
   margin: 10px 0;
   padding: 12px 14px;
-  border: 1px solid ${(p) => p.$error ? "#e7a495" : "#9dd0c5"};
+  border: 1px solid ${(p) => p.$error ? "#8b5c50" : "#477663"};
   border-radius: 12px;
-  background: ${(p) => p.$error ? "#fff1ed" : "#eaf7f3"};
+  background: ${(p) => p.$error ? "#3b2723" : "#1d3932"};
   font: 600 13px/1.5 var(--horf-font, "Avenir Next", sans-serif);
   overflow-wrap: anywhere;
 `;
@@ -113,10 +113,10 @@ const SendKind = styled.fieldset`
   gap: 9px 16px;
   margin: 0 0 14px;
   padding: 12px 14px;
-  border: 1px solid var(--horf-line, #d6ded8);
+  border: 1px solid var(--horf-line, #3d5148);
   border-radius: 11px;
-  background: #f0f5f2;
-  color: var(--horf-ink, #142526);
+  background: var(--horf-field, #24332d);
+  color: var(--horf-ink, #f4ead6);
   legend { padding: 0 5px; font: 750 13px var(--horf-font, "Avenir Next", sans-serif); }
   label { display: inline-flex; align-items: center; gap: 6px; margin: 0; cursor: pointer; }
   input[type="radio"] { width: auto; min-height: 0; margin: 0; accent-color: var(--horf-coral, #e26a45); }
@@ -126,10 +126,10 @@ const GiftList = styled.ol`
   list-style: none;
   margin: 0;
   padding: 0;
-  li { padding: 12px 0; border-top: 1px solid var(--horf-line, #d6ded8); }
+  li { padding: 12px 0; border-top: 1px solid var(--horf-line, #3d5148); }
   li:first-child { border-top: 0; }
   strong { display: block; font-size: 14px; overflow-wrap: anywhere; }
-  small { display: block; margin: 4px 0 8px; color: var(--horf-muted, #50625e); font: 12px/1.4 var(--horf-font, "Avenir Next", sans-serif); overflow-wrap: anywhere; }
+  small { display: block; margin: 4px 0 8px; color: var(--horf-muted, #b7b5a7); font: 12px/1.4 var(--horf-font, "Avenir Next", sans-serif); overflow-wrap: anywhere; }
 `;
 
 function shortAddress(address: string): string {
@@ -432,7 +432,7 @@ export function HorfGifts({
         <div>
           <small>Horse trader’s gift book</small>
           <h2>Gift horses</h2>
-          <p>Ride an eligible art horse straight to another wallet as a trade or gift, then check the gift book for horses that wandered your way.</p>
+          <p>Send a horse as a trade or gift. See what came your way below.</p>
         </div>
         <Action type="button" onClick={() => void giftsQuery.refetch()} disabled={!address || giftsQuery.isFetching}>Refresh gifts</Action>
       </Header>
@@ -441,7 +441,7 @@ export function HorfGifts({
       <Columns>
         <Panel data-horf-gift-send>
           <h3>Trade or give a horse</h3>
-          <p>Only Objkt-verified horse-art tokens can be sent here. $HORSE currency belongs in the separate send panel.</p>
+          <p>Send qualifying horse art here; send $HORSE from its own page.</p>
           <label htmlFor="horf-gift-owned">Choose an indexed token from this wallet</label>
           <InputAction>
             <select id="horf-gift-owned" data-horf-gift-owned value={selectedOwned ? ownedKey : ""} onChange={(event) => { setOwnedKey(event.target.value); const chosen = ownedTokens.find((item) => `${item.contract}:${item.tokenId}` === event.target.value); setToken(chosen ? { contract: chosen.contract, tokenId: chosen.tokenId, name: chosen.name || `Token #${chosen.tokenId}` } : null); }} disabled={!address || busy}>

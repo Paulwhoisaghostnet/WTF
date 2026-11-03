@@ -13919,6 +13919,106 @@ When shop and board are visible together, contextual help must prioritize a sele
 
 ---
 
+## 2026-11-03 - Keep Horf's dark appearance in one shared frame
+
+**What happened**: Horf's left navigation and hero panels were dark, while its canvas, right rail, award page, forms, notices, and horse detail dialog retained separate light palettes. The resulting pages looked unrelated. A focused browser run also found two route and notice assertions left behind by the earlier HORSE Market launch.
+
+**Why it mattered**: Local color overrides prevented a consistent dark appearance across routes and overlays, and stale assertions obscured the visual pass with unrelated failures.
+
+**Rule**: Define Horf's semantic colors in `HorfFrame`, consume them in every route, feature panel, form, and dialog, and inspect desktop and narrow layouts across the full route list. Keep route and notice assertions current when those surfaces change.
+
+---
+
+## 2026-11-03 - Validate trader offer pages before rendering them
+
+**What happened**: The inventory route harness returned a generic successful JSON object for a trader's offers. The profile treated that object as an offers page and read `offers.length`, which threw during rendering.
+
+**Why it mattered**: A malformed successful response could replace the trader profile with the app error boundary instead of its existing trade-sign error message.
+
+**Rule**: Check the required response shape at the query boundary before rendering nested fields. Treat a malformed 200 response as a visible load error, and verify the direct trader profile route with the inventory fixture.
+
+---
+
+## 2026-11-03 - Match horse gallery pagination fixtures to the index contract
+
+**What happened**: A new Stable/Profile browser fixture returned `nextOffset: null` on its final horse balance page. The app correctly requires a numeric offset from the TzKT-backed endpoint, so it rejected that mocked page and the gallery appeared empty.
+
+**Why it mattered**: A fixture that violated the API contract made the new wallet gallery look broken and hid the real test result.
+
+**Rule**: Derive pagination fixtures from the server response shape, including a numeric `nextOffset` even when `hasMore` is false. Exercise a first page with no qualifying horses and a later page with a horse.
+
+---
+
+## 2026-11-03 - Test the rider card's saved and editing states separately
+
+**What happened**: Horf's rider card now collapses its edit form after a profile is saved, putting the horse gallery higher on the page. The existing browser story still filled the seasonal note immediately after saving and captured the expanded form.
+
+**Why it mattered**: The test would fail on an intentional UI state change and its screenshots would miss the compact card that traders see on entry.
+
+**Rule**: Assert the saved preview and hidden form after posting a rider card, use Edit rider card before changing it again, and capture the default collapsed state at desktop and mobile sizes.
+
+---
+
+## 2026-11-03 - Mirror ownership-gated actions in horse market browser fixtures
+
+**What happened**: Open Range changed its direct-trade action from a disabled button for guests to a button rendered only when the verified viewer owns a positive balance. A guest browser assertion still searched for the old disabled button, although the new ownership check correctly hid it.
+
+**Why it mattered**: The stale assertion failed while the intended guest protection worked, and a fixture without viewer balances could no longer prove that an owner can reach the offer form.
+
+**Rule**: Mock exact viewer balances and request identity for ownership-gated actions; assert the action is present for a positive owner balance and absent for guest, zero, and unavailable balances.
+
+---
+
+## 2026-11-03 - Reset the Horf content pane before entry screenshots
+
+**What happened**: A Stable screenshot was taken after editing a profile. The center pane retained its scroll position, so the image started halfway through wallet guidance and made the horse gallery appear closer to the top than it was on actual entry.
+
+**Why it mattered**: A viewport screenshot can pass layout checks yet misrepresent what a trader first sees when the app opens.
+
+**Rule**: Reset Horf's primary scroll pane to the top before capturing entry-state visual proof, then check the true first viewport for the rider card and horse artwork.
+
+---
+
+## 2026-11-03 - Target artwork separately from decorative badge icons
+
+**What happened**: A Stable entry-viewport test selected every `img` in the first horse card. After a mint-season horseshoe badge was added, that locator matched both the artwork and badge icon and failed Playwright strict mode. A mobile screenshot taken immediately after resizing also caught the right-rail transition before it hid.
+
+**Why it mattered**: Neither failure showed a horse-card bug; imprecise selection and an unsettled responsive transition obscured the actual visual proof.
+
+**Rule**: Select the card's artwork image through its art container, select badge icons separately, and wait for the responsive rail state before capturing a mobile screenshot.
+
+---
+
+## 2026-11-03 - Persist Open Range discoveries before serving cached horse pages
+
+**What happened**: Open Range kept Objkt mint pages only in a short-lived process map. A reload after a server restart had to rediscover the same horses, and earlier metadata could disappear when Objkt's indexed page changed.
+
+**Why it mattered**: Horse history and page cursors were not durable, so the gallery could not grow as a reliable archive across deploys.
+
+**Rule**: Store qualifying discovery pages and their cursors in Postgres, merge refreshed metadata under a row lock to preserve earlier horses, and join wallet balances, offers, trades, and Marshal approval at read time. Verify a write and merge from separate processes.
+
+---
+
+## 2026-11-03 - Keep the Horf wallet-token API and client parser in the same contract
+
+**What happened**: The public `/api/horf/wallet/tokens` endpoint returned nonempty Mainnet balances without `walletAddress`, while every Horf token selector required that field. The Stable then rejected valid responses as unavailable even though a direct API read returned the user's horses.
+
+**Why it mattered**: Wallet-linked riders could see their season ledger but no tokens to inspect, gift, or offer through Horf.
+
+**Rule**: Include the requested wallet on each token DTO in both normal and search responses; verify a nonempty wallet response against the client parser and smoke-test it in production after deployment.
+
+---
+
+## 2026-11-03 - Keep Horf route assertions tied to visible behavior when copy changes
+
+**What happened**: The scoped Horf inventory run failed three stories after concise Stable, Outlaw Corral, and guest wallet copy replaced longer sentences. Mode switching, disabled unconfigured actions, direct trading, and wallet connection guidance still worked.
+
+**Why it mattered**: Assertions against incidental prose made the suite report product regressions where only wording changed.
+
+**Rule**: Update domain tests in the same pass as copy changes. Assert the relevant control and state directly, and use text checks only for user-facing terms that carry a behavior or safety rule.
+
+---
+
 ## 2026-11-03 - Keep first-login guidance unread until it is opened
 
 **What happened**: The desktop offered every native app to a new account, while its Recycle Bin could not open and shortcuts disappeared permanently when removed. Adding an admin welcome DM exposed another issue: Inbox fetched the first conversation's history as soon as it mounted, and the history endpoint marked that DM read before the new user opened it.

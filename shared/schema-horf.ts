@@ -1,4 +1,4 @@
-import { bigint, bigserial, boolean, index, integer, jsonb, pgTable, primaryKey, smallint, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { bigint, bigserial, boolean, customType, index, integer, jsonb, pgTable, primaryKey, smallint, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/pg-core";
 import { users } from "./schema-core";
 
 /** Objkt transfer events admitted to Horf's Tezos mainnet seasonal ledger. */
@@ -91,6 +91,31 @@ export const horfVerifiedWallets = pgTable("horf_verified_wallets", {
   linkedUserId: integer("linked_user_id").references(() => users.id, { onDelete: "set null" }),
 });
 
+const pgBytea = customType<{ data: Buffer; driverData: Buffer }>({
+  dataType: () => "bytea",
+});
+
+/** A trader's public horse portrait belongs to the wallet, across seasons. */
+export const horfTraderProfiles = pgTable("horf_trader_profiles", {
+  address: text("address").primaryKey(),
+  horfUsername: varchar("horf_username", { length: 50 }),
+  imageUrl: text("image_url"),
+  imageBytes: pgBytea("image_bytes"),
+  imageMime: text("image_mime"),
+  imageSha256: text("image_sha256"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Stable commentary is saved for an individual named horse-trading season. */
+export const horfTraderSeasonProfiles = pgTable("horf_trader_season_profiles", {
+  address: text("address").notNull().references(() => horfTraderProfiles.address, { onDelete: "cascade" }),
+  seasonKey: text("season_key").notNull(),
+  description: text("description").notNull().default(""),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  primaryKey({ columns: [table.address, table.seasonKey] }),
+]);
+
 /** Admin-governed Horf participation restriction; chain history remains public. */
 export const horfWalletBlacklist = pgTable("horf_wallet_blacklist", {
   address: text("address").primaryKey(),
@@ -119,7 +144,8 @@ export const horfStableSelections = pgTable("horf_stable_selections", {
 /** Human review evidence is a dated snapshot, not proof of FA2 semantics. */
 export const horfInspectionRequests = pgTable("horf_inspection_requests", {
   id: bigserial("id", { mode: "number" }).primaryKey(),
-  submitterAddress: text("submitter_address").notNull(),
+  submitterAddress: text("submitter_address"),
+  source: text("source").notNull().default("owner_submission"),
   tokenContract: text("token_contract").notNull(),
   tokenId: text("token_id").notNull(),
   status: text("status").notNull().default("pending"),
