@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import styled from "styled-components";
 import { api } from "../../lib/api";
 import { logClientSystemEvent } from "../../lib/system-log";
-import { buyHorseOnObjktInHorf, type HorfObjktPurchase } from "../../lib/tezos/horf-horse-market";
+import { type HorfObjktPurchase } from "../../lib/tezos/horf-horse-market";
 import { toNatString } from "../../lib/tezos/nat";
+import { confirmHorfObjktPurchase, pendingObjktPurchaseFor, purchaseObjktHorseInHorf, type PendingObjktPurchase } from "./objkt-purchase";
 
 type Stage = "preflight" | "preparing" | "wallet" | "confirming";
 const Box = styled.div`
@@ -35,6 +36,9 @@ export function HorfObjktBuy({ tokenContract, tokenId, address, connectWallet, i
   const [submitted, setSubmitted] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [pendingRecord, setPendingRecord] = useState<PendingObjktPurchase | null>(() => pendingObjktPurchaseFor(address, tokenContract, tokenId));
+  const [checking, setChecking] = useState(false);
+  useEffect(() => { setPendingRecord(pendingObjktPurchaseFor(address, tokenContract, tokenId)); }, [address, tokenContract, tokenId]);
   const query = useQuery({
     queryKey: ["horf", "objkt-xtz-asks", tokenContract, tokenId],
     queryFn: () => api.get<{ listings: HorfObjktPurchase[] }>(`/api/horf/horse-market/objkt-listings?tokenContract=${encodeURIComponent(tokenContract)}&tokenId=${encodeURIComponent(tokenId)}`),
@@ -47,39 +51,54 @@ export function HorfObjktBuy({ tokenContract, tokenId, address, connectWallet, i
     setError(null); setSuccess(null); setSubmitted(null);
     let submittedHash: string | null = null;
     try {
-      const hash = await buyHorseOnObjktInHorf(address, ask, async () => {
-        const result = await api.post<{ purchase: HorfObjktPurchase }>("/api/horf/horse-market/objkt-preflight", {
-          marketplaceContract: ask.marketplaceContract, askId: ask.askId,
-          tokenContract: ask.tokenContract, tokenId: ask.tokenId,
-          sellerAddress: ask.sellerAddress, priceMutez: ask.priceMutez,
-        });
-        return result.purchase;
-      }, {
+      const result = await purchaseObjktHorseInHorf({ buyerAddress: address, ask,
         onStage: setStage,
-        onSubmitted: (operationHash) => { submittedHash = operationHash; setSubmitted(operationHash); },
+        onSubmitted: (record) => { submittedHash = record.opHash; setSubmitted(record.opHash); setPendingRecord(record); },
       });
-      setSuccess("Objkt XTZ purchase confirmed. The Objkt contract handled this sale inside Horf.");
-      setSubmitted(hash);
-      logClientSystemEvent({ eventType: "horf.open_range.objkt_bought", message: "Horse bought with XTZ through Objkt from Horf Open Range", metadata: { tokenContract, tokenId, askId: ask.askId, opHash: hash } });
+      setSuccess(result.verification?.status === "verified"
+        ? `Objkt XTZ purchase confirmed. Horf verified this trade${result.verification.tradeCounted ? "; the seller’s 10 HORSE reward is being recorded" : ""}.`
+        : result.verification?.status === "pending"
+          ? "Objkt XTZ purchase confirmed. Horf is checking the on-chain sale for the season ledger."
+          : `Objkt XTZ purchase confirmed. Horf has not recorded the trade proof yet${result.verificationError ? `: ${result.verificationError}` : ""}. Use Check trade proof again below.`);
+      setPendingRecord(result.verification?.status === "verified"
+        ? pendingObjktPurchaseFor(address, tokenContract, tokenId) : result.record);
+      setSubmitted(result.opHash);
+      logClientSystemEvent({ eventType: "horf.open_range.objkt_bought", message: "Horse bought with XTZ through Objkt from Horf Open Range", metadata: { tokenContract, tokenId, askId: ask.askId, opHash: result.opHash, verified: result.verification?.status === "verified" } });
       await query.refetch();
     } catch (cause) {
       setError(`${cause instanceof Error ? cause.message : "Could not buy this horse on Objkt."}${submittedHash ? " The operation was submitted; check its explorer status before retrying." : ""}`);
     } finally { setStage(null); }
   }
 
+  async function retryVerification() {
+    if (!pendingRecord || checking) return;
+    setError(null);
+    setChecking(true);
+    try {
+      const result = await confirmHorfObjktPurchase(pendingRecord);
+      if (result.status === "verified") {
+        setPendingRecord(pendingObjktPurchaseFor(address, tokenContract, tokenId));
+        setSuccess(`Horf verified this Objkt sale${result.tradeCounted ? "; the seller’s 10 HORSE reward is being recorded" : ""}.`);
+      } else setSuccess("This Objkt operation is still syncing. Horf will keep checking its on-chain proof.");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Horf could not verify this operation yet. Try again.");
+    } finally { setChecking(false); }
+  }
+
   return <Box data-horf-open-range-objkt-buy>
     <h3>Objkt XTZ hitching post ↗</h3>
-    <p>Buy one edition through Objkt’s Mainnet contract without leaving these horse papers. Your wallet pays XTZ and Tezos gas.</p>
+    <p>Buy one edition through Objkt’s contract on Mainnet without leaving these horse papers. Your wallet pays XTZ and Tezos gas.</p>
     {query.isPending && <p role="status">Checking live Objkt asks…</p>}
     {query.isError && <p role="alert">Objkt asks are unavailable. Reopen this horse’s papers to try again.</p>}
     {ask && <><p>Current ask: <strong>{formatXtz(ask.priceMutez)} XTZ</strong> · {ask.amountLeft} available</p>
-      {address ? <button data-horf-open-range-buy-xtz type="button" onClick={() => void buy()} disabled={stage !== null}>Buy for {formatXtz(ask.priceMutez)} XTZ</button>
-        : <button type="button" onClick={() => void connectWallet()} disabled={isConnecting}>{isConnecting ? "Connecting…" : "Connect wallet to buy"}</button>}
+      <button data-horf-open-range-buy-xtz type="button" onClick={() => void buy()} disabled={!address || stage !== null}>Buy on Objkt for {formatXtz(ask.priceMutez)} XTZ</button>
+      {!address && <button type="button" onClick={() => void connectWallet()} disabled={isConnecting}>{isConnecting ? "Connecting…" : "Connect wallet to buy"}</button>}
     </>}
     {!query.isPending && !query.isError && !ask && <p>No current XTZ ask is available for this horse.</p>}
     {stage && <p role="status" aria-live="polite">{stage === "preflight" ? "Checking wallet and Tezos Mainnet…" : stage === "preparing" ? "Confirming the Objkt ask against Mainnet…" : stage === "wallet" ? "Approve the XTZ purchase in your wallet…" : "Waiting for Tezos confirmation…"}</p>}
     {error && <p className="error" role="alert">{error}</p>}
     {success && <p className="success" role="status">{success}</p>}
     {submitted && <p><a href={`https://tzkt.io/${encodeURIComponent(submitted)}`} target="_blank" rel="noopener noreferrer">View Tezos operation ↗</a></p>}
+    {pendingRecord && <><p role="status">Trade proof is pending for <a href={`https://tzkt.io/${encodeURIComponent(pendingRecord.opHash)}`} target="_blank" rel="noopener noreferrer">this Tezos operation</a>.</p><button data-horf-open-range-retry-objkt type="button" onClick={() => void retryVerification()} disabled={checking || stage !== null}>{checking ? "Checking trade proof…" : "Check trade proof again"}</button></>}
   </Box>;
 }

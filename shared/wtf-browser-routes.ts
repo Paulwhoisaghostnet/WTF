@@ -36,6 +36,7 @@ export const BROWSER_ROUTE_META: readonly BrowserRouteMeta[] = [
   { pattern: "/horf", auth: false, title: "Horf" },
   { pattern: "/horf/open-range", auth: false, title: "Horf Open Range" },
   { pattern: "/horf/haha-crp", auth: false, title: "HAHA Horse Trader Awards" },
+  { pattern: "/horf/horse-market", auth: false, title: "Horf HORSE Market" },
   { pattern: "/map-lab", auth: false, title: "WTF Map Lab" },
   { pattern: "/trade-boards", auth: true, title: "Trade Boards" },
   { pattern: "/w", auth: true, title: "W Feed" },

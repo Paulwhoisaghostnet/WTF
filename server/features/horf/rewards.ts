@@ -14,7 +14,7 @@ const CURRENT = HORF_SEASONS.find((season) => season.key === HORF_CURRENT_SEASON
 let lastReconciledSourceFingerprint: string | null = null;
 
 export interface HorfRewardSourceEvent {
-  kind: "direct" | "stable" | "market";
+  kind: "direct" | "stable" | "market" | "objkt";
   sourceKey: string;
   from: string;
   to: string;
@@ -23,7 +23,7 @@ export interface HorfRewardSourceEvent {
 }
 
 export interface HorfRewardEntitlementInput {
-  sourceKind: "direct" | "stable" | "market";
+  sourceKind: "direct" | "stable" | "market" | "objkt";
   sourceKey: string;
   traderAddress: string;
   counterpartyAddress: string;
@@ -73,6 +73,13 @@ interface RawMarket {
   token_contract: string;
 }
 
+interface RawObjkt {
+  id: string;
+  seller_address: string;
+  buyer_address: string;
+  token_contract: string;
+}
+
 /** Rebuild pending rewards from the ready current-season source, preserving paid receipts. */
 export async function reconcileCurrentHorfRewards(): Promise<{ status: "ready" | "syncing" | "error"; asOf: string | null; reconciled: boolean }> {
   const snapshot = await getHorfSeasonSnapshot(null, CURRENT);
@@ -117,8 +124,13 @@ export async function reconcileCurrentHorfRewards(): Promise<{ status: "ready" |
       }
       marketAsOf = new Date(marketSource.rows[0].as_of).toISOString();
     }
+    const objktSource = await client.query<{ count: string }>(`SELECT count(*)::text AS count
+      FROM public.horf_objkt_purchase_intents WHERE status = 'verified'
+        AND occurred_at >= $1::timestamptz
+        AND ($2::timestamptz IS NULL OR occurred_at < $2::timestamptz)`, [CURRENT.startsAt, CURRENT.endsAt]);
     const fingerprint = [CURRENT.startsAt, new Date(source.rows[0].as_of).toISOString(),
-      stableAddress ?? "", stableAsOf ?? "", marketAddress ?? "", marketAsOf ?? "", horseContractAddress() ?? ""].join("|");
+      stableAddress ?? "", stableAsOf ?? "", marketAddress ?? "", marketAsOf ?? "",
+      objktSource.rows[0]?.count ?? "0", horseContractAddress() ?? ""].join("|");
     if (lastReconciledSourceFingerprint === fingerprint) {
       await client.query("COMMIT");
       return { status, asOf: snapshot.asOf, reconciled: true };
@@ -140,6 +152,11 @@ export async function reconcileCurrentHorfRewards(): Promise<{ status: "ready" |
           AND occurred_at >= $2::timestamptz
           AND ($3::timestamptz IS NULL OR occurred_at < $3::timestamptz)
         ORDER BY tzkt_event_id ASC`, [marketAddress, CURRENT.startsAt, CURRENT.endsAt]) : { rows: [] as RawMarket[] };
+    const objktPurchases = await client.query<RawObjkt>(`SELECT id, seller_address, buyer_address, token_contract
+      FROM public.horf_objkt_purchase_intents WHERE status = 'verified'
+        AND occurred_at >= $1::timestamptz
+        AND ($2::timestamptz IS NULL OR occurred_at < $2::timestamptz)
+      ORDER BY occurred_at ASC, id ASC`, [CURRENT.startsAt, CURRENT.endsAt]);
     const events: HorfRewardSourceEvent[] = [
       ...direct.rows.map((row) => ({ kind: "direct" as const, sourceKey: String(row.event_id),
         from: row.from_address, to: row.to_address, units: String(row.amount), tokenContract: row.token_contract })),
@@ -149,6 +166,9 @@ export async function reconcileCurrentHorfRewards(): Promise<{ status: "ready" |
       ...market.rows.map((row) => ({ kind: "market" as const,
         sourceKey: `${row.contract_address}:${row.tzkt_event_id}`,
         from: row.seller_address, to: row.buyer_address, units: "1", tokenContract: row.token_contract })),
+      ...objktPurchases.rows.map((row) => ({ kind: "objkt" as const,
+        sourceKey: row.id, from: row.seller_address, to: row.buyer_address,
+        units: "1", tokenContract: row.token_contract })),
     ];
     const entitlements = buildHorfRewardEntitlements(events, horseContractAddress());
     const runId = randomUUID();

@@ -13906,3 +13906,13 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: Prize order could change for a close tie even though database timestamps had enough precision to decide it.
 
 **Rule**: Preserve database timestamp precision through ranking queries, and order tied display data deterministically by timestamp and record ID.
+
+---
+
+## 2026-11-03 - Keep Horf Mainnet selection separate from the desktop default network
+
+**What happened**: The new HORSE Market address helper returned no contract when the repository's general `TEZOS_NETWORK` setting was `shadownet`, even though Horf's own indexer, chain checks, wallet calls, and confirmed market contract all explicitly use Tezos Mainnet.
+
+**Why it mattered**: The deployed market could have appeared unconfigured while its Mainnet contract was ready.
+
+**Rule**: Let Horf's explicit Mainnet chain checks control Horf market availability. Do not gate a Mainnet sub-app on the desktop's unrelated default network setting; test the mixed-network configuration.

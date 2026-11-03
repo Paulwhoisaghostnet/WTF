@@ -277,7 +277,7 @@ router.post("/api/horf/admin/inspection-approvals/:contract/:tokenId/revoke", re
     if (!row) return res.status(404).json({ error: "Active token approval not found" });
     return res.json({ ...(await status(key.tokenContract, key.tokenId)),
       existingPermitsMayRemainValid: true,
-      requiredOnChainAction: "The Stable admin must bump oracle_epoch to invalidate previously issued one-use permits" });
+      requiredOnChainAction: "The Stable admin must bump oracle_epoch to invalidate previously issued one-use permits. The HORSE Market admin must set_token_blocked for this contract and token ID to stop direct on-chain purchases of existing listings." });
   } catch (error) {
     console.error("[horf] approval revocation failed:", error);
     return res.status(503).json({ error: "Token approval could not be revoked" });

@@ -15,6 +15,7 @@ import {
 } from "./source";
 import { getStableClaimSnapshot } from "./stable-ledger";
 import { getHorseMarketSaleSnapshot } from "./horse-market/sale-ledger";
+import { getHorfObjktPurchaseSnapshot } from "./horse-market/objkt-intents";
 import { horseContractAddress } from "./horse-config";
 import { HORF_MAINNET_BLOCK_MS } from "./mainnet";
 
@@ -338,6 +339,7 @@ export async function getHorfSeasonSnapshot(address: string | null, season: Horf
   const asOf = !invalidSnapshot && state.as_of ? new Date(state.as_of).toISOString() : null;
   const stableClaims = await getStableClaimSnapshot(season);
   const marketSales = await getHorseMarketSaleSnapshot(season);
+  const objktPurchases = await getHorfObjktPurchaseSnapshot(season);
   let directTransfers: HorfTransfer[] = [];
   let leaderboard: ReturnType<typeof summarizeSeason>["leaderboard"] = [];
   let currentUser: ReturnType<typeof summarizeSeason>["currentUser"] = null;
@@ -362,7 +364,8 @@ export async function getHorfSeasonSnapshot(address: string | null, season: Horf
     );
     directTransfers = applyGiftSettlements(result.rows.map(readStoredTransfer), gifts.rows);
   }
-  ({ leaderboard, currentUser } = summarizeSeason([...directTransfers, ...stableClaims.transfers, ...marketSales.transfers], address));
+  ({ leaderboard, currentUser } = summarizeSeason([...directTransfers, ...stableClaims.transfers,
+    ...marketSales.transfers, ...objktPurchases.transfers], address));
   if (due) kickSync(season);
   const reference = effectiveStatus === "ready" ? state.as_of : state.updated_at;
   const dueAt = reference ? new Date(reference).getTime() + MAINNET_BLOCK_MS : now + MAINNET_BLOCK_MS;
@@ -381,7 +384,7 @@ export async function getHorfSeasonSnapshot(address: string | null, season: Horf
     status,
     error: state.error || stableClaims.error || marketSales.error,
     nextRefreshAt: refreshCandidates.length ? refreshCandidates.sort()[0] : null,
-    countingRule: "Each whole horse sent directly or claimed from a Horf Stable counts for both traders. A verified HORSE market sale counts once for each trader, even when several editions sell; only direct pairwise sends create return rides.",
+    countingRule: "Each whole horse sent directly or claimed from a Horf Stable counts for both traders. A verified HORSE market sale or Objkt purchase made in Horf counts once for each trader, even when several editions sell; only direct pairwise sends create return rides.",
     leaderboard,
     currentUser,
   };

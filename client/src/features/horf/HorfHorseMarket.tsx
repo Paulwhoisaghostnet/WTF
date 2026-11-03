@@ -6,7 +6,6 @@ import { advanceResolvedMediaFallback, resolveTokenThumbnail } from "../../lib/m
 import { logClientSystemEvent } from "../../lib/system-log";
 import {
   HORF_MARKET_CHAIN_ID,
-  buyHorseOnObjktInHorf,
   buyHorseWithHorse,
   cancelHorseMarketListing,
   formatHorseRaw,
@@ -15,9 +14,9 @@ import {
   type HorfHorseMarketContract,
   type HorfHorseMarketListing,
   type HorfHorseMarketPermit,
-  type HorfObjktPurchase,
 } from "../../lib/tezos/horf-horse-market";
 import { toNatString } from "../../lib/tezos/nat";
+import { HorfObjktBuy } from "./HorfObjktBuy";
 import { parseHorfOwnedTokenPage } from "./owned-tokens";
 import { objktTokenUrl } from "./token-input";
 
@@ -31,8 +30,7 @@ type MarketSnapshot = {
 };
 type MarketListings = { listings: HorfHorseMarketListing[] };
 type Inspection = { status: "none" | "pending" | "approved" | "rejected" | "revoked"; reason: string | null };
-type ObjktListings = { listings: HorfObjktPurchase[] };
-type Pending = { action: "list" | "buy" | "cancel" | "objkt"; stage: "eligibility" | "preflight" | "preparing" | "wallet" | "confirming"; opHash: string | null };
+type Pending = { action: "list" | "buy" | "cancel"; stage: "eligibility" | "preflight" | "preparing" | "wallet" | "confirming"; opHash: string | null };
 
 const Page = styled.section`
   width: min(100%, 1400px);
@@ -130,11 +128,10 @@ const Stamp = styled.span`
 
 function shortAddress(value: string) { return value.length > 18 ? `${value.slice(0, 8)}…${value.slice(-6)}` : value; }
 function isPositive(value: string) { try { return BigInt(value) > 0n; } catch { return false; } }
-function xtzPrice(mutez: string) { const raw = BigInt(toNatString(mutez)); return `${(raw / 1_000_000n).toLocaleString()}.${(raw % 1_000_000n).toString().padStart(6, '0').replace(/0+$/, '') || '0'}`; }
 function pendingText(pending: Pending) {
   if (pending.stage === "eligibility") return "Checking the Marshal’s approval and preparing your one-use listing permit…";
   if (pending.stage === "preflight") return "Checking your wallet and Tezos Mainnet…";
-  if (pending.stage === "preparing") return pending.action === "objkt" ? "Checking the current Objkt ask on-chain…" : "Preparing the horse trade…";
+  if (pending.stage === "preparing") return "Preparing the horse trade…";
   if (pending.stage === "wallet") return "Approve this Tezos transaction in your wallet…";
   return "Waiting for Tezos confirmation…";
 }
@@ -183,12 +180,6 @@ export function HorfHorseMarket({ address, connectWallet, isConnecting }: {
     queryFn: () => api.get<Inspection>(`/api/horf/inspections/status?contract=${encodeURIComponent(selectedOwned!.contract)}&tokenId=${encodeURIComponent(selectedOwned!.tokenId)}`),
     enabled: Boolean(selectedOwned), refetchOnWindowFocus: true,
   });
-  const objktQuery = useQuery({
-    queryKey: ["horf", "horse-market", "objkt", selected?.tokenContract, selected?.tokenId],
-    queryFn: () => api.get<ObjktListings>(`/api/horf/horse-market/objkt-listings?tokenContract=${encodeURIComponent(selected!.tokenContract)}&tokenId=${encodeURIComponent(selected!.tokenId)}`),
-    enabled: Boolean(selected), refetchOnWindowFocus: true,
-  });
-  const objktAsk = objktQuery.data?.listings?.[0] ?? null;
   const busy = pending !== null;
 
   function stage(action: Pending["action"]) {
@@ -260,28 +251,6 @@ export function HorfHorseMarket({ address, connectWallet, isConnecting }: {
       setError(`${cause instanceof Error ? cause.message : "The listing could not be cancelled."}${submitted ? " The transaction was submitted; check its explorer status before retrying." : ""}`);
     } finally { setPending(null); }
   }
-  async function buyOnObjkt(ask: HorfObjktPurchase) {
-    if (!address || busy) return;
-    setError(null); setSuccess(null);
-    let submitted: string | null = null;
-    try {
-      setPending({ action: "objkt", stage: "preflight", opHash: null });
-      const handlers = stage("objkt");
-      const opHash = await buyHorseOnObjktInHorf(address, ask, async () => {
-        const result = await api.post<{ purchase: HorfObjktPurchase }>("/api/horf/horse-market/objkt-preflight", {
-          marketplaceContract: ask.marketplaceContract, askId: ask.askId, tokenContract: ask.tokenContract,
-          tokenId: ask.tokenId, sellerAddress: ask.sellerAddress, priceMutez: ask.priceMutez,
-        });
-        return result.purchase;
-      }, { ...handlers, onSubmitted: (hash) => { submitted = hash; handlers.onSubmitted(hash); } });
-      setSuccess({ text: "Objkt XTZ purchase confirmed. This buy used Objkt’s Mainnet contract inside Horf.", opHash });
-      logClientSystemEvent({ eventType: "horf.horse_market.objkt_bought", message: "Horse bought with XTZ through Objkt in Horf", metadata: { tokenContract: ask.tokenContract, tokenId: ask.tokenId, askId: ask.askId, opHash } });
-      await Promise.all([objktQuery.refetch(), listingQuery.refetch()]);
-    } catch (cause) {
-      setError(`${cause instanceof Error ? cause.message : "The Objkt purchase could not be completed."}${submitted ? " The transaction was submitted; check its explorer status before retrying." : ""}`);
-    } finally { setPending(null); }
-  }
-
   return <Page data-horf-region="horse-market" aria-label="Horf HORSE Market">
     <Hero>
       <div className="copy"><span className="kicker">Marshal’s seal · 🪢 The HORSE Market</span><h2>Fine horses. Fair HORSE.</h2><p>Hang a HORSE price on your inspected horse and let another rider take the reins. Every Mainnet swap sends the full HORSE price to the seller. 🤠</p></div>
@@ -323,13 +292,7 @@ export function HorfHorseMarket({ address, connectWallet, isConnecting }: {
             <input id="horf-market-buy-quantity" data-horf-horse-market-buy-quantity type="number" min="1" step="1" max={selected.remaining} value={buyQuantity} onChange={(event) => setBuyQuantity(event.target.value)} disabled={busy || !configured} />
             <p className="small">{formatHorseRaw(selected.unitPriceHorseRaw)} HORSE per edition. Your wallet signs the swap and pays XTZ gas.</p>
             {address === selected.sellerAddress ? <Action className="wide" type="button" onClick={() => void cancel(selected)} disabled={!configured || busy}>Cancel my listing</Action> : <Action className="wide" $strong type="button" onClick={() => void buy(selected)} disabled={!address || !configured || busy}>Buy with HORSE</Action>}
-            <div className="rule" />
-            <h4>Objkt XTZ trail ↗</h4>
-            <p>When this same token has an active XTZ ask on Objkt, buy one edition here through Objkt’s contract.</p>
-            {objktQuery.isPending && <p role="status">Checking current Objkt asks…</p>}
-            {objktQuery.isError && <p role="alert">Objkt asks are unavailable. Refresh this horse to try again.</p>}
-            {objktAsk && <><p className="meta">One edition · <strong>{xtzPrice(objktAsk.priceMutez)} XTZ</strong> · seller {shortAddress(objktAsk.sellerAddress)} · {objktAsk.amountLeft} available</p><Action className="wide" $gold type="button" onClick={() => void buyOnObjkt(objktAsk)} disabled={!address || busy}>Buy on Objkt for {xtzPrice(objktAsk.priceMutez)} XTZ</Action></>}
-            {!objktQuery.isPending && !objktQuery.isError && !objktAsk && <p>No active XTZ ask for this token was found on Objkt.</p>}
+            <HorfObjktBuy key={`${selected.tokenContract}:${selected.tokenId}`} tokenContract={selected.tokenContract} tokenId={selected.tokenId} address={address} connectWallet={connectWallet} isConnecting={isConnecting} />
           </>}
         </Panel>
         <Panel style={{ marginTop: 16 }} data-horf-horse-market-list-form>
