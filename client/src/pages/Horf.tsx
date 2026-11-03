@@ -1,7 +1,7 @@
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import styled from "styled-components";
-import { AppWindow } from "../components/layout/AppWindow";
+import { HorfFrame } from "../features/horf/HorfFrame";
 import { HorfStables } from "../features/horf/HorfStables";
 import { HorfHorseSend } from "../features/horf/HorfHorseSend";
 import { HorfGifts } from "../features/horf/HorfGifts";
@@ -138,143 +138,163 @@ function writeSeasonKeyToUrl(key: string): void {
 }
 
 const Shell = styled.div`
-  --horf-ink: #321d1a;
-  --horf-red: #a83f30;
-  --horf-gold: #f4c95c;
-  --horf-paper: #f5ead1;
+  --horf-ink: #142b29;
+  --horf-muted: #60716c;
+  --horf-line: #dbe4dd;
+  --horf-coral: #ed684b;
+  --horf-teal: #087d74;
   min-height: 100%;
   min-width: 0;
-  padding: 16px;
+  width: 100%;
+  max-width: 1460px;
+  margin: 0 auto;
+  padding: clamp(16px, 2.4vw, 38px);
   box-sizing: border-box;
   color: var(--horf-ink);
-  background: var(--horf-paper);
-  font-family: Georgia, "Times New Roman", serif;
+  background: #f6f8f5;
+  font-family: var(--horf-font, ui-sans-serif, system-ui, sans-serif);
   container-type: inline-size;
 
   * { box-sizing: border-box; }
-  a { color: #6f2d24; }
-  button:focus-visible, a:focus-visible, select:focus-visible {
-    outline: 3px solid #0b6874;
+  a { color: #08736c; }
+  button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible {
+    outline: 3px solid #ff9b73;
     outline-offset: 3px;
   }
 `;
 
 const Masthead = styled.header`
+  position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(228px, 280px);
-  gap: 14px 22px;
-  align-items: start;
-  padding: 18px 22px;
-  border: 4px double var(--horf-gold);
-  outline: 2px solid #572523;
-  background:
-    radial-gradient(circle at 13% 50%, rgba(255, 211, 94, 0.16) 0 2px, transparent 3px) 0 0 / 20px 20px,
-    #4c2026;
-  color: #fff4d5;
-  box-shadow: 4px 4px 0 #b86039;
+  grid-template-columns: minmax(0, 1.2fr) minmax(265px, 0.72fr);
+  gap: clamp(20px, 3vw, 48px);
+  align-items: center;
+  padding: clamp(24px, 3.4vw, 54px);
+  overflow: hidden;
+  border-radius: 18px;
+  background: linear-gradient(125deg, #102a29 0%, #153b36 66%, #0b302e 100%);
+  color: #f7fbf5;
+  box-shadow: 0 7px 0 rgba(14, 45, 39, 0.12);
+
+  &::before {
+    content: "";
+    position: absolute;
+    width: 450px;
+    aspect-ratio: 1;
+    right: 15%;
+    top: -250px;
+    border: 1px solid rgba(170, 224, 202, .15);
+    border-radius: 50%;
+    box-shadow: 0 0 0 60px rgba(170, 224, 202, .035), 0 0 0 130px rgba(170, 224, 202, .025);
+    pointer-events: none;
+  }
+  > * { position: relative; z-index: 1; }
 
   h1 {
-    margin: 1px 0 6px;
-    font-family: Georgia, "Times New Roman", serif;
-    font-size: clamp(34px, 5cqw, 62px);
-    font-weight: 900;
-    line-height: 0.92;
-    letter-spacing: -0.05em;
-    text-shadow: 2px 2px 0 #aa5030;
+    margin: 12px 0 20px;
+    color: #fffdf3;
+    font: 800 clamp(58px, 8cqw, 114px)/.82 var(--horf-display, Georgia, serif);
+    letter-spacing: -.04em;
   }
-  p { max-width: 660px; margin: 0; font-size: 15px; line-height: 1.45; }
+  h1 span { color: #f2a767; font-size: .52em; vertical-align: top; }
+  p { max-width: 660px; margin: 0; color: #c8dcd1; font-size: clamp(15px, 1.15vw, 18px); line-height: 1.58; }
   small {
-    display: block;
-    color: #ffd581;
-    font: 700 12px/1.3 "Courier New", monospace;
+    display: inline-flex;
+    align-items: center;
+    min-height: 30px;
+    padding: 5px 11px;
+    border: 1px solid rgba(197, 231, 209, .35);
+    border-radius: 999px;
+    color: #d6edda;
+    font: 750 11px/1.2 ui-sans-serif, system-ui, sans-serif;
     text-transform: uppercase;
-    letter-spacing: 0.04em;
+    letter-spacing: .09em;
   }
-  @container (max-width: 610px) { grid-template-columns: 1fr; }
+  @container (max-width: 720px) { grid-template-columns: 1fr; }
 `;
 
 const WantedPoster = styled.aside`
   position: relative;
   min-width: 0;
   overflow: hidden;
-  text-align: center;
-  padding: 9px 12px 11px;
-  border: 4px solid #f8d16b;
-  outline: 2px solid #162f34;
-  background: linear-gradient(145deg, #ffe09a, #f8b45d 62%, #eb8053);
-  color: #351d20;
-  box-shadow: 5px 5px 0 #102c32, inset 0 0 0 2px #9b4138;
-  font-family: Georgia, "Times New Roman", serif;
-  &::before, &::after { content: "★"; position: absolute; top: 7px; color: #0c5960; font-size: 18px; }
-  &::before { left: 10px; }
-  &::after { right: 10px; }
-  .wanted { display: block; color: #902d31; font: 900 26px/1 Georgia, serif; text-transform: uppercase; }
-  .traders { display: block; margin: 2px 0 3px; font: 800 11px/1.1 "Courier New", monospace; text-transform: uppercase; }
-  .horse-art { display: grid; place-items: center; height: 112px; margin: 4px 6px 5px; border-top: 2px solid #a84638; border-bottom: 2px solid #a84638; background: radial-gradient(ellipse at center, #ffe8b3 0 40%, transparent 72%); }
-  .horse-art img { display: block; height: 108px; width: 108px; max-width: 100%; object-fit: contain; filter: contrast(1.08) drop-shadow(2px 2px 0 #a34d3a); }
-  h2 { margin: 0 0 5px; font: 900 20px/1.05 Georgia, serif; overflow-wrap: anywhere; }
-  .reward { display: block; margin: 0 -12px 7px; padding: 6px 8px; background: #0b5b64; color: #fff6dd; box-shadow: inset 0 2px 0 #f6d27d, inset 0 -2px 0 #f6d27d; }
-  .reward strong { display: block; font: 900 25px/1 Georgia, serif; }
-  .reward span { display: block; margin-top: 2px; font: 700 11px/1.2 "Courier New", monospace; }
-  p { margin: 0; color: #4e2524; font: 700 11px/1.25 "Courier New", monospace; }
-  @container (max-width: 610px) { width: min(100%, 300px); justify-self: center; }
+  justify-self: end;
+  width: min(100%, 370px);
+  padding: 19px 22px 22px;
+  border-radius: 16px;
+  background: #f6b779;
+  color: #16302d;
+  box-shadow: 0 20px 36px rgba(0, 0, 0, .2);
+  transform: rotate(2deg);
+  font-family: var(--horf-font, ui-sans-serif, system-ui, sans-serif);
+  .wanted { display: block; color: #173732; font: 900 12px/1.2 ui-sans-serif, system-ui, sans-serif; text-transform: uppercase; letter-spacing: .18em; }
+  .traders { display: block; margin: 5px 0 0; color: #734a39; font: 750 11px/1.35 ui-sans-serif, system-ui, sans-serif; text-transform: uppercase; letter-spacing: .07em; }
+  .horse-art { display: flex; align-items: center; justify-content: center; height: clamp(135px, 15cqw, 185px); min-height: 0; overflow: hidden; margin: 4px 0 8px; background: radial-gradient(circle at center, #ffda9d 0 34%, transparent 70%); }
+  .horse-art img { display: block; width: auto; height: 100%; max-width: 90%; max-height: 100%; object-fit: contain; filter: drop-shadow(0 8px 8px rgba(71, 36, 19, .2)); }
+  h2 { margin: 0 0 10px; font: 800 clamp(22px, 2.2cqw, 30px)/1.05 var(--horf-display, Georgia, serif); letter-spacing: -.04em; overflow-wrap: anywhere; }
+  .reward { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0 0 10px; padding: 11px 13px; border-radius: 12px; background: #153f3b; color: #fff9ea; }
+  .reward strong { display: block; font: 800 clamp(22px, 2.2cqw, 30px)/1 var(--horf-display, sans-serif); white-space: nowrap; }
+  .reward span { display: block; max-width: 126px; font: 700 11px/1.3 ui-sans-serif, system-ui, sans-serif; }
+  p { margin: 0; color: #594635; font: 600 11px/1.42 ui-sans-serif, system-ui, sans-serif; }
+  @container (max-width: 720px) { justify-self: start; width: min(100%, 390px); transform: none; }
 `;
 
 const SeasonPicker = styled.section`
   display: grid;
   grid-template-columns: minmax(180px, 260px) minmax(0, 1fr);
-  gap: 10px 18px;
+  gap: 12px 22px;
   align-items: center;
-  margin-top: 18px;
-  padding: 13px 16px;
-  border: 2px solid #754633;
-  background: #fff4d8;
-  box-shadow: 3px 3px 0 #d7aa72;
+  margin-top: 22px;
+  padding: 17px 20px;
+  border: 1px solid var(--horf-line);
+  border-radius: 16px;
+  background: #fff;
   label {
     display: block;
-    margin-bottom: 5px;
-    font: 700 12px/1.25 "Courier New", monospace;
+    margin-bottom: 7px;
+    color: var(--horf-muted);
+    font: 750 11px/1.25 ui-sans-serif, system-ui, sans-serif;
     text-transform: uppercase;
+    letter-spacing: .08em;
   }
   select {
     width: 100%;
-    min-height: 40px;
-    padding: 7px 9px;
-    border: 2px solid #70402e;
-    border-radius: 0;
-    color: #321d1a;
-    background: #fffdf4;
-    font: 700 14px/1.3 Georgia, serif;
+    min-height: 44px;
+    padding: 9px 13px;
+    border: 1px solid #bccdc3;
+    border-radius: 10px;
+    color: var(--horf-ink);
+    background: #f7faf7;
+    font: 750 14px/1.3 ui-sans-serif, system-ui, sans-serif;
   }
   p { margin: 0; font-size: 13px; line-height: 1.4; }
-  strong { display: block; font: 700 14px/1.4 "Courier New", monospace; }
-  small { display: block; margin-top: 4px; color: #684b3c; font-size: 12px; line-height: 1.4; }
+  strong { display: block; color: #28423c; font: 700 14px/1.4 ui-sans-serif, system-ui, sans-serif; }
+  small { display: block; margin-top: 4px; color: var(--horf-muted); font-size: 12px; line-height: 1.4; }
   @container (max-width: 560px) { grid-template-columns: 1fr; }
 `;
 
 const IntroActions = styled.div`
-  grid-column: 1 / -1;
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin: 2px 0 0;
-  font: 700 13px/1.2 "Courier New", monospace;
-  &::before { content: "PICK A TRAIL"; flex: 0 0 100%; min-height: 19px; padding-left: 23px; color: #ffd581; background: url('/horf-art/lasso.svg') left center / 18px 18px no-repeat; font: 700 11px/19px "Courier New", monospace; }
+  align-items: center;
+  margin-top: 26px;
+  @container (max-width: 520px) { button { flex: 1 1 auto; } }
 `;
 
 const Action = styled.button<{ $primary?: boolean }>`
   appearance: none;
-  border: 2px solid ${(p) => p.$primary ? "#fbd67d" : "#d17b5b"};
+  border: 1px solid ${(p) => p.$primary ? "#c84f35" : "#d3ded5"};
   border-radius: 999px;
-  background: ${(p) => p.$primary ? "#f8ce70" : "#652e32"};
-  color: ${(p) => p.$primary ? "#3a2119" : "#fff4d5"};
-  min-height: 38px;
-  padding: 7px 14px;
-  font: inherit;
+  background: ${(p) => p.$primary ? "#ed684b" : "#fff"};
+  color: ${(p) => p.$primary ? "#fff" : "#28433d"};
+  min-height: 39px;
+  padding: 8px 14px;
+  font: 750 12px/1.2 ui-sans-serif, system-ui, sans-serif;
   cursor: pointer;
-  &:hover:not(:disabled) { filter: brightness(1.12); transform: translateY(-2px); }
+  transition: transform 160ms ease, background 160ms ease, box-shadow 160ms ease;
+  &:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 15px rgba(21, 63, 55, .12); }
   @media (prefers-reduced-motion: reduce) { &:hover:not(:disabled) { transform: none; } }
-  &:disabled { opacity: 0.62; cursor: wait; }
+  &:disabled { opacity: 0.58; cursor: wait; }
 `;
 
 const StatusBar = styled.div`
@@ -283,16 +303,20 @@ const StatusBar = styled.div`
   align-items: center;
   justify-content: space-between;
   gap: 8px 14px;
-  margin-top: 16px;
-  padding: 9px 12px;
-  border: 1px solid #b18762;
-  background: #fff7e7;
-  font: 700 12px/1.35 "Courier New", monospace;
+  margin-top: 12px;
+  padding: 10px 14px;
+  border: 1px solid var(--horf-line);
+  border-radius: 12px;
+  background: #eef3ef;
+  color: #47615a;
+  font: 650 12px/1.35 ui-sans-serif, system-ui, sans-serif;
   button {
-    border: 1px solid #5b3024;
-    padding: 5px 9px;
-    color: #4c231b;
-    background: #ffe1a0;
+    min-height: 32px;
+    border: 0;
+    border-radius: 999px;
+    padding: 6px 11px;
+    color: #fff;
+    background: #1a635b;
     font: inherit;
     cursor: pointer;
   }
@@ -300,21 +324,25 @@ const StatusBar = styled.div`
 
 const Warning = styled.div`
   margin-top: 10px;
-  padding: 10px 12px;
-  border-left: 5px solid #a83f30;
-  background: #fff0d3;
-  font: 700 13px/1.45 "Courier New", monospace;
+  padding: 12px 15px;
+  border: 1px solid #f0c3ad;
+  border-left: 4px solid #d56b47;
+  border-radius: 10px;
+  background: #fff5ee;
+  color: #7c3b2d;
+  font: 650 13px/1.45 ui-sans-serif, system-ui, sans-serif;
 `;
 
 const WalletStatus = styled.div`
-  margin-top: 12px;
-  padding: 10px 12px;
-  border-left: 5px solid #4e7851;
-  background: #edf2d9;
-  color: #304331;
-  font: 700 12px/1.45 "Courier New", monospace;
-  button { margin-left: 12px; padding: 3px 7px; border: 1px solid #4c684a; background: #fff8e8; color: #304331; cursor: pointer; font: inherit; }
-  button:focus-visible { outline: 3px solid #0b6874; outline-offset: 2px; }
+  margin-top: 16px;
+  padding: 11px 15px;
+  border: 1px solid #c9e3d9;
+  border-radius: 10px;
+  background: #eaf7ef;
+  color: #2a5d4f;
+  font: 650 12px/1.45 ui-sans-serif, system-ui, sans-serif;
+  button { margin-left: 12px; padding: 5px 10px; border: 1px solid #65ad91; border-radius: 999px; background: #fff; color: #205947; cursor: pointer; font: inherit; }
+  button:focus-visible { outline: 3px solid #ff9b73; outline-offset: 2px; }
   button:disabled { opacity: 0.6; cursor: wait; }
 `;
 
@@ -325,61 +353,66 @@ const ClaimNotice = styled.div`
   justify-content: space-between;
   gap: 8px 14px;
   margin-top: 11px;
-  padding: 11px 13px;
-  border: 3px double #946019;
-  background: #fff0b9;
-  color: #473018;
-  font: 700 13px/1.4 "Courier New", monospace;
-  button { min-height: 34px; padding: 5px 9px; border: 2px solid #78502a; background: #fff9e5; color: inherit; cursor: pointer; font: inherit; }
+  padding: 12px 15px;
+  border: 1px solid #edcba4;
+  border-radius: 12px;
+  background: #fff1dc;
+  color: #66462b;
+  font: 650 13px/1.4 ui-sans-serif, system-ui, sans-serif;
+  button { min-height: 36px; padding: 6px 11px; border: 0; border-radius: 999px; background: #173d37; color: #fff; cursor: pointer; font: inherit; }
 `;
 
 const TradingZone = styled.section<{ $outlaw?: boolean }>`
-  margin-top: 26px;
-  padding: 14px;
-  border: 4px double ${(p) => p.$outlaw ? "#7a302b" : "#315e57"};
-  background: ${(p) => p.$outlaw ? "#f3dbc4" : "#dce8d8"};
-  box-shadow: 4px 4px 0 ${(p) => p.$outlaw ? "#b96b49" : "#6b9782"};
+  margin-top: 42px;
+  padding: clamp(18px, 2.2vw, 30px);
+  border: 1px solid ${(p) => p.$outlaw ? "#f0d8cb" : "#c9ddd4"};
+  border-radius: 22px;
+  background: ${(p) => p.$outlaw ? "#fff9f4" : "#f1faf5"};
   min-width: 0;
-  h2 { margin: 3px 0 6px; font-size: clamp(27px, 4.3cqw, 40px); line-height: 1.02; }
-  > p { max-width: 800px; margin: 0 0 4px; font-size: 14px; line-height: 1.45; }
-  > small { color: ${(p) => p.$outlaw ? "#9c4135" : "#38695c"}; font: 700 11px/1.3 "Courier New", monospace; text-transform: uppercase; }
+  h2 { margin: 4px 0 9px; color: #17342f; font: 750 clamp(28px, 3cqw, 42px)/1.05 var(--horf-display, Georgia, serif); letter-spacing: -.04em; }
+  > p { max-width: 850px; margin: 0 0 8px; color: #5c6d66; font-size: 14px; line-height: 1.6; }
+  > small { color: ${(p) => p.$outlaw ? "#bd5d45" : "#277e68"}; font: 800 11px/1.3 ui-sans-serif, system-ui, sans-serif; text-transform: uppercase; letter-spacing: .1em; }
   > section { margin-top: 14px; }
 `;
 
 const ZoneAction = styled.button`
-  min-height: 36px;
-  padding: 6px 10px;
-  border: 2px solid #71362c;
-  background: #f8d78e;
-  color: #3c261d;
-  box-shadow: 2px 2px 0 #b87d54;
+  min-height: 40px;
+  padding: 8px 14px;
+  border: 1px solid #d85f45;
+  border-radius: 999px;
+  background: #ed684b;
+  color: #fff;
   cursor: pointer;
-  font: 700 12px/1.2 "Courier New", monospace;
+  font: 750 12px/1.2 ui-sans-serif, system-ui, sans-serif;
+  &:hover { background: #d8573e; }
 `;
 
 const Section = styled.section`
-  margin-top: 20px;
+  margin-top: 42px;
   min-width: 0;
   h2 {
-    margin: 0 0 4px;
-    color: #4c2420;
-    font-size: 24px;
-    line-height: 1.15;
+    margin: 0 0 8px;
+    color: #193b34;
+    font: 750 clamp(26px, 2.8cqw, 38px)/1.08 var(--horf-display, Georgia, serif);
+    letter-spacing: -.045em;
   }
-  > p { margin: 0 0 12px; font-size: 14px; line-height: 1.45; }
+  > p { max-width: 800px; margin: 0 0 18px; color: #5c7068; font-size: 14px; line-height: 1.55; }
 `;
 
 const SectionLabel = styled.div`
-  margin-bottom: 4px;
-  color: #8b3c2c;
-  font: 700 12px/1.2 "Courier New", monospace;
+  margin-bottom: 8px;
+  color: #bd5f43;
+  font: 800 11px/1.2 ui-sans-serif, system-ui, sans-serif;
   text-transform: uppercase;
+  letter-spacing: .12em;
 `;
 
 const RaceFrame = styled.div`
-  border: 3px solid #4d2520;
-  background: #e8c99c;
-  box-shadow: inset 0 0 0 2px #fae5bd, 4px 4px 0 #c97946;
+  overflow: hidden;
+  border: 1px solid var(--horf-line);
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 14px 36px rgba(25, 67, 54, .055);
 `;
 
 const Race = styled.ol`
@@ -392,24 +425,24 @@ const RaceHeader = styled.div`
   display: flex;
   justify-content: space-between;
   gap: 8px;
-  padding: 6px 12px;
-  background: #4d2520;
-  color: #ffe6a4;
-  font: 700 12px/1.2 "Courier New", monospace;
+  padding: 12px 20px;
+  background: #183b35;
+  color: #e7f4e9;
+  font: 800 11px/1.2 ui-sans-serif, system-ui, sans-serif;
   text-transform: uppercase;
+  letter-spacing: .09em;
 `;
 
 const Lane = styled.li`
   display: grid;
-  grid-template-columns: minmax(142px, 0.28fr) minmax(100px, 1fr) 80px;
-  min-height: 57px;
-  border-top: 2px solid rgba(83, 38, 29, 0.72);
-  background: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.14) 0 8px, transparent 8px 32px);
-  &:nth-child(odd) { background-color: rgba(255, 248, 224, 0.42); }
-  &:nth-child(even) { background-color: rgba(214, 162, 109, 0.28); }
+  grid-template-columns: minmax(160px, .3fr) minmax(100px, 1fr) 86px;
+  min-height: 66px;
+  border-top: 1px solid #e5ebe6;
+  background: #fff;
+  &:nth-child(even) { background: #f9fbf8; }
   @container (max-width: 560px) {
     grid-template-columns: minmax(0, 1fr) 72px;
-    min-height: 86px;
+    min-height: 94px;
   }
 `;
 
@@ -417,15 +450,13 @@ const Rider = styled.div`
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   min-width: 0;
-  padding: 8px;
-  border-right: 2px solid #7b4b36;
+  padding: 10px 14px;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 750;
   a { flex: 1 1 70px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   @container (max-width: 560px) {
-    border-right: 0;
     padding-bottom: 0;
   }
 `;
@@ -433,36 +464,37 @@ const Rider = styled.div`
 const BlacklistBadge = styled.button`
   flex: 0 0 calc(100% - 37px);
   margin-left: 37px;
-  padding: 3px 5px;
-  border: 1px solid #852b24;
-  background: #ffe3cc;
-  color: #7d261e;
+  min-height: 30px;
+  padding: 4px 8px;
+  border: 1px solid #edb8aa;
+  border-radius: 999px;
+  background: #fff0ea;
+  color: #9a4a37;
   cursor: pointer;
-  font: 700 9px/1.1 "Courier New", monospace;
+  font: 800 10px/1.1 ui-sans-serif, system-ui, sans-serif;
   text-transform: uppercase;
-  &:focus-visible { outline: 3px solid #0b6874; outline-offset: 2px; }
+  &:focus-visible { outline: 3px solid #ff9b73; outline-offset: 2px; }
 `;
 
 const Rank = styled.span`
   flex: 0 0 auto;
   display: grid;
   place-content: center;
-  width: 29px;
-  height: 29px;
+  width: 31px;
+  height: 31px;
   border-radius: 50%;
-  border: 2px solid #5b2b22;
-  background: #f6d073;
-  font: 700 12px "Courier New", monospace;
+  border: 0;
+  background: #f4e2d4;
+  color: #b65139;
+  font: 850 12px ui-sans-serif, system-ui, sans-serif;
 `;
 
 const Track = styled.div`
   position: relative;
   overflow: hidden;
   min-width: 0;
-  border-right: 4px dashed #fff7da;
-  background:
-    linear-gradient(180deg, transparent 47%, rgba(76, 37, 32, 0.28) 48% 51%, transparent 52%),
-    linear-gradient(90deg, transparent 92%, rgba(179, 66, 44, 0.28) 92%);
+  background: linear-gradient(90deg, transparent 0 3%, #e1eae2 3% 97%, transparent 97%) center / 100% 3px no-repeat;
+  &::after { content: ""; position: absolute; right: 3%; top: 25%; bottom: 25%; border-right: 2px dashed #e99574; }
   @container (max-width: 560px) {
     grid-column: 1;
     grid-row: 2;
@@ -473,12 +505,12 @@ const Track = styled.div`
 const Runner = styled.div`
   position: absolute;
   top: 50%;
-  width: 50px;
-  height: 36px;
-  margin-top: -18px;
-  color: #4c2721;
+  width: 58px;
+  height: 48px;
+  margin-top: -24px;
+  color: #b8603b;
   transition: left 700ms ease-out;
-  svg { width: 50px; height: 36px; filter: drop-shadow(2px 2px 0 rgba(55, 23, 18, 0.35)); }
+  img { display: block; width: 58px; height: 48px; object-fit: contain; filter: drop-shadow(0 3px 2px rgba(73, 55, 37, .16)); }
   @media (prefers-reduced-motion: reduce) { transition: none; }
 `;
 
@@ -487,46 +519,50 @@ const LaneScore = styled.div`
   place-content: center;
   text-align: center;
   padding: 5px;
-  border-left: 2px solid #7b4b36;
-  background: rgba(255, 245, 211, 0.64);
-  strong { display: block; font: 900 23px/1 Georgia, serif; }
-  span { font: 700 10px/1.2 "Courier New", monospace; text-transform: uppercase; }
+  border-left: 1px solid #e5ebe6;
+  background: #edf6ef;
+  color: #224c42;
+  strong { display: block; font: 800 23px/1 var(--horf-display, Georgia, serif); }
+  span { font: 800 10px/1.2 ui-sans-serif, system-ui, sans-serif; text-transform: uppercase; letter-spacing: .04em; }
   @container (max-width: 560px) { grid-column: 2; grid-row: 1 / span 2; }
 `;
 
 const Ledger = styled.div`
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 18px;
+  gap: 15px;
   @container (max-width: 670px) { grid-template-columns: 1fr; }
 `;
 
 const LedgerPanel = styled.div`
   min-width: 0;
-  padding: 14px;
-  border-top: 4px solid #a74a34;
-  background: #fff8e9;
-  box-shadow: inset 0 0 0 1px #cba77b;
-  h3 { margin: 0 0 4px; font-size: 18px; }
-  p { margin: 0 0 10px; font-size: 13px; line-height: 1.4; }
+  padding: 20px;
+  border: 1px solid var(--horf-line);
+  border-radius: 16px;
+  background: #fff;
+  h3 { margin: 0 0 6px; color: #193b34; font: 750 20px/1.15 var(--horf-display, Georgia, serif); }
+  p { margin: 0 0 12px; color: #5c7068; font-size: 13px; line-height: 1.5; }
 `;
 
 const MetricStrip = styled.div`
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-  margin: 13px 0 18px;
-  > div { padding: 9px; border: 1px solid #bd9465; background: #fff3d5; }
-  strong { display: block; font-size: 24px; line-height: 1; }
-  span { font: 700 11px/1.25 "Courier New", monospace; text-transform: uppercase; }
+  gap: 10px;
+  margin: 17px 0 22px;
+  > div { padding: 17px 18px; border: 1px solid var(--horf-line); border-radius: 14px; background: #eaf4ee; }
+  strong { display: block; color: #194e40; font: 800 30px/1 var(--horf-display, Georgia, serif); }
+  span { display: block; margin-top: 7px; color: #557068; font: 750 11px/1.25 ui-sans-serif, system-ui, sans-serif; text-transform: uppercase; letter-spacing: .04em; }
+  @container (max-width: 510px) { grid-template-columns: 1fr; }
 `;
 
 const RuleNote = styled.p`
-  padding: 10px 12px;
-  border-left: 4px solid #9d4c30;
-  background: #ffefd0;
+  padding: 14px 17px;
+  border-left: 3px solid #e19270;
+  border-radius: 0 12px 12px 0;
+  background: #fff3eb;
+  color: #6b5c52;
   font-size: 13px;
-  line-height: 1.45;
+  line-height: 1.55;
 `;
 
 const TraderList = styled.ul`
@@ -537,8 +573,8 @@ const TraderList = styled.ul`
     display: flex;
     justify-content: space-between;
     gap: 8px;
-    padding: 8px 0;
-    border-top: 1px solid #d8bc94;
+    padding: 11px 0;
+    border-top: 1px solid #e6ece6;
     font-size: 13px;
   }
   strong { white-space: nowrap; }
@@ -548,28 +584,42 @@ const ReceiptList = styled.ol`
   list-style: none;
   margin: 0;
   padding: 0;
-  border-top: 1px solid #b99065;
+  border-top: 1px solid #e0e9e2;
   li {
     display: grid;
     grid-template-columns: 75px minmax(0, 1fr) auto;
     gap: 10px;
     align-items: start;
-    padding: 10px 2px;
-    border-bottom: 1px solid #d8bc94;
+    padding: 13px 2px;
+    border-bottom: 1px solid #e6ece6;
     font-size: 13px;
   }
-  small { display: block; margin-top: 3px; color: #755349; font: 12px/1.35 "Courier New", monospace; }
+  small { display: block; margin-top: 3px; color: #62716c; font: 12px/1.4 ui-sans-serif, system-ui, sans-serif; }
   @container (max-width: 540px) { li { grid-template-columns: 60px minmax(0, 1fr); } }
 `;
 
 const ReceiptDirection = styled.strong<{ $in: boolean }>`
   display: inline-block;
-  padding: 4px 5px;
-  background: ${(p) => p.$in ? "#d6ecce" : "#f5d8c1"};
-  border: 1px solid ${(p) => p.$in ? "#4f7642" : "#a34b31"};
-  color: #2d2b1e;
-  font: 700 11px "Courier New", monospace;
+  padding: 6px 9px;
+  border-radius: 999px;
+  background: ${(p) => p.$in ? "#dcf4e7" : "#fff0e4"};
+  border: 1px solid ${(p) => p.$in ? "#9bcdb2" : "#ecc1a6"};
+  color: ${(p) => p.$in ? "#28644e" : "#99583f"};
+  font: 800 10px/1.2 ui-sans-serif, system-ui, sans-serif;
   text-transform: uppercase;
+`;
+
+const AsideRail = styled.div`
+  color: #142b29;
+  font-family: var(--horf-font, ui-sans-serif, system-ui, sans-serif);
+  .eyebrow { display: block; margin-bottom: 10px; color: #b6553c; font-size: 10px; font-weight: 850; letter-spacing: .13em; text-transform: uppercase; }
+  .rail-section { padding: 16px 0; border-bottom: 1px solid #dbe4dd; }
+  .rail-section:first-child { padding-top: 4px; }
+  strong { display: block; color: #173b33; font: 700 20px/1.12 var(--horf-display, Georgia, serif); overflow-wrap: anywhere; }
+  p { margin: 8px 0 0; color: #597068; font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+  .rail-number { color: #c35e42; font: 800 24px/1 var(--horf-display, Georgia, serif); }
+  .rail-link { display: inline-block; margin-top: 11px; color: #176d61; font-size: 12px; font-weight: 750; text-decoration: underline; text-underline-offset: 3px; }
+  .rail-link:focus-visible { outline: 3px solid #ff9b73; outline-offset: 3px; }
 `;
 
 function shortAddress(address: string): string {
@@ -611,14 +661,7 @@ function tokenUrl(token: HorfReceipt["token"]): string {
 }
 
 function HorseGlyph() {
-  return (
-    <svg viewBox="0 0 60 42" aria-hidden="true" focusable="false">
-      <path fill="currentColor" d="M8 15 3 10 1 11l4 10 7 3 11-1 3 7-2 10h4l5-13 9-1 5 13h4l-2-17 5-5 5 1 1-4-5-3-2-7-3-2-2 6-6 2-7 6-18-3-7 3Z" />
-      <path fill="#f1ca76" d="m45 10 5-2-1 7-4 2z" />
-      <circle cx="51" cy="13" r="1.3" fill="#f7e9c6" />
-      <path d="M18 25 12 39M35 26l-2 13" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
-    </svg>
-  );
+  return <img src="/horf-art/galloping-horse.webp" alt="" aria-hidden="true" />;
 }
 
 function TraderLink({ address, name }: { address: string; name?: string | null }) {
@@ -772,13 +815,27 @@ export function Horf() {
   }
 
   return (
-    <AppWindow title={`Horf · ${seasonDisplayName}`}>
+    <HorfFrame title={`Horf · ${seasonDisplayName}`} aside={<AsideRail>
+      {walletError && <div className="rail-section" role="alert"><span className="eyebrow">Wallet alert</span><p>{walletError}</p></div>}
+      {personal?.blacklisted === true && <div className="rail-section" role="alert"><span className="eyebrow">Trader standing</span><p>This wallet is restricted from private Horf actions. Review the public standing before trading.</p></div>}
+      <div className="rail-section"><span className="eyebrow">🐎 Live trail</span><strong>{seasonDisplayName}</strong><p>{countsProvisional ? "The race is still scanning Mainnet." : hasError ? "Season totals need a refresh." : "Season ledger ready for the next ride."}</p></div>
+      <div className="rail-section"><span className="eyebrow">Race leader</span><strong>{leaderboard[0] ? traderName(leaderboard[0].name, leaderboard[0].address) : "The starting gate"}</strong><p>{leaderboard[0] ? `${leaderboard[0].trades} ${leaderboard[0].trades === 1 ? "trade" : "trades"} this season` : "No riders ranked yet."}</p></div>
+      {statusAddress && <div className="rail-section"><span className="eyebrow">Trader in your sights</span><strong>{shortAddress(statusAddress)}</strong><p>Standing and inspection notes are open in the main trail.</p></div>}
+      <div className="rail-section"><span className="eyebrow">Your saddle</span>{address ? <><strong>{shortAddress(address)}</strong><p>{personal ? `${personal.received} received · ${personal.sent} sent` : "Reading your horse ledger."}</p></> : <><strong>Guest rider</strong><p>Connect a wallet to see your horses, posse, and claim.</p></>}</div>
+      {claimAlert && <div className="rail-section"><span className="eyebrow">HORSE waiting</span><span className="rail-number">{formatHorseAmount(claimAlert.claimableRaw, 8)}</span><p>Earned HORSE · your wallet pays XTZ gas to claim.</p></div>}
+    </AsideRail>}>
       <Shell data-horf-app>
         <Masthead data-horf-region="intro">
           <div>
             <small>WTF OS · Tezos horse trading</small>
             <h1>HORF! <span aria-hidden="true">★</span></h1>
-            <p>Howdy, horse trader. Find other riders on the race board and open their Objkt profiles. Gather owned horses in your personal stable, ride an inspected horse through Marshal’s Market, or make a direct trade in the Outlaw Corral. Send $HORSE to your posse and keep an eye on recent trades and return rides after you verify your wallet.{isGuest ? " No WTF OS account is needed; the separate WTF Trade Boards app requires sign-in." : " You can also browse the WTF Trade Boards."}</p>
+            <p>Howdy, horse trader. Find other riders, follow the race, and see your recent trades. Bring your wallet to Marshal’s Market for inspected horses or trade on trust in the Outlaw Corral. Your stable, return rides, and earned $HORSE are waiting.{isGuest ? " No WTF OS account is needed; the separate WTF Trade Boards app requires sign-in." : " You can also browse the WTF Trade Boards."}</p>
+            <IntroActions>
+              <Action type="button" $primary onClick={findTraders}><span aria-hidden="true">🐎 </span>Find horse traders</Action>
+              <Action data-horf-open-range-open type="button" style={{ backgroundImage: "url('/horf-art/lasso.svg')", backgroundPosition: "8px center", backgroundSize: 18, backgroundRepeat: "no-repeat", paddingLeft: 31 }} onClick={() => windowManager.openPage(`/horf/open-range?season=${encodeURIComponent(selectedSeasonKey)}`)}>Browse the Open Range</Action>
+              {!address && <Action data-horf-wallet-connect-intro type="button" onClick={() => void connectWallet()} disabled={isConnecting}>{isConnecting ? "Connecting wallet…" : isGuest ? "Connect and verify wallet" : "Connect Tezos wallet"}</Action>}
+              {!isGuest && <Action type="button" onClick={() => windowManager.openPage("/trade-boards")}>Browse Trade Boards</Action>}
+            </IntroActions>
           </div>
           <WantedPoster data-horf-wanted-poster aria-label={`${seasonDisplayName} horse trader notice`}>
             <span className="wanted">Wanted</span>
@@ -793,19 +850,6 @@ export function Horf() {
               <p>Follow the hoofprints from this earlier season.</p>
             </>}
           </WantedPoster>
-          <IntroActions>
-              <Action type="button" $primary onClick={findTraders}><span aria-hidden="true">🐎 </span>Find horse traders</Action>
-              <Action data-horf-open-range-open type="button" style={{ backgroundImage: "url('/horf-art/lasso.svg')", backgroundPosition: "8px center", backgroundSize: 18, backgroundRepeat: "no-repeat", paddingLeft: 31 }} onClick={() => windowManager.openPage(`/horf/open-range?season=${encodeURIComponent(selectedSeasonKey)}`)}>Browse the Open Range</Action>
-              <Action type="button" onClick={() => visitSection("horf-trader-status")}><span aria-hidden="true">🤠 </span>Check trader standing</Action>
-              {!address && <Action data-horf-wallet-connect-intro type="button" onClick={() => void connectWallet()} disabled={isConnecting}>{isConnecting ? "Connecting wallet…" : isGuest ? "Connect and verify wallet" : "Connect Tezos wallet"}</Action>}
-              <Action type="button" onClick={() => visitSection("horf-personal-stable")}>Your personal stable</Action>
-              <Action type="button" onClick={() => visitSection("horf-marshals-market")}>Marshal’s Market · inspected Stables</Action>
-              <Action type="button" onClick={() => visitSection("horf-outlaw-corral")}>Outlaw Corral · direct trades</Action>
-              <Action type="button" onClick={() => visitSection("horf-inspector-desk")}>Inspector’s desk</Action>
-              <Action type="button" onClick={() => visitSection("horf-horse-send")}>Send $HORSE</Action>
-              <Action type="button" onClick={() => visitSection("horf-gifts")}>Gift horses</Action>
-              {!isGuest && <Action type="button" onClick={() => windowManager.openPage("/trade-boards")}>Browse Trade Boards</Action>}
-          </IntroActions>
         </Masthead>
 
         <WalletStatus data-horf-wallet-status role="status">
@@ -987,6 +1031,6 @@ export function Horf() {
           )}
         </Section>
       </Shell>
-    </AppWindow>
+    </HorfFrame>
   );
 }

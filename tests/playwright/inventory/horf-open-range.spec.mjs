@@ -28,6 +28,7 @@ test.describe("Horf Open Range", () => {
   test("lets a guest page through untraded mints and switch all range modes", async ({ page, request }) => {
     expect((await request.post("/__test/state", { data: { userRole: "anonymous" } })).ok()).toBeTruthy();
     await mockSeasons(page);
+    await page.setViewportSize({ width: 1440, height: 900 });
     const reads = [];
     await page.route("**/api/horf/open-range?*", (route) => {
       const url = new URL(route.request().url());
@@ -51,6 +52,26 @@ test.describe("Horf Open Range", () => {
 
     await page.goto("/horf/open-range");
     const range = page.locator("[data-horf-open-range]");
+    const frame = page.locator("[data-horf-frame]");
+    const leftNav = frame.locator("[data-horf-left-nav]");
+    const primary = frame.locator("[data-horf-primary]");
+    const rightRail = frame.locator("[data-horf-right-rail]");
+    await expect(frame).toBeVisible();
+    await expect(leftNav.getByRole("link", { name: "Open Range" })).toHaveAttribute("aria-current", "page");
+    await expect(rightRail).toContainText("Range report");
+    await expect(page.locator("[data-wtf-desktop]")).toHaveCount(0);
+    await expect(page.locator("[data-bug-report-trigger]")).toHaveCount(0);
+    const layout = await frame.evaluate((element) => {
+      const bounds = element.getBoundingClientRect();
+      const left = element.querySelector("[data-horf-left-nav]").getBoundingClientRect();
+      const center = element.querySelector("[data-horf-primary]").getBoundingClientRect();
+      const right = element.querySelector("[data-horf-right-rail]").getBoundingClientRect();
+      return { width: bounds.width, leftRight: left.right, centerLeft: center.left,
+        centerRight: center.right, centerWidth: center.width, rightLeft: right.left };
+    });
+    expect(layout.leftRight).toBeLessThanOrEqual(layout.centerLeft + 1);
+    expect(layout.centerWidth).toBeGreaterThanOrEqual(layout.width * 0.75 - 1);
+    expect(layout.rightLeft).toBeGreaterThanOrEqual(layout.centerRight - 1);
     await expect(range).toContainText("The Open Range");
     await expect(range.locator("[data-horf-open-range-horse]")).toHaveCount(1);
     const first = range.locator("[data-horf-open-range-horse]").first();
@@ -65,6 +86,8 @@ test.describe("Horf Open Range", () => {
     const detail = range.locator("[data-horf-open-range-detail]");
     await expect(detail).toBeVisible();
     await expect(detail).toContainText("Horse #1");
+    await expect(rightRail).toContainText("Horse in your sights");
+    await expect(rightRail).toContainText("Horse #1");
     await expect(detail.getByRole("link", { name: "View this horse on Objkt" })).toHaveAttribute("href", `https://objkt.com/tokens/${contract}/1`);
     await page.keyboard.press("Escape");
     await expect(detail).not.toBeVisible();
@@ -103,6 +126,16 @@ test.describe("Horf Open Range", () => {
     await page.screenshot({ path: "test-results/horf-open-range-archive.png", fullPage: true });
     await page.setViewportSize({ width: 390, height: 844 });
     expect(await range.evaluate((node) => node.scrollWidth - node.clientWidth)).toBeLessThanOrEqual(1);
+    await expect(leftNav).toBeVisible();
+    await expect(rightRail).toBeHidden();
+    const updates = primary.getByRole("button", { name: "Trail updates" });
+    await updates.focus();
+    await page.keyboard.press("Enter");
+    await expect(updates).toHaveAttribute("aria-expanded", "true");
+    await expect(rightRail).toContainText("Range report");
+    await expect(rightRail).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(rightRail).toBeHidden();
   });
 
   test("posts and removes a wallet-owned direct offer without moving the horse", async ({ page, request }) => {

@@ -238,6 +238,9 @@ function WindowRenderer({
         if (!match) return null;
 
         const { def, props } = match;
+        // Horf owns a full-screen app shell. Old window sessions can still
+        // contain these paths; do not paint them over the desktop behind it.
+        if (def.pattern === "/horf" || def.pattern === "/horf/open-range") return null;
 
         if (def.auth) {
           if (isLoading) {
@@ -559,6 +562,13 @@ function AppContent() {
   }
 
   if (routeOnlyFullscreen) {
+    if (fullscreenMatch.def.pattern === "/horf" || fullscreenMatch.def.pattern === "/horf/open-range") {
+      return (
+        <WindowManagerProvider navigate={setLocation} currentLocation={location}>
+          <FullscreenRouteRenderer match={fullscreenMatch} />
+        </WindowManagerProvider>
+      );
+    }
     return <FullscreenRouteRenderer match={fullscreenMatch} />;
   }
 

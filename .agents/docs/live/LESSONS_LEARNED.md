@@ -13776,3 +13776,13 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: The Open Range route still passed, but the main Horf entry failed for guests. Build and type checks would not catch the HTTP redirect.
 
 **Rule**: Put assets under a path that does not match an app route segment, such as `public/horf-art`, and run a browser or HTTP smoke check on the parent app route whenever adding a new public directory.
+
+---
+
+## 2026-11-03 - Constrain horse artwork inside reward panels
+
+**What happened**: The first modern Horf poster let its horse portrait overlap the Neighvember title and 10 $HORSE reward on a desktop viewport. Text assertions passed because the words remained in the DOM.
+
+**Why it mattered**: The event name and reward were present but hard to read in the opening view.
+
+**Rule**: Bound decorative artwork inside its own panel, inspect the rendered desktop and narrow layouts, and check that key reward copy is visibly clear before shipping.
