@@ -4,7 +4,7 @@ import { paulAssetUrl } from "../../lib/paul-assets";
 import type { DesktopObstacle } from "./DesktopPetModel";
 
 const GHOST_WIDTH = 112;
-const GHOST_HEIGHT = 92;
+const GHOST_HEIGHT = 116;
 const GHOST_MARGIN = 12;
 const GHOST_CLEARANCE = 14;
 
@@ -112,8 +112,8 @@ const GhostButton = styled.button<{ $x: number; $y: number; $interactive: boolea
 
   img {
     display: block;
-    width: 108px;
-    height: 72px;
+    width: 80px;
+    height: 100px;
     object-fit: contain;
     image-rendering: pixelated;
     filter: drop-shadow(2px 3px 0 rgba(0, 0, 0, 0.35));

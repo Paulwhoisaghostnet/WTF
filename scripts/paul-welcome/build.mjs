@@ -205,7 +205,7 @@ run(python, [path.join(here, "narrate.py"), "--storyboard", storyboardPath,
 }
 const timings = JSON.parse(await readFile(path.join(narrationDir, "timings.json"), "utf8"));
 const ghostPng = path.join(work, "paul.png");
-run("rsvg-convert", ["-w", "400", "-h", "267", "-o", ghostPng, sourceGhost]);
+run("rsvg-convert", ["-w", "240", "-h", "300", "-o", ghostPng, sourceGhost]);
 const segments = [];
 for (const [index, scene] of scenes.entries()) {
   const svgPath = path.join(work, `${scene.id}.svg`);
@@ -214,7 +214,7 @@ for (const [index, scene] of scenes.entries()) {
   await writeFile(svgPath, frameSvg(scene, index, scenes.length), "utf8");
   run("rsvg-convert", ["-o", pngPath, svgPath]);
   const duration = timings[index].durationSeconds;
-  const filter = `[0:v][1:v]overlay=x=830:y=240+10*sin(t*2.3):eval=frame:format=auto,` +
+  const filter = `[0:v][1:v]overlay=x=900:y=215+10*sin(t*2.3):eval=frame:format=auto,` +
     `fade=t=in:st=0:d=0.18,fade=t=out:st=${(duration - 0.2).toFixed(3)}:d=0.2,` +
     `format=yuv420p[v];[2:a]afade=t=in:st=0:d=0.08,` +
     `afade=t=out:st=${(duration - 0.24).toFixed(3)}:d=0.24[a]`;
@@ -236,7 +236,7 @@ run("ffmpeg", ["-hide_banner", "-loglevel", "error", "-y", "-f", "concat", "-saf
   "-c", "copy", "-movflags", "+faststart", mp4Path]);
 const posterPath = path.join(target, "paulwhoisaclippy-welcome-poster.png");
 run("ffmpeg", ["-hide_banner", "-loglevel", "error", "-y", "-i", path.join(work, `${scenes[0].id}.png`),
-  "-i", ghostPng, "-filter_complex", "[0:v][1:v]overlay=830:240:format=auto",
+  "-i", ghostPng, "-filter_complex", "[0:v][1:v]overlay=900:215:format=auto",
   "-frames:v", "1", "-update", "1", posterPath]);
 let offset = 0;
 const cues = [];
