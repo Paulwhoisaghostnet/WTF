@@ -447,6 +447,14 @@ function URLSync({ appAvailability }: { appAvailability: DesktopAppAvailability 
       return;
     }
 
+    // Query navigation changes the state of the focused app window. Keep its
+    // geometry and focus instead of opening a second copy of the same route.
+    if (!wm.openPages.includes(routeLocation) && wm.focusedPath?.split("?")[0] === location) {
+      wm.replacePage(wm.focusedPath, routeLocation);
+      initialised.current = true;
+      return;
+    }
+
     if (!wm.openPages.includes(routeLocation) && colilseumRoomFromPath(routeLocation)) {
       const existingGamePath = wm.openPages.find((path) => path === "/colilseum" || path === "/wtfiap");
       if (existingGamePath) {
