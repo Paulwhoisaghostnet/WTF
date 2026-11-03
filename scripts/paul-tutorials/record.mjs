@@ -202,7 +202,7 @@ async function ensureGuide(page) {
         [data-paul-tour] strong { display: block; color: #8de6d3; font-size: 13px;
           letter-spacing: 1.5px; margin-bottom: 4px; text-transform: uppercase; }
         [data-paul-tour] span { display: block; font-weight: 700; line-height: 1.25; }
-        [data-paul-sprite] { position: fixed; z-index: 2147483645; width: 98px; height: 76px;
+        [data-paul-sprite] { position: fixed; z-index: 2147483645; width: 80px; height: 100px;
           pointer-events: none; transition: left .42s ease, top .42s ease;
           filter: drop-shadow(2px 4px 0 rgba(0,0,0,.5)); }
         [data-paul-sprite] img { width: 100%; height: 100%; object-fit: contain;
@@ -302,7 +302,7 @@ async function pointAt(page, locator, label) {
   await page.evaluate(({ x, y }) => {
     const sprite = document.querySelector("[data-paul-sprite]");
     sprite.style.left = `${Math.max(12, Math.min(1160, x + 25))}px`;
-    sprite.style.top = `${Math.max(112, Math.min(610, y - 83))}px`;
+    sprite.style.top = `${Math.max(112, Math.min(610, y - 100))}px`;
   }, { x, y });
   await page.mouse.move(x, y, { steps: 20 });
   await setGuideCursor(page, x, y);

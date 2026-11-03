@@ -1,0 +1,121 @@
+{
+  "schemaVersion": 1,
+  "network": "mainnet",
+  "chainId": "NetXdQprcVkpaWU",
+  "contract": "KT1Nk9Sxz7P2Q2eb45AgJiMp3jnbrYT3J4Fm",
+  "scriptHash": "26ff7d8db669e2eeefcdeacb8bd38d113ff402a2afb3aed819ace25053161c2f",
+  "roomId": "47b469ca95c3ece66b6b8ce8cbc40fb2c777b0dffb31553ab6dff3b3d5af0c02",
+  "host": "tz1hNbUXWdjPpUuGK3tMWM8uSJzBBGonWB5u",
+  "guest": "tz1W4pW7zEsovK5tQ3HqfqQAcWifRYeYAUTo",
+  "treasury": "tz1cVRngZw42KZ42VQF2ZCy2CJSPNG3H7Cgt",
+  "initial": {
+    "creditMutez": "0",
+    "totalCreditMutez": "0",
+    "contractBalanceMutez": "0",
+    "finalizedBlock": "BKkB2FpEBwkty84W2bUjkT6iCbfbHbGaCETai9sezc75EWkR9m6"
+  },
+  "operations": {
+    "credit/topup": {
+      "status": "applied",
+      "operationHash": "oobQAJMMBGJBtZmMuGFnYVCAMxTmnawfhXScJkS9vsNfmsV1vFj",
+      "inclusion": {
+        "level": 15659127,
+        "blockHash": "BLtjUQyMEEdivyQPF6xKLjziYrviC8oWssQi2qmoSXjoLeEXyEa"
+      },
+      "entrypoint": "deposit_credit",
+      "amountMutez": "10000"
+    },
+    "room/create": {
+      "status": "applied",
+      "operationHash": "ooNvSzZ6dsNckbD6KcWisrntpWtxh6Hgi3ijryZRGmvSmuBhdZe",
+      "inclusion": {
+        "level": 15659165,
+        "blockHash": "BMbuQ7mUFFtnRc38S1uHqdu4w1Ab9Zu2zkTwB3n2dUHqx4GoAXp"
+      },
+      "entrypoint": "create_offer",
+      "amountMutez": "510000",
+      "reconciliation": {
+        "rpc": "https://tcinfra.net/rpc/tezos/mainnet",
+        "preparedLevel": 15659130,
+        "finalizedLevel": 15659161,
+        "sourceCounter": "209524168",
+        "noPendingSourceOperation": true,
+        "roomAbsent": true
+      }
+    },
+    "room/authorize": {
+      "status": "applied",
+      "operationHash": "ooRXNyjEfcP8FLKJMAFX3yHJ9oDqPtpvKzNvhPPeyN67LH6gXX1",
+      "inclusion": {
+        "level": 15659170,
+        "blockHash": "BMQ211gnyC7gqwCt8iDLRxvv5M8tqrrD8bKQh7kVgMh5TP4hqyA"
+      },
+      "entrypoint": "authorize_guest",
+      "amountMutez": "0"
+    },
+    "room/accept": {
+      "status": "applied",
+      "operationHash": "ooH5E6Hmv9eNjjK6PZtay6sauLvfJaWtxZfG5xu58yC3oqSfVtS",
+      "inclusion": {
+        "level": 15659173,
+        "blockHash": "BMdGPEBbiu3kzy5ChWqcZPeMnYPhrt2LT6RKHGcYZf4sQM5dxnp"
+      },
+      "entrypoint": "accept_prepaid",
+      "amountMutez": "0"
+    },
+    "room/start": {
+      "status": "applied",
+      "operationHash": "onz9QWnbxXuKXNBB4PzdWzYTPWTq7JUMfsdc3bM8w9W9BkUcV9s",
+      "inclusion": {
+        "level": 15659177,
+        "blockHash": "BL41mNY5whdCLc5aWAbhM71BsdAcda54ttpCdkQvK34ZprXAwa6"
+      },
+      "entrypoint": "start_room",
+      "amountMutez": "0"
+    },
+    "room/finalize": {
+      "status": "applied",
+      "operationHash": "oo7kkyDTveRb7s93pdogqsS5xGU2VnKjm8CWQrCWhQ1M1ygEpFT",
+      "inclusion": {
+        "level": 15659180,
+        "blockHash": "BMb1AB21JU1EFqaYbxLeYn5JEAxMrJAFBqmH1RTZ71yxx1AXD2e"
+      },
+      "entrypoint": "finalize_room",
+      "amountMutez": "0"
+    }
+  },
+  "finalConservation": {
+    "contractBalanceMutez": "0",
+    "totalCreditMutez": "0",
+    "guestCreditMutez": "0"
+  },
+  "evidence": {
+    "sourceJournal": "/var/lib/wtf/wtfiap-prepaid-mainnet-lifecycle-proof/journal.json",
+    "operationUrls": {
+      "credit/topup": "https://tzkt.io/oobQAJMMBGJBtZmMuGFnYVCAMxTmnawfhXScJkS9vsNfmsV1vFj",
+      "room/create": "https://tzkt.io/ooNvSzZ6dsNckbD6KcWisrntpWtxh6Hgi3ijryZRGmvSmuBhdZe",
+      "room/authorize": "https://tzkt.io/ooRXNyjEfcP8FLKJMAFX3yHJ9oDqPtpvKzNvhPPeyN67LH6gXX1",
+      "room/accept": "https://tzkt.io/ooH5E6Hmv9eNjjK6PZtay6sauLvfJaWtxZfG5xu58yC3oqSfVtS",
+      "room/start": "https://tzkt.io/onz9QWnbxXuKXNBB4PzdWzYTPWTq7JUMfsdc3bM8w9W9BkUcV9s",
+      "room/finalize": "https://tzkt.io/oo7kkyDTveRb7s93pdogqsS5xGU2VnKjm8CWQrCWhQ1M1ygEpFT"
+    }
+  },
+  "settlementTransfers": [
+    {
+      "destination": "tz1cVRngZw42KZ42VQF2ZCy2CJSPNG3H7Cgt",
+      "amountMutez": "500000",
+      "status": "applied"
+    },
+    {
+      "destination": "tz1W4pW7zEsovK5tQ3HqfqQAcWifRYeYAUTo",
+      "amountMutez": "20000",
+      "status": "applied"
+    }
+  ],
+  "observedOnChain": {
+    "allSixOperationsApplied": true,
+    "settlementBlockLevel": 15659180,
+    "settlementBlockHash": "BMb1AB21JU1EFqaYbxLeYn5JEAxMrJAFBqmH1RTZ71yxx1AXD2e",
+    "settlementOperationUrl": "https://tzkt.io/oo7kkyDTveRb7s93pdogqsS5xGU2VnKjm8CWQrCWhQ1M1ygEpFT"
+  }
+}

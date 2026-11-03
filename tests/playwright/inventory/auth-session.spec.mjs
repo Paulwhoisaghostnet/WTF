@@ -28,7 +28,7 @@ test.describe("interaction inventory - auth session recovery", () => {
     await expect(welcomeVideo).toBeVisible();
     await expect(welcomeVideo.locator('source[type="video/mp4"]')).toHaveAttribute(
       "src",
-      "/desktop/paulwhoisaclippy-welcome.mp4?v=ghost-red-glasses-20261102"
+      "/desktop/paulwhoisaclippy-welcome.mp4?v=ghost-portrait-20261103"
     );
     await expect(welcomeVideo.locator('track[kind="captions"]')).toHaveAttribute(
       "src",

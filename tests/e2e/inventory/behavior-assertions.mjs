@@ -1771,7 +1771,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     verificationCommand:
       "npm run build && npx playwright test tests/playwright/inventory/paulwhoisaclippy.spec.mjs",
     userVisibleAssertion:
-      "paulwhoisaclippy floats in unobstructed desktop space wearing red glasses, speaks a short optional whisper on click or keyboard activation, stays beneath app windows, and becomes still when reduced motion is requested.",
+      "paulwhoisaclippy floats in unobstructed desktop space as a compact sheet ghost with red glasses, cycles through a 90-pose desktop animation sheet, speaks a short optional whisper on click or keyboard activation, stays beneath app windows, and becomes still on the first pose when reduced motion is requested.",
     durableSideEffectAssertion:
       "The click uses the existing desktop.object.clicked event with objectId paulwhoisaclippy; the inventory harness records the accepted event while no pet-care, reward, or account state changes.",
   },

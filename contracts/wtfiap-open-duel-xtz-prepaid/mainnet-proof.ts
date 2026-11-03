@@ -13,8 +13,11 @@ import * as keyringNamespace from '../../extensions/wtf-operator-signer/src/keyr
 const keyringModule = 'default' in keyringNamespace ?
   (keyringNamespace as typeof keyringNamespace & { default: typeof keyringNamespace }).default : keyringNamespace;
 const execute = process.argv.includes('--execute');
-const positional = process.argv.slice(2).filter(value => value !== '--execute');
-assert.equal(positional.length, 1, 'Usage: tsx mainnet-proof.ts <new-proof-directory> [--execute]');
+const fallback = process.argv.includes('--fallback');
+const resumeReconciled = process.argv.includes('--resume-reconciled');
+const positional = process.argv.slice(2).filter(value => !['--execute', '--fallback', '--resume-reconciled'].includes(value));
+assert.equal(positional.length, 1, 'Usage: tsx mainnet-proof.ts <proof-directory> [--fallback] [--resume-reconciled] [--execute]');
+assert(!resumeReconciled || (execute && fallback), 'Reconciled resume requires explicit fallback execution.');
 const deploy = JSON.parse(await readFile(new URL('./mainnet-deployment.json', import.meta.url), 'utf8'));
 assert.equal(deploy.status, 'applied'); assert.equal(deploy.network, 'mainnet');
 assert.equal(deploy.chainId, 'NetXdQprcVkpaWU');
@@ -25,7 +28,7 @@ const preflight = JSON.parse(await readFile(new URL('./preflight-mainnet.json', 
 assert.equal(preflight.network, 'mainnet');
 assert.equal(preflight.expectedChainId, deploy.chainId);
 const fallbackRpc = 'https://tcinfra.net/rpc/tezos/mainnet';
-const rpcCandidates = [...new Set([preflight.rpcUrl, fallbackRpc])];
+const rpcCandidates = fallback ? [fallbackRpc] : [...new Set([preflight.rpcUrl, fallbackRpc])];
 async function verifiedRpc() {
   const failures: string[] = [];
   for (const endpoint of rpcCandidates) {
@@ -87,6 +90,32 @@ if (!execute) {
   assert.equal(guestSigner.wallet.address, guest); assert.equal(guestSigner.wallet.network, 'mainnet');
   const actors = { host: { address: host, tezos: buildToolkit(hostSigner.signer, rpc) },
     guest: { address: guest, tezos: buildToolkit(guestSigner.signer, rpc) } };
+  async function reconcilePreparedCreate(record: any) {
+    assert.equal(record.status, 'prepared');
+    assert.equal(record.entrypoint, 'create_offer');
+    assert.equal(record.actor, host);
+    assert(!record.operationHash);
+    const finalizedBlock = await readonly.rpc.getBlockHash({ block: 'head~2' });
+    const finalizedHeader = await readonly.rpc.getBlockHeader({ block: finalizedBlock as any });
+    assert(finalizedHeader.level > record.preparedLevel + 2, 'Wait for the attempted send to clear finality before reconciliation.');
+    const before = await readonly.rpc.getContract(host, { block: String(record.preparedLevel) as any });
+    const after = await readonly.rpc.getContract(host, { block: finalizedBlock as any });
+    assert.equal(String(after.counter), String(before.counter), 'Source counter changed since the prepared send. Reconcile manually.');
+    const pending: any = await readonly.rpc.getPendingOperations();
+    for (const items of Object.values(pending)) {
+      if (!Array.isArray(items)) continue;
+      for (const item of items as any[]) {
+        const op = Array.isArray(item) ? item[1] : item;
+        assert(!(op?.contents || []).some((content: any) => content.source === host), 'Source operation remains pending.');
+      }
+    }
+    const currentStorage: any = await readonly.contract.getStorage(deploy.escrowContract, undefined, finalizedBlock as any);
+    assert(!await currentStorage.rooms.get(roomId, finalizedBlock), 'Room exists on chain. Reconcile manually.');
+    record.reconciliation = { rpc, preparedLevel: record.preparedLevel, finalizedLevel: finalizedHeader.level,
+      sourceCounter: String(after.counter), noPendingSourceOperation: true, roomAbsent: true };
+    record.status = 'reconciled-retry-prepared';
+    await save();
+  }
   async function step(key: string, actorName: 'host' | 'guest', entrypoint: string, params: any, amountMutez = '0') {
     const actor = actors[actorName];
     const contract = await actor.tezos.contract.at(deploy.escrowContract);
@@ -99,7 +128,14 @@ if (!execute) {
     if (record) {
       for (const [name, value] of Object.entries(intent)) assert.deepEqual(record[name], value);
       if (record.status === 'applied') return;
-      assert(record.operationHash, 'Unknown prepared Mainnet send outcome. Inspect chain; never blind retry.');
+      if (!record.operationHash) {
+        assert(resumeReconciled && key === 'room/create' && record.status === 'prepared',
+          'Unknown prepared Mainnet send outcome. Inspect chain; never blind retry.');
+        await reconcilePreparedCreate(record);
+        const operation = await actor.tezos.contract.transfer(transfer);
+        record.operationHash = operation.hash; record.status = 'injected'; await save();
+        await operation.confirmation(3);
+      }
     } else {
       const estimate = await actor.tezos.estimate.transfer(transfer);
       const balance = BigInt((await actor.tezos.tz.getBalance(actor.address)).toFixed());

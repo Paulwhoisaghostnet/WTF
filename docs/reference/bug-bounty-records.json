@@ -9459,8 +9459,8 @@
     {
       "id": "WTF-BB-132",
       "status": "Verified",
-      "owner": "Codex desktop icon stability pass",
-      "lastTouched": "2026-05-08",
+      "owner": "Codex Paul release gate / Horf icon persistence",
+      "lastTouched": "2026-11-03",
       "category": "Desktop OS / icon layout",
       "priority": "P2",
       "points": 8,
@@ -9469,7 +9469,7 @@
       "functionalityDanger": 3,
       "securityDanger": 0,
       "title": "Desktop icon layout allow-list drift caused moved icons to reset",
-      "body": "- Evidence:\n  - `client/src/features/desktop/DesktopIcons.tsx` rendered `wtfiam`, `arcade`, and `game-studio` desktop icons.\n  - `server/routes/desktop.ts` normalized persisted icon layouts through an older local key list that omitted those icons, so saving a moved layout stripped their coordinates.\n  - The desktop client rehydrated icon positions from settings data and size changes, making the dropped coordinates appear as periodic rubberband/default resets.\n- Why it matters:\n  - Users can drag icons and see local movement, but persistence silently deleting valid icon keys makes the desktop feel unstable and undermines settings sync.\n- Likely correction direction:\n  - Keep first-party desktop icon keys in a shared registry used by the client, settings route, and agent/MCP helpers. Preserve local drag state during active edits and clamp current positions on resize.\n- Verification idea:\n  - Run a source check comparing rendered icon keys with the shared registry, run `shared/desktop.test.ts`, and run TypeScript over desktop settings/client code.\n- Fix notes:\n  - Added `DESKTOP_ICON_LAYOUT_KEYS` in `shared/desktop.ts`, updated the settings route and MCP helper to use it, added a shared regression test, and adjusted client icon hydration/drag release state handling.\n  - Verified with the icon-key source check, `npx tsx --test shared/desktop.test.ts`, and `npm run check`.",
+      "body": "- Evidence:\n  - `client/src/features/desktop/DesktopIcons.tsx` rendered `wtfiam`, `arcade`, and `game-studio` desktop icons.\n  - `server/routes/desktop.ts` normalized persisted icon layouts through an older local key list that omitted those icons, so saving a moved layout stripped their coordinates.\n  - The desktop client rehydrated icon positions from settings data and size changes, making the dropped coordinates appear as periodic rubberband/default resets.\n- Why it matters:\n  - Users can drag icons and see local movement, but persistence silently deleting valid icon keys makes the desktop feel unstable and undermines settings sync.\n- Likely correction direction:\n  - Keep first-party desktop icon keys in a shared registry used by the client, settings route, and agent/MCP helpers. Preserve local drag state during active edits and clamp current positions on resize.\n- Verification idea:\n  - Run a source check comparing rendered icon keys with the shared registry, run `shared/desktop.test.ts`, and run TypeScript over desktop settings/client code.\n- Fix notes:\n  - Added `DESKTOP_ICON_LAYOUT_KEYS` in `shared/desktop.ts`, updated the settings route and MCP helper to use it, added a shared regression test, and adjusted client icon hydration/drag release state handling.\n  - Verified with the icon-key source check, `npx tsx --test shared/desktop.test.ts`, and `npm run check`.\n- Recurrence (2026-11-03): Horf added a native desktop icon but omitted `horf` from `DESKTOP_ICON_LAYOUT_KEYS`; server settings normalization silently discards dragged Horf coordinates. `DesktopIcons.test.tsx` reproduces the mismatch and blocks Quality Gates. Added `horf` to the shared allow-list and its expected fixture. Focused `shared/desktop.test.ts` and `DesktopIcons.test.tsx` pass 25/25, including normalization of every persisted icon key.",
       "legacyOriginalId": "WTF-BB-132"
     },
     {
@@ -9880,7 +9880,7 @@
       "category": "Release hygiene / generated assets",
       "priority": "P2",
       "points": 6,
-      "rank": 721,
+      "rank": 722,
       "complexity": 1,
       "functionalityDanger": 2,
       "securityDanger": 0,
@@ -9896,7 +9896,7 @@
       "category": "Pasta Protocol / static policy drift",
       "priority": "P2",
       "points": 6,
-      "rank": 721,
+      "rank": 722,
       "complexity": 1,
       "functionalityDanger": 2,
       "securityDanger": 0,
@@ -9912,7 +9912,7 @@
       "category": "E2E / Gamma Colander selector ownership",
       "priority": "P2",
       "points": 6,
-      "rank": 721,
+      "rank": 722,
       "complexity": 1,
       "functionalityDanger": 2,
       "securityDanger": 0,
@@ -9928,7 +9928,7 @@
       "category": "Developer experience / generated configuration docs",
       "priority": "P2",
       "points": 6,
-      "rank": 721,
+      "rank": 722,
       "complexity": 1,
       "functionalityDanger": 2,
       "securityDanger": 0,
@@ -9944,7 +9944,7 @@
       "category": "Public site / SEO and installability",
       "priority": "P2",
       "points": 6,
-      "rank": 721,
+      "rank": 722,
       "complexity": 1,
       "functionalityDanger": 2,
       "securityDanger": 0,
@@ -9976,7 +9976,7 @@
       "category": "WTF LIVE / room chat style controls",
       "priority": "P3",
       "points": 6,
-      "rank": 721,
+      "rank": 722,
       "complexity": 2,
       "functionalityDanger": 2,
       "securityDanger": 0,
@@ -9992,7 +9992,7 @@
       "category": "SDK / domain boundaries",
       "priority": "P3",
       "points": 5,
-      "rank": 734,
+      "rank": 735,
       "complexity": 1,
       "functionalityDanger": 2,
       "securityDanger": 0,
@@ -10008,7 +10008,7 @@
       "category": "Game Studio / domain boundaries",
       "priority": "P3",
       "points": 5,
-      "rank": 734,
+      "rank": 735,
       "complexity": 1,
       "functionalityDanger": 2,
       "securityDanger": 0,
@@ -10223,7 +10223,7 @@
       "category": "Profile / IPFS preview reliability",
       "priority": "P3",
       "points": 5,
-      "rank": 734,
+      "rank": 735,
       "complexity": 1,
       "functionalityDanger": 2,
       "securityDanger": 0,
@@ -10406,7 +10406,7 @@
       "functionalityDanger": 2,
       "securityDanger": 0,
       "points": 6,
-      "rank": 721,
+      "rank": 722,
       "title": "Queued pointer events draw WTFIAP heroes before artwork decoding completes",
       "body": "- Evidence: The actual desktop game reported Hero artwork is not ready: hollow-assassin. A held image-decode promise reproduced pointerleave calling draw before artReady. CSS pointer-events:none does not cancel queued events.\n- Correction direction: Guard the central draw boundary until artReady without weakening atlas validation or suppressing errors.\n- Verification: tools/test-art-readiness.cjs in the original game records the failing baseline and passing deferred-decode/purchase flow; final hosted desktop story asserts zero page errors.\n- Final verification: Three real hosted browser stories pass in tests/playwright/inventory/wtfiap.spec.mjs. Source-bound local proof output/wtfiap-browser-verified/proof.json records desktop purchase/deployment and popup with no page errors, normal Stuffs Play launch, AI-filled Party commands and exact invitation reload recovery, and mobile Tournament preview. All six recorded screenshots were inspected. Generator SHA-256 5fd09bcb7a7566226aaa8cd55051730074769d2edfddaab4aad2b45a653ef2da. The artwork defect also has a deterministic held-decode before/after regression. No production deployment is claimed by these local proofs.\n- Score: Existing board formula; scope is the reproduced requested launch or play failure, not a deployed outage."
     },
@@ -10556,7 +10556,7 @@
       "functionalityDanger": 1,
       "securityDanger": 0,
       "points": 5,
-      "rank": 734,
+      "rank": 735,
       "title": "Macaroni live verifier incorrectly requires a product field absent from the established direct manifest",
       "body": "- Evidence: Production c21e4aa7 serves correct alpha.2 installer URLs/hashes; all27 public asset probes and allnine anonymous401 checks pass. Macaroni alone fails its live verifier because product is absent. Git history establishes the direct API has omitted that optional identity since June14 commit23127881d; the June30 verifier accepted it, while August8 commit8b096897 introduced the stricter assertion without changing the API. Studio consumes existing installer fields and does not require product.\n- Correction direction: Preserve the established API. Update the verifier to accept absent product while rejecting an explicitly incorrect product; retain version, URL, checksum and authorization checks. Prove behavior with executable validator tests and the real authenticated response.\n- Initial response-change hypothesis rejected after examining history: adding a new production field is unnecessary to satisfy the established contract.\n- Score: Existing board P2(3)+C1+F1+S0 formula; a false release-verification failure, not a production security exploit.\n- Verification: The executable validator test reproduces4pass/1fail before correction and5/5 afterward. Legacy absent identity and explicit macaroni pass; wrong product, stale version, wrong URL and wrong checksum remain rejected. Real authenticated Macaroni verification now passes against unchanged production c21e4aa7; the combined nine-product receipt confirms allnine manifests, allnine anonymous401s and all27 public range downloads. The other eight passing checks were preserved rather than rerun. Inventory version wording now describes alpha.2; no route/handle/API semantics changed. See evidence/desktop-macaroni-verifier-compatibility.json and desktop-live-installer-checks.json."
     },
@@ -10946,7 +10946,7 @@
       "functionalityDanger": 1,
       "securityDanger": 1,
       "points": 5,
-      "rank": 734,
+      "rank": 735,
       "title": "New qs and desktop fast-uri advisory matches have compatible leaf patches",
       "body": "- Evidence: Root qs 6.16.0 is newly indexed by GHSA-6pq8-jhm2-2vcw, producing three moderate propagated audit entries. The vulnerable comma-array stringify API was not found; inspected Express/body-parser use parse. Each of nine desktop locks has one moderate dev-only fast-uri 3.1.8 entry; production audits remain zero. Prior roarr/sprintf-js chain remains removed.\n- Correction direction: refresh root qs to 6.16.1 and desktop fast-uri to 3.1.9, preserving every newer production/packager fix and avoiding forced audit downgrades.\n- Verification idea: focused query parsing/schema packaging checks, clean install/audit and exact lock comparison for regressions. Do not describe these as confirmed public exploit paths.\n- Score: existing P3(2)+C1/F1/S1=5; narrow compatible leaf maintenance, limited compatibility and conditional/build exposure.\n- Review: `docs/research/security-review-2026-10-28/report.md`, audited source/live commit 0b7b02b25ce74bcb6a3e3cad891c0d9a778504a4. Read-only review; no correction or deployment performed.\n\n- Remediation claimed 2026-10-28: user authorized all five findings, mail and Electron first, no downgrades, migration/installer tests, actual runtime verification and full production deployment. Baseline origin/main remains 0b7b02b2; newer dependency fixes must be retained.\n\n- Verified 2026-10-28: Deployed main qs 6.16.1 and all nine desktop fast-uri 3.1.9 versions are verified. Root/signer production audits and all 18 desktop full/production audits return zero findings. Express HTTP form/prototype handling and the qs advisory conversion fixture pass. No package was downgraded; newer production fixes and electron-builder 26.15.3 / global-agent 4.1.3 are retained, and roarr/sprintf-js remain absent. Evidence: docs/research/security-review-2026-10-28/evidence/dependency-remediation-independent-review.json and main-live-runtime.json.\n"
     },
@@ -11078,7 +11078,7 @@
       "category": "E2E / Gamma IPFS Pinning route coverage",
       "priority": "P3",
       "points": 5,
-      "rank": 734,
+      "rank": 735,
       "complexity": 1,
       "functionalityDanger": 2,
       "securityDanger": 0,
@@ -11258,7 +11258,7 @@
       "category": "Pasta Protocol / IPFS Pinning inventory test",
       "priority": "P2",
       "points": 6,
-      "rank": 721,
+      "rank": 722,
       "complexity": 1,
       "functionalityDanger": 2,
       "securityDanger": 0,
@@ -11276,7 +11276,7 @@
       "functionalityDanger": 2,
       "securityDanger": 0,
       "points": 6,
-      "rank": 721,
+      "rank": 722,
       "title": "Pasta live readiness points to a missing WTF.ME publish runbook",
       "body": "- Evidence: `pasta:live-readiness` printed `.agents/docs/live/PASTA_WTFME_LIVE_PUBLISH_RUNBOOK.md` as the unblock path, but that file was absent on PR #50 head `19e96b7d`. The gate reports missing dedicated credentials and host proof; an operator following its next-step pointer has no runbook.\n- Correction direction: Add a source-aligned runbook for read-only inventory, expected-host pinning, guarded dry-run, controlled publish, public pin-discovery verification, and partial-failure handling. Add a policy check that the linked file exists and names the actual commands.\n- Verification idea: Run the runbook policy check and non-writing Pasta live readiness; confirm the path exists and no publish mode is enabled by the audit.\n- Score: P2(3)+C1/F2/S0=6; this blocks the documented recovery path but does not itself alter on-chain or hosted state.\n- First correction and CI result (2026-10-30): The runbook was initially added under `.agents/docs/live/`; the public-release-boundary check correctly rejected tracking a new internal-agent file. Moved the pointer and runbook into the public operator documentation tree. Added the exact linked runbook with credential, expected-host, read-only inventory, dry-run, publish, public verification, and partial-failure steps. Added a policy assertion that the gate pointer resolves to this file and contains the guarded commands. The three WTF.ME/live-readiness policy suites pass 28/28; `npm run security:public-release-boundary` passes with the runbook in `docs/runbooks/`; the live-readiness and repo-cleanup policy suites pass 25/25. The live audit still reports missing credentials/host; this documentation fix does not claim either is available."
     },
@@ -11441,7 +11441,7 @@
       "functionalityDanger": 2,
       "securityDanger": 0,
       "points": 6,
-      "rank": 721,
+      "rank": 722,
       "title": "Profile AT OAuth client metadata tests reject a clean CI local origin before assertions",
       "body": "- Evidence (2026-11-02): `server/features/atproto/oauth-session-restore.test.ts` adds two metadata tests that construct `NodeOAuthClient` without setting a public origin. In a clean checkout, `resolveCanonicalPublicOrigin()` returns `http://127.0.0.1:3000`; the AT OAuth SDK rejects an IP-based HTTP client ID, and the metadata route returns 500 before the intended assertions. The unit runner supplies a database URI but no public URL.\n- Why it matters: Aggregate Quality Gates can fail before checking that the identity-only Profile grant is separate from Skywire. No production OAuth regression was established.\n- Correction: Set the canonical HTTPS public origin inside the isolated test file before constructing OAuth clients; production origin resolution is unchanged.\n- Verification idea: Run the test from a clean checkout without a public URL in the shell, then require the exact-head aggregate unit gate.\n- Score: P2(3)+C1/F2/S0=6; scoped test setup correction for a release proof blocker.\n- Local verification (2026-11-02): With only an inert local PostgreSQL URI for import-time configuration, the focused test passes 8/8 without a public URL environment variable. Environment inventory and canonical bounty board checks pass. Exact-head CI remains pending."
     },
@@ -11471,7 +11471,7 @@
       "functionalityDanger": 2,
       "securityDanger": 0,
       "points": 6,
-      "rank": 721,
+      "rank": 722,
       "title": "Claimed FA2 prize makes a settled room look unfunded",
       "body": "- Evidence (2026-11-02): The sponsor funding panel used the current escrow balance to display FA2 custody even after settlement. Claiming the prize correctly empties escrow, but the returning player then sees a warning that prize verification is pending and the match cannot start.\n- Why it matters: Completed payout appears to be a failed or incomplete funding step.\n- Correction: In settled and voided rooms, show settlement or refund state instead of the pre-combat custody warning; keep custody checks before start.\n- Verification idea: Reopen a mocked settled room after a lot claim and assert no pending-funding warning; run the sponsor browser story and inventory coverage.\n- Score: P2(3)+C1/F2/S0=6; misleading post-payout state without loss of funds.\n- Verification (2026-11-02): The rebuilt sponsor-funding browser story passed 1/1, including reopening a settled room after its FA2 lot left escrow and checking that no pre-combat custody warning remains. TypeScript and Vite builds passed; inventory coverage passed."
     },
@@ -11588,7 +11588,7 @@
       "category": "Client API / no-content responses",
       "priority": "P2",
       "points": 6,
-      "rank": 721,
+      "rank": 722,
       "complexity": 1,
       "functionalityDanger": 2,
       "securityDanger": 0,
@@ -11636,13 +11636,13 @@
       "functionalityDanger": 2,
       "securityDanger": 0,
       "points": 6,
-      "rank": 721,
+      "rank": 722,
       "title": "Generic season ticket obscures Neighvember and implies a sale",
       "body": "- Evidence (2026-11-03): The live Horf welcome panel rendered a large mostly empty beige box labeled `Season ticket` and `Season from 1 November 2026`; the owner identified the active season as Neighvember 2026 and said the ticket suggested a sale unrelated to the community reward.\n- Why it matters: The first view hid the event identity and its 10 HORSE sender reward behind a misleading sales metaphor.\n- Correction: Name Neighvember 2026 in shared season data and show a compact, colorful horse trader wanted poster with a horse portrait and sender-only reward. Historical views show `Past rides` rather than a current reward promise.\n- Verification (2026-11-03): Fresh production build passed. Focused Horf Chromium suite passed 7/7, including current and archive poster assertions and a 390px overflow check. Desktop and narrow screenshots show the poster, portrait, and reward legibly; final TypeScript and public rollout are checked separately.\n- Score: P2(3)+C1/F2/S0=6; misleading first-view content affected the requested community workflow."
     },
     {
       "id": "WTF-BB-769",
-      "status": "In Progress",
+      "status": "Fixed",
       "owner": "Codex coLILseum escrow completion",
       "lastTouched": "2026-11-03",
       "category": "coLILseum / sponsored prize settlement",
@@ -11653,11 +11653,11 @@
       "points": 10,
       "rank": 492,
       "title": "Random sponsored prize allocation attempts to sort a frozen list",
-      "body": "- Evidence (2026-11-03): Seeded random sponsored settlement built a frozen prize-lot list, then attempted to sort it in place. A finished room with random assignment could stop before prize distribution.\n- Why it matters: Players can complete a funded match yet fail to receive the assigned prizes.\n- Correction direction: Sort a copy under the saved seed and replay the exact assignment in hosted settlement tests.\n- Verification idea: Complete fixed, random, and pick-assignment hosted settlements and check chain-pinned recipients without altering existing funded rooms."
+      "body": "- Evidence (2026-11-03): Seeded random sponsored settlement sorted a frozen FA2 lot list in place and could stop a completed funded room before payout.\n- Correction: Sort a copy of the committed list, preserving the saved seed and immutable prize plan.\n- Verification: Hosted settlement tests exercise fixed, random, and finish-place pick assignments with exact recipients and signer intents. Source correction is deployed; a live random-assignment settlement receipt remains to be collected."
     },
     {
       "id": "WTF-BB-770",
-      "status": "In Progress",
+      "status": "Fixed",
       "owner": "Codex coLILseum escrow completion",
       "lastTouched": "2026-11-03",
       "category": "coLILseum / sponsored prize recovery",
@@ -11668,11 +11668,11 @@
       "points": 12,
       "rank": 284,
       "title": "Hosted sponsored rooms cannot request an evidenced technical void",
-      "body": "- Evidence (2026-11-03): The sponsored escrow contract had a technical-void entrypoint but the hosted sponsor service could not request it after combat.\n- Why it matters: A server failure could leave sponsor and entrant deposits locked without the approved audited refund path.\n- Correction direction: Add an operator-only, evidence-bound intent that verifies the authoritative game audit and submits one journaled void through the existing signer.\n- Verification idea: Prove an ineligible room cannot void, a reproduced technical failure can void, and original funders can recover their respective assets."
+      "body": "- Evidence (2026-11-03): The sponsored contract had a technical-void entrypoint, but the hosted service could not request it after combat.\n- Correction: Added a private operator-only, evidence-bound request that checks the authoritative game audit, commits reason and evidence hashes, submits one journaled void through the existing signer, and persists finalized block proof for the deployment guard.\n- Verification: Service and deployment-guard tests cover ineligible rooms, evidenced failure, original-funder refund intent, and persisted void state. A live on-chain technical-void receipt remains to be collected."
     },
     {
       "id": "WTF-BB-771",
-      "status": "In Progress",
+      "status": "Fixed",
       "owner": "Codex coLILseum escrow completion",
       "lastTouched": "2026-11-03",
       "category": "coLILseum / wager wallet recovery",
@@ -11683,11 +11683,11 @@
       "points": 11,
       "rank": 397,
       "title": "A failed duel seat claim or rejected wallet prompt can lock the stake panel",
-      "body": "- Evidence (2026-11-03): A losing challenger in a seat race retains a pending claim after an on-chain failure, and a prepaid purchase checkpoint created before a wallet prompt can persist when that prompt is rejected before broadcast.\n- Why it matters: The player cannot retry an eligible seat or use direct staking even though no payment was applied.\n- Correction direction: Prove exact finalized failed room operations before clearing a sent claim; clear checkpoints on proven prebroadcast rejection and confine uncertain credit purchases to credit actions.\n- Verification idea: Exercise failed/backtracked/skipped claim, unknown submission, ordinary wallet cancel, reload, and direct-stake availability."
+      "body": "- Evidence (2026-11-03): A failed challenger seat claim or rejected wallet prompt could leave a pending checkpoint and lock the stake panel.\n- Correction: Checkpoints now begin at actual wallet submission; explicit prebroadcast rejection clears them; sent claims clear only after exact finalized failure evidence. Truly unknown submissions remain pending, while unrelated direct staking stays available.\n- Verification: Focused funding browser suite passed 23/23, including wallet rejection, failed operation, reload, and direct-stake controls. A live failed-seat race remains to be observed."
     },
     {
       "id": "WTF-BB-772",
-      "status": "In Progress",
+      "status": "Fixed",
       "owner": "Codex coLILseum escrow completion",
       "lastTouched": "2026-11-03",
       "category": "coLILseum / prepaid-credit custody",
@@ -11698,11 +11698,11 @@
       "points": 13,
       "rank": 191,
       "title": "Prepaid credit could be stranded by a contract rotation",
-      "body": "- Evidence (2026-11-03): Prepaid credit cannot be withdrawn to XTZ and is held in the v3 contract. Changing the active contract or payout mode would hide existing credit if deployment or restart did not check a durable binding.\n- Why it matters: A config-only rollout could make deposited credit unusable despite its remaining on chain.\n- Correction direction: Pin the first active prepaid contract and script in the mounted data directory, validate on app startup and guarded deploy, and fail closed on rotation.\n- Verification idea: Activate once, restart with matching settings, reject contract/script/mode changes, and preserve old room pins."
+      "body": "- Evidence (2026-11-03): Nonwithdrawable prepaid credit could be hidden by an active-contract rotation.\n- Correction: Fsync a durable contract/script binding on the mounted game volume and check it before app startup and guarded deployment; reject contract, script, or payout-mode rotation. When the deploy process creates the pin as root, assign it to the volume owner so the unprivileged app can read it.\n- Verification: Mainnet prepaid escrow KT1Nk9Sxz7P2Q2eb45AgJiMp3jnbrYT3J4Fm passed a funded lifecycle. The live app restarted with the matching binding and reports ready; old contract remains in the signer allowlist. Binding rotation guard tests pass. The ownership source patch still needs the final release deployment."
     },
     {
       "id": "WTF-BB-773",
-      "status": "In Progress",
+      "status": "Fixed",
       "owner": "Codex coLILseum escrow completion",
       "lastTouched": "2026-11-03",
       "category": "coLILseum / prepaid payout clarity",
@@ -11713,7 +11713,22 @@
       "points": 7,
       "rank": 691,
       "title": "Prepaid tie receipt says XTZ paid when the guest receives credit",
-      "body": "- Evidence (2026-11-03): In a prepaid Duel tie, the contract restores the guest entry as nonwithdrawable credit but the room panel labels the total distributed amount as XTZ paid automatically.\n- Why it matters: The player may believe XTZ reached their wallet when the refund is available only as WTFOS prepaid credit.\n- Correction direction: Label the total as pot distributed and identify the guest's refund medium from verified seat and settlement state.\n- Verification idea: Compare ordinary win, prepaid win, and prepaid tie receipts in the browser against the contract outcome."
+      "body": "- Evidence (2026-11-03): A prepaid Duel tie restored the guest entry as credit, while the room panel called the total XTZ paid.\n- Correction: Label the total pot as distributed and show the guest refund medium as prepaid credit from verified seat and settlement state.\n- Verification: Funding browser tests compare ordinary win, prepaid win, and prepaid tie receipts against the contract behavior. A live tie receipt remains to be observed."
+    },
+    {
+      "id": "WTF-BB-774",
+      "status": "Verified",
+      "owner": "Codex Paul portrait ghost correction",
+      "lastTouched": "2026-11-03",
+      "category": "Desktop OS / Paul character silhouette",
+      "priority": "P2",
+      "complexity": 2,
+      "functionalityDanger": 2,
+      "securityDanger": 0,
+      "points": 7,
+      "rank": 691,
+      "title": "Paul needs the approved compact portrait ghost and 90-pose desktop animation",
+      "body": "- Evidence (2026-11-03): The original Paul SVG used a 96×64 landscape canvas and a broad, shallow white body. The owner reported that the live desktop read as a mushroom cap or spilled ice cream, and approved a compact portrait sheet silhouette with prominent red-framed glasses. The desktop still floated one static image; the owner now requests a 90-pose animation from sprite sheets.\n- Why it matters: The character must read as the approved ghost at actual desktop size, and a single bobbing image does not deliver the requested character motion. Reduced-motion users need the same recognizable ghost without pose cycling or floating.\n- Correction direction: Keep the approved compact head-to-hem sheet silhouette and red frames as the basis for 90 distinct desktop poses. Wire the sheets into the stable pointer/keyboard target, retain a matching still for Help and guide media, and render a still pose under reduced motion. Rebuild recorded guide media from existing narration when its baked sprite changes, and version public asset URLs to avoid stale cached art.\n- Verification idea: Verify 90 poses and their frame order, inspect the ghost at desktop and Help sizes, confirm animation and reduced-motion stillness in browser screenshots, and run Paul browser behavior, inventory coverage, media validators, exact-head quality gates, and production smoke.\n- Verification (2026-11-03): The deterministic atlas generator proves 90 distinct drawings and normalized body shapes; native-size sheet, welcome poster, and desktop/tutorial frames were inspected. Welcome and all ten tutorial media validators, TypeScript, production build, bounty integrity, environment inventory, inventory coverage, focused Paul motion/reduced-motion and auth/guide browser checks passed. Exact-head CI and production smoke follow promotion.\n- Score: P2(3)+C2/F2/S0=7; visible character-readability failure without a known access, persistence, or security defect."
     }
   ]
 }

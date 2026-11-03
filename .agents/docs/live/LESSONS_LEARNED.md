@@ -13489,6 +13489,26 @@ When shop and board are visible together, contextual help must prioritize a sele
 
 ---
 
+## 2026-11-03 — Reconcile uncertain Tezos injection before changing RPCs
+
+**What happened**: The Mainnet primary RPC returned HTTP 504 during prepaid escrow origination and again during a funded lifecycle offer. The journals had prepared intents but no operation hashes. An immediate retry could have duplicated a charge if either operation had reached the network.
+
+**Why it mattered**: A transport error says nothing conclusive about injection. Reusing a different endpoint without checking chain state would trade availability for possible duplicate custody actions.
+
+**Rule**: Preserve the first journal. Compare source counters at the prepared block and a later finalized head, inspect pending operations and the expected on-chain room, then save the reconciliation before an explicit fallback send. Keep a distinct origination journal, and make any resumed lifecycle send a one-use retry state so a second unknown outcome cannot be retried automatically.
+
+---
+
+## 2026-11-03 — Let the app user read root-created deployment pins
+
+**What happened**: The guarded deployment created `prepaid-credit.binding` as root with mode `0600` on a mounted game volume. The container starts as root but drops to the `node` user. Its ownership marker caused startup to skip a recursive chown, so the app failed to read the binding and restarted until the file was assigned to the volume owner.
+
+**Why it mattered**: The pin correctly blocked unsafe contract rotation but also blocked the entire app at the first Mainnet activation.
+
+**Rule**: When a root-run guard creates a durable file that an unprivileged runtime must read, assign the file to the volume's runtime owner before returning success. Verify readability as the actual app user during deployment, not only as root.
+
+---
+
 ## 2026-11-03 — Horse-return fixtures must balance pending receipts and counterpart totals
 
 **What happened**: The first Horf browser fixture displayed two horses owed back to Sir Canter but only one waiting horse in the received-token list. The UI rendered each response field faithfully, yet the screenshot implied a ledger state that FIFO reciprocal pairing cannot produce.
@@ -13776,6 +13796,26 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: The Open Range route still passed, but the main Horf entry failed for guests. Build and type checks would not catch the HTTP redirect.
 
 **Rule**: Put assets under a path that does not match an app route segment, such as `public/horf-art`, and run a browser or HTTP smoke check on the parent app route whenever adding a new public directory.
+
+---
+
+## 2026-11-03 - Judge pixel characters at their actual desktop size
+
+**What happened**: Paul's first red-glasses redraw had a broad cap shape. A portrait correction then stretched the sheet until it read as a long tube. The approved version uses a compact 4:5 canvas, rounded crown, wider drape, and short wavy hem. A later request for 90 animation poses also exposed that unique frame hashes alone do not prove the gestures read clearly at native size.
+
+**Why it mattered**: Canvas ratio and programmatic uniqueness can both pass while the character's silhouette or motion still reads incorrectly to a player.
+
+**Rule**: Review the occupied silhouette and expressive poses at the rendered desktop size before rebuilding baked media. Keep a stable approved still pose, give each animation frame distinct body geometry, and verify both live frame progression and a motion-free reduced-motion fallback in the browser.
+
+---
+
+## 2026-11-03 - Register every new desktop icon for persisted layout
+
+**What happened**: Horf added a native desktop icon and app catalog entry, but its key was missing from `DESKTOP_ICON_LAYOUT_KEYS`. The server silently dropped saved coordinates for Horf, and the existing desktop icon regression test failed in Quality Gates during the Paul sprite release.
+
+**Why it mattered**: A visible desktop icon could be moved, but its position reset after settings were saved; the unrelated release could not pass its exact-head gate.
+
+**Rule**: When adding a native desktop icon, add its key to the shared persisted-layout registry and expected test fixture in the same change. Run both shared layout and desktop icon tests before promotion.
 
 ---
 

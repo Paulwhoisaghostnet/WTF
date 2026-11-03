@@ -41,8 +41,9 @@ const Intro = styled.div`
 
   img {
     display: block;
-    width: 64px;
-    height: 54px;
+    width: 56px;
+    height: 70px;
+    justify-self: center;
     object-fit: contain;
     image-rendering: pixelated;
   }
@@ -349,7 +350,7 @@ export function PaulTutorialSeries() {
     <GroupBox label="Learn wtfOS with paulwhoisaclippy" style={{ marginBottom: 12 }}>
       <div data-paul-tutorial-series="true">
         <Intro>
-          <img src={paulAssetUrl("/desktop/paulwhoisaclippy.svg")} alt="" width="64" height="54" />
+          <img src={paulAssetUrl("/desktop/paulwhoisaclippy.svg")} alt="" width="56" height="70" />
           <div>
             <h2>Paul's step-by-step field guide</h2>
             <p>

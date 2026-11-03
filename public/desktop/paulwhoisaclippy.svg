@@ -1,19 +1,23 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="96" height="64" viewBox="0 0 96 64" shape-rendering="crispEdges" aria-hidden="true" focusable="false">
-  <!-- One unbroken sheet, raised arms, and a scalloped hem make Paul a ghost at desktop size. -->
-  <path d="M40 4h16v3h8v4h6v5h5v7h4v8h7v4h4v8h-5v4h-6v10h-9v-4h-6v8H53v-6h-8v6H34v-8h-6v4h-9V47h-6v-4H8v-8h4v-4h7v-8h4v-7h5v-5h6V7h6z" fill="#efffff" stroke="#172334" stroke-width="3" stroke-linejoin="miter"/>
-  <path d="M65 12h5v5h5v8h4v8h7v7h-7v4h-5v9h-4v-5h-7v8h-6v-6h-7v-4h8v-5h7v-7h5v-9h-5z" fill="#bedfe2"/>
-  <path d="M34 12h8v3h-8v5h-5v8h-4v-8h4v-5h5zM21 34h-8v5h8z" fill="#ffffff"/>
-  <path d="M25 45h4v8h-4zM37 52h4v6h-4zM55 52h4v6h-4z" fill="#d9eeee"/>
-  <!-- Bright, thick red frames stay readable when the SVG is scaled down in Help. -->
-  <path d="M21 25h24v3h6v-3h24v3h3v15h-3v3H52v-3h-6v3H21v-3h-3V28h3z" fill="#661e2b"/>
-  <path d="M23 27h20v4h6v-3h4v3h5v-4h15v3h3v11h-3v3H54v-3h-4v-7h-4v7h-4v3H23v-3h-3V30h3z" fill="#eb3045"/>
-  <path d="M27 31h13v8H27zM59 31h12v8H59z" fill="#e5fafa"/>
-  <path d="M27 31h3v8h-3zM59 31h3v8h-3z" fill="#ffffff"/>
-  <path d="M32 33h5v5h-5zM63 33h5v5h-5z" fill="#172334"/>
-  <path d="M33 33h2v2h-2zM64 33h2v2h-2z" fill="#ffffff"/>
-  <path d="M20 29h4v3h-4zM73 29h4v3h-4zM43 28h4v3h-4zM53 28h4v3h-4z" fill="#ff6874"/>
-  <path d="M32 20h8v2h-8zM60 20h8v2h-8z" fill="#29424e"/>
-  <path d="M46 47h7v2h2v4h-2v2h-7v-2h-2v-4h2z" fill="#29424e"/>
-  <path d="M48 50h5v3h-5z" fill="#87b9c2"/>
-  <path d="M9 49h3v3H9zM84 51h3v3h-3z" fill="#d8f4f1"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="80" viewBox="0 0 64 80" shape-rendering="crispEdges" aria-hidden="true" focusable="false">
+  <!-- A compact portrait sheet flares gently from a rounded head to a soft wavy hem. -->
+  <path d="M25 4h14v3h5v4h5v5h4v7h2v20h3v4h3v7h-3v4h-3v8h-2v7h-6v-2h-6v3h-6v-3h-4v3h-8v-3h-4v2h-6v-4H8v-5H6v-7H3v-7h3v-4h3V23h2v-7h4v-5h5V7h5z" fill="#efffff" stroke="#172334" stroke-width="2" stroke-linejoin="miter"/>
+  <path d="M40 10h5v5h5v8h3v20h2v4h3v7h-3v4h-3v8h-2v6h-5v-3h-5v-6h4V43h3V24h-3v-9h-4z" fill="#b9dfe3"/>
+  <path d="M22 11h7v3h-7v4h-4v10h-3V20h3v-5h4zM12 48h4v12h-4z" fill="#ffffff"/>
+  <!-- Tiny hands are integrated into the shoulders; the body stays full and flowing. -->
+  <path d="M6 51h5v5H6zM54 51h5v5h-5z" fill="#f8ffff"/>
+  <path d="M18 54h3v12h-3zM23 61h2v8h-2zM31 58h2v11h-2z" fill="#d8eeee"/>
+  <path d="M43 47h4v13h3v8h-5v-5h-3z" fill="#a3cdd2"/>
+  <!-- The bright red frames sit above the short flared drape. -->
+  <g transform="translate(0 -3)">
+    <path d="M11 26h18v3h6v-3h18v3h2v14h-2v2H35v-3h-6v3H11v-2H9V29h2z" fill="#661e2b"/>
+    <path d="M12 28h16v4h4v-2h2v2h4v-4h14v3h1v10h-1v2H37v-2h-3v-7h-4v7h-3v2H12v-2h-1V31h1z" fill="#eb3045"/>
+    <path d="M15 32h11v8H15zM40 32h10v8H40z" fill="#e5fafa"/>
+    <path d="M15 32h2v8h-2zM40 32h2v8h-2z" fill="#ffffff"/>
+    <path d="M19 34h4v5h-4zM43 34h4v5h-4z" fill="#172334"/>
+    <path d="M20 34h2v2h-2zM44 34h2v2h-2z" fill="#ffffff"/>
+    <path d="M10 30h3v3h-3zM51 30h3v3h-3zM29 29h3v3h-3zM35 29h3v3h-3z" fill="#ff6874"/>
+    <path d="M18 21h8v2h-8zM40 21h8v2h-8z" fill="#29424e"/>
+    <path d="M29 48h6v2h2v4h-2v2h-6v-2h-2v-4h2z" fill="#29424e"/>
+    <path d="M31 51h4v3h-4z" fill="#87b9c2"/>
+  </g>
 </svg>

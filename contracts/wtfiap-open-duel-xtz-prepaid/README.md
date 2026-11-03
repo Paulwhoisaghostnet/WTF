@@ -30,11 +30,30 @@ and lifecycle journal prove a credit top-up, prepaid seat, cancellation, win
 paid in XTZ, and technical void restoring credit. The lifecycle is synthetic;
 it tests custody mechanics, not the authoritative game result.
 
-The Mainnet origination defaults to the configured primary RPC. After a primary
-injection failure has been reconciled against the chain and mempool, an operator
-can use `--fallback` with a new journal directory. The fallback config names
-only the authorized Mainnet fallback; the original attempt's journal remains
-untouched.
+The Mainnet deployment is `KT1Nk9Sxz7P2Q2eb45AgJiMp3jnbrYT3J4Fm`, with
+the same typed script hash as Shadownet. `mainnet-deployment.json` and
+`proof/mainnet-2026-11-03/` contain the finalized origination, six-operation
+custody lifecycle, and primary-RPC timeout reconciliation. The lifecycle
+proves an on-chain prepaid guest seat, automatic 0.02 XTZ winner payment, and
+0.5 XTZ treasury payment; it uses a synthetic match result, not a claim about
+a player match. Final contract and credit balances returned to their initial
+zero values.
+
+The Mainnet origination defaults to the configured primary RPC. After a
+primary injection failure has been reconciled against the source counter,
+chain, and mempool, an operator can use `--fallback` with a new journal
+directory. The fallback config names only the authorized Mainnet fallback;
+the original attempt's journal remains untouched. The lifecycle runner can
+resume an uncertain prepared `create_offer` only with explicit
+`--fallback --resume-reconciled --execute`: it checks the source counter,
+mempool, and room absence before saving a one-use retry intent. Another
+uncertain send still blocks an automatic resend.
+
+The live Mainnet app selects this contract in prepaid mode. The binding on the
+mounted game volume is readable by the unprivileged app, and the signer
+allowlist retains the older Mainnet Duel contract for rooms already pinned to
+it. The guarded deployment process may create the binding as root; newly
+created files are assigned to the volume owner so the app can read them.
 
 The app exposes authenticated credit balance and top-up quote endpoints under
 `/api/wtfiap/open-duel/prepaid-credit`, and exact finalized operation status

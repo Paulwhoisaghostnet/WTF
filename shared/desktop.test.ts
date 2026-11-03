@@ -229,6 +229,7 @@ test("desktop icon layout allow-list covers every first-party desktop icon", () 
     "tz2at",
     "crp-nominations",
     "rat-race",
+    "horf",
     "map-lab",
     "agent",
     "applications",

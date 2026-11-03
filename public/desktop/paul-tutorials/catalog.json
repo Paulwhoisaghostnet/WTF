@@ -18,7 +18,7 @@
     "videoUrl": "/desktop/paul-tutorials/desktop-basics.mp4",
     "captionsUrl": "/desktop/paul-tutorials/desktop-basics.vtt",
     "posterUrl": "/desktop/paul-tutorials/desktop-basics-poster.jpg",
-    "sha256": "b53e7f0101a777dda734864fd96d2acd44a16bebecd54d774a8c07cfc08c5ea8"
+    "sha256": "e2b7c9ea34adf587a5a11b54282fc7d135c1eeb88582465e5a2a825f15ad783c"
   },
   {
     "slug": "mission-control",
@@ -36,7 +36,7 @@
     "videoUrl": "/desktop/paul-tutorials/mission-control.mp4",
     "captionsUrl": "/desktop/paul-tutorials/mission-control.vtt",
     "posterUrl": "/desktop/paul-tutorials/mission-control-poster.jpg",
-    "sha256": "cab04719adb10114d1db13ede63b19e2c65aa873d1d620ccec2135a2b34fa181"
+    "sha256": "4c8dba20c70c6657cad2ab55f28d0a896935e8f567205a75770d6c6be47e5ad2"
   },
   {
     "slug": "side-quest-reward",
@@ -55,7 +55,7 @@
     "videoUrl": "/desktop/paul-tutorials/side-quest-reward.mp4",
     "captionsUrl": "/desktop/paul-tutorials/side-quest-reward.vtt",
     "posterUrl": "/desktop/paul-tutorials/side-quest-reward-poster.jpg",
-    "sha256": "0c3d086c2e3a986c88de79862c16d8494f3c7f2b292052304f08fcc63558fc83"
+    "sha256": "f070b912114ae9fc831b8b694cb3994391d3e36e2525e2d5f1c0c700c2095866"
   },
   {
     "slug": "play-arcade",
@@ -73,7 +73,7 @@
     "videoUrl": "/desktop/paul-tutorials/play-arcade.mp4",
     "captionsUrl": "/desktop/paul-tutorials/play-arcade.vtt",
     "posterUrl": "/desktop/paul-tutorials/play-arcade-poster.jpg",
-    "sha256": "6650d5b5214b8f6a273514c1e43e2315eec593bd2426a9533a286498d87ef216"
+    "sha256": "85fb1a5f85c0d96c50806ec476fc40c6580ef3d17cdc50595a1770ee8432edf0"
   },
   {
     "slug": "play-guided-round",
@@ -94,7 +94,7 @@
     "videoUrl": "/desktop/paul-tutorials/play-guided-round.mp4",
     "captionsUrl": "/desktop/paul-tutorials/play-guided-round.vtt",
     "posterUrl": "/desktop/paul-tutorials/play-guided-round-poster.jpg",
-    "sha256": "5a76ec992f45aae982622bfdb09c0b50f267624f8e0323b62b5255e59e565c2e"
+    "sha256": "095a11339122cd872d46270350c0df07b0b533e247927cdbc73dbe0acbad6a92"
   },
   {
     "slug": "create-something",
@@ -114,7 +114,7 @@
     "videoUrl": "/desktop/paul-tutorials/create-something.mp4",
     "captionsUrl": "/desktop/paul-tutorials/create-something.vtt",
     "posterUrl": "/desktop/paul-tutorials/create-something-poster.jpg",
-    "sha256": "e01cd227b787a926d9f940ff673bb2746b6950b6b4af85cc8c85a0bb3ac7ae16"
+    "sha256": "19eb22896c850a3efae3fb4fe7bc747424d8ba168ca682db9b595640a7fab4d5"
   },
   {
     "slug": "events",
@@ -129,11 +129,11 @@
       "Open My plans and find your saved event."
     ],
     "transcript": "Events lives in Calendar. Under Browse, choose Agenda to scan upcoming events by date. I'll open a tutorial sample event to read its time, description, and room link before making a plan. If you plan to attend, choose Going. Calendar confirms the plan and turns on a task tray reminder. Open My plans to find the event again. This is where your calendar choices collect.",
-    "durationSeconds": 25.077667,
+    "durationSeconds": 25.085351,
     "videoUrl": "/desktop/paul-tutorials/events.mp4",
     "captionsUrl": "/desktop/paul-tutorials/events.vtt",
     "posterUrl": "/desktop/paul-tutorials/events-poster.jpg",
-    "sha256": "55895d365f4cf0ec133e4dc2167a9acc79bd2a78dfc46789c75e4bbb7d741c5f"
+    "sha256": "89330daf88a1a9f91b4800ac239a2b29ce10ba0362faa0058b180fa74a8d3db1"
   },
   {
     "slug": "talk",
@@ -148,11 +148,11 @@
       "Press Send message and check the confirmation."
     ],
     "transcript": "Inbox brings mail and messages together. WIM can send while external mailbox setup is pending. Click New message to start a WIM note. Choose WTF user through WIM, then select the person you want to reach. Write your note in Message body. You can add a subject, but a WIM message does not need one. Click Send message. The Message sent confirmation tells you this note went through.",
-    "durationSeconds": 27.990667,
+    "durationSeconds": 27.991,
     "videoUrl": "/desktop/paul-tutorials/talk.mp4",
     "captionsUrl": "/desktop/paul-tutorials/talk.vtt",
     "posterUrl": "/desktop/paul-tutorials/talk-poster.jpg",
-    "sha256": "a6bc7ac06db7f5f0cd8c7d25aee2c208faad4fd20f44d0597fc50c03efb7a0ff"
+    "sha256": "92f4de45084e8bfe7e53b2a67a0193780c64a4f07af947959f1dfe517c387eda"
   },
   {
     "slug": "shop-safely",
@@ -167,11 +167,11 @@
       "Open System Appearance and spot coming soon items."
     ],
     "transcript": "The WTF In App Marketplace has categories for apps, desktop items, and appearance. Start with Apps and look for live listings. Choose Desktop Items. This recording uses a clearly marked sample accessory so you can see how a listing works; live offers may differ. Check the card's live status, stock, Owned count, and WTF price. Always read the current listing in your own account before choosing anything. System Appearance shows staged previews marked Coming Soon. Staged items cannot be purchased until they become live and available.",
-    "durationSeconds": 36.741,
+    "durationSeconds": 36.748633,
     "videoUrl": "/desktop/paul-tutorials/shop-safely.mp4",
     "captionsUrl": "/desktop/paul-tutorials/shop-safely.vtt",
     "posterUrl": "/desktop/paul-tutorials/shop-safely-poster.jpg",
-    "sha256": "3be944d50de160aa677b12a68663816b1b300ef81392f4fd3a66d8971f60b1f7"
+    "sha256": "15785c39e15ef3ae635bcdde088ef21e0ab68fede123cb731aaef6f3bdd130bd"
   },
   {
     "slug": "personalize",
@@ -190,6 +190,6 @@
     "videoUrl": "/desktop/paul-tutorials/personalize.mp4",
     "captionsUrl": "/desktop/paul-tutorials/personalize.vtt",
     "posterUrl": "/desktop/paul-tutorials/personalize-poster.jpg",
-    "sha256": "6a87a7649df20922fedfbfca5608c50f0e0276b00105a534e6617dbe83ac1946"
+    "sha256": "580df06b9bb510cc0920d751285421c43ae1962e5b408574ebad26833fbf6e97"
   }
 ]
