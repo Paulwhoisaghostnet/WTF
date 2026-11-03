@@ -13806,3 +13806,13 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: An apparently empty stable could hide real horses, and a valid trader could appear in discovery without an openable profile.
 
 **Rule**: Base pagination controls on the upstream cursor, independent of the filtered result count. Keep client and server address validation aligned, and exercise empty filtered pages and every accepted address prefix in profile tests.
+
+---
+
+## 2026-11-03 - Move browser assertions with Horf route ownership
+
+**What happened**: The first Horf browser pass still expected home-page wallet and claim controls inside the new focused routes, and one new navigation check searched for a sidebar link inside its own locator. These fixture assumptions caused seven failures even though the routed controls rendered correctly.
+
+**Why it mattered**: Stale selectors obscured the actual result of the page split and made the test run look like an app regression.
+
+**Rule**: For every section moved to its own route, update the test's starting path and assert against the control's new owning page. Check sidebar links from the sidebar root, and retain a focused test that verifies distinct paths and the absence of unrelated sections.
