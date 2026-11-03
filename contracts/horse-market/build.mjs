@@ -54,6 +54,19 @@ try {
       !compiled.some((item) => item.prim === "storage")) {
     throw new Error("SmartPy did not emit Michelson parameter and storage types");
   }
+  // Tezos rejects an overlong event tag during origination, even when SmartPy
+  // compilation and its scenario tests both pass.
+  function checkAnnotations(node) {
+    if (Array.isArray(node)) return node.forEach(checkAnnotations);
+    if (!node || typeof node !== "object") return;
+    for (const annotation of node.annots || []) {
+      if (Buffer.byteLength(annotation.slice(1), "utf8") > 31) {
+        throw new Error(`Michelson annotation exceeds 31 bytes: ${annotation}`);
+      }
+    }
+    for (const value of Object.values(node)) checkAnnotations(value);
+  }
+  checkAnnotations(compiled);
   mkdirSync(artifacts, { recursive: true });
   copyFileSync(contractJson, path.join(artifacts, "contract.json"));
   copyFileSync(contractTz, path.join(artifacts, "contract.tz"));

@@ -81,11 +81,11 @@ code
                 PUSH nat 1; # nat : nat : @storage
                 ADD;        # nat : @storage
                 UPDATE 13;  # @storage
-                # sp.emit(self.data.oracle_epoch, tag="horse_market_oracle_epoch_bumped") # @storage
+                # sp.emit(self.data.oracle_epoch, tag="horse_market_epoch_bumped") # @storage
                 NIL operation; # list operation : @storage
                 DUP 2;      # @storage : list operation : @storage
                 GET 13;     # nat : list operation : @storage
-                EMIT %horse_market_oracle_epoch_bumped nat; # operation : list operation : @storage
+                EMIT %horse_market_epoch_bumped nat; # operation : list operation : @storage
                 CONS;       # list operation : @storage
               }
               {

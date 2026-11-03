@@ -13856,3 +13856,53 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: Stale selectors obscured the actual result of the page split and made the test run look like an app regression.
 
 **Rule**: For every section moved to its own route, update the test's starting path and assert against the control's new owning page. Check sidebar links from the sidebar root, and retain a focused test that verifies distinct paths and the absence of unrelated sections.
+
+---
+
+## 2026-11-03 - Keep query parameters in desktop window route identity
+
+**What happened**: Horf opened the CRP nomination page with a category and nominee in the query string. The desktop URL sync compared Wouter's path-only location with the window manager's full path and opened a second, empty CRP window in front of the prefilled one.
+
+**Why it mattered**: The referral URL looked correct, but the trader saw an unselected category and had to repeat the nomination setup.
+
+**Rule**: Compare the pathname and query together when syncing desktop windows. Browser-test a referral by asserting that exactly one destination window exists and its visible controls contain the prefilled values.
+
+---
+
+## 2026-11-03 - Objkt sale cards need a fresh contract ask before wallet submission
+
+**What happened**: A live Objkt GraphQL listing used a different display ID from its contract big-map ask key, and a listing still marked active in GraphQL had already become inactive on-chain. Its reported price was raw mutez rather than XTZ units. A wallet call built from the display ID, cached active flag, or multiplied price would buy the wrong ask or fail.
+
+**Why it mattered**: In-page XTZ purchasing crosses from a discovery index into a signed financial transaction. The discovery row is useful for a card but is not a safe transaction source.
+
+**Rule**: Use Objkt `bigmap_key` as the ask ID, re-read the current Mainnet ask and exact token, seller, Tez price, edition count, currency and timing before signing, and attach the raw mutez value exactly once. Keep per-version entrypoint shapes explicit.
+
+---
+
+## 2026-11-03 - SmartPy market tests need isolated module names and literal byte fixtures
+
+**What happened**: The HORSE market contract test imported another SmartPy module named `main`, which collided with the new contract module. The parser also rejected a computed `sp.bytes` expression inside `@sp.module`.
+
+**Why it mattered**: These test fixture issues prevented the compiled contract proof from running even though the market logic was otherwise valid.
+
+**Rule**: Give local SmartPy FA2 test modules unique names, and pass literal byte test parameters from outside `@sp.module`. Rebuild the exact Michelson artifacts after correcting fixtures.
+
+---
+
+## 2026-11-03 - Check Michelson annotation length before a wallet origination
+
+**What happened**: SmartPy compiled and tested the HORSE Market, but Kukai refused to prepare its Mainnet origination because the event tag `horse_market_oracle_epoch_bumped` is 32 bytes. Tezos allows at most 31 bytes in an annotation.
+
+**Why it mattered**: The contract appeared ready in local tests but could not reach a signing confirmation.
+
+**Rule**: Inspect every annotation in the compiled Michelson against Tezos's 31-byte limit during the build, then regenerate and hash the exact origination artifacts after any rename. A wallet estimate is the final pre-signature check.
+
+---
+
+## 2026-11-03 - Preserve PostgreSQL vote timestamps at microsecond precision
+
+**What happened**: HAHA standings converted PostgreSQL nomination times through JavaScript `Date.toISOString()`, rounding away microseconds. Tied nominees whose final votes landed in one millisecond could be ranked by address instead of the owner's earlier-final-vote rule.
+
+**Why it mattered**: Prize order could change for a close tie even though database timestamps had enough precision to decide it.
+
+**Rule**: Preserve database timestamp precision through ranking queries, and order tied display data deterministically by timestamp and record ID.

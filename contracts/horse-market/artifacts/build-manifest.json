@@ -4,9 +4,9 @@
   "chainId": "NetXdQprcVkpaWU",
   "protocol": "tallinn",
   "smartpy": "0.24.1",
-  "sourceSha256": "2fa4682af8a115927172920c472d7ffa20d731ec842252ae645e2f47b099fb73",
-  "contractJsonSha256": "f950dc8f3ec75422506a5c98284c3eb163c581339ef1595b1081e696ff6bb236",
-  "contractTzSha256": "2c0ae77aa7a77580772c625d2d1edeb922d839073bda791cfb31dd304ac20409",
+  "sourceSha256": "892dfbcbce3a05d5ea1d8f1276e7527cfcd425d50b9f4db9dff2ff96ba221b93",
+  "contractJsonSha256": "e93442735c7fcfa7c1530064f2635d666f95d6a0765377f5a4ae31adc8121358",
+  "contractTzSha256": "709d234464f5f55e34d4ec092890298ae9a412993e6a32ade51163556345f216",
   "storageFixtureSha256": "55e300e0002fc173dae077d34b5248f77012c85bb9f479c41e7ffc2fa9299d04",
   "storage": "Fixture includes test-account admin and oracle; replace and verify before origination."
 }

@@ -156,7 +156,7 @@ def main():
             assert sp.amount == sp.mutez(0), "NO_XTZ_IN"
             assert sp.sender == self.data.admin, "NOT_ADMIN"
             self.data.oracle_epoch += 1
-            sp.emit(self.data.oracle_epoch, tag="horse_market_oracle_epoch_bumped")
+            sp.emit(self.data.oracle_epoch, tag="horse_market_epoch_bumped")
 
         @sp.entrypoint
         def set_blacklisted(self, params):
