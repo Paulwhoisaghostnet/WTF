@@ -2,11 +2,13 @@ import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { TezosToolkit } from "@taquito/taquito";
+import { ParameterSchema } from "@taquito/michelson-encoder";
 import { WTF_TOKEN } from "@shared/types";
 import { hashTypedScript } from "../../../contracts/wtfiap-escrow/script-identity";
 import { callSigner } from "../operator-signer/client";
 import { demand } from "./funding";
 import { NETWORKS } from "./funding-contract";
+import { commitment } from "./funding";
 import type { SponsorChain, SponsorChainRoom, SponsorConfig, SponsorRecord } from "./sponsor-funding";
 import { verifySponsorLotCustody } from "./sponsor-fa2-custody";
 
@@ -37,6 +39,8 @@ export function sponsorFundingConfig(network: Network, env: NodeJS.ProcessEnv = 
   const config: SponsorConfig = {
     enabled: false, network, chainId: NETWORKS[network].chainId,
     rpcUrl: get("RPC_URL") || NETWORKS[network].rpc,
+    indexerUrl: get("INDEXER_URL") || (env.TEZOS_NETWORK === network ? env.TZKT_API_URL : undefined) ||
+      (network === "mainnet" ? "https://api.tzkt.io/v1" : "https://api.shadownet.tzkt.io/v1"),
     escrowContract: get("ESCROW_CONTRACT"), scriptHash: get("ESCROW_SCRIPT_HASH"),
     roomCreator: get("ROOM_CREATOR_ADDRESS"), referee: get("REFEREE_ADDRESS"),
     walletId: get("REFEREE_WALLET_ID"), treasury: get("TREASURY_ADDRESS"),
@@ -58,6 +62,51 @@ export function sponsorFundingConfig(network: Network, env: NodeJS.ProcessEnv = 
 export const sponsorRpcEndpoints = (config: SponsorConfig) =>
   config.rpcUrl.replace(/\/$/, "") === NETWORKS[config.network].rpc.replace(/\/$/, "")
     ? [config.rpcUrl, NETWORKS[config.network].fallback] : [config.rpcUrl];
+
+type WalletObservation = SponsorRecord["observations"][number];
+type ExpectedCall = { wallet: string; entrypoint: string; params: unknown; amount: string };
+function expectedWalletCalls(record: SponsorRecord, observation: WalletObservation): ExpectedCall[] {
+  const wallet = observation.userId === record.sponsor.userId ? record.sponsor.walletAddress :
+    record.bindings.find(binding => binding.userId === observation.userId)?.walletAddress;
+  if (!wallet) return [];
+  const call = (entrypoint: string, params: unknown, amount = "0"): ExpectedCall =>
+    ({ wallet, entrypoint, params, amount });
+  const common = { room_id: record.roomId, expected_terms_hash: record.termsHash };
+  const indexCalls = (entrypoint: string, prefix: string, includeTerms: boolean) => {
+    const match = observation.action.match(new RegExp(`^${prefix}:(\\d+)$`));
+    const indexes = match ? [Number(match[1])] : observation.action === prefix
+      ? [...record.plan.tokens.keys()] : [];
+    return indexes.filter(index => Number.isSafeInteger(index) && index >= 0 &&
+      index < record.plan.tokens.length).map(index =>
+      call(entrypoint, includeTerms ? { ...common, index } : { room_id: record.roomId, index }));
+  };
+  switch (observation.action) {
+    case "sponsorXtz": return [call("fund_sponsor_xtz", common,
+      (BigInt(record.plan.deposit.xtzAtomic) + BigInt(record.plan.entry.currency === "XTZ"
+        ? record.config.houseFeeAtomic : "0")).toString())];
+    case "sponsorWtf": return [call("fund_sponsor_wtf", common)];
+    case "entry": return [call("join_room", common,
+      record.plan.entry.currency === "XTZ" ? record.plan.entry.entryAtomic : "0")];
+    case "cancel": return [call("cancel_room", record.roomId)];
+    case "refundEntry": return [call("refund_entry", { room_id: record.roomId, player: wallet })];
+    case "refundSponsorXtz": return [call("refund_sponsor_xtz", record.roomId)];
+    case "refundSponsorWtf": return [call("refund_sponsor_wtf", record.roomId)];
+  }
+  if (observation.action.startsWith("sponsorToken:"))
+    return indexCalls("fund_sponsor_lot", "sponsorToken", true);
+  if (observation.action === "refundSponsorLot" || observation.action.startsWith("refundSponsorLot:"))
+    return indexCalls("refund_sponsor_lot", "refundSponsorLot", false);
+  if (observation.action === "lotClaim" || observation.action.startsWith("lotClaim:"))
+    return indexCalls("claim_lot", "lotClaim", false);
+  if (observation.action === "cashClaim" || observation.action.startsWith("cashClaim:")) {
+    const currencies = observation.action === "cashClaim" ? ["XTZ", "WTF"] :
+      [observation.action.slice("cashClaim:".length)];
+    return currencies.filter(currency => currency === "XTZ" || currency === "WTF")
+      .map(currency => call("claim_cash", { room_id: record.roomId, recipient: wallet,
+        currency: currency === "XTZ" ? 0 : 1 }));
+  }
+  return [];
+}
 
 export function tezosSponsorChain(toolkit = (rpc: string): any => new TezosToolkit(rpc)): SponsorChain {
   return {
@@ -154,6 +203,73 @@ export function tezosSponsorChain(toolkit = (rpc: string): any => new TezosToolk
         entrypoint: intent.kind, params: intent.params, runId: record.roomId });
       demand(result.opHash, "Sponsor signer did not return a submission checkpoint.");
       return { operationHash: result.opHash };
+    },
+    async failedObservations(record, observed, pending) {
+      if (!pending.length) return [];
+      const config = record.config;
+      let lastError: unknown;
+      let finalizedHash = observed?.blockHash;
+      for (const rpc of sponsorRpcEndpoints(config)) { try {
+        const tezos = toolkit(rpc);
+        demand(await tezos.rpc.getChainId() === config.chainId,
+          "Sponsor wallet operation verification chain mismatch.");
+        finalizedHash ||= await tezos.rpc.getBlockHash({ block: "head~2" });
+        const finalizedLevel = (await tezos.rpc.getBlockHeader({ block: finalizedHash })).level;
+        if (observed) demand(finalizedLevel === observed.level,
+          "Sponsor wallet operation verification finalized block mismatch.");
+        const entrypoints = await tezos.rpc.getEntrypoints(config.escrowContract, { block: finalizedHash });
+        const base = config.indexerUrl || (config.network === "mainnet"
+          ? "https://api.tzkt.io/v1" : "https://api.shadownet.tzkt.io/v1");
+        const failures: Awaited<ReturnType<NonNullable<SponsorChain["failedObservations"]>>> = [];
+        for (const observation of pending) {
+          const expected = expectedWalletCalls(record, observation)
+            .filter(call => entrypoints.entrypoints[call.entrypoint]);
+          if (!expected.length) continue;
+          // The indexer only locates a candidate. Its status cannot prove failure.
+          let located: any;
+          try {
+            const response = await fetch(base.replace(/\/$/, "") +
+              "/operations/transactions/" + observation.operationHash);
+            if (!response.ok) continue;
+            located = await response.json();
+          } catch { continue; }
+          if (!Array.isArray(located)) continue;
+          const candidate = located.find((tx: any) => expected.some(call =>
+            tx.sender?.address === call.wallet &&
+            tx.target?.address === config.escrowContract &&
+            tx.parameter?.entrypoint === call.entrypoint) &&
+            Number.isSafeInteger(tx.level) && tx.level > 0 && tx.level <= finalizedLevel);
+          if (!candidate) continue;
+          const includedHash = await tezos.rpc.getBlockHash({ block: finalizedHash + "~" +
+            (finalizedLevel - candidate.level) });
+          if (candidate.block !== includedHash) continue;
+          const block = await tezos.rpc.getBlock({ block: includedHash });
+          const operation = block.operations.flat().find((item: any) =>
+            item.hash === observation.operationHash);
+          if (!operation) continue;
+          for (const call of expected) {
+            const type = entrypoints.entrypoints[call.entrypoint];
+            if (!type) continue;
+            const encoded = new ParameterSchema(type).EncodeObject(call.params);
+            const exact = operation.contents.filter((content: any) =>
+              content.kind === "transaction" && content.source === call.wallet &&
+              content.destination === config.escrowContract &&
+              String(content.amount) === call.amount &&
+              content.parameters?.entrypoint === call.entrypoint &&
+              commitment(content.parameters.value) === commitment(encoded));
+            if (exact.length > 0 && exact.every((content: any) =>
+              ["failed", "backtracked", "skipped"].includes(
+                content.metadata?.operation_result?.status))) {
+              failures.push({ userId: observation.userId, action: observation.action,
+                operationHash: observation.operationHash, blockHash: includedHash,
+                level: candidate.level });
+              break;
+            }
+          }
+        }
+        return failures;
+      } catch (error) { lastError = error; } }
+      throw lastError;
     },
   };
 }

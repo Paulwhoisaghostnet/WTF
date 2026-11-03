@@ -13386,3 +13386,63 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: App and signer versions could diverge while both services appeared healthy, blocking a real prize payout after the match completed. An unguarded retry of an unknown submission could risk duplicate effects.
 
 **Rule**: Deploy the signer from the same source commit before admitting the app, compare the built and installed bundle hashes, and wait through transient post-restart socket startup within the app's configured signer response window. Require a live socket response that advertises sponsored prize claim actions and matches enabled escrow policy pins. If submission is unknown, inspect the exact signer journal and finalized chain state before retrying the same durable intent.
+
+---
+
+## 2026-11-03 — Return a durable escrow hash without releasing the signer lane
+
+**What happened**: During a Mainnet sponsored Tournament test, the app timed out on `create_room` and then `register_entrant` while the signer still held the referee wallet lane for an earlier confirmation. The first operation appeared on chain; the second request's journal was absent for minutes, then the original queued request submitted under the same ID. Journal absence at the app timeout therefore did not prove that a retry was safe.
+
+**Why it mattered**: The room looked stalled while the signer was still processing valid work. Resetting the intent based on the initially absent journal could have created a duplicate submission.
+
+**Rule**: Fsync and return the operation hash before waiting for inclusion, while keeping the wallet lane serialized until confirmation or the signed branch's protocol TTL. Use only same-chain configured RPC fallbacks for pre-send reads and read-only confirmation. Cache confirmation progress per endpoint only while the last scanned block hash remains stable; rescan from the branch after an endpoint switch or reorg and before expiry. A lost response or missing journal at one instant never authorizes replay; reconcile the original request ID and on-chain state.
+
+---
+
+## 2026-11-03 — Match a sponsor wallet checkpoint to its own chain observation
+
+**What happened**: The sponsored room panel saved a wallet operation hash after a player signed, but checked that hash against the referee's escrow intents. Those are different transactions. A confirmed sponsor or entrant payment could leave the wallet checkpoint locked in the browser, while a failed `observe` request after wallet submission had no automatic recovery.
+
+**Why it mattered**: Players could see a confirmed escrow deposit yet still be told their payment was pending, and might be tempted to sign another payment. Slow referee submissions also exposed a raw `submission-unknown` error without a clear waiting state.
+
+**Rule**: Keep user wallet observations separate from referee intents. Re-observe a saved wallet hash idempotently if the server has not recorded it, and clear the browser checkpoint only after the intended action is visible in verified escrow state. Show referee submission uncertainty as a pending confirmation; never suggest a fresh payment or replay from an uncertain result.
+
+---
+
+## 2026-11-03 — Preserve old wallet observation keys during escrow UI upgrades
+
+**What happened**: Earlier sponsored-room clients recorded cash claims without a currency and FA2 refund or prize claims without a lot index. A newer panel expected suffixed actions, but `observe` deduplicates by operation hash and preserves the original action. Those saved browser checkpoints would have remained pending even after escrow completed the transfer.
+
+**Why it mattered**: A safe upgrade must recognize the actual saved observation format, including pre-upgrade rooms. Reposting the same hash with a more precise action cannot rewrite historical evidence.
+
+**Rule**: Match the saved operation hash and accept legacy action keys only when all potentially matching claims or lots for that wallet are complete in verified chain state. Keep new observations currency- and index-specific, and test both historical and current checkpoint formats.
+
+---
+
+## 2026-11-03 — A failed wallet operation needs finalized exact-call proof
+
+**What happened**: The sponsored-room wallet panel treated every unfulfilled observation as pending, so a genuinely failed or backtracked transaction could lock its browser checkpoint forever. A separate parse path treated a damaged saved checkpoint as absent, which could have permitted another payment while the first outcome was unknown.
+
+**Why it mattered**: Indexer status or an unavailable RPC cannot authorize a retry, and damaged local state cannot establish that no payment was submitted. Either shortcut risks a duplicate wager or prize deposit.
+
+**Rule**: Locate a candidate with the indexer, then require the configured network's finalized RPC branch to show the same operation hash, wallet, escrow contract, entrypoint, exact encoded parameters and amount, with every matching manager call failed, backtracked, or skipped. Persist the proof before exposing retry. Keep unreadable checkpoints intact and block new wallet sends until reconciled through an authoritative path.
+
+---
+
+## 2026-11-03 — Optional wallet failure proof must not disable a funded room
+
+**What happened**: Sponsored-room reconciliation read a verified escrow room, then tried to prove whether an unrelated pending wallet operation had failed. A transient RPC failure in that optional proof path propagated to the room error field, hiding every wallet action in the funding panel.
+
+**Why it mattered**: An unavailable failure-proof reader cannot authorize a retry, but it also cannot invalidate the escrow state already read. Hiding deposit and refund actions for the whole room makes a temporary RPC failure look like a broken wager.
+
+**Rule**: If optional exact-call failure proof is unavailable, leave the operation checkpoint pending and continue reconciling the verified room. Keep primary escrow reads and validation failures fail-closed; test the split failure path explicitly.
+
+---
+
+## 2026-11-03 — Generate the environment inventory from the release source set
+
+**What happened**: CI stopped at the environment inventory check after the sponsored-room indexer configuration gained another reference to existing variables. A local regeneration also picked up an unrelated untracked proof script, creating entries that would not exist in the pushed checkout.
+
+**Why it mattered**: A generated document based on local untracked files can pass locally and still fail the release job, obscuring the actual source change.
+
+**Rule**: Regenerate the environment inventory with local untracked scripts outside the scanned tree, restore those scripts afterward, and verify the generated diff reflects only tracked release sources before pushing.

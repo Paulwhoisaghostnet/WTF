@@ -6,7 +6,7 @@ import { clone, commitment, demand, type FundingGame, type WalletAction } from "
 type Network = "mainnet" | "shadownet";
 type Currency = "FREE" | "XTZ" | "WTF";
 export type SponsorConfig = {
-  enabled: boolean; reason?: string; network: Network; chainId: string; rpcUrl: string;
+  enabled: boolean; reason?: string; network: Network; chainId: string; rpcUrl: string; indexerUrl?: string;
   escrowContract: string; scriptHash: string; roomCreator: string; referee: string;
   walletId: string; treasury: string; wtfToken: { contract: string; tokenId: string };
   houseFeeAtomic: string; rulesHash: string;
@@ -60,7 +60,9 @@ export type SponsorRecord = {
   sponsor: { userId: string; walletAddress: string }; bindings: Binding[];
   lock: any | null; termsHash: string; startRequested: boolean;
   status: string; chain: SponsorChainRoom | null; intents: SponsorIntent[];
-  observations: Array<{ userId: string; action: string; operationHash: string; observedAt: string }>;
+  observations: Array<{ userId: string; action: string; operationHash: string; observedAt: string;
+    status?: "pending" | "applied" | "failed";
+    proof?: { kind: "finalized-action-state" | "finalized-failed-operation"; blockHash: string; level: number } }>;
   prizePicks?: Array<{ index: number; place: number; playerId: string; walletAddress: string }>;
   finalResult: null | { completion: any; params: any; hash: string };
   technicalVoid: null | { operatorId: string; reasonHash: string; evidenceHash: string };
@@ -76,6 +78,9 @@ export type SponsorStore = {
 export type SponsorChain = {
   read(record: SponsorRecord): Promise<SponsorChainRoom | null>;
   submit(record: SponsorRecord, intent: SponsorIntent): Promise<{ operationHash: string }>;
+  failedObservations?(record: SponsorRecord, observed: SponsorChainRoom | null,
+    pending: SponsorRecord["observations"]): Promise<Array<{
+      userId: string; action: string; operationHash: string; blockHash: string; level: number }>>;
 };
 
 const isWallet = (value: unknown): value is string =>
@@ -85,6 +90,53 @@ const isOperation = (value: unknown): value is string =>
 const contractMode = { fixed: 0, random: 1, pick: 2 } as const;
 const contractCurrency = { FREE: 0, XTZ: 1, WTF: 2 } as const;
 const cashKey = (address: string, currency: "XTZ" | "WTF") => address + ":" + currency;
+function observationWallet(record: SponsorRecord, userId: string): string | undefined {
+  return userId === record.sponsor.userId ? record.sponsor.walletAddress :
+    record.bindings.find(binding => binding.userId === userId)?.walletAddress;
+}
+function observedWalletActionApplied(actionName: string, wallet: string | undefined,
+  chainRoom: SponsorChainRoom | null): boolean {
+  if (!wallet || !chainRoom) return false;
+  const { status } = chainRoom;
+  if (actionName === "sponsorXtz")
+    return chainRoom.sponsorXtzFunded || status === "active" || status === "settled";
+  if (actionName === "sponsorWtf")
+    return chainRoom.sponsorWtfFunded || status === "active" || status === "settled";
+  if (actionName === "entry")
+    return chainRoom.paid.includes(wallet) || status === "active" || status === "settled";
+  if (actionName === "cancel") return status === "voided";
+  if (actionName === "refundEntry") return !chainRoom.paid.includes(wallet);
+  if (actionName === "refundSponsorXtz") return !chainRoom.sponsorXtzFunded;
+  if (actionName === "refundSponsorWtf") return !chainRoom.sponsorWtfFunded;
+  const lot = actionName.match(/^(sponsorToken|refundSponsorLot|lotClaim):(\d+)$/);
+  if (lot) {
+    const index = Number(lot[2]);
+    if (!Number.isSafeInteger(index)) return false;
+    if (lot[1] === "sponsorToken")
+      return chainRoom.verifiedLots.includes(index) || status === "active" || status === "settled";
+    if (lot[1] === "refundSponsorLot") return !chainRoom.fundedLots.includes(index);
+    return chainRoom.lotClaims[index]?.claimed === true;
+  }
+  const cash = actionName.match(/^cashClaim:(XTZ|WTF)$/);
+  if (cash) return chainRoom.cashClaims[cashKey(wallet, cash[1] as "XTZ" | "WTF")]?.claimed === true;
+  // Earlier clients recorded these actions without their currency or lot index.
+  // Resolve only after every possible matching effect for this wallet is complete.
+  if (actionName === "cashClaim") {
+    const claims = (["XTZ", "WTF"] as const)
+      .map(currency => chainRoom.cashClaims[cashKey(wallet, currency)])
+      .filter((claim): claim is { amount: string; claimed: boolean } =>
+        Boolean(claim && BigInt(claim.amount) > 0n));
+    return claims.length > 0 && claims.every(claim => claim.claimed);
+  }
+  if (actionName === "lotClaim") {
+    const claims = Object.values(chainRoom.lotClaims).filter(claim => claim.recipient === wallet);
+    return claims.length > 0 && claims.every(claim => claim.claimed);
+  }
+  if (actionName === "refundSponsorLot")
+    return wallet === chainRoom.sponsor && chainRoom.lots.length > 0 &&
+      (status === "funding" || status === "voided") && chainRoom.fundedLots.length === 0;
+  return false;
+}
 const action = (record: SponsorRecord, wallet: string, entrypoint: string, params: unknown,
   amountMutez = "0", fa2Operator?: WalletAction["fa2Operator"]): WalletAction => ({
   entrypoint, params, amountMutez, expectedWallet: wallet, contract: record.config.escrowContract,
@@ -422,12 +474,40 @@ export function createSponsorFundingService({ store, game, chain, configs, linke
     verifyLocal(record, value);
     const chainRoom = await chain.read(record);
     if (chainRoom) verifyChain(record, chainRoom);
+    const observedRecord = record;
+    const pending = record.observations.filter(observation =>
+      observation.status !== "failed" && observation.status !== "applied" &&
+      !observedWalletActionApplied(observation.action,
+        observationWallet(observedRecord, observation.userId), chainRoom));
+    // Failed-operation proof is optional. If its reader is unavailable, keep
+    // the wallet checkpoint pending without hiding otherwise verified actions.
+    let failures: Awaited<ReturnType<NonNullable<SponsorChain["failedObservations"]>>> = [];
+    if (pending.length && chain.failedObservations) {
+      try { failures = await chain.failedObservations(record, chainRoom, pending); }
+      catch { /* No exact finalized failure proof means no retry. */ }
+    }
     const finished = chainRoom?.status === "active" ? resultParams(record, value) : null;
     const prizePicksPending = chainRoom?.status === "active" &&
       record.plan.mode === "pick" && !finished && Boolean(game.result(code));
     await store.mutate(code, old => {
       demand(old, "Sponsor funding record disappeared.");
       old.chain = chainRoom; old.error = null; old.lastReconciledAt = clock().toISOString();
+      for (const observation of old.observations) {
+        if (observation.status === "failed") continue;
+        const applied = observedWalletActionApplied(observation.action,
+          observationWallet(old, observation.userId), chainRoom);
+        const failure = failures.find(item => item.userId === observation.userId &&
+          item.action === observation.action && item.operationHash === observation.operationHash);
+        if (applied && chainRoom) {
+          observation.status = "applied";
+          observation.proof = { kind: "finalized-action-state",
+            blockHash: chainRoom.blockHash, level: chainRoom.level };
+        } else if (failure) {
+          observation.status = "failed";
+          observation.proof = { kind: "finalized-failed-operation",
+            blockHash: failure.blockHash, level: failure.level };
+        }
+      }
       for (const item of old.intents) {
         const applied = item.kind === "create_room" && Boolean(chainRoom) ||
           item.kind === "register_entrant" && chainRoom?.entrants.includes(item.params.player) ||
@@ -665,7 +745,11 @@ export function createSponsorFundingService({ store, game, chain, configs, linke
           (sponsor || player) && (!record?.lock || Boolean(player))),
         canOpen: Boolean(sponsor && c.enabled && record && !record.lock),
         canStart: Boolean(sponsor && c.enabled && record && fullyFunded(record, value)),
-        actions, pendingOperations: record?.observations.filter(o => o.userId === userId) || [] },
+        actions, pendingOperations: record?.observations.filter(o => o.userId === userId).map(o => ({
+          ...o, status: o.status === "failed" ? "failed" :
+            o.status === "applied" || observedWalletActionApplied(o.action,
+              observationWallet(record, o.userId), chainRoom || null) ? "applied" : "pending",
+        })) || [] },
       prizeSelectionPending: Boolean(selection?.nextPlace),
       prizeSelection: selection ? {
         nextPlace: selection.nextPlace,

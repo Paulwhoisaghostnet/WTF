@@ -767,7 +767,7 @@ Variables: **1333**. Source files scanned: **2632**.
 | `TEZOS_IDENTITY_CACHE_TTL_MS` | server/platform | server-runtime | 10 | no | parsed or validated | active | 1 (server/lib/tezos-identity.ts) |
 | `TEZOS_INTEL_API_ENABLED` | server/tezos-intel | server-runtime | none | no | enumerated / compared | active | 1 (server/features/tezos-intel/imports.ts) |
 | `TEZOS_MAINNET_RPC_URL` | operations | deploy-ops, server-runtime | https://tezos-mainnet.octez.io/ | no | enumerated / compared | legacy compatibility | 2 (scripts/marketplace-v2/legacy-marketplace-pause.ts, scripts/marketplace-v2/prepare-mainnet-artifact.ts) |
-| `TEZOS_NETWORK` | extensions/wtf-domain-bot, operations, platform, quality, server/casino, server/platform, server/wtf-subdomains, server/wtfiap | deploy-ops, package-runtime, server-runtime, shared-runtime, test | mainnet; shadownet | no | required / fail-closed | legacy compatibility | 25 (.env.example, extensions/wtf-domain-bot/.env.example, scripts/macaroni/run-local-shadownet-puppet-e2e.mjs, ...) |
+| `TEZOS_NETWORK` | extensions/wtf-domain-bot, operations, platform, quality, server/casino, server/platform, server/wtf-subdomains, server/wtfiap | deploy-ops, package-runtime, server-runtime, shared-runtime, test | mainnet; shadownet | no | required / fail-closed | legacy compatibility | 26 (.env.example, extensions/wtf-domain-bot/.env.example, scripts/macaroni/run-local-shadownet-puppet-e2e.mjs, ...) |
 | `TEZOS_OPEN_TOOLS_PNL_ENABLED` | server/platform | server-runtime | none | no | parsed or validated | active | 1 (server/lib/portfolio-analytics.ts) |
 | `TEZOS_PROFILE_CACHE_MAX_ENTRIES` | server/platform | server-runtime | 5 | no | parsed or validated | active | 1 (server/tzprofiles.ts) |
 | `TEZOS_RPC` | contracts/wtf-subdomains | contracts, server-runtime | https://tezos-shadownet.octez.io/ | no | no explicit validation found | active | 1 (contracts/wtf-subdomains/deploy.ts) |
@@ -828,7 +828,7 @@ Variables: **1333**. Source files scanned: **2632**.
 | `TZ2AT_CEX_ADDRESSES` | server/platform | server-runtime | none | no | enumerated / compared | active | 1 (server/routes/tz2at.ts) |
 | `TZ2AT_DISABLE_DEFAULT_CEX_ADDRESS_BOOK` | server/platform | server-runtime | none | no | enumerated / compared | active | 1 (server/routes/tz2at.ts) |
 | `TZ2AT_ECOSYSTEM_ANALYTICS_TIMEOUT_MS` | server/platform | server-runtime | none | no | no explicit validation found | active | 1 (server/routes/tz2at.ts) |
-| `TZKT_API_URL` | operations, platform, server/platform, server/wtfiap | deploy-ops, server-runtime, shared-runtime, test | https://api.tzkt.io/v1 | no | parsed or validated | active | 8 (.env.example, scripts/macaroni/run-local-shadownet-puppet-e2e.mjs, scripts/marketplace-v2/run-local-shadownet-puppet-e2e.mjs, ...) |
+| `TZKT_API_URL` | operations, platform, server/platform, server/wtfiap | deploy-ops, server-runtime, shared-runtime, test | https://api.tzkt.io/v1 | no | parsed or validated | active | 9 (.env.example, scripts/macaroni/run-local-shadownet-puppet-e2e.mjs, scripts/marketplace-v2/run-local-shadownet-puppet-e2e.mjs, ...) |
 | `TZKT_HELPER_CACHE_MAX_ENTRIES` | server/platform | server-runtime | 2 | no | parsed or validated | active | 1 (server/tzkt.ts) |
 | `TZKT_MAINNET_API` | operations | deploy-ops, server-runtime | https://api.tzkt.io | no | enumerated / compared | legacy compatibility | 1 (scripts/marketplace-v2/legacy-marketplace-pause.ts) |
 | `TZKT_RESPONSE_CACHE_DISABLED` | server/platform | server-runtime | none | no | parsed or validated | active | 1 (server/tzkt.ts) |

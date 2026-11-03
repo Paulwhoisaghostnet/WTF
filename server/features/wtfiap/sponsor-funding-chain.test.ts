@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
+import { ParameterSchema } from "@taquito/michelson-encoder";
 import { sponsorArtifactScriptHash, tezosSponsorChain } from "./sponsor-funding-chain";
 
 test("settled sponsor escrow reads flattened Taquito cash and FA2 lot keys", async () => {
@@ -49,4 +50,66 @@ test("settled sponsor escrow reads flattened Taquito cash and FA2 lot keys", asy
     [roomId, entrant, 0], [roomId, entrant, 1],
   ]);
   assert.deepEqual(lotKeys, [[roomId, 0]]);
+});
+
+for (const network of ["mainnet", "shadownet"] as const) test(`${network} wallet failure requires exact finalized sponsor escrow contents`, async () => {
+  const wallet = "tz1T9d8Qi4ZmWHNWgtbU6DwArwu191NfRnHe";
+  const contract = "KT1EpPzrYahest4Wm9UddKBAx1Ha7xBQt1YQ";
+  const chainId = network === "mainnet" ? "NetXdQprcVkpaWU" : "NetXsqzbfFenSTS";
+  const operationHash = "o" + "1".repeat(50);
+  const roomId = "aa".repeat(32), termsHash = "bb".repeat(32);
+  const entrypoint = "fund_sponsor_xtz";
+  const api = JSON.parse(readFileSync("contracts/wtfiap-sponsor-escrow/artifacts/interface.json", "utf8"));
+  const encoded = new ParameterSchema(api.entrypoints[entrypoint]).EncodeObject({
+    room_id: roomId, expected_terms_hash: termsHash,
+  });
+  const record: any = { roomId, termsHash,
+    sponsor: { userId: "1", walletAddress: wallet }, bindings: [],
+    config: { network, chainId, rpcUrl: `https://local.${network}.invalid`,
+      indexerUrl: `https://indexer.${network}.invalid`, escrowContract: contract,
+      houseFeeAtomic: network === "mainnet" ? "500000" : "0" },
+    plan: { entry: { currency: "XTZ" }, deposit: { xtzAtomic: "1000000" }, tokens: [] } };
+  const observation: any = { userId: "1", action: "sponsorXtz", operationHash,
+    observedAt: "2026-11-03T00:00:00Z" };
+  const finalized: any = { blockHash: "Bfinal", level: 100 };
+  let liveChainId = chainId, included = "Bincluded", operation = operationHash;
+  let candidateLevel = 99, status = "failed", amount = network === "mainnet" ? "1500000" : "1000000";
+  let parameters = encoded, indexerAvailable = true, rpcAvailable = true;
+  const rpc: any = {
+    async getChainId() { if (!rpcAvailable) throw Error("RPC unavailable"); return liveChainId; },
+    async getBlockHeader({ block }: any) { assert.equal(block, "Bfinal"); return { level: 100 }; },
+    async getEntrypoints(_contract: any, { block }: any) { assert.equal(block, "Bfinal");
+      return { entrypoints: { [entrypoint]: api.entrypoints[entrypoint] } }; },
+    async getBlockHash({ block }: any) { assert.equal(block, `Bfinal~${100 - candidateLevel}`);
+      return "Bincluded"; },
+    async getBlock({ block }: any) { assert.equal(block, "Bincluded");
+      return { operations: [[{ hash: operation, contents: [{ kind: "transaction", source: wallet,
+        destination: contract, amount, parameters: { entrypoint, value: parameters },
+        metadata: { operation_result: { status } } }] }]] }; },
+  };
+  const chain = tezosSponsorChain(() => ({ rpc }));
+  const previous = globalThis.fetch;
+  globalThis.fetch = async () => {
+    if (!indexerAvailable) throw Error("indexer unavailable");
+    return new Response(JSON.stringify([{ sender: { address: wallet },
+      target: { address: contract }, parameter: { entrypoint }, level: candidateLevel,
+      block: included, status: "failed" }]));
+  };
+  try {
+    const failures = () => chain.failedObservations!(record, finalized, [observation]);
+    assert.equal((await failures()).length, 1);
+    status = "backtracked"; assert.equal((await failures()).length, 1);
+    status = "skipped"; assert.equal((await failures()).length, 1);
+    status = "applied"; assert.deepEqual(await failures(), []);
+    status = "failed"; amount = "1"; assert.deepEqual(await failures(), []);
+    amount = network === "mainnet" ? "1500000" : "1000000";
+    parameters = { bytes: "wrong" }; assert.deepEqual(await failures(), []);
+    parameters = encoded; operation = "o" + "2".repeat(50); assert.deepEqual(await failures(), []);
+    operation = operationHash; included = "Bunrelated"; assert.deepEqual(await failures(), []);
+    included = "Bincluded"; candidateLevel = 101; assert.deepEqual(await failures(), []);
+    candidateLevel = 99; liveChainId = network === "mainnet" ? "NetXsqzbfFenSTS" : "NetXdQprcVkpaWU";
+    await assert.rejects(failures(), /chain mismatch/);
+    liveChainId = chainId; indexerAvailable = false; assert.deepEqual(await failures(), []);
+    indexerAvailable = true; rpcAvailable = false; await assert.rejects(failures(), /RPC unavailable/);
+  } finally { globalThis.fetch = previous; }
 });
