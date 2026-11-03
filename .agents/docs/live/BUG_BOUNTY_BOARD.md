@@ -14973,6 +14973,10 @@ Copy this when adding a new issue:
 - Correction direction: When the focused app navigates to a new search state on the same pathname, replace that window key and retain its state instead of opening another window. Preserve independent windows on unrelated routes.
 - Verification idea: Run the focused admin control suite for Passport, role, and narrow-viewport navigation; check that one Admin Panel remains while the URL and its selected section update.
 - Verification (2026-11-03): The focused admin browser suite reproduced 3 duplicate-window failures before the fix and passed 7/7 after the focused-window key replacement; the Passport path now asserts exactly one Admin Panel. Reggie role checks passed 5/5 and inventory coverage passed.
+- Regression evidence (2026-11-03): The broad same-path query replacement remounted Profile after OAuth callback errors and colleKT after a completed duplicate scan, clearing their visible results; Skywire also lost an OAuth handle error notice. Focused Profile and colleKT browser tests reproduce these losses.
+- Correction direction: Keep stable pathname window identity for these routes whose query is callback or local view state, while retaining query-aware window identity for Admin and explicit deep-link windows.
+- Verification idea: Rerun focused Profile social linking, colleKT duplicate scan, Skywire OAuth notice, Admin one-window navigation, and Reggie role browser checks.
+- Verification (2026-11-03): After stabilizing window identity for callback/local-query apps, Profile social linking passed 7/7, X proof 2/2, colleKT duplicates 1/1, Skywire OAuth/Chat 8/8, WTF LIVE private/game/stage 3/3, Admin control suite 7/7, and Reggie guide 5/5. Admin remains query-aware and still has one window through Passport deep links.
 
 ### WTF-BB-745 - Managed Macaroni permission duplicated during current-main integration
 

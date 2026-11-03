@@ -14076,3 +14076,13 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: A previously proven release gate became stale when the source route registry changed under the branch.
 
 **Rule**: After each final main integration, rerun route parity together with generated inventory checks on that exact tree before pushing. Mirror every new page's pattern, title, and auth policy in shared browser metadata.
+
+---
+
+## 2026-11-03 - Keep callback and local-query apps mounted during URL updates
+
+**What happened**: Replacing every same-path query window key fixed duplicate Admin Panels but remounted Profile after OAuth callbacks, colleKT after a duplicate scan, Skywire after an OAuth error, and WTF LIVE after room or stage creation. Their notices or results disappeared while the APIs had succeeded.
+
+**Why it mattered**: A window identity change erased valid local UI state and made successful actions look stalled or failed.
+
+**Rule**: Keep pathname window identity for apps that use query parameters as transient callback or local view state; keep query-aware identity where the query defines an explicit window. Verify both sides with domain-owned browser stories after changing URL-to-window synchronization.
