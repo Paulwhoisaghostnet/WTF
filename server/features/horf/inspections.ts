@@ -47,11 +47,11 @@ export async function assertCurrentOwner(
 
 /** Evidence for human judgment, not a proof of honest FA2 transfer semantics. */
 export async function loadInspectionEvidence(
-  address: string, contract: string, tokenId: string,
+  address: string | null, contract: string, tokenId: string,
   sources: InspectionSources = defaultSources,
 ): Promise<HorfInspectionEvidence> {
   const [balance, rawToken, identity, transfers] = await Promise.all([
-    assertCurrentOwner(address, contract, tokenId, sources.readIndex),
+    address ? assertCurrentOwner(address, contract, tokenId, sources.readIndex) : Promise.resolve(null),
     sources.loadToken(contract, tokenId),
     sources.readIdentity(contract),
     // TzKT's documented default page is 100. This is a recent evidence sample,
@@ -82,7 +82,9 @@ export async function loadInspectionEvidence(
       source: "Tezos Mainnet TzKT and RPC", checkedAt: new Date().toISOString(),
       ownerAddress: address, ownerBalance: balance, identity,
       recentTransfers: sample,
-      note: "Indexed holdings and transfer rows inform human review; they do not prove that an FA2 implementation transfers custody honestly.",
+      note: address
+        ? "Indexed holdings and transfer rows inform human review; they do not prove that an FA2 implementation transfers custody honestly."
+        : "Marshal-initiated Open Range review has no owner submission or owner-balance claim. Indexed transfer rows inform human review; they do not prove that an FA2 implementation transfers custody honestly.",
     },
   };
 }

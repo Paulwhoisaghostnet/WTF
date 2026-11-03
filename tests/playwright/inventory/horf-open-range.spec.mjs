@@ -101,9 +101,9 @@ test.describe("Horf Open Range", () => {
       const url = new URL(route.request().url());
       const mode = url.searchParams.get("season");
       const cursor = url.searchParams.get("cursor");
-      reads.push({ mode, cursor });
+      reads.push({ mode, cursor, refresh: url.searchParams.get("refresh"), viewer: url.searchParams.get("viewer") });
       const items = mode === current.key
-        ? cursor ? [horse("2", { tradedThroughHorf: true })] : [horse("1")]
+        ? cursor ? [horse("2", { tradedThroughHorf: true })] : [horse("1", { viewerBalance: "2" })]
         : mode === "all-seasons" ? [horse("3", { activelyForTradeOnHorf: true })]
           : mode === "all-horse-search" ? [horse("4", {
             mintedAt: null, tradedThroughHorf: true, activelyForTradeOnHorf: true,
@@ -150,6 +150,7 @@ test.describe("Horf Open Range", () => {
     await expect(first.locator('[data-horf-open-range-status="traded"]')).toHaveText("No Horf trade yet");
     await expect(first.locator('[data-horf-open-range-status="offered"]')).toHaveText("No active Horf offer");
     await expect(first.locator('[data-horf-open-range-status="approved"]')).toHaveText("Not Marshal approved");
+    await expect(first.locator("[data-horf-open-range-trade-owned]")).toHaveCount(0);
     await expect(first).toHaveAttribute("data-horf-frame-traded", "false");
     await expect(first).toHaveAttribute("data-horf-frame-offered", "false");
     await expect(first).toHaveAttribute("data-horf-frame-approved", "false");
@@ -163,16 +164,17 @@ test.describe("Horf Open Range", () => {
     await page.keyboard.press("Escape");
     await expect(detail).not.toBeVisible();
     const inactiveBorder = await first.locator('[data-horf-open-range-status="traded"]').evaluate((node) => getComputedStyle(node).borderTopColor);
-    await expect(first.getByRole("button", { name: "Offer this horse from my wallet" })).toBeDisabled();
     await range.locator("[data-horf-open-range-more]").click();
     await expect(range.locator("[data-horf-open-range-horse]")).toHaveCount(2);
-    expect(reads).toContainEqual({ mode: current.key, cursor: "next-1" });
+    expect(reads).toContainEqual({ mode: current.key, cursor: "next-1", refresh: null, viewer: null });
 
+    await expect(range.locator('[data-horf-open-range-mode="all-seasons"]').locator("..")).toContainText("Tracked seasons");
+    await expect(range.locator('[data-horf-open-range-mode="all-horse-search"]').locator("..")).toContainText("All time · every horse");
     await range.locator('[data-horf-open-range-mode="all-seasons"]').check();
     await expect(page).toHaveURL(/\/horf\/open-range\?season=all-seasons$/);
     await expect(range.locator("[data-horf-open-range-horse]")).toHaveCount(1);
     await expect(range.locator("[data-horf-open-range-horse]")).toContainText("Horse #3");
-    await expect(range).toContainText("All known campaign windows only");
+    await expect(range).toContainText("Horse trading season windows.");
 
     await range.locator('[data-horf-open-range-mode="all-horse-search"]').check();
     await expect(page).toHaveURL(/\/horf\/open-range\?season=all-horse-search$/);
@@ -193,8 +195,12 @@ test.describe("Horf Open Range", () => {
     await range.locator(`[data-horf-open-range-mode="${archive.key}"]`).check();
     await expect(page).toHaveURL(new RegExp(`/horf/open-range\\?season=${archive.key}$`));
     await expect(range.locator("[data-horf-open-range-horse]")).toContainText("Horse #5");
-    expect(reads).toContainEqual({ mode: archive.key, cursor: null });
+    expect(reads).toContainEqual({ mode: archive.key, cursor: null, refresh: null, viewer: null });
     await page.screenshot({ path: "test-results/horf-open-range-archive.png", fullPage: true });
+    expect(reads.every((read) => read.refresh === null)).toBe(true);
+    await range.getByRole("button", { name: "Refresh horses" }).click();
+    await expect.poll(() => reads.some((read) => read.mode === archive.key && read.refresh === "1")).toBe(true);
+    await expect(range.getByRole("button", { name: "Refresh horses" })).toBeEnabled();
     await page.setViewportSize({ width: 390, height: 844 });
     expect(await range.evaluate((node) => node.scrollWidth - node.clientWidth)).toBeLessThanOrEqual(1);
     await expect(leftNav).toBeVisible();
@@ -226,13 +232,18 @@ test.describe("Horf Open Range", () => {
     let offered = false;
     let posted = null;
     let removed = false;
-    await page.route("**/api/horf/open-range?*", (route) => route.fulfill({
+    const viewers = [];
+    await page.route("**/api/horf/open-range?*", (route) => {
+      viewers.push(new URL(route.request().url()).searchParams.get("viewer"));
+      return route.fulfill({
       status: 200, contentType: "application/json",
       body: JSON.stringify({ season: current, items: [horse("7", {
+        viewerBalance: "2",
         activelyForTradeOnHorf: offered,
         offers: offered ? [{ id: 99, ownerAddress: owner, amount: "2", acceptedTokenPolicy: "marshal_only" }] : [],
-      })], nextCursor: null, hasMore: false, asOf: now }),
-    }));
+      }), horse("8", { viewerBalance: "0" }), horse("9", { viewerBalance: null })], nextCursor: null, hasMore: false, asOf: now }),
+      });
+    });
     await page.route("**/api/horf/open-range/offers?*", (route) => route.fulfill({
       status: 200, contentType: "application/json",
       body: JSON.stringify({ offers: offered ? [{ id: 99, ownerAddress: owner,
@@ -253,8 +264,17 @@ test.describe("Horf Open Range", () => {
 
     await page.goto("/horf/open-range");
     const range = page.locator("[data-horf-open-range]");
-    await expect(range.locator("[data-horf-open-range-horse]")).toContainText("Horse #7");
-    await range.getByRole("button", { name: "Offer this horse from my wallet" }).click();
+    const owned = range.locator("[data-horf-open-range-horse]").filter({ hasText: "Horse #7" });
+    const unowned = range.locator("[data-horf-open-range-horse]").filter({ hasText: "Horse #8" });
+    const unavailable = range.locator("[data-horf-open-range-horse]").filter({ hasText: "Horse #9" });
+    await expect(owned).toBeVisible();
+    expect(viewers).toContain(owner);
+    await expect(owned.locator("[data-horf-open-range-trade-owned]")).toHaveText("Trade horse from wallet");
+    await expect(unowned.locator("[data-horf-open-range-trade-owned]")).toHaveCount(0);
+    await expect(unavailable.locator("[data-horf-open-range-trade-owned]")).toHaveCount(0);
+    await expect(range.locator("[data-horf-open-range-offer-amount]")).toHaveCount(0);
+    await owned.locator("[data-horf-open-range-trade-owned]").click();
+    await expect(range.locator("[data-horf-open-range-offer-amount]")).toBeVisible();
     await range.locator("[data-horf-open-range-offer-amount]").fill("2");
     await range.locator('[data-horf-open-range-policy] input[value="marshal_only"]').check();
     await range.locator("[data-horf-open-range-offer-post]").click();

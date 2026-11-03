@@ -4,7 +4,6 @@ import { HORF_CURRENT_SEASON_KEY, HORF_SEASONS, resolveHorfSeason } from "./seas
 import { OBJKT_PAGE_SIZE } from "./source";
 import { horseContractAddress } from "./horse-config";
 import { normalizeIpfsUri } from "@shared/ipfs-gateways";
-import { HORF_MAINNET_BLOCK_MS } from "./mainnet";
 
 export const HORF_OPEN_RANGE_QUERY = `query HorfOpenRange($where: token_bool_exp!, $cursor: bigint!, $pageSize: Int!) {
   token(where: { _and: [$where, { pk: { _gt: $cursor } }] }, order_by: { pk: asc }, limit: $pageSize) {
@@ -150,18 +149,4 @@ export async function fetchOpenRangeMintPage(
   return { items, nextCursor: rows.length ? (byTime ? `${lastTime}|${after}` : after.toString()) : null,
     hasMore: rows.length === OBJKT_PAGE_SIZE, asOf: new Date().toISOString(),
     sourceRows: rows.length };
-}
-
-const pageCache = new Map<string, { expiresAt: number; value: Promise<Awaited<ReturnType<typeof fetchOpenRangeMintPage>>> }>();
-/** Public refreshes reuse one Objkt source page during Horf's Mainnet block cadence. */
-export function cachedOpenRangeMintPage(mode: OpenRangeMode, cursor: string) {
-  const now = Date.now();
-  for (const [key, row] of pageCache) if (row.expiresAt <= now) pageCache.delete(key);
-  const key = `${mode}/${cursor}`;
-  const cached = pageCache.get(key);
-  if (cached) return cached.value;
-  const value = fetchOpenRangeMintPage(mode, cursor);
-  pageCache.set(key, { expiresAt: now + HORF_MAINNET_BLOCK_MS, value });
-  value.catch(() => { if (pageCache.get(key)?.value === value) pageCache.delete(key); });
-  return value;
 }

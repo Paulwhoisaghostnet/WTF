@@ -406,8 +406,16 @@ test.describe("live E2E puppet orchestration", () => {
         const tokens = await tokenResponse.json();
         expect(Array.isArray(tokens.items)).toBe(true);
         expect(typeof tokens.pagination?.hasMore).toBe("boolean");
+        for (const item of tokens.items) expect(item.walletAddress).toBe(actor.walletAddress);
       } else {
         expect((await tokenResponse.json()).error).toMatch(/temporarily unavailable/i);
+      }
+      const searchedTokenResponse = await guest.get(`/api/horf/wallet/tokens?address=${encodeURIComponent(actor.walletAddress)}&q=horse`);
+      expect([200, 503], "public owned-token search is not gated by WTF sign-in").toContain(searchedTokenResponse.status());
+      if (searchedTokenResponse.ok()) {
+        const tokens = await searchedTokenResponse.json();
+        expect(Array.isArray(tokens.items)).toBe(true);
+        for (const item of tokens.items) expect(item.walletAddress).toBe(actor.walletAddress);
       }
 
       const before = await expectOkJson(await guest.get("/api/horf/wallet/session"), "guest Horf wallet session");
@@ -1029,6 +1037,16 @@ test.describe("live E2E puppet orchestration", () => {
 
       const tokenId = String(Date.now());
       const contract = "KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton";
+      const marshalReviewPath = "/api/horf/inspections/marshal";
+      const guestOpenRangeReview = await guest.post(marshalReviewPath, {
+        data: { tokenContract: contract, tokenId }, headers: await csrfHeaders(guest),
+      });
+      expect(guestOpenRangeReview.status()).toBe(403);
+      expect((await guestOpenRangeReview.json()).code).toBe("HORF_MARSHAL_REQUIRED");
+      const unassignedOpenRangeReview = await signedIn.post(marshalReviewPath, {
+        data: { tokenContract: contract, tokenId }, headers: await csrfHeaders(signedIn),
+      });
+      expect(unassignedOpenRangeReview.status()).toBe(403);
       const inserted = await pool.query(
         `INSERT INTO horf_inspection_requests
           (submitter_address, token_contract, token_id, status, objkt_metadata, chain_evidence)
@@ -1079,6 +1097,10 @@ test.describe("live E2E puppet orchestration", () => {
       });
       expect(deniedDecision.status()).toBe(403);
       expect((await deniedDecision.json()).code).toBe("HORF_MARSHAL_REQUIRED");
+      const deniedOpenRangeReview = await signedIn.post(marshalReviewPath, {
+        data: { tokenContract: contract, tokenId }, headers: await csrfHeaders(signedIn),
+      });
+      expect(deniedOpenRangeReview.status()).toBe(403);
     } finally {
       if (roleAssigned) await admin.delete(`${rolePath}/horf_marshal`, { headers: await csrfHeaders(admin) }).catch(() => null);
       if (inspectionId !== null) await pool.query("DELETE FROM horf_inspection_requests WHERE id = $1", [inspectionId]);
@@ -1231,6 +1253,105 @@ test.describe("live E2E puppet orchestration", () => {
     } finally {
       if (offerId !== null) await pool.query("DELETE FROM horf_open_range_offers WHERE id = $1", [offerId]);
       if (openOfferId !== null) await pool.query("DELETE FROM horf_open_range_offers WHERE id = $1", [openOfferId]);
+      await pool.end();
+      await anonymous.dispose();
+      await ownerGuest?.dispose();
+      await otherGuest?.dispose();
+    }
+  });
+
+  test("Horf trader profile notes persist by season and only the proved wallet may edit them", async ({ playwright, baseURL }) => {
+    test.skip(!isLocalHorfLiveTarget(baseURL), "Profile persistence proof uses the local live puppet database.");
+    const trader = actorByRole(puppetCredentials, "contestant");
+    const witness = actorByRole(puppetCredentials, "witness");
+    const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
+    const anonymous = await playwright.request.newContext({ baseURL });
+    let ownerGuest;
+    let otherGuest;
+    let previousProfile = null;
+    let previousSeason = null;
+    const profilePath = `/api/horf/traders/${trader.walletAddress}/profile?season=current-2026`;
+    try {
+      [previousProfile] = (await pool.query(
+        "SELECT address, image_url, image_bytes, image_mime, image_sha256, horf_username, updated_at FROM horf_trader_profiles WHERE address = $1",
+        [trader.walletAddress]
+      )).rows;
+      [previousSeason] = (await pool.query(
+        "SELECT address, season_key, description, updated_at FROM horf_trader_season_profiles WHERE address = $1 AND season_key = 'current-2026'",
+        [trader.walletAddress]
+      )).rows;
+      ownerGuest = (await horfGuestWalletContext(playwright, baseURL, trader)).request;
+      otherGuest = (await horfGuestWalletContext(playwright, baseURL, witness)).request;
+      const before = await expectOkJson(await anonymous.get(profilePath), "public Horf trader profile");
+      expect(before.address).toBe(trader.walletAddress);
+      expect(before.seasonKey).toBe("current-2026");
+      const description = `Neighvember puppet trail ${Date.now()}`;
+      const denied = await otherGuest.put(profilePath, {
+        data: { imageUrl: null, description }, headers: await csrfHeaders(otherGuest),
+      });
+      expect(denied.status()).toBe(403);
+      const unproved = await anonymous.put(profilePath, {
+        data: { imageUrl: null, description }, headers: await csrfHeaders(anonymous),
+      });
+      expect(unproved.status()).toBe(403);
+      const saved = await expectOkJson(await ownerGuest.put(profilePath, {
+        data: { imageUrl: null, description }, headers: await csrfHeaders(ownerGuest),
+      }), "proved owner Horf profile save");
+      expect(saved).toMatchObject({ address: trader.walletAddress, seasonKey: "current-2026", description });
+      const publicAfter = await expectOkJson(await anonymous.get(profilePath), "public Horf trader profile after save");
+      expect(publicAfter.description).toBe(description);
+      const stored = await pool.query(
+        "SELECT description FROM horf_trader_season_profiles WHERE address = $1 AND season_key = 'current-2026'",
+        [trader.walletAddress]
+      );
+      expect(stored.rows[0].description).toBe(description);
+      const archived = await expectOkJson(
+        await anonymous.get(`/api/horf/traders/${trader.walletAddress}/profile?season=neighvember-2025`),
+        "separate archived Horf profile"
+      );
+      expect(archived.description).not.toBe(description);
+      const picture = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9QfWsAAAAASUVORK5CYII=", "base64");
+      const picturePath = `/api/horf/traders/${trader.walletAddress}/profile-picture?season=current-2026`;
+      const multipart = { file: { name: "puppet-horse.png", mimeType: "image/png", buffer: picture } };
+      const foreignPicture = await otherGuest.post(picturePath, {
+        multipart, headers: await csrfHeaders(otherGuest),
+      });
+      expect(foreignPicture.status()).toBe(403);
+      const uploaded = await expectOkJson(await ownerGuest.post(picturePath, {
+        multipart, headers: await csrfHeaders(ownerGuest),
+      }), "proved owner Horf profile picture upload");
+      expect(uploaded.imageUrl).toMatch(new RegExp(`^/api/horf/traders/${trader.walletAddress}/profile-picture\\?v=[0-9a-f]{12}$`));
+      const publicPicture = await anonymous.get(uploaded.imageUrl);
+      expect(publicPicture.ok()).toBe(true);
+      expect(publicPicture.headers()["content-type"]).toContain("image/png");
+      expect((await publicPicture.body()).equals(picture)).toBe(true);
+      const storedPicture = await pool.query(
+        "SELECT image_mime, image_sha256, image_bytes FROM horf_trader_profiles WHERE address = $1",
+        [trader.walletAddress]
+      );
+      expect(storedPicture.rows[0].image_mime).toBe("image/png");
+      expect(storedPicture.rows[0].image_bytes.equals(picture)).toBe(true);
+      await pool.query("UPDATE horf_trader_profiles SET horf_username = $2 WHERE address = $1", [trader.walletAddress, "Old Horf Alias"]);
+      const linkedName = await expectOkJson(await anonymous.get(profilePath), "linked WTF OS rider name");
+      expect(linkedName.displayName).toBe(trader.username);
+      expect(linkedName.usernameSource).toBe("wtf");
+      expect(linkedName.canEditUsername).toBe(false);
+      const linkedRename = await ownerGuest.put(profilePath, {
+        data: { imageUrl: uploaded.imageUrl, description, username: "Override WTF" },
+        headers: await csrfHeaders(ownerGuest),
+      });
+      expect(linkedRename.status()).toBe(409);
+    } finally {
+      await pool.query("DELETE FROM horf_trader_season_profiles WHERE address = $1 AND season_key = 'current-2026'", [trader.walletAddress]);
+      if (previousSeason) await pool.query(
+        "INSERT INTO horf_trader_season_profiles (address, season_key, description, updated_at) VALUES ($1, $2, $3, $4)",
+        [previousSeason.address, previousSeason.season_key, previousSeason.description, previousSeason.updated_at]
+      );
+      await pool.query("DELETE FROM horf_trader_profiles WHERE address = $1", [trader.walletAddress]);
+      if (previousProfile) await pool.query(
+        "INSERT INTO horf_trader_profiles (address, image_url, image_bytes, image_mime, image_sha256, horf_username, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+        [previousProfile.address, previousProfile.image_url, previousProfile.image_bytes, previousProfile.image_mime, previousProfile.image_sha256, previousProfile.horf_username, previousProfile.updated_at]
+      );
       await pool.end();
       await anonymous.dispose();
       await ownerGuest?.dispose();

@@ -25,6 +25,7 @@ type RangeHorse = {
   tradedThroughHorf: boolean;
   activelyForTradeOnHorf: boolean;
   approvedForMarshalsMarket: boolean;
+  viewerBalance?: string | null;
   offers: Array<{ id: number; ownerAddress: string; amount: string; acceptedTokenPolicy: AcceptedTokenPolicy }>;
 };
 type RangePage = { season: Season; items: RangeHorse[]; nextCursor: string | null; hasMore: boolean; asOf: string | null };
@@ -33,7 +34,8 @@ const CURRENT_SEASON = "current-2026";
 
 function initialSeason(): string {
   if (typeof window === "undefined") return CURRENT_SEASON;
-  return new URLSearchParams(window.location.search).get("season")?.trim() || CURRENT_SEASON;
+  const season = new URLSearchParams(window.location.search).get("season")?.trim();
+  return season === "all-time" ? "all-horse-search" : season || CURRENT_SEASON;
 }
 
 function writeSeason(key: string) {
@@ -51,7 +53,9 @@ function parsePage(value: unknown): RangePage {
         typeof item.name !== "string" || (item.mintedAt !== null && typeof item.mintedAt !== "string") ||
         typeof item.tradedThroughHorf !== "boolean" ||
         typeof item.activelyForTradeOnHorf !== "boolean" ||
-        typeof item.approvedForMarshalsMarket !== "boolean" || !Array.isArray(item.offers)) ||
+        typeof item.approvedForMarshalsMarket !== "boolean" ||
+        (item.viewerBalance !== undefined && item.viewerBalance !== null && typeof item.viewerBalance !== "string") ||
+        !Array.isArray(item.offers)) ||
       typeof page.hasMore !== "boolean" ||
       (page.nextCursor !== null && typeof page.nextCursor !== "string") ||
       (page.hasMore && !page.nextCursor)) {
@@ -61,12 +65,12 @@ function parsePage(value: unknown): RangePage {
 }
 
 const Shell = styled.div`
-  --range-canvas: var(--horf-canvas, #edf1ef);
-  --range-ink: var(--horf-ink, #142526);
-  --range-muted: var(--horf-muted, #50625e);
-  --range-line: var(--horf-line, #d6ded8);
-  --range-orange: var(--horf-coral, #e26a45);
-  --range-teal: var(--horf-teal, #087e7a);
+  --range-canvas: var(--horf-canvas, #101816);
+  --range-ink: var(--horf-ink, #f4ead6);
+  --range-muted: var(--horf-muted, #b7b5a7);
+  --range-line: var(--horf-line, #3d5148);
+  --range-orange: var(--horf-coral, #ef9672);
+  --range-teal: var(--horf-teal, #71b7a0);
   min-height: 100%;
   min-width: 0;
   padding: 0 clamp(20px, 4vw, 64px) 72px;
@@ -77,7 +81,7 @@ const Shell = styled.div`
   container-type: inline-size;
   * { box-sizing: border-box; }
   a { color: inherit; }
-  button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible { outline: 3px solid var(--range-orange); outline-offset: 3px; }
+  button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible { outline: 3px solid var(--horf-focus); outline-offset: 3px; }
   @container (max-width: 560px) { padding: 0 18px 52px; }
 `;
 
@@ -110,14 +114,14 @@ const Actions = styled.div`
 const Action = styled.button<{ $primary?: boolean }>`
   min-height: 40px;
   padding: 8px 15px;
-  border: 1px solid ${(p) => p.$primary ? "#d85734" : "#b7c9bf"};
+  border: 1px solid ${(p) => p.$primary ? "var(--horf-gold)" : "var(--range-line)"};
   border-radius: 999px;
-  background: ${(p) => p.$primary ? "#e5653f" : "transparent"};
-  color: ${(p) => p.$primary ? "#fff" : "#16342c"};
+  background: ${(p) => p.$primary ? "var(--horf-gold)" : "var(--horf-surface)"};
+  color: ${(p) => p.$primary ? "var(--horf-deep)" : "var(--range-ink)"};
   cursor: pointer;
   font: 800 13px/1.2 var(--horf-font, "Avenir Next", sans-serif);
   transition: transform .18s ease, background .18s ease, border-color .18s ease;
-  &:hover:not(:disabled) { transform: translateY(-2px); background: ${(p) => p.$primary ? "#cf5130" : "#e6ede8"}; }
+  &:hover:not(:disabled) { transform: translateY(-2px); background: ${(p) => p.$primary ? "#e8b65d" : "var(--horf-elevated)"}; }
   @media (prefers-reduced-motion: reduce) { &:hover:not(:disabled) { transform: none; } }
   &:disabled { opacity: 0.55; cursor: not-allowed; }
 `;
@@ -135,7 +139,7 @@ const Toolbar = styled.section`
   legend { margin-bottom: 10px; color: var(--range-muted); font-size: 12px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; }
   fieldset > div { display: flex; flex-wrap: wrap; gap: 7px; }
   label { display: inline-flex; align-items: center; gap: 7px; min-height: 38px; padding: 7px 13px; border: 1px solid var(--range-line); border-radius: 999px; background: transparent; color: var(--range-ink); font-size: 12px; font-weight: 800; cursor: pointer; transition: color .18s ease, background .18s ease; }
-  label:has(input:checked) { border-color: var(--range-ink); background: var(--range-ink); color: #fff; }
+  label:has(input:checked) { border-color: var(--horf-gold); background: var(--horf-elevated); color: var(--horf-ink); }
   input[type="radio"] { width: 16px; min-width: 16px; height: 16px; min-height: 16px; margin: 0; accent-color: var(--range-orange); }
   small { display: block; margin-top: 11px; color: var(--range-muted); font-size: 12px; line-height: 1.4; }
   @container (max-width: 640px) { grid-template-columns: 1fr; }
@@ -168,9 +172,9 @@ const StatusFrame = styled.span<{ $kind: "traded" | "offered" | "approved"; $act
   min-height: 25px;
   padding: 3px 9px;
   border-radius: 999px;
-  border: 1px solid ${(p) => !p.$active ? "#cbd8d0" : p.$kind === "traded" ? "#cc6146" : p.$kind === "offered" ? "#a66f22" : "#278d82"};
-  background: ${(p) => !p.$active ? "transparent" : p.$kind === "traded" ? "#fce8e0" : p.$kind === "offered" ? "#fff1d6" : "#dff3ec"};
-  color: ${(p) => !p.$active ? "#63746c" : p.$kind === "traded" ? "#8d3f2e" : p.$kind === "offered" ? "#765119" : "#155f56"};
+  border: 1px solid ${(p) => !p.$active ? "var(--range-line)" : p.$kind === "traded" ? "#b97665" : p.$kind === "offered" ? "#b38b4f" : "#5aab95"};
+  background: ${(p) => !p.$active ? "var(--horf-surface)" : p.$kind === "traded" ? "#392c28" : p.$kind === "offered" ? "#3b3325" : "#1e3a33"};
+  color: ${(p) => !p.$active ? "var(--range-muted)" : p.$kind === "traded" ? "#f0b3a0" : p.$kind === "offered" ? "#ebcf90" : "#a6dfce"};
   font-size: 11px;
   font-weight: 800;
   line-height: 1.2;
@@ -208,7 +212,7 @@ const Art = styled.img`
   max-height: 420px;
   object-fit: contain;
   border-radius: 10px;
-  background: #e0e9e3;
+  background: var(--horf-field);
 `;
 
 const Glyph = styled.div`
@@ -217,7 +221,7 @@ const Glyph = styled.div`
   width: 100%;
   aspect-ratio: 4 / 3;
   border-radius: 10px;
-  background: #dbe9df;
+  background: var(--horf-field);
   img { display: block; width: 100%; height: 100%; object-fit: cover; }
 `;
 
@@ -234,7 +238,7 @@ const ArtButton = styled.button`
   padding: 0;
   border: 0;
   border-radius: 10px;
-  background: #dbe9df;
+  background: var(--horf-field);
   cursor: zoom-in;
   overflow: hidden;
   &:hover img { transform: scale(1.035); }
@@ -249,20 +253,20 @@ const HorseDetail = styled.dialog`
   padding: clamp(18px, 3vw, 30px);
   border: 0;
   border-radius: 16px;
-  background: #f8faf7;
-  color: #142622;
+  background: var(--horf-surface);
+  color: var(--horf-ink);
   box-shadow: 0 28px 70px #0c282b45;
   &::backdrop { background: #102a2cbc; backdrop-filter: blur(5px); }
-  button:focus-visible, a:focus-visible { outline: 3px solid #e5653f; outline-offset: 3px; }
+  button:focus-visible, a:focus-visible { outline: 3px solid var(--horf-focus); outline-offset: 3px; }
   .detail-head { display: flex; justify-content: space-between; align-items: start; gap: 12px; margin-bottom: 20px; }
   h2 { margin: 3px 0 0; font-family: var(--horf-display, "Avenir Next", sans-serif); font-size: clamp(26px, 4vw, 42px); line-height: 1.05; font-weight: 700; letter-spacing: -.03em; }
   .detail-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 28px; }
-  .detail-grid > img, .detail-grid > .detail-glyph { display: block; width: 100%; max-height: 68vh; object-fit: contain; border-radius: 12px; background: #e0e9e3; }
+  .detail-grid > img, .detail-grid > .detail-glyph { display: block; width: 100%; max-height: 68vh; object-fit: contain; border-radius: 12px; background: var(--horf-field); }
   .detail-glyph { display: grid; place-items: center; min-height: 230px; }
   .detail-glyph img { display: block; width: 100%; max-height: 48vh; object-fit: cover; }
   p { margin: 0 0 12px; line-height: 1.5; }
-  small { display: block; margin: 0 0 10px; color: #53665f; overflow-wrap: anywhere; }
-  a { color: #155f56; }
+  small { display: block; margin: 0 0 10px; color: var(--horf-muted); overflow-wrap: anywhere; }
+  a { color: var(--horf-teal); }
   @media (max-width: 650px) { .detail-grid { grid-template-columns: 1fr; } .detail-grid > img, .detail-grid > .detail-glyph { max-height: 36vh; } }
 `;
 
@@ -270,9 +274,9 @@ const Note = styled.div<{ $error?: boolean }>`
   margin: 16px 0;
   padding: 14px 18px;
   border-radius: 10px;
-  border-left: 4px solid ${(p) => p.$error ? "#b24136" : "#167f78"};
-  background: ${(p) => p.$error ? "#fce9e5" : "#e3f1eb"};
-  color: #18352e;
+  border-left: 4px solid ${(p) => p.$error ? "var(--horf-coral)" : "var(--horf-teal)"};
+  background: ${(p) => p.$error ? "#352822" : "#1c352d"};
+  color: var(--horf-ink);
   font-size: 14px;
   font-weight: 700;
   line-height: 1.5;
@@ -282,43 +286,44 @@ const Note = styled.div<{ $error?: boolean }>`
 const EmptyRange = styled(Note)`
   min-height: 72px;
   padding-left: 76px;
-  background: url('/horf-art/horseshoe.svg') 20px center / 40px 40px no-repeat, #e3f1eb;
+  background: url('/horf-art/horseshoe.svg') 20px center / 40px 40px no-repeat, #1c352d;
 `;
 
 const OfferPanel = styled.section`
   margin-top: 42px;
   padding: clamp(22px, 4vw, 42px);
   border-radius: 16px;
-  background: #12352e;
-  color: #f3faf6;
+  border: 1px solid var(--horf-line);
+  background: var(--horf-surface);
+  color: var(--horf-ink);
   h2 { margin: 0 0 9px; font-family: var(--horf-display, "Avenir Next", sans-serif); font-size: clamp(25px, 3cqw, 36px); font-weight: 700; letter-spacing: -.03em; }
   h3 { margin: 30px 0 8px; font-size: 18px; }
-  p { max-width: 74ch; margin: 0 0 13px; color: #d8eae1; font-size: 14px; line-height: 1.5; }
-  a { color: #aee5d7; }
-  form { max-width: 680px; margin: 23px 0; padding: 20px; border-radius: 12px; background: #1d493e; }
+  p { max-width: 74ch; margin: 0 0 13px; color: var(--horf-muted); font-size: 14px; line-height: 1.5; }
+  a { color: var(--horf-teal); }
+  form { max-width: 680px; margin: 23px 0; padding: 20px; border-radius: 12px; background: var(--horf-elevated); }
   label { display: block; margin: 10px 0 5px; font-size: 13px; font-weight: 800; }
-  input { width: 100%; max-width: 250px; min-height: 42px; padding: 8px 11px; border: 1px solid #a9cbbb; border-radius: 8px; background: #f8faf7; color: #142622; font: inherit; }
+  input { width: 100%; max-width: 250px; min-height: 42px; padding: 8px 11px; border: 1px solid var(--horf-line); border-radius: 8px; background: var(--horf-field); color: var(--horf-ink); font: inherit; }
   ul { list-style: none; padding: 0; margin: 10px 0 0; }
-  li { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; padding: 14px 0; border-top: 1px solid #456c5d; }
+  li { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; padding: 14px 0; border-top: 1px solid var(--horf-line); }
   li span { min-width: 0; overflow-wrap: anywhere; }
-  fieldset { margin: 20px 0; padding: 14px; border: 1px solid #648778; border-radius: 10px; background: #1d493e; color: #f3faf6; }
+  fieldset { margin: 20px 0; padding: 14px; border: 1px solid var(--horf-line); border-radius: 10px; background: var(--horf-elevated); color: var(--horf-ink); }
   legend { padding: 0 5px; font-size: 13px; font-weight: 800; }
   fieldset label { display: flex; align-items: start; gap: 9px; margin: 9px 0; line-height: 1.4; cursor: pointer; }
-  fieldset input { width: 18px; min-width: 18px; min-height: 18px; margin: 1px 0 0; accent-color: #e5653f; }
-  ${Action} { border-color: #83ab99; color: #fff; }
-  ${Action}[type="submit"] { border-color: #d85734; background: #e5653f; }
+  fieldset input { width: 18px; min-width: 18px; min-height: 18px; margin: 1px 0 0; accent-color: var(--horf-gold); }
+  ${Action} { border-color: var(--horf-line); color: var(--horf-ink); }
+  ${Action}[type="submit"] { border-color: var(--horf-gold); background: var(--horf-gold); color: var(--horf-deep); }
 `;
 
 const RangeAside = styled.div`
-  color: #18352e;
+  color: var(--horf-ink);
   font-family: var(--horf-font, "Avenir Next", sans-serif);
-  .aside-eyebrow { display: block; margin-bottom: 12px; color: #167f78; font-size: 11px; font-weight: 900; letter-spacing: .09em; text-transform: uppercase; }
+  .aside-eyebrow { display: block; margin-bottom: 12px; color: var(--horf-teal); font-size: 11px; font-weight: 900; letter-spacing: .09em; text-transform: uppercase; }
   h3 { margin: 0 0 8px; font-size: 19px; line-height: 1.15; font-weight: 900; overflow-wrap: anywhere; }
-  p { margin: 0 0 12px; color: #53665f; font-size: 12px; line-height: 1.5; }
-  img { display: block; width: 100%; max-height: 160px; margin-bottom: 12px; border-radius: 9px; background: #dbe9df; object-fit: contain; }
-  small { display: block; margin: 8px 0; color: #53665f; font-size: 11px; overflow-wrap: anywhere; }
-  .aside-count { display: block; margin-bottom: 3px; color: #142622; font-size: 34px; line-height: 1; font-weight: 900; }
-  .aside-rule { height: 1px; margin: 17px 0; background: #cbd8d0; }
+  p { margin: 0 0 12px; color: var(--horf-muted); font-size: 12px; line-height: 1.5; }
+  img { display: block; width: 100%; max-height: 160px; margin-bottom: 12px; border-radius: 9px; background: var(--horf-field); object-fit: contain; }
+  small { display: block; margin: 8px 0; color: var(--horf-muted); font-size: 11px; overflow-wrap: anywhere; }
+  .aside-count { display: block; margin-bottom: 3px; color: var(--horf-ink); font-size: 34px; line-height: 1; font-weight: 900; }
+  .aside-rule { height: 1px; margin: 17px 0; background: var(--horf-line); }
   ${Legend} { display: grid; justify-items: start; gap: 7px; margin: 0; }
   ${Legend} strong { margin-bottom: 2px; }
   ${StatusFrame} { max-width: 100%; white-space: normal; }
@@ -328,6 +333,10 @@ const RangeAside = styled.div`
 
 function shortAddress(value: string): string {
   return value.length > 18 ? `${value.slice(0, 8)}…${value.slice(-6)}` : value;
+}
+
+function ownsHorse(balance: string | null | undefined): boolean {
+  try { return balance != null && BigInt(balance) > 0n; } catch { return false; }
 }
 
 function horseArt(value: RangeHorse) {
@@ -353,6 +362,13 @@ export function HorfOpenRange() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const refreshHorseCache = useRef(false);
+
+  const marshalStatusQuery = useQuery({
+    queryKey: ["horf", "inspector-status", isGuest],
+    queryFn: () => api.get<{ active: boolean; role: "horf_marshal" | "admin" | null }>("/api/horf/inspectors/status"),
+    refetchOnWindowFocus: true,
+  });
 
   const seasonsQuery = useQuery({
     queryKey: ["horf", "open-range-seasons"],
@@ -360,10 +376,12 @@ export function HorfOpenRange() {
   });
   const seasons = Array.isArray(seasonsQuery.data?.seasons) ? seasonsQuery.data.seasons : [];
   const rangeQuery = useInfiniteQuery({
-    queryKey: ["horf", "open-range", seasonKey],
+    queryKey: ["horf", "open-range", seasonKey, address],
     queryFn: ({ pageParam }) => {
       const params = new URLSearchParams({ season: seasonKey });
       if (pageParam) params.set("cursor", pageParam);
+      if (address) params.set("viewer", address);
+      if (refreshHorseCache.current) params.set("refresh", "1");
       return api.get<unknown>(`/api/horf/open-range?${params}`).then(parsePage);
     },
     initialPageParam: null as string | null,
@@ -372,6 +390,8 @@ export function HorfOpenRange() {
   });
   const pages = rangeQuery.data?.pages ?? [];
   const horses = useMemo(() => pages.flatMap((page) => page.items), [pages]);
+  const selectedOfferOwned = Boolean(address && offerHorse && horses.some((horse) =>
+    horse.contract === offerHorse.contract && horse.tokenId === offerHorse.tokenId && ownsHorse(horse.viewerBalance)));
   const shownSeason = pages[0]?.season ?? seasonsQuery.data?.season;
   const asOf = pages[0]?.asOf ?? null;
   const offersQuery = useQuery({
@@ -410,7 +430,7 @@ export function HorfOpenRange() {
 
   async function postOffer(event: FormEvent) {
     event.preventDefault();
-    if (!address || !offerHorse || busy) return;
+    if (!address || !offerHorse || !selectedOfferOwned || busy) return;
     setError(null); setSuccess(null);
     try {
       const amount = toNatString(offerAmount);
@@ -463,38 +483,38 @@ export function HorfOpenRange() {
       <span className="aside-eyebrow">Range report</span>
       <strong className="aside-count">{horses.length}</strong>
       <h3>{shownSeason?.label || "Horses on the range"}</h3>
-      <p>Qualifying horses loaded. Select any artwork to inspect its details.</p>
+      <p>Select a horse to see its papers.</p>
       {rangeQuery.isPending && <p role="status">Rounding up horses…</p>}
       {rangeQuery.isError && <p role="alert">This range is unavailable. Refresh the gallery to try again.</p>}
       <div className="aside-rule" />
       <Legend data-horf-open-range-legend><strong>Color key</strong><StatusFrame $kind="traded" $active>Traded through Horf</StatusFrame><StatusFrame $kind="offered" $active>For direct trade now</StatusFrame><StatusFrame $kind="approved" $active>Marshal approved</StatusFrame></Legend>
       <div className="aside-rule" />
-      <p>{address ? `${myOffers.length} ${myOffers.length === 1 ? "active sign" : "active signs"} from your wallet.` : "Connect your wallet to post a direct offer."} Direct offers are social signals, not escrow.</p>
+      <p>{address ? `${myOffers.length} active ${myOffers.length === 1 ? "offer" : "offers"}.` : "Connect your wallet to offer a horse."} Direct offers have no escrow.</p>
     </>}
   </RangeAside>;
 
-  return <HorfFrame title="Open Range" aside={sidebar}>
+  return <HorfFrame title="Open Range" aside={sidebar} walletAddress={address} onConnectWallet={connectWallet} walletConnecting={isConnecting}>
     <Shell data-horf-open-range>
       <Masthead>
         <div className="range-topline">
           <span className="range-path">Horf / <strong>Open Range</strong></span>
-          <Actions><Action type="button" onClick={() => windowManager.openPage(`/horf?season=${encodeURIComponent(seasonKey)}`)}>← Back to Horf race and stables</Action>{!address && <Action data-horf-open-range-connect type="button" $primary onClick={() => void connectWallet()} disabled={isConnecting}>{isConnecting ? "Connecting…" : isGuest ? "Connect and verify wallet" : "Connect wallet"}</Action>}</Actions>
+          <Actions><Action type="button" onClick={() => windowManager.openPage(`/horf?season=${encodeURIComponent(seasonKey === "all-horse-search" || seasonKey === "all-seasons" ? "all-time" : seasonKey)}`)}>← Horf home</Action>{!address && <Action data-horf-open-range-connect type="button" $primary onClick={() => void connectWallet()} disabled={isConnecting}>{isConnecting ? "Connecting…" : isGuest ? "Connect and verify wallet" : "Connect wallet"}</Action>}</Actions>
         </div>
         <div className="range-hero">
-          <div><span className="range-eyebrow">Public horse art · Tezos Mainnet</span><h1>The Open Range<span aria-hidden="true">🐎</span></h1><p>Meet the horses minted across our trading seasons. Follow a favorite, check its papers, and see who is ready to ride.</p></div>
+          <div><span className="range-eyebrow">Public horse art · Tezos Mainnet</span><h1>The Open Range<span aria-hidden="true">🐎</span></h1><p>Find horses, check their papers, and meet their traders.</p></div>
           <figure className="range-hero-art"><img src="/horf-art/horse-beach-photo.jpg" alt="Horses crossing a beach at sunset" /><figcaption>Yudi Susilo · CC0 horse photograph</figcaption></figure>
         </div>
       </Masthead>
       {walletError && <Note $error role="alert">{walletError}</Note>}
       <Toolbar data-horf-open-range-season><div><fieldset><legend>Range to search</legend><div>
-        <label><input type="radio" name="horf-open-range-mode" data-horf-open-range-mode="all-seasons" checked={seasonKey === "all-seasons"} onChange={() => changeSeason("all-seasons")} />All known seasons</label>
-        <label><input type="radio" name="horf-open-range-mode" data-horf-open-range-mode="all-horse-search" checked={seasonKey === "all-horse-search"} onChange={() => changeSeason("all-horse-search")} />All Horse Search</label>
+        <label><input type="radio" name="horf-open-range-mode" data-horf-open-range-mode="all-seasons" checked={seasonKey === "all-seasons"} onChange={() => changeSeason("all-seasons")} />Tracked seasons</label>
+        <label><input type="radio" name="horf-open-range-mode" data-horf-open-range-mode="all-horse-search" checked={seasonKey === "all-horse-search"} onChange={() => changeSeason("all-horse-search")} />All time · every horse</label>
         {!seasons.some((season) => season.key === seasonKey) && seasonKey !== "all-seasons" && seasonKey !== "all-horse-search" && <label><input type="radio" name="horf-open-range-mode" checked readOnly />{shownSeason?.label || seasonKey}</label>}
         {seasons.map((season) => <label key={season.key}><input type="radio" name="horf-open-range-mode" data-horf-open-range-mode={season.key} checked={seasonKey === season.key} onChange={() => changeSeason(season.key)} />{season.label}{season.inferred ? " · archive" : ""}</label>)}
-      </div></fieldset><small>{seasonKey === "all-seasons" ? "All known campaign windows only; this does not cover every calendar year." : seasonKey === "all-horse-search" ? "All known qualifying horse keywords, regardless of mint date. Some mint dates may be unknown." : shownSeason?.startsAt ? `${new Date(shownSeason.startsAt).toLocaleDateString()} – ${shownSeason.endsAt ? new Date(shownSeason.endsAt).toLocaleDateString() : "ongoing"}${shownSeason.inferred ? " · Archive boundaries are inferred from Objkt clusters and organizer posts." : ""}` : "Loading campaign dates…"}</small></div><Action type="button" onClick={() => void rangeQuery.refetch()} disabled={rangeQuery.isFetching}>{rangeQuery.isFetching ? "Refreshing…" : "Refresh horses"}</Action></Toolbar>
+      </div></fieldset><small>{seasonKey === "all-seasons" ? "Horse trading season windows." : seasonKey === "all-horse-search" ? "All known horse keywords, any mint date." : shownSeason?.startsAt ? `${new Date(shownSeason.startsAt).toLocaleDateString()} – ${shownSeason.endsAt ? new Date(shownSeason.endsAt).toLocaleDateString() : "ongoing"}${shownSeason.inferred ? " · Archive dates are inferred." : ""}` : "Loading season dates…"}</small></div><Action type="button" onClick={() => { refreshHorseCache.current = true; logClientSystemEvent({ eventType: "horf.open_range.refreshed", message: "Open Range source refresh requested", metadata: { seasonKey } }); void rangeQuery.refetch().finally(() => { refreshHorseCache.current = false; }); }} disabled={rangeQuery.isFetching}>{rangeQuery.isFetching ? "Refreshing…" : "Refresh horses"}</Action></Toolbar>
       {rangeQuery.isPending && <Note role="status">Rounding up the season’s minted horses…</Note>}
       {rangeQuery.isError && <Note $error role="alert">{rangeQuery.error instanceof Error ? rangeQuery.error.message : "The Open Range is unavailable."} Refresh to try again.</Note>}
-      <GalleryHeading><div><h2>{shownSeason?.label || "Horses on the range"}</h2><p>{horses.length} {horses.length === 1 ? "horse" : "horses"} in view. Colored outlines mark trade history, active offers, and Marshal approval.</p></div>{asOf && <small>Indexed {new Date(asOf).toLocaleString()}</small>}</GalleryHeading>
+      <GalleryHeading><div><h2>{shownSeason?.label || "Horses on the range"}</h2><p>{horses.length} in view · frames show trades, offers, and Marshal approval.</p></div>{asOf && <small>Indexed {new Date(asOf).toLocaleString()}</small>}</GalleryHeading>
       <Grid data-horf-open-range-grid>{horses.map((horse) => {
         const art = horseArt(horse);
         return <Card key={`${horse.contract}:${horse.tokenId}`} data-horf-open-range-horse data-horf-frame-traded={horse.tradedThroughHorf} data-horf-frame-offered={horse.activelyForTradeOnHorf} data-horf-frame-approved={horse.approvedForMarshalsMarket} $traded={horse.tradedThroughHorf} $offered={horse.activelyForTradeOnHorf} $approved={horse.approvedForMarshalsMarket}>
@@ -507,14 +527,14 @@ export function HorfOpenRange() {
           {horse.creatorAddress && <small>Creator: <a href={`https://objkt.com/profile/${encodeURIComponent(horse.creatorAddress)}`} target="_blank" rel="noopener noreferrer">{shortAddress(horse.creatorAddress)}</a></small>}
           <CardFlags data-horf-open-range-flags><StatusFrame data-horf-open-range-status="traded" $kind="traded" $active={horse.tradedThroughHorf}>{horse.tradedThroughHorf ? "Traded through Horf" : "No Horf trade yet"}</StatusFrame><StatusFrame data-horf-open-range-status="offered" $kind="offered" $active={horse.activelyForTradeOnHorf}>{horse.activelyForTradeOnHorf ? "For direct trade now" : "No active Horf offer"}</StatusFrame><StatusFrame data-horf-open-range-status="approved" $kind="approved" $active={horse.approvedForMarshalsMarket}>{horse.approvedForMarshalsMarket ? "Marshal approved" : "Not Marshal approved"}</StatusFrame></CardFlags>
           {horse.offers.length > 0 && <p>{horse.offers.map((offer, index) => <span key={offer.id}>{index > 0 ? " · " : ""}<a href={`https://objkt.com/profile/${encodeURIComponent(offer.ownerAddress)}`} target="_blank" rel="noopener noreferrer">{shortAddress(offer.ownerAddress)}</a> offers {offer.amount} · {policyLabel(offer.acceptedTokenPolicy)}</span>)}. These are owner preferences, not escrow rules; contact them on Objkt before any direct wallet transfer.</p>}
-          <Action type="button" onClick={() => { setSelectedHorse(horse); setOfferHorse(horse); setError(null); setSuccess(null); document.getElementById("horf-open-range-offer")?.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" }); }} disabled={!address}>Offer this horse from my wallet</Action>
+          {address && ownsHorse(horse.viewerBalance) && <Action data-horf-open-range-trade-owned type="button" onClick={() => { setSelectedHorse(horse); setOfferHorse(horse); setError(null); setSuccess(null); document.getElementById("horf-open-range-offer")?.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" }); }}>Trade horse from wallet</Action>}
         </Card>;
       })}</Grid>
       {!rangeQuery.isPending && !rangeQuery.isError && !horses.length && <EmptyRange data-horf-open-range-empty>{rangeQuery.hasNextPage ? "No qualifying horses appeared on the pages read so far. Keep riding to the next page." : "No qualifying horse mints were found in this range. Try All Horse Search to look beyond known campaign windows."}</EmptyRange>}
       {rangeQuery.hasNextPage && <Actions><Action data-horf-open-range-more type="button" onClick={() => void rangeQuery.fetchNextPage()} disabled={rangeQuery.isFetchingNextPage}>{rangeQuery.isFetchingNextPage ? "Rounding up more…" : "See more horses"}</Action></Actions>}
-      <OfferPanel id="horf-open-range-offer" data-horf-open-range-offers><h2>Put a horse on the trade rail</h2><p>A Horf offer is a public, off-chain sign for a direct trade. The horse stays in your wallet; Horf checks ownership and eligibility before posting. The actual transfer is irrevocable and has no Horf escrow.</p>
+      <OfferPanel id="horf-open-range-offer" data-horf-open-range-offers><h2>Put a horse on the trade rail</h2><p>Your horse stays in your wallet until you send it. Direct transfers are final and have no Horf escrow.</p>
         {!address && <Note>Connect and verify your wallet to post or remove its offers.</Note>}
-        {offerHorse && <form onSubmit={(event) => void postOffer(event)}><p>Selected: <a href={objktTokenUrl(offerHorse.contract, offerHorse.tokenId)} target="_blank" rel="noopener noreferrer">{offerHorse.name || `Horse token #${offerHorse.tokenId}`}</a> · #{offerHorse.tokenId}</p><label htmlFor="horf-open-range-offer-amount">Editions to offer</label><input id="horf-open-range-offer-amount" data-horf-open-range-offer-amount inputMode="numeric" value={offerAmount} onChange={(event) => setOfferAmount(event.target.value)} disabled={busy} /><fieldset data-horf-open-range-policy><legend>Horses you would accept in return</legend><label><input type="radio" name="horf-offer-policy" value="any_qualifying" checked={acceptedTokenPolicy === "any_qualifying"} onChange={() => setAcceptedTokenPolicy("any_qualifying")} disabled={busy} />Any qualifying horse · trust your trading partner</label><label><input type="radio" name="horf-offer-policy" value="marshal_only" checked={acceptedTokenPolicy === "marshal_only"} onChange={() => setAcceptedTokenPolicy("marshal_only")} disabled={busy} />Marshal-approved horses only</label></fieldset><p>This is your off-chain preference. A direct wallet trade has no escrow; potential partners should honor your choice.</p><Actions><Action data-horf-open-range-offer-post type="submit" $primary disabled={!address || busy}>Post direct offer</Action><Action type="button" onClick={() => setOfferHorse(null)} disabled={busy}>Cancel</Action></Actions></form>}
+        {offerHorse && selectedOfferOwned && <form onSubmit={(event) => void postOffer(event)}><p>Selected: <a href={objktTokenUrl(offerHorse.contract, offerHorse.tokenId)} target="_blank" rel="noopener noreferrer">{offerHorse.name || `Horse token #${offerHorse.tokenId}`}</a> · #{offerHorse.tokenId}</p><label htmlFor="horf-open-range-offer-amount">Editions to offer</label><input id="horf-open-range-offer-amount" data-horf-open-range-offer-amount inputMode="numeric" value={offerAmount} onChange={(event) => setOfferAmount(event.target.value)} disabled={busy} /><fieldset data-horf-open-range-policy><legend>Horses you would accept in return</legend><label><input type="radio" name="horf-offer-policy" value="any_qualifying" checked={acceptedTokenPolicy === "any_qualifying"} onChange={() => setAcceptedTokenPolicy("any_qualifying")} disabled={busy} />Any qualifying horse · trust your trading partner</label><label><input type="radio" name="horf-offer-policy" value="marshal_only" checked={acceptedTokenPolicy === "marshal_only"} onChange={() => setAcceptedTokenPolicy("marshal_only")} disabled={busy} />Marshal-approved horses only</label></fieldset><p>This is your off-chain preference. A direct wallet trade has no escrow; potential partners should honor your choice.</p><Actions><Action data-horf-open-range-offer-post type="submit" $primary disabled={!address || busy}>Post direct offer</Action><Action type="button" onClick={() => setOfferHorse(null)} disabled={busy}>Cancel</Action></Actions></form>}
         <h3>Your active signs</h3>{offersQuery.isPending && address && <p>Reading your offers…</p>}{offersQuery.isError && <Note $error role="alert">Your offer list is unavailable. Refresh to try again.</Note>}
         {myOffers.length ? <ul>{myOffers.map((offer) => <li key={offer.id} data-horf-open-range-my-offer><span><a href={objktTokenUrl(offer.tokenContract, offer.tokenId)} target="_blank" rel="noopener noreferrer">Horse token #{offer.tokenId}</a> · {offer.amount} editions · {shortAddress(offer.tokenContract)} · {policyLabel(offer.acceptedTokenPolicy)}</span><Action data-horf-open-range-offer-remove type="button" onClick={() => void removeOffer(offer)} disabled={busy}>Remove offer</Action></li>)}</ul> : address && !offersQuery.isPending && !offersQuery.isError && <p>No active offers from this wallet.</p>}
       </OfferPanel>
@@ -524,7 +544,7 @@ export function HorfOpenRange() {
           <div className="detail-head"><div><small>🐎 Open Range · horse papers</small><h2>{detailHorse.name || `Horse token #${detailHorse.tokenId}`}</h2></div><Action type="button" onClick={() => setDetailHorse(null)}>Close details</Action></div>
           <div className="detail-grid">
             {horseArt(detailHorse) ? <img src={horseArt(detailHorse)!.src} alt={`${detailHorse.name || `Horse token #${detailHorse.tokenId}`} artwork`} onError={(event) => { const resolved = horseArt(detailHorse); if (!resolved || !advanceResolvedMediaFallback(event.currentTarget, resolved)) { event.currentTarget.src = "/horf-art/horse-gallop-photo.jpg"; event.currentTarget.alt = "Horse photograph placeholder"; } }} /> : <div className="detail-glyph" aria-hidden="true"><img src="/horf-art/horse-gallop-photo.jpg" alt="" /></div>}
-            <div><p>{detailHorse.description || "This horse has no description from Objkt yet."}</p><CardFlags><StatusFrame $kind="traded" $active={detailHorse.tradedThroughHorf}>{detailHorse.tradedThroughHorf ? "Traded through Horf" : "No Horf trade yet"}</StatusFrame><StatusFrame $kind="offered" $active={detailHorse.activelyForTradeOnHorf}>{detailHorse.activelyForTradeOnHorf ? "For direct trade now" : "No active Horf offer"}</StatusFrame><StatusFrame $kind="approved" $active={detailHorse.approvedForMarshalsMarket}>{detailHorse.approvedForMarshalsMarket ? "Marshal approved" : "Not Marshal approved"}</StatusFrame></CardFlags><small>{detailHorse.mintedAt ? `Minted ${new Date(detailHorse.mintedAt).toLocaleDateString()}` : "Mint date unknown"} · {detailHorse.contract} / #{detailHorse.tokenId}</small>{detailHorse.creatorAddress && <small>Creator: <a href={`https://objkt.com/profile/${encodeURIComponent(detailHorse.creatorAddress)}`} target="_blank" rel="noopener noreferrer">{shortAddress(detailHorse.creatorAddress)}</a></small>}{detailHorse.offers.map((offer) => <p key={offer.id}>🤠 <a href={`https://objkt.com/profile/${encodeURIComponent(offer.ownerAddress)}`} target="_blank" rel="noopener noreferrer">{shortAddress(offer.ownerAddress)}</a> offers {offer.amount} · {policyLabel(offer.acceptedTokenPolicy)}</p>)}<p>Offers are owner preferences, not escrow protection. Confirm terms before any direct wallet transfer.</p><a href={objktTokenUrl(detailHorse.contract, detailHorse.tokenId)} target="_blank" rel="noopener noreferrer">View this horse on Objkt ↗</a><HorfObjktBuy key={`${detailHorse.contract}:${detailHorse.tokenId}`} tokenContract={detailHorse.contract} tokenId={detailHorse.tokenId} address={address} connectWallet={connectWallet} isConnecting={isConnecting} /></div>
+            <div><p>{detailHorse.description || "This horse has no description from Objkt yet."}</p><CardFlags><StatusFrame $kind="traded" $active={detailHorse.tradedThroughHorf}>{detailHorse.tradedThroughHorf ? "Traded through Horf" : "No Horf trade yet"}</StatusFrame><StatusFrame $kind="offered" $active={detailHorse.activelyForTradeOnHorf}>{detailHorse.activelyForTradeOnHorf ? "For direct trade now" : "No active Horf offer"}</StatusFrame><StatusFrame $kind="approved" $active={detailHorse.approvedForMarshalsMarket}>{detailHorse.approvedForMarshalsMarket ? "Marshal approved" : "Not Marshal approved"}</StatusFrame></CardFlags><small>{detailHorse.mintedAt ? `Minted ${new Date(detailHorse.mintedAt).toLocaleDateString()}` : "Mint date unknown"} · {detailHorse.contract} / #{detailHorse.tokenId}</small>{detailHorse.creatorAddress && <small>Creator: <a href={`https://objkt.com/profile/${encodeURIComponent(detailHorse.creatorAddress)}`} target="_blank" rel="noopener noreferrer">{shortAddress(detailHorse.creatorAddress)}</a></small>}{detailHorse.offers.map((offer) => <p key={offer.id}>🤠 <a href={`https://objkt.com/profile/${encodeURIComponent(offer.ownerAddress)}`} target="_blank" rel="noopener noreferrer">{shortAddress(offer.ownerAddress)}</a> offers {offer.amount} · {policyLabel(offer.acceptedTokenPolicy)}</p>)}<p>Offers are owner preferences, not escrow protection. Confirm terms before any direct wallet transfer.</p><a href={objktTokenUrl(detailHorse.contract, detailHorse.tokenId)} target="_blank" rel="noopener noreferrer">View this horse on Objkt ↗</a>{marshalStatusQuery.data?.active && !detailHorse.approvedForMarshalsMarket && <Action data-horf-open-range-inspect type="button" onClick={() => { setDetailHorse(null); windowManager.openPage(`/horf/marshals-market?season=${encodeURIComponent(seasonKey)}&inspect=${encodeURIComponent(`${detailHorse.contract}/${detailHorse.tokenId}`)}`); }}>Inspect for Marshal’s Market</Action>}<HorfObjktBuy key={`${detailHorse.contract}:${detailHorse.tokenId}`} tokenContract={detailHorse.contract} tokenId={detailHorse.tokenId} address={address} connectWallet={connectWallet} isConnecting={isConnecting} /></div>
           </div>
         </>}
       </HorseDetail>

@@ -102,8 +102,7 @@ test.describe("Horf Stables", () => {
     const stables = page.locator('[data-horf-region="stables"]');
     const marshalsMarket = page.locator('[data-horf-region="marshals-market"]');
     await expect(marshalsMarket).toContainText("Marshal’s Market");
-    await expect(marshalsMarket).toContainText("including Honor");
-    await expect(marshalsMarket).toContainText("claim or cancel");
+    await expect(marshalsMarket).toContainText("Approved horses can enter the escrow Stables");
     await expect(stables).toBeVisible();
     await expect(stables.locator("[data-horf-stable-trust-note]")).toContainText("not proof that an arbitrary FA2 transfers honestly");
     await expect(stables).toContainText("no Mainnet stable contract is deployed or configured yet");
@@ -202,7 +201,7 @@ test.describe("Horf Stables", () => {
     const outlawCorral = page.locator('[data-horf-region="outlaw-corral"]');
     await expect(outlawCorral).toContainText("Outlaw Corral");
     await expect(outlawCorral).toContainText("without inspection");
-    await expect(outlawCorral).toContainText("no Horf escrow");
+    await expect(outlawCorral).toContainText("without inspection or escrow");
     await page.goto("/horf/gifts");
     const directTrade = page.locator('[data-horf-region="gifts"]');
     await directTrade.locator("[data-horf-gift-owned]").selectOption(`${tokenContract}:7`);
@@ -292,7 +291,114 @@ test.describe("Horf Stables", () => {
     await desk.locator("[data-horf-approval-reason]").fill("New custody concern");
     await desk.locator("[data-horf-approval-revoke]").click();
     expect(revocations).toEqual([{ reason: "New custody concern" }]);
-    await expect(desk).toContainText("Approval revoked for new Stable permits");
+    await expect(desk).toContainText("Approval revoked for new Stable and HORSE Market listings");
+  });
+
+  test("a Marshal patrols every Open Range page and approves one horse after reviewing evidence", async ({ page, request }) => {
+    await seedTrader(request);
+    await mockSeason(page);
+    const now = "2026-11-03T12:00:00.000Z";
+    const candidate = {
+      contract: tokenContract, tokenId: "7", name: "Neighvember Seven",
+      description: "A horse from the Open Range", image: null, mintedAt: now,
+      creatorAddress: traderWallet, tradedThroughHorf: false, activelyForTradeOnHorf: false,
+      approvedForMarshalsMarket: false, offers: [],
+    };
+    const inspection = {
+      id: 77, source: "open_range", submitterAddress: null,
+      token: { contract: tokenContract, tokenId: "7" }, status: "pending",
+      objktMetadata: { source: "Objkt", checkedAt: now, name: candidate.name,
+        description: candidate.description, image: null, decimals: 0,
+        tags: [{ name: "neighvember", tokenCount: 12 }] },
+      chainEvidence: { source: "TzKT Mainnet", checkedAt: now, ownerAddress: null,
+        ownerBalance: null, identity: { contract: tokenContract, creatorAddress: traderWallet,
+          codeHash: 964496845, codeSha256: "ab".repeat(32), asOf: now, source: "TzKT Mainnet" },
+        recentTransfers: [], note: "Marshal patrol evidence, without an owner assertion." },
+      submittedAt: now, reviewedByWalletAddress: null, reviewedByUserId: null,
+      reviewedAt: null, reviewReason: null,
+    };
+    let pending = [];
+    let approved = false;
+    const prepared = [];
+    const decisions = [];
+    const rangeReads = [];
+    await page.route("**/api/horf/inspectors/status", (route) => route.fulfill({
+      status: 200, contentType: "application/json", body: JSON.stringify({ active: true, role: "horf_marshal" }),
+    }));
+    await page.route("**/api/horf/open-range?*", (route) => {
+      const url = new URL(route.request().url());
+      const mode = url.searchParams.get("season");
+      const cursor = url.searchParams.get("cursor") || "0";
+      rangeReads.push({ mode, cursor, refresh: url.searchParams.get("refresh") });
+      const items = mode === "all-horse-search" && cursor === "0" ? [] : [{ ...candidate, approvedForMarshalsMarket: approved }];
+      const hasMore = mode === "all-horse-search" && cursor === "0";
+      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({
+        season, items, nextCursor: hasMore ? "after-1" : null, hasMore, asOf: now,
+      }) });
+    });
+    await page.route("**/api/horf/horse-market/objkt-listings?*", (route) => route.fulfill({
+      status: 200, contentType: "application/json", body: JSON.stringify({ listings: [] }),
+    }));
+    await page.route("**/api/horf/inspections/pending", (route) => route.fulfill({
+      status: 200, contentType: "application/json", body: JSON.stringify({ inspections: pending }),
+    }));
+    await page.route("**/api/horf/inspections/status?*", (route) => route.fulfill({
+      status: 200, contentType: "application/json", body: JSON.stringify({
+        contract: tokenContract, tokenId: "7", status: approved ? "approved" : pending.length ? "pending" : "none",
+        inspectionId: pending.length || approved ? 77 : null, reason: null,
+      }),
+    }));
+    await page.route("**/api/horf/inspections/marshal", (route) => {
+      prepared.push(route.request().postDataJSON());
+      pending = [inspection];
+      return route.fulfill({ status: 201, contentType: "application/json", body: JSON.stringify(inspection) });
+    });
+    await page.route("**/api/horf/inspections/77", (route) => route.fulfill({
+      status: 200, contentType: "application/json", body: JSON.stringify(inspection),
+    }));
+    await page.route("**/api/horf/inspections/77/decision", (route) => {
+      decisions.push(route.request().postDataJSON());
+      approved = true;
+      pending = [];
+      return route.fulfill({ status: 200, contentType: "application/json",
+        body: JSON.stringify({ ...inspection, status: "approved", reviewedAt: now,
+          reviewReason: "Horse tags, code and transfers reviewed" }) });
+    });
+
+    await page.goto("/horf/open-range");
+    await page.locator("[data-horf-open-range-view-horse]").click();
+    const detail = page.locator("[data-horf-open-range-detail]");
+    await expect(detail.locator("[data-horf-open-range-inspect]")).toBeVisible();
+    await detail.locator("[data-horf-open-range-inspect]").click();
+    const desk = page.locator('[data-horf-region="inspector-desk"]');
+    await expect(desk.locator("[data-horf-marshal-handoff]")).toContainText(`${tokenContract} / #7`);
+    expect(prepared).toEqual([]);
+    await expect(desk.locator("[data-horf-marshal-candidate]")).toHaveCount(0);
+    await desk.locator("[data-horf-marshal-load-more]").click();
+    await expect(desk.locator("[data-horf-marshal-candidate]")).toHaveCount(1);
+    expect(rangeReads.every((read) => read.refresh === null)).toBe(true);
+    await desk.getByRole("button", { name: "Refresh desk" }).click();
+    await expect.poll(() => rangeReads.some((read) => read.mode === "all-horse-search" && read.refresh === "1")).toBe(true);
+    await expect(desk.getByRole("button", { name: "Refresh desk" })).toBeEnabled();
+    await desk.locator("[data-horf-marshal-handoff-review]").click();
+    expect(prepared).toEqual([{ tokenContract, tokenId: "7" }]);
+    await expect(desk.locator("[data-horf-inspection-detail]")).toContainText("No owner assertion for Open Range patrol");
+    if (process.env.HORF_VISUAL_CAPTURE === "1") {
+      await page.setViewportSize({ width: 1440, height: 900 });
+      await page.screenshot({ path: "/tmp/horf-marshal-patrol-desktop.png", fullPage: true });
+    }
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect(page.locator("[data-horf-right-rail]")).toBeHidden();
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+    await desk.locator("[data-horf-inspection-detail]").scrollIntoViewIfNeeded();
+    await expect(desk.locator("[data-horf-inspection-detail]")).toBeInViewport();
+    if (process.env.HORF_VISUAL_CAPTURE === "1") await page.screenshot({ path: "/tmp/horf-marshal-patrol-mobile.png", fullPage: true });
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await expect(desk.locator("[data-horf-inspection-decide]")).toBeDisabled();
+    await desk.locator("[data-horf-inspection-reason]").fill("Horse tags, code and transfers reviewed");
+    await desk.locator("[data-horf-inspection-decide]").click();
+    expect(decisions).toEqual([{ decision: "approve", reason: "Horse tags, code and transfers reviewed" }]);
+    await expect(desk.locator("[data-horf-marshal-candidate]")).toContainText("Marshal approved");
   });
 
   test("prepares owned and Objkt deposits, then shows credit, claim, and cancel rules", async ({ page, request }) => {

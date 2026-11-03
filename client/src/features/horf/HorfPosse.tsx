@@ -9,27 +9,27 @@ import { HorfTradeHorseCarousel } from "./HorfTradeHorseCarousel";
 
 const Shell = styled.section`
   min-width: 0;
-  color: var(--horf-ink, #142526);
+  color: var(--horf-ink, #f4ead6);
   font-family: var(--horf-font, "Avenir Next", sans-serif);
   .intro { max-width: 70ch; margin-bottom: 22px; }
-  .eyebrow { color: var(--horf-teal, #087e7a); font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+  .eyebrow { color: var(--horf-teal, #71b7a0); font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
   h2 { margin: 6px 0 9px; font: 700 clamp(30px, 4cqw, 48px)/1.05 var(--horf-display, Georgia, serif); }
-  p { margin: 0 0 12px; color: var(--horf-muted, #50625e); line-height: 1.55; }
-  .add-form { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) auto; gap: 10px; align-items: end; padding: 16px; border: 1px solid var(--horf-line, #d6ded8); border-radius: 14px; background: #fff; }
+  p { margin: 0 0 12px; color: var(--horf-muted, #b7b5a7); line-height: 1.55; }
+  .add-form { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) auto; gap: 10px; align-items: end; padding: 16px; border: 1px solid var(--horf-line, #3d5148); border-radius: 14px; background: var(--horf-surface, #1b2723); }
   label { display: block; margin-bottom: 5px; font-size: 12px; font-weight: 800; }
-  input { display: block; width: 100%; min-width: 0; min-height: 40px; padding: 8px 10px; border: 1px solid #aebfba; border-radius: 9px; background: #fff; color: var(--horf-ink, #142526); font: 14px var(--horf-font, sans-serif); }
-  button { min-height: 40px; padding: 8px 13px; border: 1px solid var(--horf-coral, #e26a45); border-radius: 9px; background: var(--horf-coral, #e26a45); color: #fff; font-weight: 800; cursor: pointer; }
+  input { display: block; width: 100%; min-width: 0; min-height: 40px; padding: 8px 10px; border: 1px solid var(--horf-line, #3d5148); border-radius: 9px; background: var(--horf-field, #24332d); color: var(--horf-ink, #f4ead6); font: 14px var(--horf-font, sans-serif); }
+  button { min-height: 40px; padding: 8px 13px; border: 1px solid var(--horf-gold, #d8a34a); border-radius: 9px; background: var(--horf-gold, #d8a34a); color: #241a0f; font-weight: 800; cursor: pointer; }
   button:disabled { opacity: .55; cursor: not-allowed; }
-  button.secondary { border-color: var(--horf-line, #d6ded8); background: #fff; color: var(--horf-ink, #142526); }
-  button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid var(--horf-teal, #087e7a); outline-offset: 2px; }
-  .status { margin: 15px 0; padding: 13px 15px; border: 1px solid #a4cab5; border-radius: 11px; background: #eef8ef; }
-  .status.error { border-color: #e3a99b; background: #fff1ed; }
+  button.secondary { border-color: var(--horf-line, #3d5148); background: var(--horf-field, #24332d); color: var(--horf-ink, #f4ead6); }
+  button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid var(--horf-teal, #71b7a0); outline-offset: 2px; }
+  .status { margin: 15px 0; padding: 13px 15px; border: 1px solid #477663; border-radius: 11px; background: #1d3932; }
+  .status.error { border-color: #8b5c50; background: #3b2723; }
   .list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin: 20px 0 0; padding: 0; list-style: none; }
-  .member { min-width: 0; padding: 16px; border: 1px solid var(--horf-line, #d6ded8); border-radius: 16px; background: #fff; }
+  .member { min-width: 0; padding: 16px; border: 1px solid var(--horf-line, #3d5148); border-radius: 16px; background: var(--horf-surface, #1b2723); }
   .member-head { display: flex; align-items: start; justify-content: space-between; gap: 10px; }
-  .member-name { color: var(--horf-ink, #142526); font: 700 23px/1.1 var(--horf-display, Georgia, serif); text-decoration: none; overflow-wrap: anywhere; }
-  .member-name:hover { color: var(--horf-teal, #087e7a); text-decoration: underline; }
-  .member small { display: block; margin-top: 5px; color: var(--horf-muted, #50625e); font-size: 11px; overflow-wrap: anywhere; }
+  .member-name { color: var(--horf-ink, #f4ead6); font: 700 23px/1.1 var(--horf-display, Georgia, serif); text-decoration: none; overflow-wrap: anywhere; }
+  .member-name:hover { color: var(--horf-teal, #71b7a0); text-decoration: underline; }
+  .member small { display: block; margin-top: 5px; color: var(--horf-muted, #b7b5a7); font-size: 11px; overflow-wrap: anywhere; }
   .member-head button { flex: none; min-height: 32px; padding: 5px 8px; font-size: 11px; }
   @container (max-width: 760px) { .list { grid-template-columns: 1fr; } .add-form { grid-template-columns: 1fr; } }
 `;
@@ -93,7 +93,7 @@ export function HorfPosse({ address, connectWallet, isConnecting }: {
   }
 
   return <Shell data-horf-posse aria-label="Your horse trading posse">
-    <div className="intro"><span className="eyebrow">Your regular riders 🐎</span><h2>The posse</h2><p>Keep your trading partners close. Browse the horses they have up for trade, open a rider’s stable, or pick them when sending HORSE and gifts.</p></div>
+    <div className="intro"><span className="eyebrow">Your regular riders 🐎</span><h2>The posse</h2><p>Find their horses, visit their stables, or send HORSE and gifts.</p></div>
     {!address && <div className="status" role="status">Connect and verify your Tezos wallet to see and manage your posse. <button type="button" onClick={() => void connectWallet()} disabled={isConnecting}>{isConnecting ? "Connecting…" : "Connect wallet"}</button></div>}
     <form className="add-form" onSubmit={(event) => void addPartner(event)}>
       <div><label htmlFor="horf-posse-address">Trader wallet address</label><input id="horf-posse-address" data-horf-posse-address value={partnerAddress} onChange={(event) => setPartnerAddress(event.target.value)} placeholder="tz1…" disabled={!address || busy} /></div>

@@ -50,16 +50,16 @@ const Shell = styled.section`
   border: 0;
   background: transparent;
   box-shadow: none;
-  color: var(--horf-ink, #142526);
+  color: var(--horf-ink, #f4ead6);
   font-family: var(--horf-font, "Avenir Next", "Segoe UI", sans-serif);
   min-width: 0;
   h2 { margin: 8px 0 10px; font: 700 clamp(30px, 4cqw, 48px)/1.06 var(--horf-display, Georgia, serif); letter-spacing: -.025em; text-wrap: balance; }
   h3 { margin: 0 0 9px; font-size: 21px; letter-spacing: -.02em; }
-  p { margin: 0 0 12px; color: var(--horf-muted, #50625e); font-size: 14px; line-height: 1.55; }
+  p { margin: 0 0 12px; color: var(--horf-muted, #b7b5a7); font-size: 14px; line-height: 1.55; }
   label { display: block; margin-bottom: 6px; font: 700 13px/1.3 var(--horf-font, "Avenir Next", sans-serif); }
-  input, select { width: 100%; min-width: 0; min-height: 42px; padding: 9px 11px; border: 1px solid #aebfba; border-radius: 9px; background: #fff; color: var(--horf-ink, #142526); font: 14px var(--horf-font, "Avenir Next", sans-serif); }
-  input[type="checkbox"] { width: auto; min-height: 0; margin: 0 7px 0 0; accent-color: var(--horf-teal, #087e7a); }
-  button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible { outline: 3px solid var(--horf-teal, #087e7a); outline-offset: 2px; }
+  input, select { width: 100%; min-width: 0; min-height: 42px; padding: 9px 11px; border: 1px solid var(--horf-line, #3d5148); border-radius: 9px; background: var(--horf-field, #24332d); color: var(--horf-ink, #f4ead6); font: 14px var(--horf-font, "Avenir Next", sans-serif); }
+  input[type="checkbox"] { width: auto; min-height: 0; margin: 0 7px 0 0; accent-color: var(--horf-teal, #71b7a0); }
+  button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible { outline: 3px solid var(--horf-teal, #71b7a0); outline-offset: 2px; }
 `;
 
 const Header = styled.div`
@@ -68,7 +68,7 @@ const Header = styled.div`
   justify-content: space-between;
   gap: 14px 20px;
   align-items: start;
-  small { color: var(--horf-teal, #087e7a); font: 800 12px/1.2 var(--horf-font, "Avenir Next", sans-serif); letter-spacing: .12em; text-transform: uppercase; }
+  small { color: var(--horf-teal, #71b7a0); font: 800 12px/1.2 var(--horf-font, "Avenir Next", sans-serif); letter-spacing: .12em; text-transform: uppercase; }
   > div { max-width: 65ch; }
 `;
 
@@ -83,22 +83,22 @@ const Columns = styled.div`
 const Panel = styled.div`
   min-width: 0;
   padding: 20px;
-  border: 1px solid var(--horf-line, #d6ded8);
+  border: 1px solid var(--horf-line, #3d5148);
   border-radius: 14px;
-  background: var(--horf-surface, #fff);
+  background: var(--horf-surface, #1b2723);
 `;
 
 const Action = styled.button<{ $primary?: boolean }>`
   min-height: 40px;
   padding: 9px 15px;
-  border: 1px solid ${(p) => p.$primary ? "var(--horf-deep, #132326)" : "var(--horf-line, #d6ded8)"};
+  border: 1px solid ${(p) => p.$primary ? "var(--horf-gold, #d8a34a)" : "var(--horf-line, #3d5148)"};
   border-radius: 999px;
-  background: ${(p) => p.$primary ? "var(--horf-deep, #132326)" : "var(--horf-surface, #fff)"};
-  color: ${(p) => p.$primary ? "#fff" : "var(--horf-ink, #142526)"};
+  background: ${(p) => p.$primary ? "var(--horf-gold, #d8a34a)" : "var(--horf-surface, #1b2723)"};
+  color: ${(p) => p.$primary ? "#241a0f" : "var(--horf-ink, #f4ead6)"};
   cursor: pointer;
   font: 750 13px/1.2 var(--horf-font, "Avenir Next", sans-serif);
   transition: background 160ms ease, transform 160ms ease;
-  &:hover:not(:disabled) { transform: translateY(-1px); background: ${(p) => p.$primary ? "#294448" : "#edf4f0"}; }
+  &:hover:not(:disabled) { transform: translateY(-1px); background: ${(p) => p.$primary ? "#edbb61" : "var(--horf-field, #24332d)"}; }
   &:disabled { cursor: not-allowed; opacity: 0.55; }
   @media (prefers-reduced-motion: reduce) { transition: none; &:hover:not(:disabled) { transform: none; } }
 `;
@@ -106,9 +106,9 @@ const Action = styled.button<{ $primary?: boolean }>`
 const Note = styled.div<{ $error?: boolean }>`
   margin: 11px 0;
   padding: 12px 14px;
-  border: 1px solid ${(p) => p.$error ? "#e7a495" : "#9dd0c5"};
+  border: 1px solid ${(p) => p.$error ? "#8b5c50" : "#477663"};
   border-radius: 12px;
-  background: ${(p) => p.$error ? "#fff1ed" : "#eaf7f3"};
+  background: ${(p) => p.$error ? "#3b2723" : "#1d3932"};
   font: 600 13px/1.5 var(--horf-font, "Avenir Next", sans-serif);
   overflow-wrap: anywhere;
 `;
@@ -116,18 +116,18 @@ const Note = styled.div<{ $error?: boolean }>`
 const CommunityAwards = styled.section`
   margin-top: 22px;
   padding: clamp(17px, 2.5cqw, 24px);
-  border: 1px solid #acd5c6;
+  border: 1px solid #477663;
   border-radius: 16px;
-  background: #eaf7f3;
-  h3 { margin: 0 0 7px; color: #173d36; font: 750 clamp(22px, 2.4cqw, 30px)/1.15 var(--horf-display, Georgia, serif); }
+  background: #1d3932;
+  h3 { margin: 0 0 7px; color: var(--horf-ink, #f4ead6); font: 750 clamp(22px, 2.4cqw, 30px)/1.15 var(--horf-display, Georgia, serif); }
   > p { max-width: 78ch; margin-bottom: 15px; }
   .awards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-  .award { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; padding: 16px; border: 1px solid #c9dfd3; border-radius: 12px; background: #fff; }
-  .award small { color: #16796b; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .07em; }
-  .award h4 { margin: 5px 0 7px; color: #1d3e37; font: 750 21px/1.15 var(--horf-display, Georgia, serif); }
+  .award { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; padding: 16px; border: 1px solid var(--horf-line, #3d5148); border-radius: 12px; background: var(--horf-surface, #1b2723); }
+  .award small { color: var(--horf-teal, #71b7a0); font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .07em; }
+  .award h4 { margin: 5px 0 7px; color: var(--horf-ink, #f4ead6); font: 750 21px/1.15 var(--horf-display, Georgia, serif); }
   .award p { flex: 1; margin-bottom: 14px; }
   .award a { display: inline-flex; align-items: center; text-decoration: none; }
-  .nominee-note { margin: 12px 0 0; color: #315a50; font-size: 12px; overflow-wrap: anywhere; }
+  .nominee-note { margin: 12px 0 0; color: var(--horf-muted, #b7b5a7); font-size: 12px; overflow-wrap: anywhere; }
   @container (max-width: 680px) { .awards { grid-template-columns: 1fr; } }
 `;
 
@@ -143,9 +143,9 @@ const ReceiptStrip = styled.div`
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
   margin: 10px 0;
-  > div { min-width: 0; padding: 13px 15px; background: var(--horf-surface, #fff); border: 1px solid var(--horf-line, #d6ded8); border-radius: 12px; }
+  > div { min-width: 0; padding: 13px 15px; background: var(--horf-surface, #1b2723); border: 1px solid var(--horf-line, #3d5148); border-radius: 12px; }
   strong { display: block; font: 700 22px/1.1 var(--horf-display, Georgia, serif); overflow-wrap: anywhere; }
-  span { display: block; margin-top: 5px; color: var(--horf-muted, #50625e); font: 750 11px/1.25 var(--horf-font, "Avenir Next", sans-serif); text-transform: uppercase; letter-spacing: .08em; }
+  span { display: block; margin-top: 5px; color: var(--horf-muted, #b7b5a7); font: 750 11px/1.25 var(--horf-font, "Avenir Next", sans-serif); text-transform: uppercase; letter-spacing: .08em; }
   @container (max-width: 470px) { grid-template-columns: 1fr; }
 `;
 
@@ -156,8 +156,8 @@ const SharedAmount = styled.div`
   align-items: end;
   padding: 12px;
   margin: 8px 0 12px;
-  background: #f0f5f2;
-  border: 1px solid var(--horf-line, #d6ded8);
+  background: var(--horf-field, #24332d);
+  border: 1px solid var(--horf-line, #3d5148);
   border-radius: 11px;
   label { margin: 0; }
   @container (max-width: 470px) { grid-template-columns: 1fr; }
@@ -366,8 +366,8 @@ export function HorfHorseSend({
         <div>
           <small>Pass the reins · Tezos Mainnet</small>
           <h2>Send $HORSE to your posse</h2>
-          <p>Send to as many as 50 trader wallets in one FA2 transaction. Add recipients one by one, pick them from your posse, or upload a comma-separated CSV.</p>
-          <p>Send a qualifying art horse and earn 10 HORSE. Receiving a horse earns no HORSE; sending one back as your own outbound trade earns 10. A horse claimed from a Stable rewards the listing owner who sent it. This is a little nudge to return a ride. Vault claims are Tezos wallet transactions, and claimants pay XTZ gas.</p>
+          <p>Send HORSE to up to 50 wallets at once. Add riders, pick your posse, or upload a CSV.</p>
+          <p>Send a qualifying horse to earn 10 HORSE. Return rides earn another 10. Stable claims reward the listing owner. Claimants pay Tezos gas.</p>
         </div>
         <Action type="button" onClick={() => { void configQuery.refetch(); void activityQuery.refetch(); void rewardsQuery.refetch(); }} disabled={configQuery.isFetching || activityQuery.isFetching || rewardsQuery.isFetching}>Refresh $HORSE</Action>
       </Header>
@@ -440,7 +440,7 @@ export function HorfHorseSend({
               <input id="horf-horse-csv-amount" inputMode="decimal" value={csvAmount} onChange={(event) => setCsvAmount(event.target.value)} disabled={busy} /></>}
               <label htmlFor="horf-horse-csv" style={{ marginTop: 9 }}>Upload comma-separated recipients (.csv)</label>
               <input id="horf-horse-csv" data-horf-horse-csv type="file" accept=".csv,text/csv,text/plain" onChange={(event) => void importCsv(event)} disabled={busy} />
-              <p>CSV may contain comma-separated addresses or address,amount rows. A header is optional. Explicit CSV amounts switch to individual amounts when they differ from the shared amount. Duplicate wallets are rejected.</p>
+              <p>CSV: comma-separated addresses or address,amount rows. Optional header; no duplicate wallets.</p>
             </div>
             <Action data-horf-horse-send type="submit" $primary disabled={!address || !ready || busy || claimStage !== null}>Send $HORSE</Action>
             <p>Your wallet signs one Mainnet transaction. Tezos gas applies. The final token balance is checked on-chain.</p>
@@ -452,7 +452,7 @@ export function HorfHorseSend({
       {success && <Note role="status">$HORSE confirmed for {success.count} {success.count === 1 ? "trader" : "traders"}. <a href={`https://tzkt.io/${encodeURIComponent(success.hash)}`} target="_blank" rel="noopener noreferrer">View transaction</a>.</Note>}
       <CommunityAwards data-horf-crp-awards aria-label="Nominate horse community helpers for Tezos CRP">
         <h3>Tip your hat to a good rider 🤠🐎</h3>
-        <p>Some folks keep the horse scene galloping without making a trade. Send them $HORSE or saddle up a nomination in the existing Tezos CRP app. Helping Hand and Influencer are Tezos CRP categories, separate from the HAHA community awards.</p>
+        <p>Reward a helpful rider with $HORSE or a Tezos CRP nomination. Helping Hand and Influencer are separate from HAHA awards.</p>
         <div className="awards">
           <div className="award"><small>For the helpful hands</small><h4>Helping Hand Award 🤝</h4><p>Know a rider who guides newcomers, shares know-how, or helps the herd find its feet?</p>
             {signedIn
