@@ -10,6 +10,7 @@ import type {
   OperatorSignerEnvelope,
   OperatorSignerOriginationPayload,
 } from "../../../shared/operator-signer";
+import { operatorSignerWtfIapSponsorPayloadSchema } from "../../../shared/operator-signer";
 import { appendAuditLine } from "./audit";
 import { loadEnv, type SignerEnv } from "./env";
 import { PlatformWalletKeyring } from "./keyring";
@@ -232,6 +233,9 @@ async function dispatch(
             signedBy: selected?.wallet.address,
             keyringConfigured: keyring.isConfigured(),
             wallets,
+            capabilities: operatorSignerWtfIapSponsorPayloadSchema.options.map(
+              (option) => `wtfiap_sponsor_escrow.${option.shape.entrypoint.value}`,
+            ),
           })
         );
       }
