@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "network": "shadownet",
+  "chainId": "NetXsqzbfFenSTS",
+  "status": "applied",
+  "escrowContract": "KT1K6YeQ52SsWSf6sA9VWwMoQ99iZCHV9LEf",
+  "operationHash": "opT5nkFFSDfhYu2uZBTwecJVvk5FGg2LzaZhSdk8Kz86BNn6WVu",
+  "inclusion": {
+    "level": 5767540,
+    "blockHash": "BLLzcGUpid2bQu7EoNuaXWxV9qSwPNUPzAr3BbHPNNs8rF4mrWB"
+  },
+  "finalized": {
+    "level": 5767540,
+    "blockHash": "BLLzcGUpid2bQu7EoNuaXWxV9qSwPNUPzAr3BbHPNNs8rF4mrWB"
+  },
+  "canonicalTypedScriptSha256": "26ff7d8db669e2eeefcdeacb8bd38d113ff402a2afb3aed819ace25053161c2f",
+  "artifactSha256": "45116ef39837aebaf08eabb4fab504c32839c7beb8d501420fd15faf746230e0",
+  "source": "tz1RWvytxhPa5a46c5mbv4omzrU6rMJG8wTZ",
+  "treasuryAddress": "tz1cVRngZw42KZ42VQF2ZCy2CJSPNG3H7Cgt",
+  "houseFeeMutez": "500000",
+  "entryQuantumMutez": "10000",
+  "payoutMode": "prepaid-credit-or-direct",
+  "proofJournal": "proof/shadownet-2026-11-03/origination.json"
+}

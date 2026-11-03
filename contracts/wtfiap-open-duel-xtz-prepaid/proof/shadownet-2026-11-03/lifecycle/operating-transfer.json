@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "network": "shadownet",
+  "chainId": "NetXsqzbfFenSTS",
+  "source": "tz1QBFTdinTExQ2YU6HhLihXFMhrqM4BS3cM",
+  "destination": "tz1RWvytxhPa5a46c5mbv4omzrU6rMJG8wTZ",
+  "amountMutez": "100000",
+  "status": "applied",
+  "estimate": {
+    "suggestedFeeMutez": "492",
+    "burnFeeMutez": "0",
+    "sourceBalanceMutez": "1073707",
+    "hostBalanceMutez": "524970",
+    "requiredMutez": "100492"
+  },
+  "preparedLevel": 5767586,
+  "operationHash": "ontJGA9yVuLZztSKSCSxabiD2bndhQdRHchcZWxfqSCaTRBfdez",
+  "inclusion": {
+    "blockHash": "BKxpbC7oZtaKQ59vX1rVpkzaxUCyaNnT3roRfbtCSKE4cHynXGt",
+    "level": 5767588
+  }
+}

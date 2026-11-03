@@ -44,12 +44,35 @@ test("a failed primary entrypoints read prepares the same claim on fallback and 
 });
 
 test("a chain mismatch cannot reach the wallet submission", async () => {
-  let sends = 0;
+  let sends = 0, checkpointWrites = 0;
   await assert.rejects(sendFundingCallsWithFallback([claim], "tz1Winner", "mainnet", chainId, {
     fallback: (async (task: any) => task({ rpc: { getChainId: async () => "NetXsqzbfFenSTS" }, wallet: { batch() { sends += 1; } } }, { rpcUrl: "fallback" })) as any,
     async activate() { throw new Error("Wallet activation must not run"); },
     async ready() {},
     network: () => "mainnet",
-  }), /wallet network changed/i);
+  }, () => { checkpointWrites++; }), /wallet network changed/i);
   assert.equal(sends, 0);
+  assert.equal(checkpointWrites, 0);
+});
+
+test("a credit checkpoint is written only after preflight and before the one wallet submit", async () => {
+  const events: string[] = [];
+  const result = await sendFundingCallsWithFallback([claim], "tz1Winner", "mainnet", chainId, {
+    fallback: (async (task: any) => task({
+      rpc: { getChainId: async () => chainId },
+      wallet: {
+        batch() { return {
+          withTransfer() { events.push("transfer"); },
+          async send() { events.push("submit"); return { opHash: "ooCredit" }; },
+        }; },
+        async at() { return { methodsObject: { claim: () => ({ toTransferParams: () => ({}) }) } }; },
+      },
+    }, { rpcUrl: "primary" })) as any,
+    async activate() { events.push("activate"); return { address: "tz1Winner", providerName: "octez.connect" }; },
+    async ready() { events.push("ready"); },
+    network: () => "mainnet",
+  }, () => { events.push("checkpoint"); });
+  assert.equal(result.opHash, "ooCredit");
+  assert.ok(events.indexOf("checkpoint") > events.indexOf("activate"));
+  assert.ok(events.indexOf("checkpoint") < events.indexOf("submit"));
 });

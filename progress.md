@@ -5,3 +5,9 @@ Original prompt: Restore recognition of signed-in WTF players in the coLILseum l
 - Create and join name fields are prefilled with the signed-in WTF identity; the server remains authoritative for the seated name.
 - Updated the runtime release manifest and compatibility pin because the session recovery route is part of the authoritative room server. Existing pinned matches remain supported because recovery does not alter game state or match rules.
 - Verification: authority/identity and compatibility tests pass; pinned duel parity and Cherub replay tests pass; Playwright verifies username prefill, Return to room on the second browser, and recovery from the first browser after its token has been rotated. Inventory coverage and bounty-board consistency checks pass.
+
+2026-11-03 coLILseum escrow completion pass
+
+- Added a separate prepaid-credit open-duel XTZ escrow and verified its Shadownet lifecycle: top-up, pre-start cancellation, prepaid seat, automatic winner payout, and technical-void credit refund. Existing room contracts and routes remain pinned.
+- Reworked funded-room actions into the live room surface, with chain-verified operation recovery. Added sponsor technical-void handling and fixed committed-seed random prize allocation.
+- Local typecheck, production build, focused escrow suites, and funding browser checks pass. Full interaction inventory is running. Mainnet origination, custody proof, activation, and public verification are pending in this pass.

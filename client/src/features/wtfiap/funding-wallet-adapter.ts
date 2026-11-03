@@ -11,17 +11,20 @@ type WalletRpcDependencies = {
   network: typeof getNetwork;
 };
 
+const defaultDependencies: WalletRpcDependencies = {
+  fallback: withTezosRpcFallback,
+  activate: ensureWalletProviderForSend,
+  ready: assertNetworkReadyForSend,
+  network: getNetwork,
+};
+
 export async function sendFundingCallsWithFallback(
   calls: Parameters<FundingWalletGateway["send"]>[0],
   expectedWallet: string,
   network: string,
   chainId: string,
-  deps: WalletRpcDependencies = {
-    fallback: withTezosRpcFallback,
-    activate: ensureWalletProviderForSend,
-    ready: assertNetworkReadyForSend,
-    network: getNetwork,
-  },
+  deps: WalletRpcDependencies = defaultDependencies,
+  beforeSubmit?: () => void,
 ) {
   await deps.ready(expectedWallet, { network, useFallback: true });
   const prepared = await deps.fallback(async (tezos, { rpcUrl }) => {
@@ -45,8 +48,18 @@ export async function sendFundingCallsWithFallback(
   if (deps.network() !== network || await prepared.tezos.rpc.getChainId() !== chainId) {
     throw new Error("The wallet network changed while preparing the tournament action.");
   }
+  // This is the last preflight boundary. A caller may write a durable
+  // checkpoint here; failures above cannot have submitted a wallet operation.
+  beforeSubmit?.();
   // Never retry the wallet submission: only RPC reads and batch preparation can fail over.
   return prepared.batch.send();
+}
+
+export function sendFundingCallsWithCheckpoint(
+  calls: Parameters<FundingWalletGateway["send"]>[0], expectedWallet: string,
+  network: string, chainId: string, beforeSubmit: () => void,
+) {
+  return sendFundingCallsWithFallback(calls, expectedWallet, network, chainId, defaultDependencies, beforeSubmit);
 }
 
 export const fundingWalletGateway: FundingWalletGateway = {

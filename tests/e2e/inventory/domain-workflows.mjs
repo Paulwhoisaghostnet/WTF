@@ -4,7 +4,7 @@ export const DOMAIN_WORKFLOWS = [
     domain: "WTFIAP Autobattler",
     routes: ["/colilseum", "/colilseum/:roomCode", "/wtfiap"],
     eventHandles: ["desktop.icon.opened", "desktop.window.opened", "desktop.start_menu.opened"],
-    behaviorAssertionIds: ["wtfiap.launch-practice-and-room-recovery", "wtfiap.item-economy-and-equipment", "wtfiap.cherub-component-encounter", "wtfiap.shop-hold-and-round-choices", "wtfiap.spectator-and-private-chat", "wtfiap.escrow-admission-and-recovery", "wtfiap.open-seat-xtz-duel", "wtfiap.sponsored-prizes", "wtfiap.turn-alerts-and-invites"],
+    behaviorAssertionIds: ["wtfiap.launch-practice-and-room-recovery", "wtfiap.item-economy-and-equipment", "wtfiap.cherub-component-encounter", "wtfiap.shop-hold-and-round-choices", "wtfiap.spectator-and-private-chat", "wtfiap.escrow-admission-and-recovery", "wtfiap.open-seat-xtz-duel", "wtfiap.prepaid-credit-duel", "wtfiap.sponsored-prizes", "wtfiap.turn-alerts-and-invites"],
     apiProbes: [
       { method: "GET", path: "/api/wtfiap/party/health" },
       { method: "GET", path: "/api/wtfiap/party/rooms" },
@@ -12,6 +12,9 @@ export const DOMAIN_WORKFLOWS = [
       { method: "GET", path: "/api/wtfiap/funding/health" },
       { method: "GET", path: "/api/wtfiap/sponsor-funding/health" },
       { method: "GET", path: "/api/wtfiap/open-duel/rooms/:roomCode" },
+      { method: "GET", path: "/api/wtfiap/open-duel/prepaid-credit", expectedStatuses: [400, 401] },
+      { method: "POST", path: "/api/wtfiap/open-duel/prepaid-credit/quote", body: {}, expectedStatuses: [400, 401] },
+      { method: "GET", path: "/api/wtfiap/open-duel/rooms/:roomCode/operations/:operationHash", expectedStatuses: [400, 401, 404] },
     ],
   },
   {
