@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import styled from "styled-components";
 import { Button, GroupBox, Hourglass, TextField } from "react95";
@@ -6,7 +6,9 @@ import { AppWindow } from "../components/layout/AppWindow";
 import { api } from "../lib/api";
 import { logClientSystemEvent } from "../lib/system-log";
 import { usePresentationShell } from "../lib/presentation-shell";
+import { WindowPathContext } from "../lib/window-context";
 import type { CrpCategory } from "@shared/crp-categories";
+import { findCrpCategory } from "@shared/crp-categories";
 
 type NomineeBundle = {
   id: string;
@@ -193,12 +195,25 @@ async function openTrackedShare(input: {
   }
 }
 
+/** Horf links preselect an official CRP award and resolve the suggested wallet. */
+function readNominationPrefill(path: string): { categoryId: string; nominee: string } {
+  const params = new URLSearchParams(path.split("?")[1]?.split("#")[0] || "");
+  const categoryId = findCrpCategory(params.get("category") || "")?.id || "";
+  const requestedNominee = (params.get("nominee") || "").trim();
+  const nominee = requestedNominee.length <= 320 ? requestedNominee : "";
+  return { categoryId, nominee };
+}
+
 export function CrpNominate() {
   const presentation = usePresentationShell();
   const queryClient = useQueryClient();
-  const [query, setQuery] = useState("");
+  const windowPath = useContext(WindowPathContext);
+  const prefillPath = windowPath || (typeof window !== "undefined" ? `${window.location.pathname}${window.location.search}` : "");
+  const prefill = useMemo(() => readNominationPrefill(prefillPath), [prefillPath]);
+  const appliedPrefill = useRef<string | null>(null);
+  const [query, setQuery] = useState(prefill.nominee);
   const [selectedBundleId, setSelectedBundleId] = useState<string | null>(null);
-  const [categoryId, setCategoryId] = useState("");
+  const [categoryId, setCategoryId] = useState(prefill.categoryId);
   const [summary, setSummary] = useState("");
   const [linksText, setLinksText] = useState("");
   const [anonymous, setAnonymous] = useState(false);
@@ -222,7 +237,7 @@ export function CrpNominate() {
   });
 
   const resolveMutation = useMutation({
-    mutationFn: () => api.post<ResolveResponse>("/api/crp-nominations/resolve", { query }),
+    mutationFn: (lookup: string) => api.post<ResolveResponse>("/api/crp-nominations/resolve", { query: lookup }),
     onSuccess: (data) => {
       const bundles = Array.isArray(data.bundles) ? data.bundles : [];
       setSelectedBundleId(bundles[0]?.id ?? null);
@@ -232,6 +247,15 @@ export function CrpNominate() {
       });
     },
   });
+
+  useEffect(() => {
+    if (appliedPrefill.current === prefillPath) return;
+    appliedPrefill.current = prefillPath;
+    setCategoryId(prefill.categoryId);
+    setQuery(prefill.nominee);
+    setSelectedBundleId(null);
+    if (prefill.nominee) resolveMutation.mutate(prefill.nominee);
+  }, [prefill.categoryId, prefill.nominee, prefillPath, resolveMutation.mutate]);
 
   const mineQuery = useQuery({
     queryKey: ["crp-nominations-mine"],
@@ -340,7 +364,7 @@ export function CrpNominate() {
               <Button
                 data-crp-region="resolve-button"
                 disabled={!query.trim() || resolveMutation.isPending}
-                onClick={() => resolveMutation.mutate()}
+                onClick={() => resolveMutation.mutate(query)}
               >
                 Find linked identity
               </Button>

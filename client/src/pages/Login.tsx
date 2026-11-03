@@ -47,10 +47,12 @@ function withWalletLoginTimeout<T>(task: Promise<T>): Promise<T> {
 function safeGammaAuthReturn(rawSearch: string): string | null {
   const params = new URLSearchParams(rawSearch);
   const raw = params.get("return") || "";
-  if (!raw.startsWith("/") || raw.startsWith("//")) return null;
-  const path = raw.split(/[?#]/)[0] || "/";
-  if (path.startsWith("/api/") || path === "/login" || path === "/register") return null;
-  return raw;
+  if (!raw.startsWith("/") || raw.startsWith("//") || raw.includes("\\") || /[\u0000-\u001f\u007f]/.test(raw)) return null;
+  const destination = new URL(raw, window.location.origin);
+  if (destination.origin !== window.location.origin) return null;
+  const path = destination.pathname;
+  if (path === "/api" || path.startsWith("/api/") || path === "/login" || path === "/register") return null;
+  return `${destination.pathname}${destination.search}${destination.hash}`;
 }
 
 const CenterWrapper = styled.div`
@@ -151,24 +153,25 @@ export function Login() {
   const rawSearch = useSearch();
   const isGamma = presentation.host === "gamma";
   const gammaReturnRoute = isGamma ? safeGammaAuthReturn(rawSearch) : null;
+  const standardReturnRoute = isGamma ? null : safeGammaAuthReturn(rawSearch);
   const postAuthRoute =
     isGamma
       ? presentationRouteHref(gammaReturnRoute ?? GAMMA_DEFAULT_POST_AUTH_ROUTE, "gamma")
-      : "/";
+      : standardReturnRoute ?? "/";
   const registerRoute =
     isGamma
       ? presentationRouteHref(
           `/register${gammaReturnRoute ? `?return=${encodeURIComponent(gammaReturnRoute)}` : ""}`,
           "gamma"
         )
-      : "/register";
+      : `/register${standardReturnRoute ? `?return=${encodeURIComponent(standardReturnRoute)}` : ""}`;
   const destinationLabel = isGamma
     ? gammaReturnRoute === GAMMA_DEFAULT_POST_AUTH_ROUTE
       ? "Gamma dashboard"
       : gammaReturnRoute
       ? "the Gamma route you opened"
       : "Gamma dashboard"
-    : "the desktop";
+    : standardReturnRoute ? "the page you opened" : "the desktop";
 
   if (user) return <Redirect to={postAuthRoute} />;
 
@@ -205,7 +208,8 @@ export function Login() {
           wallet: result.walletAddress || "",
           pk: result.publicKey || "",
         });
-        if (gammaReturnRoute) params.set("return", gammaReturnRoute);
+        const walletReturnRoute = gammaReturnRoute || standardReturnRoute;
+        if (walletReturnRoute) params.set("return", walletReturnRoute);
         const walletRegisterRoute =
           isGamma
             ? presentationRouteHref(`/register?${params.toString()}`, "gamma")
