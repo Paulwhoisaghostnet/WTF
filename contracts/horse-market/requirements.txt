@@ -1,0 +1,1 @@
+smartpy-tezos==0.24.1

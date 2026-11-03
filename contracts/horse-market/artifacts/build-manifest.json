@@ -1,0 +1,12 @@
+{
+  "chain": "tezos-l1",
+  "network": "mainnet",
+  "chainId": "NetXdQprcVkpaWU",
+  "protocol": "tallinn",
+  "smartpy": "0.24.1",
+  "sourceSha256": "2fa4682af8a115927172920c472d7ffa20d731ec842252ae645e2f47b099fb73",
+  "contractJsonSha256": "f950dc8f3ec75422506a5c98284c3eb163c581339ef1595b1081e696ff6bb236",
+  "contractTzSha256": "2c0ae77aa7a77580772c625d2d1edeb922d839073bda791cfb31dd304ac20409",
+  "storageFixtureSha256": "55e300e0002fc173dae077d34b5248f77012c85bb9f479c41e7ffc2fa9299d04",
+  "storage": "Fixture includes test-account admin and oracle; replace and verify before origination."
+}
