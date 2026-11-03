@@ -95,3 +95,23 @@ Run `node contracts/horse-market/build.mjs` after installing
 origination size, and writes hashed artifacts under `artifacts/`. The generated
 storage fixture has test-account admin and oracle identities and must never be
 originated directly. No origination or HORSE funding is performed by the build.
+
+## Mainnet origination handoff
+
+`plan/origination.json` is a non-signing plan pinned to Tezos Mainnet, wtf.tez,
+the existing Stables oracle public key, HORSE FA2 token ID 0, and the compiled
+source and artifact hashes. Reproduce it with:
+
+```sh
+TEZOS_NETWORK=mainnet node contracts/horse-market/prepare-origination.mjs > contracts/horse-market/plan/origination.json
+```
+
+If `HORF_STABLES_ORACLE_SECRET_KEY` is supplied, the preparation script also
+derives its public key locally and rejects a mismatch without printing the
+secret. The script checks the configured Mainnet RPC chain ID. The browser
+handoff is `contracts/horse-market/originate.html` on the local Vite server;
+its `originate.ts` verifies the reviewed plan, source, Michelson, storage,
+Mainnet chain, and connected wtf.tez address before enabling the Kukai
+signature request. The page never signs automatically. After confirmation,
+verify the originated contract on TzKT before setting
+`HORF_HORSE_MARKET_CONTRACT_ADDRESS` or exposing paid listings.
