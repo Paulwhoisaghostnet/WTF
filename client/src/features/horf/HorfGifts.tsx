@@ -48,9 +48,9 @@ const Header = styled.div`
 
 const Reminder = styled.div`
   margin: 14px 0;
-  padding: 12px 14px;
+  padding: 12px 62px 12px 14px;
   border: 3px double #6b3430;
-  background: #fff0d2;
+  background: url('/horf-art/lasso.svg') right 12px center / 42px 42px no-repeat, #fff0d2;
   font: 700 14px/1.4 Georgia, serif;
   strong { font-size: 20px; }
 `;

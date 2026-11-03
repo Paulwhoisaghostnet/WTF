@@ -13716,3 +13716,23 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: The opening view spent substantial space on a misleading metaphor while burying the event name and sender-only HORSE reward.
 
 **Rule**: For a community event, show its real name and earning rule in the first-view artwork. Keep decorative panels compact, use the event's own imagery and voice, and make archive views distinct from current rewards.
+
+---
+
+## 2026-11-03 - Isolate parallel Playwright output directories
+
+**What happened**: A focused Horf browser run and the live puppet run shared Playwright's default `test-results` directory. One runner cleared trace artifacts while the other was still using them, causing `ENOENT` errors during otherwise unrelated UI checks.
+
+**Why it mattered**: The resulting failures did not identify an application defect and delayed verification of the Horf redesign.
+
+**Rule**: When independent Playwright commands run concurrently, give each command a distinct `--output` directory or run them sequentially. Treat missing trace files from a shared output directory as harness interference and rerun the affected spec in isolation.
+
+---
+
+## 2026-11-03 - Keep static asset directories clear of app routes
+
+**What happened**: New Horf artwork was placed under `public/horf/art`. Express static middleware then redirected `/horf` to `/horf/` because `public/horf` was a directory, and the normal Horf app route no longer opened.
+
+**Why it mattered**: The Open Range route still passed, but the main Horf entry failed for guests. Build and type checks would not catch the HTTP redirect.
+
+**Rule**: Put assets under a path that does not match an app route segment, such as `public/horf-art`, and run a browser or HTTP smoke check on the parent app route whenever adding a new public directory.

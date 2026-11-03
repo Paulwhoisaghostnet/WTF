@@ -1178,18 +1178,31 @@ test.describe("live E2E puppet orchestration", () => {
     let ownerGuest;
     let otherGuest;
     let offerId = null;
+    let openOfferId = null;
     try {
       ownerGuest = (await horfGuestWalletContext(playwright, baseURL, trader)).request;
       otherGuest = (await horfGuestWalletContext(playwright, baseURL, witness)).request;
       const tokenId = String(Date.now());
       const inserted = await pool.query(
-        `INSERT INTO horf_open_range_offers (owner_wallet_address, token_contract, token_id, amount)
-         VALUES ($1, $2, $3, $4) RETURNING id`,
+        `INSERT INTO horf_open_range_offers (owner_wallet_address, token_contract, token_id, amount, accepted_token_policy)
+         VALUES ($1, $2, $3, $4, 'marshal_only') RETURNING id`,
         [trader.walletAddress, "KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton", tokenId, "2"]
       );
       offerId = Number(inserted.rows[0].id);
+      const defaultInserted = await pool.query(
+        `INSERT INTO horf_open_range_offers (owner_wallet_address, token_contract, token_id, amount)
+         VALUES ($1, $2, $3, $4) RETURNING id`,
+        [trader.walletAddress, "KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton", String(BigInt(tokenId) + 1n), "1"]
+      );
+      openOfferId = Number(defaultInserted.rows[0].id);
       const publicOffers = await expectOkJson(await anonymous.get("/api/horf/open-range/offers"), "public Open Range offers");
-      expect(publicOffers.offers.some((offer) => offer.id === offerId && offer.ownerAddress === trader.walletAddress)).toBe(true);
+      expect(publicOffers.offers.some((offer) => offer.id === offerId && offer.ownerAddress === trader.walletAddress && offer.acceptedTokenPolicy === "marshal_only")).toBe(true);
+      expect(publicOffers.offers.some((offer) => offer.id === openOfferId && offer.acceptedTokenPolicy === "any_qualifying")).toBe(true);
+      const invalidPolicy = await anonymous.post("/api/horf/open-range/offers", {
+        data: { address: trader.walletAddress, tokenContract: "KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton", tokenId, amount: "1", acceptedTokenPolicy: "unrecognized" },
+        headers: await csrfHeaders(anonymous),
+      });
+      expect(invalidPolicy.status()).toBe(400);
       const wrongOwner = await otherGuest.delete(`/api/horf/open-range/offers/${offerId}`, {
         headers: await csrfHeaders(otherGuest),
       });
@@ -1208,13 +1221,16 @@ test.describe("live E2E puppet orchestration", () => {
         headers: await csrfHeaders(ownerGuest),
       });
       expect(removed.status()).toBe(204);
-      const stored = await pool.query("SELECT active, removed_at FROM horf_open_range_offers WHERE id = $1", [offerId]);
+      const stored = await pool.query("SELECT active, removed_at, accepted_token_policy FROM horf_open_range_offers WHERE id = $1", [offerId]);
       expect(stored.rows[0].active).toBe(false);
       expect(stored.rows[0].removed_at).not.toBeNull();
+      expect(stored.rows[0].accepted_token_policy).toBe("marshal_only");
       const after = await expectOkJson(await anonymous.get("/api/horf/open-range/offers"), "public Open Range offers after removal");
       expect(after.offers.some((offer) => offer.id === offerId)).toBe(false);
+      expect(after.offers.some((offer) => offer.id === openOfferId && offer.acceptedTokenPolicy === "any_qualifying")).toBe(true);
     } finally {
       if (offerId !== null) await pool.query("DELETE FROM horf_open_range_offers WHERE id = $1", [offerId]);
+      if (openOfferId !== null) await pool.query("DELETE FROM horf_open_range_offers WHERE id = $1", [openOfferId]);
       await pool.end();
       await anonymous.dispose();
       await ownerGuest?.dispose();

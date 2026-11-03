@@ -161,6 +161,7 @@ export const horfOpenRangeOffers = pgTable("horf_open_range_offers", {
   tokenContract: text("token_contract").notNull(),
   tokenId: text("token_id").notNull(),
   amount: text("amount").notNull(),
+  acceptedTokenPolicy: text("accepted_token_policy").notNull().default("any_qualifying"),
   active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
