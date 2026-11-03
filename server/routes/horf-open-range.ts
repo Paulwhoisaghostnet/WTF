@@ -16,7 +16,8 @@ function key(contract: string, tokenId: string) { return `${contract}/${tokenId}
 
 function offerDto(row: typeof horfOpenRangeOffers.$inferSelect) {
   return { id: row.id, ownerAddress: row.ownerWalletAddress, tokenContract: row.tokenContract,
-    tokenId: row.tokenId, amount: row.amount, createdAt: row.createdAt.toISOString(),
+    tokenId: row.tokenId, amount: row.amount, acceptedTokenPolicy: row.acceptedTokenPolicy,
+    createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString() };
 }
 
@@ -105,10 +106,14 @@ router.post("/api/horf/open-range/offers", requireHorfCsrf, async (req, res) => 
   const tokenContract = req.body?.tokenContract;
   const rawId = req.body?.tokenId;
   const rawAmount = req.body?.amount;
+  const acceptedTokenPolicy = req.body?.acceptedTokenPolicy ?? "any_qualifying";
   if (!isTezosWallet(address) || typeof tokenContract !== "string" || !CONTRACT_RE.test(tokenContract) ||
       typeof rawId !== "string" || !/^\d+$/.test(rawId) ||
       typeof rawAmount !== "string" || !/^\d+$/.test(rawAmount) || BigInt(rawAmount) <= 0n) {
     return res.status(400).json({ error: "Owner wallet, FA2 token, and positive edition amount are required" });
+  }
+  if (acceptedTokenPolicy !== "marshal_only" && acceptedTokenPolicy !== "any_qualifying") {
+    return res.status(400).json({ error: "Choose Marshal approved horses only or any qualifying horse" });
   }
   const tokenId = BigInt(rawId).toString();
   const amount = BigInt(rawAmount).toString();
@@ -122,10 +127,10 @@ router.post("/api/horf/open-range/offers", requireHorfCsrf, async (req, res) => 
       return res.status(422).json({ code: "HORF_INSUFFICIENT_EDITIONS", error: "This wallet holds fewer editions than the offer" });
     }
     const [row] = await db.insert(horfOpenRangeOffers).values({
-      ownerWalletAddress: address, tokenContract, tokenId, amount,
+      ownerWalletAddress: address, tokenContract, tokenId, amount, acceptedTokenPolicy,
     }).onConflictDoUpdate({
       target: [horfOpenRangeOffers.ownerWalletAddress, horfOpenRangeOffers.tokenContract, horfOpenRangeOffers.tokenId],
-      set: { amount, active: true, updatedAt: new Date(), removedAt: null },
+      set: { amount, acceptedTokenPolicy, active: true, updatedAt: new Date(), removedAt: null },
     }).returning();
     return res.json(offerDto(row));
   } catch (error) {

@@ -210,8 +210,8 @@ const WantedPoster = styled.aside`
   &::after { right: 10px; }
   .wanted { display: block; color: #902d31; font: 900 26px/1 Georgia, serif; text-transform: uppercase; }
   .traders { display: block; margin: 2px 0 3px; font: 800 11px/1.1 "Courier New", monospace; text-transform: uppercase; }
-  .horse-art { display: grid; place-items: center; height: 96px; margin: 4px 6px 5px; border-top: 2px solid #a84638; border-bottom: 2px solid #a84638; background: radial-gradient(ellipse at center, #ffe8b3 0 40%, transparent 72%); }
-  .horse-art img { display: block; height: 94px; width: 142px; max-width: 100%; object-fit: cover; object-position: center top; filter: sepia(.35) contrast(1.2) drop-shadow(2px 2px 0 #a34d3a); }
+  .horse-art { display: grid; place-items: center; height: 112px; margin: 4px 6px 5px; border-top: 2px solid #a84638; border-bottom: 2px solid #a84638; background: radial-gradient(ellipse at center, #ffe8b3 0 40%, transparent 72%); }
+  .horse-art img { display: block; height: 108px; width: 108px; max-width: 100%; object-fit: contain; filter: contrast(1.08) drop-shadow(2px 2px 0 #a34d3a); }
   h2 { margin: 0 0 5px; font: 900 20px/1.05 Georgia, serif; overflow-wrap: anywhere; }
   .reward { display: block; margin: 0 -12px 7px; padding: 6px 8px; background: #0b5b64; color: #fff6dd; box-shadow: inset 0 2px 0 #f6d27d, inset 0 -2px 0 #f6d27d; }
   .reward strong { display: block; font: 900 25px/1 Georgia, serif; }
@@ -259,18 +259,21 @@ const IntroActions = styled.div`
   gap: 8px;
   margin: 2px 0 0;
   font: 700 13px/1.2 "Courier New", monospace;
+  &::before { content: "PICK A TRAIL"; flex: 0 0 100%; min-height: 19px; padding-left: 23px; color: #ffd581; background: url('/horf-art/lasso.svg') left center / 18px 18px no-repeat; font: 700 11px/19px "Courier New", monospace; }
 `;
 
 const Action = styled.button<{ $primary?: boolean }>`
   appearance: none;
-  border: 2px solid ${(p) => p.$primary ? "#fbd67d" : "#a66049"};
-  background: ${(p) => p.$primary ? "#f8ce70" : "transparent"};
+  border: 2px solid ${(p) => p.$primary ? "#fbd67d" : "#d17b5b"};
+  border-radius: 999px;
+  background: ${(p) => p.$primary ? "#f8ce70" : "#652e32"};
   color: ${(p) => p.$primary ? "#3a2119" : "#fff4d5"};
   min-height: 38px;
-  padding: 7px 11px;
+  padding: 7px 14px;
   font: inherit;
   cursor: pointer;
-  &:hover:not(:disabled) { filter: brightness(1.12); }
+  &:hover:not(:disabled) { filter: brightness(1.12); transform: translateY(-2px); }
+  @media (prefers-reduced-motion: reduce) { &:hover:not(:disabled) { transform: none; } }
   &:disabled { opacity: 0.62; cursor: wait; }
 `;
 
@@ -780,7 +783,7 @@ export function Horf() {
           <WantedPoster data-horf-wanted-poster aria-label={`${seasonDisplayName} horse trader notice`}>
             <span className="wanted">Wanted</span>
             <span className="traders">Horse traders · all riders welcome</span>
-            <div className="horse-art"><img src="/creation-tools/pixalerce/stamps/packs/collage/animales/horse.webp" alt="" /></div>
+            <div className="horse-art"><img src="/horf-art/horse-portrait.webp" alt="" /></div>
             <h2>{seasonDisplayName}</h2>
             {selectedSeasonKey === CURRENT_SEASON_KEY ? <>
               <span className="reward"><strong>10 $HORSE</strong><span>per recognized horse trade/send</span></span>
@@ -791,9 +794,9 @@ export function Horf() {
             </>}
           </WantedPoster>
           <IntroActions>
-              <Action type="button" $primary onClick={findTraders}>Find horse traders</Action>
-              <Action data-horf-open-range-open type="button" onClick={() => windowManager.openPage(`/horf/open-range?season=${encodeURIComponent(selectedSeasonKey)}`)}>Browse the Open Range</Action>
-              <Action type="button" onClick={() => visitSection("horf-trader-status")}>Check trader standing</Action>
+              <Action type="button" $primary onClick={findTraders}><span aria-hidden="true">🐎 </span>Find horse traders</Action>
+              <Action data-horf-open-range-open type="button" style={{ backgroundImage: "url('/horf-art/lasso.svg')", backgroundPosition: "8px center", backgroundSize: 18, backgroundRepeat: "no-repeat", paddingLeft: 31 }} onClick={() => windowManager.openPage(`/horf/open-range?season=${encodeURIComponent(selectedSeasonKey)}`)}>Browse the Open Range</Action>
+              <Action type="button" onClick={() => visitSection("horf-trader-status")}><span aria-hidden="true">🤠 </span>Check trader standing</Action>
               {!address && <Action data-horf-wallet-connect-intro type="button" onClick={() => void connectWallet()} disabled={isConnecting}>{isConnecting ? "Connecting wallet…" : isGuest ? "Connect and verify wallet" : "Connect Tezos wallet"}</Action>}
               <Action type="button" onClick={() => visitSection("horf-personal-stable")}>Your personal stable</Action>
               <Action type="button" onClick={() => visitSection("horf-marshals-market")}>Marshal’s Market · inspected Stables</Action>
@@ -861,7 +864,7 @@ export function Horf() {
         {personal?.blacklisted === true && <Warning data-horf-wallet-restricted role="alert">This wallet is blacklisted from Horf private API features. Its historical trade totals remain visible. Direct Stable claims need a separate admin-signed contract restriction; Horf cannot reverse Tezos transfers.</Warning>}
 
         <Section id="horf-race" ref={raceRef} data-horf-region="race" aria-label="Horse trader race leaderboard">
-          <SectionLabel>Midway race board</SectionLabel>
+          <SectionLabel><img src="/horf-art/horseshoe.svg" alt="" aria-hidden="true" width="20" height="20" style={{ verticalAlign: "middle", marginRight: 5 }} />Midway race board</SectionLabel>
           <h2>Who’s out in front?</h2>
           <p>Every counted horse trade gives a rider a little more giddyup. Rank and trade totals sit beside each horse, whether the trade rode through a Stable or crossed wallets directly.</p>
           <RaceFrame>

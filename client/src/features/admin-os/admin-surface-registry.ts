@@ -678,6 +678,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "horf.inspection.decided",
       "horf.inspection.approval_revoked",
       "horf.open_range.viewed",
+      "horf.open_range.horse_viewed",
       "horf.open_range.offer_posted",
       "horf.open_range.offer_removed",
       "horf.stable.deposited",

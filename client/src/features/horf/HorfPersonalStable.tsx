@@ -29,8 +29,8 @@ type InspectionStatus = {
 const Shell = styled.section`
   margin-top: 24px;
   padding: 18px;
-  border: 3px solid #4d342b;
-  background: #e8dfbd;
+  border: 3px solid #315e57;
+  background: #dce8dc;
   box-shadow: inset 0 0 0 2px #fff3cf, 4px 4px 0 #a6764b;
   min-width: 0;
   h2 { margin: 2px 0 6px; font-size: clamp(25px, 4cqw, 36px); line-height: 1.05; }
@@ -123,7 +123,7 @@ const SavedHorseGlyph = styled.span`
   height: 68px;
   border: 2px solid #a5835d;
   background: #f4ebd8;
-  font-size: 32px;
+  img { display: block; width: 64px; height: 58px; object-fit: contain; }
 `;
 
 const HorseArt = styled.img`
@@ -253,7 +253,7 @@ export function HorfPersonalStable({ address, connectWallet, isConnecting }: {
 
   return <Shell id="horf-personal-stable" data-horf-region="personal-stable" aria-label="Your personal horse stable">
     <Header>
-      <div><small>Your paddock · off-chain</small><h2>Your personal stable</h2><p>Round up horses held by your wallet and keep their papers together here. A saved selection stays off-chain: it does not move or lock an edition. Send an eligible horse to the inspector before that token can enter any Marshal’s Market Stable.</p></div>
+      <div><small>Your paddock · off-chain · 🪢</small><h2>Your personal stable <span aria-hidden="true">🐎</span></h2><p>Round up horses held by your wallet and keep their papers together here. A saved selection stays off-chain: it does not move or lock an edition. Send an eligible horse to the inspector before that token can enter any Marshal’s Market Stable.</p></div>
       <Action type="button" onClick={() => { void ownedQuery.refetch(); void selectionsQuery.refetch(); }} disabled={!address || ownedQuery.isFetching || selectionsQuery.isFetching}>Refresh stable</Action>
     </Header>
     {!address && <Note $error>Connect and verify your Tezos wallet to see the horses it owns and save a personal selection. <Action type="button" onClick={() => void connectWallet()} disabled={isConnecting}>{isConnecting ? "Connecting…" : "Connect and verify wallet"}</Action></Note>}
@@ -288,7 +288,7 @@ export function HorfPersonalStable({ address, connectWallet, isConnecting }: {
           const name = item.token?.name || `Horse token #${item.tokenId}`;
           const art = item.token?.image ? resolveTokenThumbnail({ thumbnail: item.token.image }) : null;
           return <li key={item.id} data-horf-personal-saved-row>
-            {art ? <SavedHorseArt src={art.src} alt={`${name} artwork`} onError={(event) => { if (!advanceResolvedMediaFallback(event.currentTarget, art)) event.currentTarget.style.display = "none"; }} /> : <SavedHorseGlyph aria-hidden="true">🐎</SavedHorseGlyph>}
+            {art ? <SavedHorseArt src={art.src} alt={`${name} artwork`} onError={(event) => { if (!advanceResolvedMediaFallback(event.currentTarget, art)) { event.currentTarget.src = "/horf-art/galloping-horse.webp"; event.currentTarget.alt = "Illustrated horse placeholder"; } }} /> : <SavedHorseGlyph aria-hidden="true"><img src="/horf-art/galloping-horse.webp" alt="" /></SavedHorseGlyph>}
             <div><strong><a href={objktTokenUrl(item.tokenContract, item.tokenId)} target="_blank" rel="noopener noreferrer">{name}</a> · {item.inspectionStatus}</strong>
             <small>{shortAddress(item.tokenContract)} / #{item.tokenId} · saved {new Date(item.selectedAt).toLocaleDateString()}</small>
             <Action type="button" onClick={() => void removeSelection(item)} disabled={busy}>Remove selection</Action></div>
