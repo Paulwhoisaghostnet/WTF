@@ -14066,3 +14066,93 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: A first-login flow omitted the only visible first-step guidance and Inbox unread indicator promised by the starter desktop.
 
 **Rule**: When adding onboarding work to auth, enumerate every successful session-login path, including standalone app logins. Call the same idempotent welcome hook after session success, and keep login available if nonessential welcome delivery fails. When moving fixed desktop overlays, update compositor screenshot probes to sample clear wallpaper outside the new overlay.
+
+---
+
+## 2026-11-03 - Regenerate the environment inventory after integrating Horf source files
+
+**What happened**: The Horf release added 51 scanned source files and references to two new environment variables, but the checked-in environment inventory still described the earlier tree. Production deployed, while main Quality Gates stopped at `env:inventory:check` before TypeScript, build, and browser inventory.
+
+**Why it mattered**: A green production health check could not substitute for the independent release gates, and the stale generated reference hid new HORSE Market configuration from the environment inventory.
+
+**Rule**: After integrating new source files or environment references, regenerate `docs/reference/environment-variables.md` from the exact candidate tree and run its deterministic check and policy test before pushing main. Require the replacement Quality Gates run to pass before calling the release verified.
+
+---
+
+## 2026-11-03 - Register Horf subroutes in both browser route manifests
+
+**What happened**: Ten Horf subroutes were added to `PAGE_DEFS` and the inventory, but not to shared `BROWSER_ROUTE_META`. Main Quality Gates reached the aggregate unit suite and failed the route sync invariant.
+
+**Why it mattered**: Shared route discovery and access checks did not represent all public Horf pages, and a green production deploy still had a red independent quality signal.
+
+**Rule**: When adding a browser route, mirror its pattern, authentication gate, and title in `BROWSER_ROUTE_META` in the same change. Run the route sync and access tests before pushing the release candidate.
+
+---
+
+## 2026-11-03 - Gate Reggie's desktop entry points by contestant membership
+
+**What happened**: Reggie mounted for every signed-in account, queried quest state, and exposed a summon command even when the account had no contestant role. The shared `canParticipate` helper also includes noncontestant roles, so it could not express the requested visibility rule.
+
+**Why it mattered**: Witness and admin accounts could see or request challenge guidance that is intended only for contestants.
+
+**Rule**: Use normalized explicit contestant membership for both the assistant mount and its summon entry. Test noncontestant roles for sprite, command, and quest-request absence while retaining the contestant guidance path.
+
+---
+
+## 2026-11-03 - Keep browser route metadata aligned with new Horf pages
+
+**What happened**: Nine Horf routes were added to the page registry without matching entries in the shared browser route metadata. The Reggie release then failed the route sync test in Quality Gates after the stale environment inventory was refreshed.
+
+**Why it mattered**: CI could not verify the release, and CLI/browser route metadata lacked those public destinations.
+
+**Rule**: When adding a page pattern, add its matching title and access policy to the shared browser route metadata in the same pass. Run the route sync test before pushing.
+
+---
+
+## 2026-11-03 - Regenerate source inventories after merging main into a release branch
+
+**What happened**: The Reggie branch passed its environment inventory check before merging newer main, but that merge changed the tracked source-file count. Quality Gates then rejected the stale generated header even though the variable rows were unchanged.
+
+**Why it mattered**: A release branch with correct application code could not pass the mandatory clean CI gate.
+
+**Rule**: After the final main merge or rebase, regenerate tracked source inventories and run their equality checks on the exact branch head before pushing. Review the generated diff for secret values and unrelated changes.
+
+---
+
+## 2026-11-03 - Replace focused window keys on same-route query navigation
+
+**What happened**: URLSync used the full pathname and search as a window key. When Admin changed `section` or `user` query parameters, it opened a second Admin Panel instead of updating the focused one; Passport controls then appeared twice.
+
+**Why it mattered**: Admin workflows failed with duplicate controls and lost the one-window navigation model.
+
+**Rule**: When a focused app changes only its query state, replace that window key and keep its geometry and focus. Keep independently opened unrelated routes as separate windows, and assert the window count after deep links in browser tests.
+
+---
+
+## 2026-11-03 - Recheck route parity after integrating a moving main
+
+**What happened**: The Reggie release branch fixed nine missing Horf browser routes and passed locally, then merged a newer main that added `/horf/race` without matching shared browser metadata. Exact-head Quality Gates failed the route sync test again.
+
+**Why it mattered**: A previously proven release gate became stale when the source route registry changed under the branch.
+
+**Rule**: After each final main integration, rerun route parity together with generated inventory checks on that exact tree before pushing. Mirror every new page's pattern, title, and auth policy in shared browser metadata.
+
+---
+
+## 2026-11-03 - Keep callback and local-query apps mounted during URL updates
+
+**What happened**: Replacing every same-path query window key fixed duplicate Admin Panels but remounted Profile after OAuth callbacks, colleKT after a duplicate scan, Skywire after an OAuth error, and WTF LIVE after room or stage creation. Their notices or results disappeared while the APIs had succeeded.
+
+**Why it mattered**: A window identity change erased valid local UI state and made successful actions look stalled or failed.
+
+**Rule**: Keep pathname window identity for apps that use query parameters as transient callback or local view state; keep query-aware identity where the query defines an explicit window. Verify both sides with domain-owned browser stories after changing URL-to-window synchronization.
+
+---
+
+## 2026-11-03 - Reconcile canonical bounty IDs before regenerating merged docs
+
+**What happened**: The starter Wastebasket and Horf route corrections independently claimed bounty ID 778. Their branches also generated different board ranks and environment inventory counts, while each appended distinct lessons.
+
+**Why it mattered**: Choosing either branch's generated docs would erase valid records or leave the board and environment inventory stale against the merged source tree.
+
+**Rule**: Merge the canonical bounty records by identity and field, assign a fresh ID to a genuine collision, recompute every rank, and regenerate derived board and environment inventories from the merged tree. Preserve each branch's appended lessons.

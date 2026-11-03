@@ -596,6 +596,7 @@ export function Desktop({
 
   const sourceApps = data?.apps ?? DISABLED_DESKTOP_APPS;
   const desktopRoles = useMemo(() => normalizeUserRoles(user?.roles ?? user?.role ?? null), [user?.role, user?.roles]);
+  const canSeeReggie = desktopRoles.includes("contestant");
   const appGateBypass = desktopRoles.includes("admin") || desktopRoles.includes("trusted_creator");
   const payrollAvailable = desktopRoles.includes("admin");
   const iconDefs = useMemo<DesktopIconDef[]>(
@@ -1287,18 +1288,19 @@ export function Desktop({
             label: t("desktop.context.resetNativeIcons"),
             onSelect: resetNativeIconLayout,
           },
-          {
-            label: t("desktop.context.summonReggie"),
-            disabled: !user,
-            onSelect: () => {
-              const detail: ReggieSummonEventDetail = {
-                source: "desktop-context-menu",
-                x: event.clientX,
-                y: event.clientY,
-              };
-              window.dispatchEvent(new CustomEvent(REGGIE_SUMMON_EVENT, { detail }));
-            },
-          },
+          ...(canSeeReggie
+            ? [{
+                label: t("desktop.context.summonReggie"),
+                onSelect: () => {
+                  const detail: ReggieSummonEventDetail = {
+                    source: "desktop-context-menu",
+                    x: event.clientX,
+                    y: event.clientY,
+                  };
+                  window.dispatchEvent(new CustomEvent(REGGIE_SUMMON_EVENT, { detail }));
+                },
+              }]
+            : []),
           { kind: "separator" },
           {
             label: t("desktop.context.systemAppearance"),
@@ -1315,7 +1317,7 @@ export function Desktop({
         metadata: { source: "surface" },
       });
     },
-    [appAccessBlocked, qc, reportDesktopEvent, resetNativeIconLayout, settingsQueryKey, targetOwnsDesktopInteraction, t, user, wm]
+    [appAccessBlocked, canSeeReggie, qc, reportDesktopEvent, resetNativeIconLayout, settingsQueryKey, targetOwnsDesktopInteraction, t, user, wm]
   );
 
   const handleDesktopPointerDown = useCallback(
@@ -1512,7 +1514,7 @@ export function Desktop({
           itemsRef={desktopArtifacts.itemsRef}
           setItems={desktopArtifacts.setItems}
         />
-        <ReggieAssistant />
+        {canSeeReggie ? <ReggieAssistant /> : null}
       </ContentArea>
       {showTaskbar ? (
         <Taskbar
