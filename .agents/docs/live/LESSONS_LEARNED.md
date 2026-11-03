@@ -13366,3 +13366,13 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: The normal deploy path could not repair the blocked match while keeping the guard's funding commitments intact.
 
 **Rule**: Every escrow lane that can attach a game funding lock must appear in the deployment snapshot. Compare the exact lock version, room, terms, match, network, contract, and pinned rules against its durable record before replacing the app; test missing and mismatched bindings as well as the live-compatible case.
+
+---
+
+## 2026-11-03 — Regenerate environment inventory when adding a source test file
+
+**What happened**: The sponsored-room recovery PR passed local gameplay and build checks, but CI stopped at environment inventory. The new regression test contained no environment variables, yet the generated inventory also records the number of scanned source files and was one file stale. A separate untracked local puppet script changed local scan output but was absent from clean CI.
+
+**Why it mattered**: The exact-head quality gate rejected a correct hotfix before running its aggregate tests.
+
+**Rule**: Regenerate the environment inventory from the tracked candidate file set whenever adding a source file, then run its check in the same clean-file view. Keep unrelated untracked local scripts out of generated release metadata.
