@@ -708,7 +708,7 @@ Total: **735** · Open: **9** · Claimed: **42** · In Progress: **16** · Block
 | WTF-BB-196 | Verified | Codex Skywire dark-mode default pass | 2026-06-03 | Skywire / default theme UX | P2 | 8 | 633 | 2 | 3 | 0 | Skywire still opens with light shell/sidebar/input surfaces after feed polish |
 | WTF-BB-195 | Verified | Codex Stuffs CREATE menu pass | 2026-06-03 | Desktop OS / Start Menu taxonomy | P2 | 8 | 633 | 2 | 3 | 0 | Stuffs menu lacks a dedicated CREATE! category for creation apps |
 | WTF-BB-194 | Verified | Codex CRP sparse route guard during Skywire UI pass | 2026-06-03 | CRP nominations / route resilience | P2 | 8 | 633 | 1 | 4 | 0 | CRP nomination route crashes on sparse inventory harness API payloads |
-| WTF-BB-132 | Verified | Codex desktop icon stability pass | 2026-05-08 | Desktop OS / icon layout | P2 | 8 | 633 | 2 | 3 | 0 | Desktop icon layout allow-list drift caused moved icons to reset |
+| WTF-BB-132 | Verified | Codex Paul release gate / Horf icon persistence | 2026-11-03 | Desktop OS / icon layout | P2 | 8 | 633 | 2 | 3 | 0 | Desktop icon layout allow-list drift caused moved icons to reset |
 | WTF-BB-119 | Verified | Codex game-studio hardening pass | 2026-05-08 | Game Studio / upload validation | P2 | 8 | 633 | 2 | 3 | 0 | Studio drafts accepted local asset payloads before enforcing upload limits |
 | WTF-BB-116 | Verified | Codex arcade/console split pass | 2026-05-08 | Arcade catalog / data migration | P2 | 8 | 633 | 1 | 4 | 0 | Existing source rows emitted legacy Console proxy paths |
 | WTF-BB-115 | Verified | Codex arcade/console split pass | 2026-05-08 | MCP / agent discoverability | P2 | 8 | 633 | 1 | 3 | 1 | Arcade MCP tools drifted from capabilities and scopes |
@@ -15493,8 +15493,8 @@ Copy this when adding a new issue:
 - Category: Desktop OS / icon layout
 - Priority: P2
 - Status: Verified
-- Owner/Session: Codex desktop icon stability pass
-- Last touched: 2026-05-08
+- Owner/Session: Codex Paul release gate / Horf icon persistence
+- Last touched: 2026-11-03
 - Score: C2 + F3 + S0 + P2(3) = 8
 - Evidence:
   - `client/src/features/desktop/DesktopIcons.tsx` rendered `wtfiam`, `arcade`, and `game-studio` desktop icons.
@@ -15509,6 +15509,7 @@ Copy this when adding a new issue:
 - Fix notes:
   - Added `DESKTOP_ICON_LAYOUT_KEYS` in `shared/desktop.ts`, updated the settings route and MCP helper to use it, added a shared regression test, and adjusted client icon hydration/drag release state handling.
   - Verified with the icon-key source check, `npx tsx --test shared/desktop.test.ts`, and `npm run check`.
+- Recurrence (2026-11-03): Horf added a native desktop icon but omitted `horf` from `DESKTOP_ICON_LAYOUT_KEYS`; server settings normalization silently discards dragged Horf coordinates. `DesktopIcons.test.tsx` reproduces the mismatch and blocks Quality Gates. Added `horf` to the shared allow-list and its expected fixture. Focused `shared/desktop.test.ts` and `DesktopIcons.test.tsx` pass 25/25, including normalization of every persisted icon key.
 
 ### WTF-BB-119 - Studio drafts accepted local asset payloads before enforcing upload limits
 

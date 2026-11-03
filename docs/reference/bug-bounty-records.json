@@ -9459,8 +9459,8 @@
     {
       "id": "WTF-BB-132",
       "status": "Verified",
-      "owner": "Codex desktop icon stability pass",
-      "lastTouched": "2026-05-08",
+      "owner": "Codex Paul release gate / Horf icon persistence",
+      "lastTouched": "2026-11-03",
       "category": "Desktop OS / icon layout",
       "priority": "P2",
       "points": 8,
@@ -9469,7 +9469,7 @@
       "functionalityDanger": 3,
       "securityDanger": 0,
       "title": "Desktop icon layout allow-list drift caused moved icons to reset",
-      "body": "- Evidence:\n  - `client/src/features/desktop/DesktopIcons.tsx` rendered `wtfiam`, `arcade`, and `game-studio` desktop icons.\n  - `server/routes/desktop.ts` normalized persisted icon layouts through an older local key list that omitted those icons, so saving a moved layout stripped their coordinates.\n  - The desktop client rehydrated icon positions from settings data and size changes, making the dropped coordinates appear as periodic rubberband/default resets.\n- Why it matters:\n  - Users can drag icons and see local movement, but persistence silently deleting valid icon keys makes the desktop feel unstable and undermines settings sync.\n- Likely correction direction:\n  - Keep first-party desktop icon keys in a shared registry used by the client, settings route, and agent/MCP helpers. Preserve local drag state during active edits and clamp current positions on resize.\n- Verification idea:\n  - Run a source check comparing rendered icon keys with the shared registry, run `shared/desktop.test.ts`, and run TypeScript over desktop settings/client code.\n- Fix notes:\n  - Added `DESKTOP_ICON_LAYOUT_KEYS` in `shared/desktop.ts`, updated the settings route and MCP helper to use it, added a shared regression test, and adjusted client icon hydration/drag release state handling.\n  - Verified with the icon-key source check, `npx tsx --test shared/desktop.test.ts`, and `npm run check`.",
+      "body": "- Evidence:\n  - `client/src/features/desktop/DesktopIcons.tsx` rendered `wtfiam`, `arcade`, and `game-studio` desktop icons.\n  - `server/routes/desktop.ts` normalized persisted icon layouts through an older local key list that omitted those icons, so saving a moved layout stripped their coordinates.\n  - The desktop client rehydrated icon positions from settings data and size changes, making the dropped coordinates appear as periodic rubberband/default resets.\n- Why it matters:\n  - Users can drag icons and see local movement, but persistence silently deleting valid icon keys makes the desktop feel unstable and undermines settings sync.\n- Likely correction direction:\n  - Keep first-party desktop icon keys in a shared registry used by the client, settings route, and agent/MCP helpers. Preserve local drag state during active edits and clamp current positions on resize.\n- Verification idea:\n  - Run a source check comparing rendered icon keys with the shared registry, run `shared/desktop.test.ts`, and run TypeScript over desktop settings/client code.\n- Fix notes:\n  - Added `DESKTOP_ICON_LAYOUT_KEYS` in `shared/desktop.ts`, updated the settings route and MCP helper to use it, added a shared regression test, and adjusted client icon hydration/drag release state handling.\n  - Verified with the icon-key source check, `npx tsx --test shared/desktop.test.ts`, and `npm run check`.\n- Recurrence (2026-11-03): Horf added a native desktop icon but omitted `horf` from `DESKTOP_ICON_LAYOUT_KEYS`; server settings normalization silently discards dragged Horf coordinates. `DesktopIcons.test.tsx` reproduces the mismatch and blocks Quality Gates. Added `horf` to the shared allow-list and its expected fixture. Focused `shared/desktop.test.ts` and `DesktopIcons.test.tsx` pass 25/25, including normalization of every persisted icon key.",
       "legacyOriginalId": "WTF-BB-132"
     },
     {

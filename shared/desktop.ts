@@ -581,6 +581,7 @@ export const DESKTOP_ICON_LAYOUT_KEYS = [
   "tz2at",
   "crp-nominations",
   "rat-race",
+  "horf",
   "map-lab",
   "agent",
   "applications",

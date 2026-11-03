@@ -13746,3 +13746,13 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: Canvas ratio and programmatic uniqueness can both pass while the character's silhouette or motion still reads incorrectly to a player.
 
 **Rule**: Review the occupied silhouette and expressive poses at the rendered desktop size before rebuilding baked media. Keep a stable approved still pose, give each animation frame distinct body geometry, and verify both live frame progression and a motion-free reduced-motion fallback in the browser.
+
+---
+
+## 2026-11-03 - Register every new desktop icon for persisted layout
+
+**What happened**: Horf added a native desktop icon and app catalog entry, but its key was missing from `DESKTOP_ICON_LAYOUT_KEYS`. The server silently dropped saved coordinates for Horf, and the existing desktop icon regression test failed in Quality Gates during the Paul sprite release.
+
+**Why it mattered**: A visible desktop icon could be moved, but its position reset after settings were saved; the unrelated release could not pass its exact-head gate.
+
+**Rule**: When adding a native desktop icon, add its key to the shared persisted-layout registry and expected test fixture in the same change. Run both shared layout and desktop icon tests before promotion.
