@@ -36,7 +36,7 @@ export type SponsorGame = FundingGame & {
 type Binding = { userId: string; playerId: string; walletAddress: string; name: string };
 export type SponsorIntent = { id: string; kind: "create_room" | "register_entrant" | "start_room" |
   "finalize_room" | "void_room" | "claim_cash" | "claim_lot"; key: string; params: any; status: "planned" | "submission-unknown" | "submitted" | "applied";
-  operationHash?: string; error?: string };
+  operationHash?: string; error?: string; appliedAtBlock?: string; appliedAtLevel?: number };
 export type SponsorChainRoom = {
   blockHash: string; level: number; status: "funding" | "active" | "settled" | "voided";
   termsHash: string; rulesHash: string; seedCommitment: string; sponsor: string; referee: string;
@@ -65,7 +65,8 @@ export type SponsorRecord = {
     proof?: { kind: "finalized-action-state" | "finalized-failed-operation"; blockHash: string; level: number } }>;
   prizePicks?: Array<{ index: number; place: number; playerId: string; walletAddress: string }>;
   finalResult: null | { completion: any; params: any; hash: string };
-  technicalVoid: null | { operatorId: string; reasonHash: string; evidenceHash: string };
+  technicalVoid: null | { operatorId: string; requestedAt: string; reason: string;
+    evidence: any; reasonHash: string; evidenceHash: string };
   error: string | null; lastReconciledAt: string | null;
 };
 export type SponsorStore = {
@@ -187,6 +188,10 @@ export function createSponsorFundingService({ store, game, chain, configs, linke
       "Sponsor prize terms changed.");
     demand(record.sponsor.userId === sponsorAccount(value),
       "Sponsor account changed.");
+    if (record.technicalVoid) demand(!record.finalResult &&
+      record.technicalVoid.reasonHash === commitment(record.technicalVoid.reason) &&
+      record.technicalVoid.evidenceHash === commitment(record.technicalVoid.evidence),
+      "Sponsor technical-void evidence was altered.");
     demand(new Set(record.bindings.map(b => b.walletAddress)).size === record.bindings.length,
       "Entrant wallet is bound twice.");
     demand(record.bindings.every(b => b.userId !== record.sponsor.userId || value.config.sponsorCompetes === true),
@@ -349,6 +354,7 @@ export function createSponsorFundingService({ store, game, chain, configs, linke
     demand(record && record.sponsor.userId === userId,
       "Only the sponsor can request the match start.", 403);
     verifyLocal(record, value);
+    demand(!record.technicalVoid, "This room is paused for an audited technical void.");
     demand(record.lock && record.chain?.status === "funding",
       "Prize escrow must open before starting.");
     demand(fullyFunded(record, value), "All prizes and human entries must be verified on-chain.");
@@ -358,7 +364,43 @@ export function createSponsorFundingService({ store, game, chain, configs, linke
     });
     kick(); return view(code, userId);
   }
+  // Operator-only maintenance. The HTTP router never exposes this method.
+  // A stopped authority and a reproducible saved-room failure are required by
+  // the maintenance CLI before this durable intent can reach the signer.
+  async function requestTechnicalVoid(code: string, operatorId: string) {
+    demand(typeof operatorId === "string" && operatorId.trim(),
+      "Record the private operator identity.", 400);
+    const value = room(code);
+    await store.mutate(code, async old => {
+      demand(old?.lock && !old.finalResult,
+        "A completed sponsor game cannot be technically voided.");
+      verifyLocal(old, value);
+      if (old.technicalVoid) return { record: old, value: undefined };
+      const observed = await chain.read(old);
+      demand(observed && ["funding", "active"].includes(observed.status),
+        "Only an unsettled sponsor escrow can be technically voided.");
+      verifyChain(old, observed);
+      demand(configs[old.config.network].rulesHash === old.config.rulesHash,
+        "Run the audit with the room's pinned game rules.");
+      const audit = game.audit(code);
+      demand(audit.ok === false && audit.code === "authoritative-game-failure",
+        "The authoritative game audit did not reproduce a technical failure.");
+      const reason = "authoritative-game-failure";
+      const evidence = { version: "wtfiap-sponsor-technical-void-v1", roomId: old.roomId,
+        termsHash: old.termsHash, rulesHash: old.config.rulesHash,
+        finalizedBlock: { hash: observed.blockHash, level: observed.level }, audit: audit.evidence };
+      old.technicalVoid = { operatorId: operatorId.trim(), requestedAt: clock().toISOString(),
+        reason, evidence, reasonHash: commitment(reason), evidenceHash: commitment(evidence) };
+      old.status = "voiding";
+      planIntent(old, "void_room", "void", { room_id: old.roomId,
+        reason_hash: old.technicalVoid.reasonHash,
+        evidence_hash: old.technicalVoid.evidenceHash });
+      return { record: old, value: undefined };
+    });
+    kick(); return { roomCode: code, status: "voiding" };
+  }
   function fullyFunded(record: SponsorRecord, value: SponsorGameRoom) {
+    if (record.technicalVoid) return false;
     const chainRoom = record.chain;
     if (!chainRoom || chainRoom.status !== "funding" || !record.lock) return false;
     const human = value.players.filter(p => !p.isAI);
@@ -413,6 +455,7 @@ export function createSponsorFundingService({ store, game, chain, configs, linke
       "On-chain sponsor escrow differs from the room's fixed prize terms.");
   }
   function resultParams(record: SponsorRecord, value: SponsorGameRoom) {
+    if (record.technicalVoid) return null;
     if (record.finalResult) return { completion: record.finalResult.completion,
       params: record.finalResult.params };
     const result = game.result(record.roomCode);
@@ -446,7 +489,8 @@ export function createSponsorFundingService({ store, game, chain, configs, linke
       "The finished room seed is not available for verified random prizes.");
       const require = createRequire(path.resolve("package.json"));
       const prizeModule = require(path.resolve("server/features/wtfiap/runtime/game/core/sponsored-prizes.cjs"));
-      lotPlaces = prizeModule.randomAllocation(record.plan, seed).sort((a: any, b: any) => a.index - b.index).map((lot: any) => lot.place);
+      lotPlaces = [...prizeModule.randomAllocation(record.plan, seed)]
+        .sort((a: any, b: any) => a.index - b.index).map((lot: any) => lot.place);
     } else {
       const picks = prizePickState(record);
       if (picks.nextPlace !== null) return null;
@@ -486,7 +530,8 @@ export function createSponsorFundingService({ store, game, chain, configs, linke
       try { failures = await chain.failedObservations(record, chainRoom, pending); }
       catch { /* No exact finalized failure proof means no retry. */ }
     }
-    const finished = chainRoom?.status === "active" ? resultParams(record, value) : null;
+    const finished = chainRoom?.status === "active" && !record.technicalVoid
+      ? resultParams(record, value) : null;
     const prizePicksPending = chainRoom?.status === "active" &&
       record.plan.mode === "pick" && !finished && Boolean(game.result(code));
     await store.mutate(code, old => {
@@ -515,17 +560,31 @@ export function createSponsorFundingService({ store, game, chain, configs, linke
           item.kind === "finalize_room" && chainRoom?.status === "settled" &&
             chainRoom.resultHash === item.params.result_hash ||
           item.kind === "void_room" && chainRoom?.status === "voided" &&
-            chainRoom.voidReasonHash === item.params.reason_hash ||
+            chainRoom.voidReasonHash === item.params.reason_hash &&
+            chainRoom.voidEvidenceHash === item.params.evidence_hash ||
           item.kind === "claim_cash" && chainRoom?.status === "settled" &&
             chainRoom.cashClaims[cashKey(item.params.recipient,
               item.params.currency === 0 ? "XTZ" : "WTF")]?.claimed === true ||
           item.kind === "claim_lot" && chainRoom?.status === "settled" &&
             chainRoom.lotClaims[item.params.index]?.claimed === true;
-        if (applied) item.status = "applied";
+        if (applied) {
+          item.status = "applied";
+          if (item.kind === "void_room" && chainRoom) {
+            item.appliedAtBlock = chainRoom.blockHash;
+            item.appliedAtLevel = chainRoom.level;
+          }
+        }
       }
       if (!chainRoom) old.status = "opening";
-      else if (chainRoom.status === "voided") old.status = "voided";
+      else if (chainRoom.status === "voided") {
+        if (old.technicalVoid) demand(
+          chainRoom.voidReasonHash === old.technicalVoid.reasonHash &&
+          chainRoom.voidEvidenceHash === old.technicalVoid.evidenceHash,
+          "Voided sponsor escrow differs from the audited failure.");
+        old.status = "voided";
+      }
       else if (chainRoom.status === "settled") {
+        demand(!old.technicalVoid, "An audited sponsor void cannot settle prizes.");
         demand(old.finalResult && chainRoom.resultHash === old.finalResult.params.result_hash &&
           chainRoom.transcriptHash === old.finalResult.params.transcript_hash,
           "The settled on-chain result differs from authoritative combat.");
@@ -553,7 +612,8 @@ export function createSponsorFundingService({ store, game, chain, configs, linke
           planIntent(old, "claim_lot", "claim-lot:" + index,
             { room_id: old.roomId, index });
         }
-      } else if (chainRoom.status === "active") {
+      } else if (old.technicalVoid) old.status = "voiding";
+      else if (chainRoom.status === "active") {
         old.status = finished ? "settling" : prizePicksPending ? "awaiting-prize-picks" : "active";
         if (finished && !old.finalResult) {
           old.finalResult = { completion: clone(finished.completion), params: clone(finished.params),
@@ -582,7 +642,8 @@ export function createSponsorFundingService({ store, game, chain, configs, linke
         collectedAtomic: chainRoom.heldXtz,
         prizeSummary: { xtzAtomic: chainRoom.prizeXtz, wtfAtomic: chainRoom.prizeWtf,
           fundedLots: chainRoom.fundedLots.length, totalLots: record.plan.tokens.length } });
-    const next = record.intents.find(i => i.status === "planned");
+    const next = record.intents.find(i => i.status === "planned" &&
+      (!record.technicalVoid || i.kind === "void_room"));
     if (!next) return;
     // A changed deployment must never admit new funds. Pinned rooms still
     // need their referee to settle or void existing liabilities.
@@ -654,7 +715,7 @@ export function createSponsorFundingService({ store, game, chain, configs, linke
       ? prizePickState(record) : null;
     if (base && chainRoom && !record?.error) {
       const hash = { room_id: record.roomId, expected_terms_hash: record.termsHash };
-      if (sponsor && chainRoom.status === "funding") {
+      if (sponsor && chainRoom.status === "funding" && !record.technicalVoid) {
         const xtzRequired = BigInt(p.deposit.xtzAtomic) +
           BigInt(p.entry.currency === "XTZ" ? record.config.houseFeeAtomic : "0");
         if (xtzRequired > 0n && !chainRoom.sponsorXtzFunded)
@@ -670,7 +731,7 @@ export function createSponsorFundingService({ store, game, chain, configs, linke
                 owner: wallet!, operator: record.config.escrowContract }) });
         actions.cancel = action(record, wallet!, "cancel_room", record.roomId);
       }
-      if (binding && chainRoom.status === "funding" &&
+      if (binding && chainRoom.status === "funding" && !record.technicalVoid &&
         chainRoom.entrants.includes(wallet!) && !chainRoom.paid.includes(wallet!))
         actions.entry = action(record, wallet!, "join_room", hash,
           p.entry.currency === "XTZ" ? p.entry.entryAtomic : "0",
@@ -741,9 +802,9 @@ export function createSponsorFundingService({ store, game, chain, configs, linke
         playerId: player?.playerId || null, walletAddress: wallet || null,
         canPick: Boolean(selection?.nextBinding?.userId === userId &&
           chainRoom?.status === "active"),
-        canBind: Boolean(userId && c.enabled && value.phase === "lobby" &&
+        canBind: Boolean(userId && c.enabled && !record?.technicalVoid && value.phase === "lobby" &&
           (sponsor || player) && (!record?.lock || Boolean(player))),
-        canOpen: Boolean(sponsor && c.enabled && record && !record.lock),
+        canOpen: Boolean(sponsor && c.enabled && record && !record.lock && !record.technicalVoid),
         canStart: Boolean(sponsor && c.enabled && record && fullyFunded(record, value)),
         actions, pendingOperations: record?.observations.filter(o => o.userId === userId).map(o => ({
           ...o, status: o.status === "failed" ? "failed" :
@@ -765,7 +826,7 @@ export function createSponsorFundingService({ store, game, chain, configs, linke
       } : null,
       error: record?.error || null, health: { ...health, error: record?.error || null } };
   }
-  return { bind, open, start, pickLot, observe, view, drain, kick, health,
+  return { bind, open, start, requestTechnicalVoid, pickLot, observe, view, drain, kick, health,
     config: (network: Network) => configs[network],
     close: async () => { closed = true; if (running) await running; } };
 }

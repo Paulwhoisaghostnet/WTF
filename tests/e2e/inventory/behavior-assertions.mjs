@@ -1,5 +1,14 @@
 export const CORE_BEHAVIOR_ASSERTIONS = [
   {
+    id: "wtfiap.prepaid-credit-duel",
+    domain: "WTFIAP Autobattler",
+    ownerSurfaceIds: ["wtfiap"],
+    ownerSpec: "contracts/wtfiap-open-duel-xtz-prepaid/test_open_duel_prepaid.py; server/features/wtfiap/open-duel.test.ts; scripts/wtfiap/prepaid-credit-binding.test.cjs; client/src/features/wtfiap/OpenDuelFundingPanel.tsx; tests/playwright/inventory/wtfiap-funding.spec.mjs",
+    verificationCommand: "npx tsx --test server/features/wtfiap/open-duel.test.ts && node --test scripts/wtfiap/prepaid-credit-binding.test.cjs && npm run test:e2e:inventory:coverage && npx playwright test tests/playwright/inventory/wtfiap-funding.spec.mjs",
+    userVisibleAssertion: "An authenticated player can buy fractional Mainnet XTZ prepaid credit through one explicit wallet signature, see a verified balance in Room funding, and use it only to claim an open Mainnet XTZ Duel seat. The host still stakes the ordinary entry and house fee; a guest may also choose direct wallet stake. Wallet rejection does not trap the player, an uncertain transaction remains pending, and a finalized failed seat claim can be retried after exact proof. A prepaid guest who wins receives XTZ; a tie or approved pre-start or technical refund restores prepaid credit.",
+    durableSideEffectAssertion: "The v3 escrow holds credited XTZ, tracks each wallet's nontransferable balance, debits it atomically for a prepaid seat, and never exposes credit withdrawal or room creation. The service verifies the linked wallet, network, script, finalized operation and exact amount before reporting credit or clearing failures. A mounted-volume binding rejects a later contract or payout-mode rotation so deposited credit remains reachable. Existing funded Duel rooms keep their original pinned contract and settlement path. Local tests and Shadownet operation receipts prove these separately from Mainnet activation.",
+  },
+  {
     id: "wtfiap.sponsored-prizes",
     domain: "WTFIAP Autobattler",
     ownerSurfaceIds: ["wtfiap"],

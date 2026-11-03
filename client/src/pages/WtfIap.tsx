@@ -9,6 +9,7 @@ import { FundingPanel } from "../features/wtfiap/FundingPanel";
 
 const GameSurface = styled.section`
   position: relative;
+  container-type: inline-size;
   display: flex;
   flex-direction: column;
   width: 100%;
@@ -67,34 +68,51 @@ const ModeNavigation = styled.nav<{ $open: boolean }>`
 `;
 
 const GameFrame = styled.iframe`
-  flex: 1;
+  flex: 1 1 0;
   width: 100%;
+  min-width: 0;
   min-height: 0;
   border: 0;
   background: #111719;
 `;
 
-const FundingOverlay = styled.div`
-  position: absolute;
-  z-index: 35;
-  top: 60px;
-  right: 12px;
-  bottom: 12px;
-  width: min(520px, calc(100% - 24px));
-  overflow: auto;
-  border: 1px solid #d9bb72;
-  border-radius: 10px;
-  background: #102322f2;
-  color: #f3ecd8;
-  box-shadow: 0 16px 48px #0009;
+const GameWorkspace = styled.div`
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+`;
 
-  @media (max-width: 700px) {
-    top: auto;
-    left: 8px;
-    right: 8px;
-    bottom: 8px;
-    width: auto;
-    max-height: min(72vh, 620px);
+const FundingDock = styled.aside`
+  position: relative;
+  z-index: 35;
+  flex: 0 0 440px;
+  min-width: 0;
+  overflow: auto;
+  border-left: 1px solid #d9bb72;
+  background: #102322;
+  color: #f3ecd8;
+  box-shadow: -12px 0 32px #0006;
+
+  .dock-head { position: sticky; top: 0; z-index: 1; display: flex; align-items: center;
+    justify-content: space-between; gap: 12px; padding: 10px 16px;
+    background: #102322; border-bottom: 1px solid #38514e; }
+  .dock-head strong { font-size: 1rem; }
+  .dock-head button { min-height: 40px; padding: 6px 12px; background: #1b3336;
+    border: 1px solid #92c6b6; border-radius: 4px; color: #f3ecd8; cursor: pointer; }
+  .dock-head button:focus-visible { outline: 2px solid #d9bb72; outline-offset: 2px; }
+
+  /* The board needs room to remain usable beside a 440px funding pane. */
+  @container (max-width: 1100px) {
+    position: absolute;
+    inset: 0 0 0 auto;
+    width: min(440px, 100%);
+    border: 1px solid #d9bb72;
+    box-shadow: -12px 0 32px #0009;
+  }
+  @container (max-width: 700px) {
+    width: 100%;
   }
 `;
 
@@ -199,22 +217,27 @@ export function WtfIap() {
             {fundingRoom && <button aria-expanded={fundingOpen} onClick={() => { setFundingOpen(open => !open); setMenuOpen(false); }}>{fundingOpen ? "Return to game" : "Room funding"}</button>}
           </div>}
         </ModeNavigation>
-        <GameFrame
-          ref={frameRef}
-          onLoad={() => setMenuOpen(false)}
-          name={frameName}
-          title="coLILseum"
-          src={frameSource}
-          sandbox="allow-scripts allow-same-origin allow-forms allow-downloads allow-popups allow-popups-to-escape-sandbox allow-orientation-lock"
-          allow="fullscreen; orientation-lock; clipboard-write"
-        />
-        {fundingOpen && fundingRoom && <FundingOverlay role="dialog" aria-label="Room wager and escrow">
-          <FundingPanel key={fundingRoom} roomCode={fundingRoom}
-            onReturn={() => setFundingOpen(false)} onEnterRoom={() => {
-              setEntryPath(`/colilseum/${encodeURIComponent(fundingRoom)}`);
-              setFundingOpen(false);
-            }} />
-        </FundingOverlay>}
+        <GameWorkspace>
+          <GameFrame
+            ref={frameRef}
+            onLoad={() => setMenuOpen(false)}
+            name={frameName}
+            title="coLILseum"
+            src={frameSource}
+            sandbox="allow-scripts allow-same-origin allow-forms allow-downloads allow-popups allow-popups-to-escape-sandbox allow-orientation-lock"
+            allow="fullscreen; orientation-lock; clipboard-write"
+          />
+          {fundingOpen && fundingRoom && <FundingDock role="region" aria-label="In-room escrow">
+            <div className="dock-head"><strong>Room escrow</strong>
+              <button type="button" onClick={() => setFundingOpen(false)} aria-label="Close room escrow">Back to room</button>
+            </div>
+            <FundingPanel key={fundingRoom} roomCode={fundingRoom}
+              onReturn={() => setFundingOpen(false)} onEnterRoom={() => {
+                setEntryPath(`/colilseum/${encodeURIComponent(fundingRoom)}`);
+                setFundingOpen(false);
+              }} />
+          </FundingDock>}
+        </GameWorkspace>
       </GameSurface>
     </AppWindow>
   );

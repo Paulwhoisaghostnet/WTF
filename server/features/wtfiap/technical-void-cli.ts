@@ -5,13 +5,17 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import pg from "pg";
 import { createFundingService, commitment, demand, type FundingGame, type FundingRecord } from "./funding";
+import type { SponsorRecord } from "./sponsor-funding";
 import { fundingConfig, tezosFundingChain } from "./funding-contract";
 import { postgresFundingStore } from "./funding-store";
 
 // A maintenance audit reads one immutable-on-disk checkpoint without creating
 // an authority, listening socket, clock timer or signer. The deployed worker
 // submits the durable intent only after normal service resumes.
-export async function auditSavedRoom(dataDir: string, record: FundingRecord, atMs: number) {
+type AuditableRoom = Pick<FundingRecord | SponsorRecord,
+  "roomCode" | "roomId" | "lock" | "technicalVoid">;
+
+export async function auditSavedRoom(dataDir: string, record: AuditableRoom, atMs: number) {
   demand(path.basename(record.roomCode) === record.roomCode && ![".", ".."].includes(record.roomCode), "Invalid room file identity.");
   const require = createRequire(path.resolve("package.json"));
   const Party = require(path.resolve("server/features/wtfiap/runtime/game/core/party.cjs"));
@@ -34,7 +38,9 @@ export async function auditSavedRoom(dataDir: string, record: FundingRecord, atM
     if (saved.match) {
       const state = Party.restore(saved.match);
       if (state.phase === "finished") return { ok: true, code: "terminal-room", evidence };
-      Accounting.validate(saved.tournamentAccounting, state);
+      if (saved.config?.roomType === "tournament" && !saved.config?.sponsor &&
+        saved.config?.allowAI !== true)
+        Accounting.validate(saved.tournamentAccounting, state);
       const advanced = Party.advance(state, atMs);
       demand(advanced.ok, "Saved game cannot complete its due transition.");
       Party.validate(state);
@@ -46,7 +52,7 @@ export async function auditSavedRoom(dataDir: string, record: FundingRecord, atM
   }
 }
 
-async function preserveFailedRoom(dataDir: string, record: FundingRecord) {
+export async function preserveFailedRoom(dataDir: string, record: AuditableRoom) {
   const filename = path.join(dataDir, record.roomCode + ".json"), raw = await readFile(filename, "utf8"), saved = JSON.parse(raw);
   const failure = record.technicalVoid!;
   if (saved.fundingFaultArchive) {

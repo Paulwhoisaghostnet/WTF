@@ -10,7 +10,7 @@ import { Schema } from '@taquito/michelson-encoder';
 import { getPkhfromPk } from '@taquito/utils';
 import { hashMichelsonScriptCode } from '../../scripts/pasta-protocol/pasta-michelson-script-identity';
 export type PreflightConfig = {
-  kind: 'escrow' | 'open-duel-xtz' | 'dummy-fa2'; network: 'mainnet' | 'shadownet'; expectedChainId: string;
+  kind: 'escrow' | 'open-duel-xtz' | 'open-duel-xtz-prepaid' | 'dummy-fa2'; network: 'mainnet' | 'shadownet'; expectedChainId: string;
   rpcUrl: string; artifactPath: string; artifactSha256: string; creator: string; source: string;
   sourcePublicKey?: string; treasuryAddress?: string; wtfTokenAddress?: string; wtfTokenId?: string; storageTemplatePath?: string;
 };
@@ -18,10 +18,13 @@ const sha256 = (bytes: Uint8Array | string) => createHash('sha256').update(bytes
 export function typedInit(config: PreflightConfig, storageType: any, template?: any): any {
   const schema = new Schema(storageType);
   let value: any;
-  if (config.kind === 'open-duel-xtz') {
+  if (config.kind === 'open-duel-xtz' || config.kind === 'open-duel-xtz-prepaid') {
     assert(config.treasuryAddress, 'Explicit verified treasury address is required.');
     value = { claims: new MichelsonMap(), authorized: new MichelsonMap(), rooms: new MichelsonMap(),
       treasury_address: config.treasuryAddress, xtz_quantum: '10000', house_fee_mutez: '500000' };
+    if (config.kind === 'open-duel-xtz-prepaid') Object.assign(value, {
+      credit: new MichelsonMap(), prepaid_guest: new MichelsonMap(),
+      credit_deposited: '0', credit_spent: '0', total_credit: '0' });
   } else if (config.kind === 'escrow') {
     assert(config.treasuryAddress, 'Explicit verified treasury address is required.');
     assert(config.wtfTokenAddress && /^(0|[1-9][0-9]*)$/.test(config.wtfTokenId ?? ''));

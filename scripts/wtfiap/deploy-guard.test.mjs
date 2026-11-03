@@ -67,6 +67,9 @@ test('the sponsor snapshot reads the persisted sponsor record fields used by the
     matchId: 'match-id', network: 'shadownet', escrowContract: 'KT1contract' }))
     assert.equal(resolve(expression(key)), expected, `${key} must match the saved sponsor record`);
   assert.match(sponsorSql, /'roomCode',room_code/);
+  for (const key of ['technicalVoid', 'chain', 'intents'])
+    assert.match(sponsorSql, new RegExp(`'${key}',document->'${key}'`),
+      `${key} must be present for a finalized sponsor void to release pinned rules`);
 });
 test('the current release preserves only its explicitly pinned prior funded-room rules', () => {
   const oldRules = '49e69fb6b0dba17eb58ce63310be746dee29242aed0bbbb94e751a5e81a0f669';
@@ -95,6 +98,15 @@ test('replacement is under the admission lease and failure releases the lease wi
   order.length = 0;
   await guardedReplacement({ incomingRules: 'old', acquire, readLocks: async () => [], replace: async () => { order.push('replace'); } });
   assert.deepEqual(order, ['lock', 'replace', 'unlock']);
+});
+test('a prepaid-credit binding failure prevents replacement under the admission lease', async () => {
+  const order = [];
+  await assert.rejects(guardedReplacement({ incomingRules: 'old',
+    acquire: async () => { order.push('lock'); return { records: [active], release: async () => { order.push('unlock'); } }; },
+    readLocks: async () => [], assertPrepaid: async () => { order.push('prepaid'); throw new Error('credit binding changed'); },
+    replace: async () => { order.push('replace'); },
+  }), /credit binding changed/);
+  assert.deepEqual(order, ['lock', 'prepaid', 'unlock']);
 });
 
 test('a finalized auditable technical void releases old rules, while requested or altered voids do not', () => {
