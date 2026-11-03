@@ -85,46 +85,43 @@ function drawFrame(sequence, row, column) {
   const cx = 32 + Math.max(-2, Math.min(2,
     sequence.lean + oscillate(phase, row * 0.31, sequence.sway)));
   const topY = 5 + oscillate(phase, row * 0.47, 1);
-  const leftWidth = 1 + oscillate(phase, row * 0.59 + 0.45, 1);
-  const rightWidth = 1 + oscillate(phase, row * 0.37 + 1.35, 1);
-  const leftSide = cx - 21 - leftWidth;
-  const rightSide = cx + 21 + rightWidth;
-  const leftArmY = sequence.leftY + oscillate(phase, row * 0.35 + 0.7, 2);
-  const rightArmY = sequence.rightY + oscillate(phase, row * 0.49 + 1.7, 2);
-  const leftReach = Math.max(2, sequence.leftReach + oscillate(phase, row * 0.7 + 0.1, 1));
-  const rightReach = Math.max(2, sequence.rightReach + oscillate(phase, row * 0.6 + 2.4, 1));
-  const leftArmHeight = 5 + (column + row) % 3;
-  const rightArmHeight = 5 + (column + row * 2) % 3;
-  const rightBottomY = 63 + oscillate(phase, row * 0.28 + 1.4, 1);
-  const leftBottomY = 63 + oscillate(phase, row * 0.44 + 2.3, 1);
+  const leftSide = cx - 23;
+  const rightSide = cx + 23;
+  const leftFlare = 4 + oscillate(phase, row * 0.59 + 0.45, 1);
+  const rightFlare = 60 + oscillate(phase, row * 0.37 + 1.35, 1);
+  const hemBase = 71 + oscillate(phase, row * 0.29, 1);
   const hem = [
-    71 + oscillate(phase, row * 0.31 + 0.2, 2),
-    66 + oscillate(phase, row * 0.43 + 1.2, 1),
-    73 + oscillate(phase, row * 0.29 + 2.1, 2),
-    67 + oscillate(phase, row * 0.51 + 2.9, 1),
-    74 + oscillate(phase, row * 0.41 + 3.7, 2),
-    66 + oscillate(phase, row * 0.34 + 4.4, 1),
-    72 + oscillate(phase, row * 0.56 + 5.0, 2),
-    66 + oscillate(phase, row * 0.39 + 5.8, 1),
+    hemBase + 1 + oscillate(phase, row * 0.31 + 0.2, 1),
+    hemBase - 1 + oscillate(phase, row * 0.43 + 1.2, 1),
+    hemBase + 2 + oscillate(phase, row * 0.29 + 2.1, 1),
+    hemBase - 1 + oscillate(phase, row * 0.51 + 2.9, 1),
+    hemBase + 2 + oscillate(phase, row * 0.41 + 3.7, 1),
+    hemBase - 1 + oscillate(phase, row * 0.34 + 4.4, 1),
+    hemBase + 1 + oscillate(phase, row * 0.56 + 5.0, 1),
+    hemBase - 1 + oscillate(phase, row * 0.39 + 5.8, 1),
   ];
+  // The approved still is the contour reference: broad rounded crown, a
+  // distinct flare near y=45, and a low sheet edge with shallow notches.
   const bodyPath = [
-    `M${cx - 8} ${topY}`, `H${cx + 8}`, `V${topY + 3}`, `H${cx + 13}`,
-    `V${topY + 7}`, `H${cx + 17}`, `V${topY + 12}`, `H${cx + 20}`,
-    `V${rightArmY}`, `H${rightSide + rightReach}`, `V${rightArmY + rightArmHeight}`,
-    `H${rightSide}`, `V${rightBottomY}`,
-    `H${rightSide - 4}`, `V${hem[0]}`, `H${rightSide - 10}`, `V${hem[1]}`,
-    `H${rightSide - 16}`, `V${hem[2]}`, `H${cx + 2}`, `V${hem[3]}`,
-    `H${cx - 4}`, `V${hem[4]}`, `H${leftSide + 16}`, `V${hem[5]}`,
-    `H${leftSide + 10}`, `V${hem[6]}`, `H${leftSide + 4}`, `V${hem[7]}`,
-    `H${leftSide}`, `V${leftBottomY}`,
-    `H${leftSide - leftReach}`, `V${leftArmY}`, `H${cx - 20}`,
-    `V${topY + 12}`, `H${cx - 17}`, `V${topY + 7}`, `H${cx - 13}`,
-    `V${topY + 3}`, `H${cx - 8}`, "Z",
+    `M${cx - 7} ${topY}`, `H${cx + 7}`, `V${topY + 3}`, `H${cx + 12}`,
+    `V${topY + 7}`, `H${cx + 17}`, `V${topY + 12}`, `H${cx + 21}`,
+    `V${topY + 19}`, `H${rightSide}`, `V${topY + 39}`,
+    `H${rightFlare - 3}`, `V${topY + 43}`, `H${rightFlare}`, `V${topY + 50}`,
+    `H${rightFlare - 3}`, `V${topY + 54}`, `H${rightFlare - 6}`, `V${topY + 62}`,
+    `H${rightFlare - 8}`, `V${hem[0]}`, `H${rightFlare - 14}`, `V${hem[1]}`,
+    `H${rightFlare - 20}`, `V${hem[2]}`, `H${cx + 3}`, `V${hem[3]}`,
+    `H${cx - 3}`, `V${hem[4]}`, `H${leftFlare + 20}`, `V${hem[5]}`,
+    `H${leftFlare + 14}`, `V${hem[6]}`, `H${leftFlare + 8}`, `V${hem[7]}`,
+    `H${leftFlare + 5}`, `V${topY + 62}`, `H${leftFlare + 3}`, `V${topY + 54}`,
+    `H${leftFlare}`, `V${topY + 50}`, `H${leftFlare + 3}`, `V${topY + 43}`,
+    `H${leftSide}`, `V${topY + 19}`, `H${cx - 21}`, `V${topY + 12}`,
+    `H${cx - 17}`, `V${topY + 7}`, `H${cx - 12}`,
+    `V${topY + 3}`, `H${cx - 7}`, "Z",
   ].join("");
 
-  assert(leftSide - leftReach >= 1 && rightSide + rightReach <= 62,
-    `Frame ${row}:${column} would clip an arm`);
-  assert(Math.max(...hem) <= 76 && Math.min(...hem) >= 64,
+  assert(leftFlare >= 3 && rightFlare <= 61,
+    `Frame ${row}:${column} would clip its lower flare`);
+  assert(Math.max(...hem) <= 75 && Math.min(...hem) >= 68,
     `Frame ${row}:${column} would clip its hem`);
   const glassesY = topY + 23;
   const mouthY = topY + 48;
@@ -137,8 +134,9 @@ function drawFrame(sequence, row, column) {
     if (!raised) return "";
     const x = side === "left" ? leftSide : rightSide;
     const direction = side === "left" ? -1 : 1;
-    const palmX = x + direction * (8 + (column % 3 === 0 ? 1 : 0));
-    const elbowX = x + direction * 5;
+    const palmX = side === "left" ? 2 + (column % 3 === 0 ? 1 : 0) :
+      61 - (column % 3 === 0 ? 1 : 0);
+    const elbowX = side === "left" ? 7 : 57;
     const top = 17 + lift + (sequence.id === "greet" ? 3 : 0);
     const bottom = 43 + oscillate(phase, row * 0.39, 2);
     const geometry = [
@@ -152,8 +150,8 @@ function drawFrame(sequence, row, column) {
   const raisedArms = raisedArm("left", raisedLeft) + raisedArm("right", raisedRight);
   const shadow = `<path d="M${cx + 7} ${topY + 8}h7v4h4v7h2v34h-3v9h-4v-9h-5v-8h3V${topY + 25}h-4z" fill="#b9dfe3"/>`;
   const highlights = rect(cx - 12, topY + 9, 5, 3, "#ffffff") +
-    rect(leftSide - leftReach + 1, leftArmY + 1, 3, 3, "#ffffff") +
-    rect(rightSide + rightReach - 3, rightArmY + 1, 3, 3, "#ffffff") +
+    rect(leftFlare + 2, topY + 46, 3, 3, "#ffffff") +
+    rect(rightFlare - 5, topY + 46, 3, 3, "#ffffff") +
     rect(cx - 11, 56, 2, 9, "#d8eeee") +
     rect(cx - 3, 60, 2, 8, "#d8eeee");
   // Face coordinates move with the head, so the frames remain locked to Paul.
@@ -172,16 +170,13 @@ function drawFrame(sequence, row, column) {
   ].join("");
   const brows = rect(cx - 15, glassesY - (sequence.face === "curious" ? 9 : 6), 8, 2, "#29424e") +
     rect(cx + 8, glassesY - (sequence.face === "curious" ? 4 : 6), 8, 2, "#29424e");
-  const wisps = rect(leftSide - 3, 68 + oscillate(phase, row * 0.4, 2), 2, 2, "#cce9e9") +
-    rect(rightSide + 2, 65 + oscillate(phase, row * 0.3 + 1, 2), 2, 2, "#cce9e9");
   const drawing = raisedArms + `<path d="${bodyPath}" fill="#efffff" stroke="#172334" stroke-width="2" stroke-linejoin="miter"/>` +
     shadow + highlights + brows + glasses +
-    faceDetails(sequence.face, column, cx, glassesY, mouthY) + wisps;
+    faceDetails(sequence.face, column, cx, glassesY, mouthY);
   const normalizedBody = JSON.stringify({
-    leftWidth, rightWidth, leftArmY: leftArmY - topY,
-    rightArmY: rightArmY - topY, leftReach, rightReach,
-    leftArmHeight, rightArmHeight, rightBottomY: rightBottomY - topY,
-    leftBottomY: leftBottomY - topY, hem: hem.map((y) => y - topY),
+    leftSide: leftSide - cx, rightSide: rightSide - cx,
+    leftFlare: leftFlare - cx, rightFlare: rightFlare - cx,
+    raisedArms, hem: hem.map((y) => y - topY),
   });
   return { drawing, sha256: hash(drawing), bodySha256: hash(normalizedBody) };
 }

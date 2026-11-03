@@ -18,7 +18,7 @@
     "videoUrl": "/desktop/paul-tutorials/desktop-basics.mp4",
     "captionsUrl": "/desktop/paul-tutorials/desktop-basics.vtt",
     "posterUrl": "/desktop/paul-tutorials/desktop-basics-poster.jpg",
-    "sha256": "69cff2f77bb2cab2e84d1c0943e49492007625434ec89c887ca052f81803ffa5"
+    "sha256": "e2b7c9ea34adf587a5a11b54282fc7d135c1eeb88582465e5a2a825f15ad783c"
   },
   {
     "slug": "mission-control",
@@ -36,7 +36,7 @@
     "videoUrl": "/desktop/paul-tutorials/mission-control.mp4",
     "captionsUrl": "/desktop/paul-tutorials/mission-control.vtt",
     "posterUrl": "/desktop/paul-tutorials/mission-control-poster.jpg",
-    "sha256": "708d8b6ea64e4bd915332135de389ce1c1f9d2de15e9e3479dceb6e5b3f7e045"
+    "sha256": "4c8dba20c70c6657cad2ab55f28d0a896935e8f567205a75770d6c6be47e5ad2"
   },
   {
     "slug": "side-quest-reward",
@@ -55,7 +55,7 @@
     "videoUrl": "/desktop/paul-tutorials/side-quest-reward.mp4",
     "captionsUrl": "/desktop/paul-tutorials/side-quest-reward.vtt",
     "posterUrl": "/desktop/paul-tutorials/side-quest-reward-poster.jpg",
-    "sha256": "1f5c5253eae2d1e28c17af02bfcb3698d52ce0b9530c06b68c33f1502b2f0c6f"
+    "sha256": "f070b912114ae9fc831b8b694cb3994391d3e36e2525e2d5f1c0c700c2095866"
   },
   {
     "slug": "play-arcade",
@@ -73,7 +73,7 @@
     "videoUrl": "/desktop/paul-tutorials/play-arcade.mp4",
     "captionsUrl": "/desktop/paul-tutorials/play-arcade.vtt",
     "posterUrl": "/desktop/paul-tutorials/play-arcade-poster.jpg",
-    "sha256": "879684d73c6d03d6f3a7b91adbe0ece7d6490f352ee7a73d119ab25e11cd51cd"
+    "sha256": "85fb1a5f85c0d96c50806ec476fc40c6580ef3d17cdc50595a1770ee8432edf0"
   },
   {
     "slug": "play-guided-round",
@@ -94,7 +94,7 @@
     "videoUrl": "/desktop/paul-tutorials/play-guided-round.mp4",
     "captionsUrl": "/desktop/paul-tutorials/play-guided-round.vtt",
     "posterUrl": "/desktop/paul-tutorials/play-guided-round-poster.jpg",
-    "sha256": "b90c5f176dec243e6af15dc256e53d511dc7f38e1ec19de669687ad3532c615a"
+    "sha256": "095a11339122cd872d46270350c0df07b0b533e247927cdbc73dbe0acbad6a92"
   },
   {
     "slug": "create-something",
@@ -110,11 +110,11 @@
       "Export the PNG to your device."
     ],
     "transcript": "Create starts with the kind of thing you want to make. I'll open PixAlerce for pixel art. Choose Blank canvas, select thirty two by thirty two, and press Create. Pick a color and the Brush tool. Drag across the canvas to make your first mark. Open App Menu, choose Export Animation, and select PNG for a still image. Choose Device download and Export PNG. The file is now yours to keep or use elsewhere.",
-    "durationSeconds": 27.941,
+    "durationSeconds": 27.940667,
     "videoUrl": "/desktop/paul-tutorials/create-something.mp4",
     "captionsUrl": "/desktop/paul-tutorials/create-something.vtt",
     "posterUrl": "/desktop/paul-tutorials/create-something-poster.jpg",
-    "sha256": "c1b8e986a369f2e89691eb10d21bd1b920839ed52fb314b47afb5f61ecdacc14"
+    "sha256": "19eb22896c850a3efae3fb4fe7bc747424d8ba168ca682db9b595640a7fab4d5"
   },
   {
     "slug": "events",
@@ -133,7 +133,7 @@
     "videoUrl": "/desktop/paul-tutorials/events.mp4",
     "captionsUrl": "/desktop/paul-tutorials/events.vtt",
     "posterUrl": "/desktop/paul-tutorials/events-poster.jpg",
-    "sha256": "81de8cbbcb216fa03c936cc6cfe4097c57351ac1428e52461019b5f1e7b27edd"
+    "sha256": "89330daf88a1a9f91b4800ac239a2b29ce10ba0362faa0058b180fa74a8d3db1"
   },
   {
     "slug": "talk",
@@ -152,7 +152,7 @@
     "videoUrl": "/desktop/paul-tutorials/talk.mp4",
     "captionsUrl": "/desktop/paul-tutorials/talk.vtt",
     "posterUrl": "/desktop/paul-tutorials/talk-poster.jpg",
-    "sha256": "cfdc9176806f7747329ddb8f0e8e3e84c2a6021611008c9fc7237e35dfb49ea4"
+    "sha256": "92f4de45084e8bfe7e53b2a67a0193780c64a4f07af947959f1dfe517c387eda"
   },
   {
     "slug": "shop-safely",
@@ -167,11 +167,11 @@
       "Open System Appearance and spot coming soon items."
     ],
     "transcript": "The WTF In App Marketplace has categories for apps, desktop items, and appearance. Start with Apps and look for live listings. Choose Desktop Items. This recording uses a clearly marked sample accessory so you can see how a listing works; live offers may differ. Check the card's live status, stock, Owned count, and WTF price. Always read the current listing in your own account before choosing anything. System Appearance shows staged previews marked Coming Soon. Staged items cannot be purchased until they become live and available.",
-    "durationSeconds": 36.741,
+    "durationSeconds": 36.748633,
     "videoUrl": "/desktop/paul-tutorials/shop-safely.mp4",
     "captionsUrl": "/desktop/paul-tutorials/shop-safely.vtt",
     "posterUrl": "/desktop/paul-tutorials/shop-safely-poster.jpg",
-    "sha256": "4c6c55677a3de2f9f77c99ae5a2d696a9b4b74f4a65420f18a276f57a4b8843a"
+    "sha256": "15785c39e15ef3ae635bcdde088ef21e0ab68fede123cb731aaef6f3bdd130bd"
   },
   {
     "slug": "personalize",
@@ -190,6 +190,6 @@
     "videoUrl": "/desktop/paul-tutorials/personalize.mp4",
     "captionsUrl": "/desktop/paul-tutorials/personalize.vtt",
     "posterUrl": "/desktop/paul-tutorials/personalize-poster.jpg",
-    "sha256": "fbc45551fccf962c6d89119b8e3278c575b4c5af80430518b888164ce602fb84"
+    "sha256": "580df06b9bb510cc0920d751285421c43ae1962e5b408574ebad26833fbf6e97"
   }
 ]
