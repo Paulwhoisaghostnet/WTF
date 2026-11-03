@@ -33,6 +33,7 @@ export interface ObjktTag {
 export interface ObjktToken {
   fa_contract?: string | null;
   token_id?: string | null;
+  timestamp?: string | null;
   name?: string | null;
   description?: string | null;
   thumbnail_uri?: string | null;

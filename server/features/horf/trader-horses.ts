@@ -6,7 +6,7 @@ import { approvedHorseTags, tokenQualifies, type ObjktToken } from "./model";
 
 export const HORF_TRADER_TOKEN_QUERY = `query HorfTraderTokens($where: token_bool_exp!) {
   token(where: $where) {
-    fa_contract token_id name description decimals thumbnail_uri display_uri
+    fa_contract token_id timestamp name description decimals thumbnail_uri display_uri
     tags { tag { name token_count } }
   }
 }`;
@@ -15,6 +15,7 @@ export interface HorfTraderHorse {
   contract: string;
   tokenId: string;
   balance: string;
+  mintedAt: string | null;
   name: string;
   description: string | null;
   image: string | null;
@@ -72,6 +73,8 @@ export function qualifyingTraderHorses(owned: OwnedFa2Token[], indexed: ObjktTok
       contract: balance.contract,
       tokenId: balance.tokenId,
       balance: balance.balance,
+      mintedAt: typeof token.timestamp === "string" && Number.isFinite(Date.parse(token.timestamp))
+        ? new Date(token.timestamp).toISOString() : null,
       name: String(token.name || balance.name || `Token #${balance.tokenId}`).trim() || `Token #${balance.tokenId}`,
       description: typeof token.description === "string" ? token.description : null,
       image: safeImage(token.thumbnail_uri || token.display_uri),

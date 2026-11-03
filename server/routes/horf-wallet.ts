@@ -142,7 +142,9 @@ router.get("/api/horf/wallet/tokens", async (req, res) => {
   const address = req.query.address;
   const offset = Number(req.query.offset ?? 0);
   const q = String(req.query.q ?? "").trim().toLowerCase();
-  if (!isTezosWallet(address) || !Number.isSafeInteger(offset) || offset < 0) {
+  const refresh = req.query.refresh === "1";
+  if (!isTezosWallet(address) || !Number.isSafeInteger(offset) || offset < 0 ||
+      (req.query.refresh != null && !refresh)) {
     return res.status(400).json({ error: "Valid wallet, offset, and search are required" });
   }
   try {
@@ -152,14 +154,15 @@ router.get("/api/horf/wallet/tokens", async (req, res) => {
     }
     const limit = 48;
     if (!q) {
-      const page = await getOwnedFa2TokensPage(address, limit, offset, { sourceBase: HORF_MAINNET_TZKT_BASE });
-      return res.json({ items: page.items, pagination: { hasMore: page.hasMore, nextOffset: page.nextOffset } });
+      const page = await getOwnedFa2TokensPage(address, limit, offset, { sourceBase: HORF_MAINNET_TZKT_BASE, forceFresh: refresh });
+      return res.json({ items: page.items.map((token) => ({ ...token, walletAddress: address })),
+        pagination: { hasMore: page.hasMore, nextOffset: page.nextOffset } });
     }
     const matches: Awaited<ReturnType<typeof getOwnedFa2TokensPage>>["items"] = [];
     let cursor = offset;
     let hasMore = false;
     while (matches.length < limit) {
-      const page = await getOwnedFa2TokensPage(address, 200, cursor, { sourceBase: HORF_MAINNET_TZKT_BASE });
+      const page = await getOwnedFa2TokensPage(address, 200, cursor, { sourceBase: HORF_MAINNET_TZKT_BASE, forceFresh: refresh });
       for (const token of page.items) {
         if (`${token.contract} ${token.tokenId} ${token.name || ""}`.toLowerCase().includes(q)) matches.push(token);
       }
@@ -167,7 +170,8 @@ router.get("/api/horf/wallet/tokens", async (req, res) => {
       hasMore = page.hasMore;
       if (!hasMore) break;
     }
-    return res.json({ items: matches, pagination: { hasMore, nextOffset: cursor } });
+    return res.json({ items: matches.map((token) => ({ ...token, walletAddress: address })),
+      pagination: { hasMore, nextOffset: cursor } });
   } catch (error) {
     console.error("[horf] public wallet token read failed:", error);
     return res.status(503).json({ error: "Wallet tokens are temporarily unavailable" });

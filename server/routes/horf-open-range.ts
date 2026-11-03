@@ -2,15 +2,22 @@ import { Router } from "express";
 import { and, asc, eq, or } from "drizzle-orm";
 import { db } from "../db";
 import { horfGiftTransfers, horfInspectionApprovals, horfOpenRangeOffers, horfStableClaimEvents } from "@shared/schema";
-import { cachedOpenRangeMintPage, validOpenRangeCursor } from "../features/horf/open-range-source";
+import { validOpenRangeCursor } from "../features/horf/open-range-source";
+import { cachedOpenRangeMintPage } from "../features/horf/open-range-cache";
 import { HORF_SEASONS, resolveHorfSeason } from "../features/horf/seasons";
 import { isTezosWallet } from "../features/horf/model";
 import { assertCurrentOwner, HorfTokenNotOwnedError } from "../features/horf/inspections";
 import { HorseTokenIneligibleError, HorseTokenNotFoundError, inspectHorseToken } from "../features/horf/stables/eligibility";
 import { requireHorfCsrf, requireHorfWallet } from "../features/horf/wallet-scope";
+import { loadHorfTraderNames } from "../features/horf/trader-names";
+import { editionKey, getTraderEditionCounts } from "../features/horf/trader-editions";
+import { horfMainnetIndex } from "../features/horf/mainnet-index";
+import { HORF_MAINNET_CHAIN_ID } from "../features/horf/stables/config";
 
 const router = Router();
 const CONTRACT_RE = /^KT1[1-9A-HJ-NP-Za-km-z]{33}$/;
+// Match the existing Horf trader holdings balance batch size.
+const BALANCE_PAGE_SIZE = 48;
 
 function key(contract: string, tokenId: string) { return `${contract}/${tokenId}`; }
 
@@ -24,6 +31,7 @@ function offerDto(row: typeof horfOpenRangeOffers.$inferSelect) {
 router.get("/api/horf/open-range", async (req, res) => {
   const mode = typeof req.query.season === "string" ? req.query.season : "current-2026";
   const cursor = req.query.cursor == null ? "0" : req.query.cursor;
+  const viewer = req.query.viewer;
   const selected = resolveHorfSeason(mode);
   if (!selected && mode !== "all-seasons" && mode !== "all-horse-search") {
     return res.status(400).json({ error: "Unknown horse season", seasons: HORF_SEASONS });
@@ -31,10 +39,17 @@ router.get("/api/horf/open-range", async (req, res) => {
   if (typeof cursor !== "string" || !validOpenRangeCursor(mode, cursor)) {
     return res.status(400).json({ error: "Invalid Objkt mint cursor" });
   }
+  if (viewer !== undefined && !isTezosWallet(viewer)) {
+    return res.status(400).json({ error: "A valid viewer wallet is required" });
+  }
+  const refresh = req.query.refresh == null ? false : req.query.refresh === "1";
+  if (req.query.refresh != null && !refresh) {
+    return res.status(400).json({ error: "Invalid Open Range refresh value" });
+  }
   try {
-    // One measured Objkt metadata-safe source page per HTTP request. Empty
-    // postfilter pages still carry the cursor; the browser can continue.
-    const page = await cachedOpenRangeMintPage(mode, cursor);
+    // Horse metadata comes from durable discovery pages. Offer, trade, and
+    // inspection state below is joined live on every request.
+    const page = await cachedOpenRangeMintPage(mode, cursor, { refresh });
     const scannedSourceRows = page.sourceRows;
 
     const items = page.items;
@@ -42,8 +57,18 @@ router.get("/api/horf/open-range", async (req, res) => {
       season: selected || { key: mode, label: mode === "all-seasons" ? "All Horse Seasons" : "All Horse Search",
         startsAt: null, endsAt: null },
       items: [], nextCursor: page.nextCursor, hasMore: page.hasMore,
-      asOf: page.asOf, scannedSourceRows,
+      asOf: page.asOf, scannedSourceRows, cacheStatus: page.cacheStatus, balanceStatus: "ready",
     });
+    let viewerBalances: Map<string, string> | null = null;
+    if (typeof viewer === "string") {
+      try {
+        const head = await horfMainnetIndex.getJson<{ chainId?: string }>("/head");
+        if (head.chainId !== HORF_MAINNET_CHAIN_ID) throw new Error("Open Range balances require the Tezos Mainnet index");
+        viewerBalances = await getTraderEditionCounts(viewer, items, BALANCE_PAGE_SIZE);
+      } catch (error) {
+        console.warn("[horf] Open Range viewer balance unavailable:", error);
+      }
+    }
     const transferFilter = or(...items.map((item) => and(
       eq(horfGiftTransfers.tokenContract, item.contract), eq(horfGiftTransfers.tokenId, item.tokenId))));
     const claimFilter = or(...items.map((item) => and(
@@ -72,13 +97,15 @@ router.get("/api/horf/open-range", async (req, res) => {
       season: selected || { key: mode, label: mode === "all-seasons" ? "All Horse Seasons" : "All Horse Search",
         startsAt: null, endsAt: null },
       items: items.map((item) => ({ ...item,
+        viewerBalance: typeof viewer === "string" ? viewerBalances?.get(editionKey(item)) ?? null : null,
         tradedThroughHorf: traded.has(key(item.contract, item.tokenId)),
         activelyForTradeOnHorf: offersByToken.has(key(item.contract, item.tokenId)),
         approvedForMarshalsMarket: approved.has(key(item.contract, item.tokenId)),
         offers: offersByToken.get(key(item.contract, item.tokenId)) || [],
       })),
       nextCursor: page.nextCursor, hasMore: page.hasMore,
-      asOf: page.asOf, scannedSourceRows,
+      asOf: page.asOf, scannedSourceRows, cacheStatus: page.cacheStatus,
+      balanceStatus: viewer && !viewerBalances ? "unavailable" : "ready",
     });
   } catch (error) {
     console.error("[horf] Open Range mint page failed:", error);
@@ -94,7 +121,9 @@ router.get("/api/horf/open-range/offers", async (req, res) => {
       .where(address ? and(eq(horfOpenRangeOffers.active, true), eq(horfOpenRangeOffers.ownerWalletAddress, address))
         : eq(horfOpenRangeOffers.active, true))
       .orderBy(asc(horfOpenRangeOffers.createdAt), asc(horfOpenRangeOffers.id));
-    return res.json({ offers: rows.map(offerDto) });
+    const names = await loadHorfTraderNames(rows.map((row) => row.ownerWalletAddress));
+    return res.json({ offers: rows.map((row) => ({ ...offerDto(row),
+      ownerName: names.get(row.ownerWalletAddress)?.displayName ?? null })) });
   } catch (error) {
     console.error("[horf] Open Range offers failed:", error);
     return res.status(503).json({ error: "Open Range offers are temporarily unavailable" });

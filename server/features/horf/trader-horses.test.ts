@@ -15,7 +15,7 @@ test("trader holdings use the Horf mint test and current positive balances", () 
     { contract: horseContractAddress()!, tokenId: "0", balance: "100" },
   ];
   const indexed = [
-    { fa_contract: contract, token_id: "1", name: "Horse Art 2026", decimals: 0 },
+    { fa_contract: contract, token_id: "1", name: "Horse Art 2026", timestamp: "2026-11-02T10:00:00Z", decimals: 0 },
     { fa_contract: contract, token_id: "2", name: "Untitled", decimals: 0,
       tags: [{ tag: { name: "pony", token_count: 6 } }] },
     { fa_contract: contract, token_id: "3", name: "Untitled", decimals: 0,
@@ -26,5 +26,8 @@ test("trader holdings use the Horf mint test and current positive balances", () 
   ];
   assert.deepEqual(qualifyingTraderHorses(owned, indexed).map((horse) => [horse.tokenId, horse.balance]), [
     ["1", "2"], ["2", "1"],
+  ]);
+  assert.deepEqual(qualifyingTraderHorses(owned, indexed).map((horse) => horse.mintedAt), [
+    "2026-11-02T10:00:00.000Z", null,
   ]);
 });

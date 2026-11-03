@@ -48,17 +48,18 @@ const Hero = styled.header`
   grid-template-columns: minmax(0, 1.3fr) minmax(180px, .7fr);
   overflow: hidden;
   border-radius: 25px;
-  background: #132b2d;
-  color: #f8fcf9;
-  box-shadow: 0 18px 45px #1a363725;
+  background: var(--horf-surface, #1b2723);
+  color: var(--horf-ink, #f4ead6);
+  border: 1px solid var(--horf-line, #3d5148);
+  box-shadow: 0 18px 45px #0000003d;
   .copy { position: relative; z-index: 1; align-self: center; padding: clamp(25px, 4vw, 48px); }
   .kicker { color: #ffc363; font-weight: 850; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; }
-  h2 { max-width: 12ch; margin: 8px 0 12px; color: #fff; font: 700 clamp(35px, 4cqw, 62px)/.99 var(--horf-display); letter-spacing: -.045em; }
-  p { max-width: 62ch; margin: 0; color: #d2e6de; font-size: 14px; line-height: 1.55; }
+  h2 { max-width: 12ch; margin: 8px 0 12px; color: var(--horf-ink, #f4ead6); font: 700 clamp(35px, 4cqw, 62px)/.99 var(--horf-display); letter-spacing: -.045em; }
+  p { max-width: 62ch; margin: 0; color: var(--horf-muted, #b7b5a7); font-size: 14px; line-height: 1.55; }
   .photo { position: relative; min-height: 226px; background: url('/horf-art/horse-portrait-photo.jpg') center 35% / cover; }
-  .photo:before { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, #132b2d 0%, #132b2d11 46%); }
+  .photo:before { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, #1b2723 0%, #1b272311 46%); }
   .seal { position: absolute; right: 18px; bottom: 18px; display: grid; place-items: center; width: 112px; height: 112px; border: 2px dashed #ffd187; border-radius: 50%; background: #132b2dd9; color: #ffcf73; font: 700 14px/1.2 var(--horf-display); text-align: center; transform: rotate(11deg); }
-  @container (max-width: 660px) { grid-template-columns: 1fr; .photo { min-height: 130px; background-position: center 32%; } .photo:before { background: linear-gradient(180deg, #132b2d, transparent 80%); } .seal { width: 93px; height: 93px; font-size: 12px; } }
+  @container (max-width: 660px) { grid-template-columns: 1fr; .photo { min-height: 130px; background-position: center 32%; } .photo:before { background: linear-gradient(180deg, #1b2723, transparent 80%); } .seal { width: 93px; height: 93px; font-size: 12px; } }
 `;
 const Toolbar = styled.div`
   display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;
@@ -69,20 +70,20 @@ const Toolbar = styled.div`
 const Action = styled.button<{ $strong?: boolean; $gold?: boolean }>`
   display: inline-flex; align-items: center; justify-content: center; gap: 7px;
   min-height: 43px; padding: 10px 17px;
-  border: 1px solid ${(p) => p.$gold ? '#a3621d' : p.$strong ? '#132b2d' : '#c6d5d0'};
+  border: 1px solid ${(p) => p.$gold ? '#a3621d' : p.$strong ? 'var(--horf-gold, #d8a34a)' : 'var(--horf-line, #3d5148)'};
   border-radius: 999px;
-  background: ${(p) => p.$gold ? '#ffcc70' : p.$strong ? '#132b2d' : '#fff'};
-  color: ${(p) => p.$gold ? '#352310' : p.$strong ? '#fff' : '#173634'};
+  background: ${(p) => p.$gold ? '#ffcc70' : p.$strong ? 'var(--horf-gold, #d8a34a)' : 'var(--horf-field, #24332d)'};
+  color: ${(p) => p.$gold || p.$strong ? '#241a0f' : 'var(--horf-ink, #f4ead6)'};
   font-weight: 800; font-size: 13px; line-height: 1.2;
   &:hover:not(:disabled) { filter: brightness(.95); transform: translateY(-1px); }
   &:focus-visible { outline: 3px solid var(--horf-teal); outline-offset: 3px; }
   @media (prefers-reduced-motion: reduce) { &:hover:not(:disabled) { transform: none; } }
 `;
 const Notice = styled.div<{ $error?: boolean }>`
-  margin: 12px 0; padding: 13px 16px; border: 1px solid ${(p) => p.$error ? '#e8a38f' : '#a0cbbf'};
-  border-radius: 12px; background: ${(p) => p.$error ? '#fff0eb' : '#e9f7f0'};
+  margin: 12px 0; padding: 13px 16px; border: 1px solid ${(p) => p.$error ? '#a8604f' : '#477663'};
+  border-radius: 12px; background: ${(p) => p.$error ? '#3b2723' : '#1d3932'};
   font-size: 13px; line-height: 1.5; overflow-wrap: anywhere;
-  a { color: #087e7a; }
+  a { color: var(--horf-teal, #71b7a0); }
 `;
 const Layout = styled.div`
   display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(300px, .75fr); gap: 20px; align-items: start;
@@ -93,9 +94,9 @@ const Grid = styled.div`
   @container (max-width: 600px) { grid-template-columns: 1fr; }
 `;
 const Card = styled.article<{ $selected: boolean }>`
-  min-width: 0; overflow: hidden; border: 1px solid ${(p) => p.$selected ? '#0b8780' : '#d7e0da'};
-  border-radius: 18px; background: #fff; box-shadow: ${(p) => p.$selected ? '0 10px 30px #087e7a1b' : '0 3px 12px #1736340a'};
-  .art { position: relative; aspect-ratio: 1.35; overflow: hidden; background: #dce6dd; }
+  min-width: 0; overflow: hidden; border: 1px solid ${(p) => p.$selected ? 'var(--horf-teal, #71b7a0)' : 'var(--horf-line, #3d5148)'};
+  border-radius: 18px; background: var(--horf-surface, #1b2723); box-shadow: ${(p) => p.$selected ? '0 10px 30px #00000040' : '0 3px 12px #00000026'};
+  .art { position: relative; aspect-ratio: 1.35; overflow: hidden; background: #2b3d34; }
   .art img { width: 100%; height: 100%; object-fit: contain; display: block; }
   .art .photo { object-fit: cover; }
   .tag { position: absolute; top: 11px; left: 11px; padding: 6px 9px; border-radius: 999px; background: #ffcf76; color: #382a17; font: 850 10px/1 var(--horf-font); text-transform: uppercase; }
@@ -103,27 +104,27 @@ const Card = styled.article<{ $selected: boolean }>`
   h4 { margin: 0 0 4px; font: 700 20px/1.15 var(--horf-display); overflow-wrap: anywhere; }
   p { margin: 0; color: var(--horf-muted); font-size: 12px; }
   .price { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 7px; margin: 17px 0; }
-  .price strong { font: 750 24px/1 var(--horf-display); color: #164b48; }
+  .price strong { font: 750 24px/1 var(--horf-display); color: var(--horf-gold, #d8a34a); }
   .price span { color: var(--horf-muted); font-size: 11px; }
   .body > button { width: 100%; }
 `;
 const Panel = styled.aside`
-  min-width: 0; padding: 21px; border: 1px solid #cbd9d4; border-radius: 18px;
-  background: #fff; box-shadow: 0 6px 22px #1736340a;
+  min-width: 0; padding: 21px; border: 1px solid var(--horf-line, #3d5148); border-radius: 18px;
+  background: var(--horf-surface, #1b2723); box-shadow: 0 6px 22px #00000026;
   h3 { margin-bottom: 5px; font: 700 24px/1.1 var(--horf-display); }
   h4 { margin: 22px 0 6px; font: 700 17px/1.15 var(--horf-display); }
   p { margin-bottom: 12px; color: var(--horf-muted); font-size: 13px; line-height: 1.5; }
   label { display: block; margin: 13px 0 6px; font-weight: 750; font-size: 12px; }
-  input, select { width: 100%; min-width: 0; min-height: 43px; padding: 10px 11px; border: 1px solid #a9bdb6; border-radius: 9px; background: #fff; color: var(--horf-ink); font-size: 14px; }
+  input, select { width: 100%; min-width: 0; min-height: 43px; padding: 10px 11px; border: 1px solid var(--horf-line, #3d5148); border-radius: 9px; background: var(--horf-field, #24332d); color: var(--horf-ink); font-size: 14px; }
   input:focus-visible, select:focus-visible { outline: 3px solid var(--horf-teal); outline-offset: 2px; }
   form > button, .wide { width: 100%; margin-top: 14px; }
-  .rule { height: 1px; margin: 22px 0; background: #dde7e0; }
+  .rule { height: 1px; margin: 22px 0; background: var(--horf-line, #3d5148); }
   .small { font-size: 11px; }
   .meta { overflow-wrap: anywhere; }
 `;
 const Stamp = styled.span`
   display: inline-flex; align-items: center; gap: 5px; padding: 5px 9px; border-radius: 999px;
-  background: #ddf2e8; color: #12634f; font-size: 11px; font-weight: 800;
+  background: #25483a; color: #a5d9bd; font-size: 11px; font-weight: 800;
 `;
 
 function shortAddress(value: string) { return value.length > 18 ? `${value.slice(0, 8)}…${value.slice(-6)}` : value; }
@@ -253,7 +254,7 @@ export function HorfHorseMarket({ address, connectWallet, isConnecting }: {
   }
   return <Page data-horf-region="horse-market" aria-label="Horf HORSE Market">
     <Hero>
-      <div className="copy"><span className="kicker">Marshal’s seal · 🪢 The HORSE Market</span><h2>Fine horses. Fair HORSE.</h2><p>Hang a HORSE price on your inspected horse and let another rider take the reins. Every Mainnet swap sends the full HORSE price to the seller. 🤠</p></div>
+      <div className="copy"><span className="kicker">Marshal’s seal · 🪢 The HORSE Market</span><h2>Fine horses. Fair HORSE.</h2><p>List inspected horses for HORSE. The full price goes to the seller. 🤠</p></div>
       <div className="photo" role="img" aria-label="Horse photograph"><span className="seal">MARSHAL<br />APPROVED<br />🐎</span></div>
     </Hero>
     {configQuery.isPending && <Notice role="status">Checking the HORSE Market contract…</Notice>}
@@ -297,7 +298,7 @@ export function HorfHorseMarket({ address, connectWallet, isConnecting }: {
         </Panel>
         <Panel style={{ marginTop: 16 }} data-horf-horse-market-list-form>
           <h3>Hang a HORSE price 🤠</h3>
-          <p>Only token identities approved by a Horf Marshal can be listed. Your wallet deposits the selected editions into the Market when you sign.</p>
+          <p>Marshal approval required. Signing deposits your editions into the Market.</p>
           {!address && <Action type="button" onClick={() => void connectWallet()} disabled={isConnecting}>{isConnecting ? "Connecting…" : "Connect to list"}</Action>}
           {address && <form onSubmit={list}>
             <label htmlFor="horf-market-search">Find a horse in your wallet</label>
