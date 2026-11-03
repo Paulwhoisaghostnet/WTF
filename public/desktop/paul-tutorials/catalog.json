@@ -18,7 +18,7 @@
     "videoUrl": "/desktop/paul-tutorials/desktop-basics.mp4",
     "captionsUrl": "/desktop/paul-tutorials/desktop-basics.vtt",
     "posterUrl": "/desktop/paul-tutorials/desktop-basics-poster.jpg",
-    "sha256": "b53e7f0101a777dda734864fd96d2acd44a16bebecd54d774a8c07cfc08c5ea8"
+    "sha256": "69cff2f77bb2cab2e84d1c0943e49492007625434ec89c887ca052f81803ffa5"
   },
   {
     "slug": "mission-control",
@@ -36,7 +36,7 @@
     "videoUrl": "/desktop/paul-tutorials/mission-control.mp4",
     "captionsUrl": "/desktop/paul-tutorials/mission-control.vtt",
     "posterUrl": "/desktop/paul-tutorials/mission-control-poster.jpg",
-    "sha256": "cab04719adb10114d1db13ede63b19e2c65aa873d1d620ccec2135a2b34fa181"
+    "sha256": "708d8b6ea64e4bd915332135de389ce1c1f9d2de15e9e3479dceb6e5b3f7e045"
   },
   {
     "slug": "side-quest-reward",
@@ -55,7 +55,7 @@
     "videoUrl": "/desktop/paul-tutorials/side-quest-reward.mp4",
     "captionsUrl": "/desktop/paul-tutorials/side-quest-reward.vtt",
     "posterUrl": "/desktop/paul-tutorials/side-quest-reward-poster.jpg",
-    "sha256": "0c3d086c2e3a986c88de79862c16d8494f3c7f2b292052304f08fcc63558fc83"
+    "sha256": "1f5c5253eae2d1e28c17af02bfcb3698d52ce0b9530c06b68c33f1502b2f0c6f"
   },
   {
     "slug": "play-arcade",
@@ -73,7 +73,7 @@
     "videoUrl": "/desktop/paul-tutorials/play-arcade.mp4",
     "captionsUrl": "/desktop/paul-tutorials/play-arcade.vtt",
     "posterUrl": "/desktop/paul-tutorials/play-arcade-poster.jpg",
-    "sha256": "6650d5b5214b8f6a273514c1e43e2315eec593bd2426a9533a286498d87ef216"
+    "sha256": "879684d73c6d03d6f3a7b91adbe0ece7d6490f352ee7a73d119ab25e11cd51cd"
   },
   {
     "slug": "play-guided-round",
@@ -94,7 +94,7 @@
     "videoUrl": "/desktop/paul-tutorials/play-guided-round.mp4",
     "captionsUrl": "/desktop/paul-tutorials/play-guided-round.vtt",
     "posterUrl": "/desktop/paul-tutorials/play-guided-round-poster.jpg",
-    "sha256": "5a76ec992f45aae982622bfdb09c0b50f267624f8e0323b62b5255e59e565c2e"
+    "sha256": "b90c5f176dec243e6af15dc256e53d511dc7f38e1ec19de669687ad3532c615a"
   },
   {
     "slug": "create-something",
@@ -110,11 +110,11 @@
       "Export the PNG to your device."
     ],
     "transcript": "Create starts with the kind of thing you want to make. I'll open PixAlerce for pixel art. Choose Blank canvas, select thirty two by thirty two, and press Create. Pick a color and the Brush tool. Drag across the canvas to make your first mark. Open App Menu, choose Export Animation, and select PNG for a still image. Choose Device download and Export PNG. The file is now yours to keep or use elsewhere.",
-    "durationSeconds": 27.940667,
+    "durationSeconds": 27.941,
     "videoUrl": "/desktop/paul-tutorials/create-something.mp4",
     "captionsUrl": "/desktop/paul-tutorials/create-something.vtt",
     "posterUrl": "/desktop/paul-tutorials/create-something-poster.jpg",
-    "sha256": "e01cd227b787a926d9f940ff673bb2746b6950b6b4af85cc8c85a0bb3ac7ae16"
+    "sha256": "c1b8e986a369f2e89691eb10d21bd1b920839ed52fb314b47afb5f61ecdacc14"
   },
   {
     "slug": "events",
@@ -129,11 +129,11 @@
       "Open My plans and find your saved event."
     ],
     "transcript": "Events lives in Calendar. Under Browse, choose Agenda to scan upcoming events by date. I'll open a tutorial sample event to read its time, description, and room link before making a plan. If you plan to attend, choose Going. Calendar confirms the plan and turns on a task tray reminder. Open My plans to find the event again. This is where your calendar choices collect.",
-    "durationSeconds": 25.077667,
+    "durationSeconds": 25.085351,
     "videoUrl": "/desktop/paul-tutorials/events.mp4",
     "captionsUrl": "/desktop/paul-tutorials/events.vtt",
     "posterUrl": "/desktop/paul-tutorials/events-poster.jpg",
-    "sha256": "55895d365f4cf0ec133e4dc2167a9acc79bd2a78dfc46789c75e4bbb7d741c5f"
+    "sha256": "81de8cbbcb216fa03c936cc6cfe4097c57351ac1428e52461019b5f1e7b27edd"
   },
   {
     "slug": "talk",
@@ -148,11 +148,11 @@
       "Press Send message and check the confirmation."
     ],
     "transcript": "Inbox brings mail and messages together. WIM can send while external mailbox setup is pending. Click New message to start a WIM note. Choose WTF user through WIM, then select the person you want to reach. Write your note in Message body. You can add a subject, but a WIM message does not need one. Click Send message. The Message sent confirmation tells you this note went through.",
-    "durationSeconds": 27.990667,
+    "durationSeconds": 27.991,
     "videoUrl": "/desktop/paul-tutorials/talk.mp4",
     "captionsUrl": "/desktop/paul-tutorials/talk.vtt",
     "posterUrl": "/desktop/paul-tutorials/talk-poster.jpg",
-    "sha256": "a6bc7ac06db7f5f0cd8c7d25aee2c208faad4fd20f44d0597fc50c03efb7a0ff"
+    "sha256": "cfdc9176806f7747329ddb8f0e8e3e84c2a6021611008c9fc7237e35dfb49ea4"
   },
   {
     "slug": "shop-safely",
@@ -171,7 +171,7 @@
     "videoUrl": "/desktop/paul-tutorials/shop-safely.mp4",
     "captionsUrl": "/desktop/paul-tutorials/shop-safely.vtt",
     "posterUrl": "/desktop/paul-tutorials/shop-safely-poster.jpg",
-    "sha256": "3be944d50de160aa677b12a68663816b1b300ef81392f4fd3a66d8971f60b1f7"
+    "sha256": "4c6c55677a3de2f9f77c99ae5a2d696a9b4b74f4a65420f18a276f57a4b8843a"
   },
   {
     "slug": "personalize",
@@ -190,6 +190,6 @@
     "videoUrl": "/desktop/paul-tutorials/personalize.mp4",
     "captionsUrl": "/desktop/paul-tutorials/personalize.vtt",
     "posterUrl": "/desktop/paul-tutorials/personalize-poster.jpg",
-    "sha256": "6a87a7649df20922fedfbfca5608c50f0e0276b00105a534e6617dbe83ac1946"
+    "sha256": "fbc45551fccf962c6d89119b8e3278c575b4c5af80430518b888164ce602fb84"
   }
 ]

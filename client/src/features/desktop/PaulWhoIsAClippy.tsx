@@ -7,6 +7,15 @@ const GHOST_WIDTH = 112;
 const GHOST_HEIGHT = 116;
 const GHOST_MARGIN = 12;
 const GHOST_CLEARANCE = 14;
+const POSE_COLUMNS = 10;
+const POSE_ROWS = 9;
+const POSE_WIDTH = 80;
+const POSE_HEIGHT = 100;
+const POSE_COUNT = POSE_COLUMNS * POSE_ROWS;
+// Match the atlas manifest's eight frames per second so each expression reads.
+const POSE_FPS = 8;
+const POSE_CYCLE_SECONDS = POSE_COUNT / POSE_FPS;
+const POSE_SHEET_URL = paulAssetUrl("/desktop/paulwhoisaclippy-poses.svg");
 
 type Bounds = { width: number; height: number };
 type Position = { x: number; y: number };
@@ -85,6 +94,17 @@ const floatLikeASecret = keyframes`
   70% { transform: translate(-5px, -3px); opacity: 0.88; }
 `;
 
+// Frame coordinates match the atlas manifest's row-major 10 × 9 layout.
+// CSS advances the background without a React render for every pose.
+const cyclePortraitPoses = keyframes`
+  ${Array.from({ length: POSE_COUNT }, (_, frame) => {
+    const x = -(frame % POSE_COLUMNS) * POSE_WIDTH;
+    const y = -Math.floor(frame / POSE_COLUMNS) * POSE_HEIGHT;
+    return `${((frame / POSE_COUNT) * 100).toFixed(6)}% { background-position: ${x}px ${y}px; }`;
+  }).join("\n")}
+  100% { background-position: 0 0; }
+`;
+
 const GhostLayer = styled.div`
   position: absolute;
   inset: 0;
@@ -110,26 +130,31 @@ const GhostButton = styled.button<{ $x: number; $y: number; $interactive: boolea
   cursor: pointer;
   user-select: none;
 
-  img {
-    display: block;
-    width: 80px;
-    height: 100px;
-    object-fit: contain;
-    image-rendering: pixelated;
-    filter: drop-shadow(2px 3px 0 rgba(0, 0, 0, 0.35));
-    animation: ${floatLikeASecret} 6s ease-in-out infinite;
-  }
-
   &:focus-visible {
     outline: 2px dashed #ff5965;
     outline-offset: 2px;
   }
+`;
+
+const PortraitPose = styled.span`
+  display: block;
+  flex: 0 0 auto;
+  width: ${POSE_WIDTH}px;
+  height: ${POSE_HEIGHT}px;
+  background-image: url("${POSE_SHEET_URL}");
+  background-position: 0 0;
+  background-repeat: no-repeat;
+  background-size: ${POSE_COLUMNS * POSE_WIDTH}px ${POSE_ROWS * POSE_HEIGHT}px;
+  image-rendering: pixelated;
+  filter: drop-shadow(2px 3px 0 rgba(0, 0, 0, 0.35));
+  animation: ${cyclePortraitPoses} ${POSE_CYCLE_SECONDS}s step-end infinite,
+    ${floatLikeASecret} 6s ease-in-out infinite;
 
   @media (prefers-reduced-motion: reduce) {
-    img {
-      animation: none;
-      opacity: 1;
-    }
+    animation: none;
+    background-position: 0 0;
+    opacity: 1;
+    transform: none;
   }
 `;
 
@@ -225,7 +250,7 @@ export function PaulWhoIsAClippy({
         }}
         onBlur={() => setWhisperIndex(null)}
       >
-        <img src={paulAssetUrl("/desktop/paulwhoisaclippy.svg")} alt="" draggable={false} />
+        <PortraitPose data-paul-pose="true" aria-hidden="true" />
         <NameTag>paulwhoisaclippy</NameTag>
       </GhostButton>
     </GhostLayer>

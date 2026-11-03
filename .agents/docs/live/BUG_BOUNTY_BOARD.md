@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **735** · Open: **9** · Claimed: **43** · In Progress: **16** · Blocked: **4** · Fixed: **134** · Verified: **525** · Archived: **4**
+Total: **735** · Open: **9** · Claimed: **42** · In Progress: **16** · Blocked: **4** · Fixed: **134** · Verified: **526** · Archived: **4**
 
 ## Canonical Board
 
@@ -80,7 +80,6 @@ Total: **735** · Open: **9** · Claimed: **43** · In Progress: **16** · Block
 | WTF-BB-547 | Claimed | Codex Hoard removal pass | - | Desktop OS / retired app cleanup | P1 | 11 | 395 | 2 | 4 | 1 | Hoard app removal can leave live registry and launcher ghosts |
 | WTF-BB-390 | Claimed | Codex full-send cleanup pass | 2026-07-15 | CI / environment inventory determinism | P1 | 11 | 395 | 3 | 4 | 0 | Environment inventory passed locally but failed in clean CI because the generator recursively scanned ignored local desktop asset outputs; restrict discovery to Git-tracked source inputs |
 | WTF-BB-741 | Claimed | Codex Pasta alpha remaining release gates | 2026-10-27 | CI / Playwright runner compatibility | P1 | 8 | 633 | 1 | 3 | 0 | Quality job cannot install Playwright Chromium on Ubuntu 26.04 latest runner |
-| WTF-BB-769 | Claimed | Codex Paul portrait ghost correction | 2026-11-03 | Desktop OS / Paul character silhouette | P2 | 7 | 687 | 2 | 2 | 0 | Paul reads as a mushroom cap or spilled ice cream instead of a tall ghost |
 | WTF-BB-662 | In Progress | Codex Macaroni V3.5 secure lifecycle pass; native self-host setup recovery; hosted alpha production rollout; Codex Pasta review handoff; Codex Pasta alpha readiness implementation | 2026-10-27 | Macaroni / predictable allocation and mutable sale inventory | P0 | 17 | 39 | 4 | 5 | 3 | Macaroni V3 derives draws from public state and permits inventory mutation after sales begin |
 | WTF-BB-138 | In Progress | Codex casino backend audit pass | 2026-05-09 | Casino / compliance and economy | P1 | 16 | 72 | 4 | 5 | 3 | Casino wagering must stay fail-closed until compliance, settlement, and house accounting exist |
 | WTF-BB-392 | In Progress | Codex Objkt Operator production verification | 2026-09-02 | Commerce / private Objkt operator availability | P1 | 15 | 94 | 4 | 5 | 2 | Private Objkt Operator is deployed with owner-gated PostgreSQL persistence and non-custodial signing boundaries |
@@ -716,6 +715,7 @@ Total: **735** · Open: **9** · Claimed: **43** · In Progress: **16** · Block
 | WTF-BB-096 | Verified | Codex in-app market cart pass | 2026-05-05 | In-app market / listing IDs | P2 | 8 | 633 | 1 | 3 | 1 | Seeded item listing id collides with cart router sentinel |
 | WTF-BB-079 | Verified | Codex deploy hardening pass | 2026-05-03 | Deploy / release metadata | P2 | 8 | 633 | 2 | 3 | 0 | `server-deploy.sh` can inherit a stale `COMMIT_SHA` and mislabel the live revision |
 | WTF-BB-043 | Verified | Codex TV refresh query reconciliation | 2026-09-02 | TV microapp / refresh scale | P2 | 8 | 633 | 2 | 2 | 1 | WTF TV refresh currently sorts all wallet rows randomly |
+| WTF-BB-769 | Verified | Codex Paul portrait ghost correction | 2026-11-03 | Desktop OS / Paul character silhouette | P2 | 7 | 687 | 2 | 2 | 0 | Paul needs the approved compact portrait ghost and 90-pose desktop animation |
 | WTF-BB-763 | Verified | Codex Horf HORSE social backend | 2026-11-03 | Horf / reward currency and race separation | P2 | 7 | 687 | 1 | 3 | 0 | HORSE reward sends can inflate horse-art race and reciprocal debts |
 | WTF-BB-758 | Verified | Codex coLILseum sponsor-prize rollout | 2026-11-02 | coLILseum / sponsored prize wallet amounts | P2 | 7 | 687 | 1 | 3 | 0 | Free-entry Mainnet XTZ prize includes a paid-room fee in the wallet prompt |
 | WTF-BB-756 | Verified | Codex Paul ghost visual correction | 2026-11-02 | Desktop OS / Paul character readability | P2 | 7 | 687 | 2 | 2 | 0 | Paul reads as a floating face instead of a red-glasses ghost |
@@ -1766,20 +1766,6 @@ Total: **735** · Open: **9** · Claimed: **43** · In Progress: **16** · Block
 - Verification idea:
   - The PR quality job installs Chromium and completes unit, typecheck, build, inventory, and link gates on the pinned runner.
 - Integration note (2026-10-29): Reassigned from isolated Pasta branch WTF-BB-676; current main uses that ID for a separate finding.
-
-### WTF-BB-769 - Paul reads as a mushroom cap or spilled ice cream instead of a tall ghost
-
-- Category: Desktop OS / Paul character silhouette
-- Priority: P2
-- Status: Claimed
-- Owner/Session: Codex Paul portrait ghost correction
-- Last touched: 2026-11-03
-- Score: C2 + F2 + S0 + P2(3) = 7
-- Evidence (2026-11-03): The current Paul SVG has a 96×64 landscape canvas and a broad, shallow white body. The owner reports that the live desktop reads as a mushroom cap or spilled ice cream, and explicitly requests a taller, portrait-shaped ghost while keeping the red framed glasses.
-- Why it matters: The character identity still fails at its actual desktop size despite the previous red-glasses update.
-- Correction direction: Redraw the shared pixel sprite with a clear head-to-hem vertical sheet silhouette and more height than width, retain prominent red frames, and adapt its desktop and Help placements without changing click, keyboard, or reduced-motion behavior. Rebuild recorded guide media from existing narration and version public asset URLs.
-- Verification idea: Inspect the sprite at desktop and Help sizes and in a live screenshot; run Paul browser behavior, inventory coverage, media validators, exact-head quality gates, and production smoke.
-- Score: P2(3)+C2/F2/S0=7; visible character-readability failure without a known access, persistence, or security defect.
 
 ### WTF-BB-662 - Macaroni V3 derives draws from public state and permits inventory mutation after sales begin
 
@@ -15625,6 +15611,21 @@ Copy this when adding a new issue:
 - Verification (2026-09-02):
   - Focused policy suite passes 2/2, proving the refresh source contains no SQL `RANDOM()`, the deterministic order is present, and migration/schema index definitions agree. `1ac70168` is an ancestor of live production commit `1238a78d`; public health is alive.
   - The unbounded random-sort condition described by this record is absent, so WTF-BB-043 is Verified.
+
+### WTF-BB-769 - Paul needs the approved compact portrait ghost and 90-pose desktop animation
+
+- Category: Desktop OS / Paul character silhouette
+- Priority: P2
+- Status: Verified
+- Owner/Session: Codex Paul portrait ghost correction
+- Last touched: 2026-11-03
+- Score: C2 + F2 + S0 + P2(3) = 7
+- Evidence (2026-11-03): The original Paul SVG used a 96×64 landscape canvas and a broad, shallow white body. The owner reported that the live desktop read as a mushroom cap or spilled ice cream, and approved a compact portrait sheet silhouette with prominent red-framed glasses. The desktop still floated one static image; the owner now requests a 90-pose animation from sprite sheets.
+- Why it matters: The character must read as the approved ghost at actual desktop size, and a single bobbing image does not deliver the requested character motion. Reduced-motion users need the same recognizable ghost without pose cycling or floating.
+- Correction direction: Keep the approved compact head-to-hem sheet silhouette and red frames as the basis for 90 distinct desktop poses. Wire the sheets into the stable pointer/keyboard target, retain a matching still for Help and guide media, and render a still pose under reduced motion. Rebuild recorded guide media from existing narration when its baked sprite changes, and version public asset URLs to avoid stale cached art.
+- Verification idea: Verify 90 poses and their frame order, inspect the ghost at desktop and Help sizes, confirm animation and reduced-motion stillness in browser screenshots, and run Paul browser behavior, inventory coverage, media validators, exact-head quality gates, and production smoke.
+- Verification (2026-11-03): The deterministic atlas generator proves 90 distinct drawings and normalized body shapes; native-size sheet, welcome poster, and desktop/tutorial frames were inspected. Welcome and all ten tutorial media validators, TypeScript, production build, bounty integrity, environment inventory, inventory coverage, focused Paul motion/reduced-motion and auth/guide browser checks passed. Exact-head CI and production smoke follow promotion.
+- Score: P2(3)+C2/F2/S0=7; visible character-readability failure without a known access, persistence, or security defect.
 
 ### WTF-BB-763 - HORSE reward sends can inflate horse-art race and reciprocal debts
 

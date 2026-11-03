@@ -11642,7 +11642,7 @@
     },
     {
       "id": "WTF-BB-769",
-      "status": "Claimed",
+      "status": "Verified",
       "owner": "Codex Paul portrait ghost correction",
       "lastTouched": "2026-11-03",
       "category": "Desktop OS / Paul character silhouette",
@@ -11652,8 +11652,8 @@
       "securityDanger": 0,
       "points": 7,
       "rank": 687,
-      "title": "Paul reads as a mushroom cap or spilled ice cream instead of a tall ghost",
-      "body": "- Evidence (2026-11-03): The current Paul SVG has a 96×64 landscape canvas and a broad, shallow white body. The owner reports that the live desktop reads as a mushroom cap or spilled ice cream, and explicitly requests a taller, portrait-shaped ghost while keeping the red framed glasses.\n- Why it matters: The character identity still fails at its actual desktop size despite the previous red-glasses update.\n- Correction direction: Redraw the shared pixel sprite with a clear head-to-hem vertical sheet silhouette and more height than width, retain prominent red frames, and adapt its desktop and Help placements without changing click, keyboard, or reduced-motion behavior. Rebuild recorded guide media from existing narration and version public asset URLs.\n- Verification idea: Inspect the sprite at desktop and Help sizes and in a live screenshot; run Paul browser behavior, inventory coverage, media validators, exact-head quality gates, and production smoke.\n- Score: P2(3)+C2/F2/S0=7; visible character-readability failure without a known access, persistence, or security defect."
+      "title": "Paul needs the approved compact portrait ghost and 90-pose desktop animation",
+      "body": "- Evidence (2026-11-03): The original Paul SVG used a 96×64 landscape canvas and a broad, shallow white body. The owner reported that the live desktop read as a mushroom cap or spilled ice cream, and approved a compact portrait sheet silhouette with prominent red-framed glasses. The desktop still floated one static image; the owner now requests a 90-pose animation from sprite sheets.\n- Why it matters: The character must read as the approved ghost at actual desktop size, and a single bobbing image does not deliver the requested character motion. Reduced-motion users need the same recognizable ghost without pose cycling or floating.\n- Correction direction: Keep the approved compact head-to-hem sheet silhouette and red frames as the basis for 90 distinct desktop poses. Wire the sheets into the stable pointer/keyboard target, retain a matching still for Help and guide media, and render a still pose under reduced motion. Rebuild recorded guide media from existing narration when its baked sprite changes, and version public asset URLs to avoid stale cached art.\n- Verification idea: Verify 90 poses and their frame order, inspect the ghost at desktop and Help sizes, confirm animation and reduced-motion stillness in browser screenshots, and run Paul browser behavior, inventory coverage, media validators, exact-head quality gates, and production smoke.\n- Verification (2026-11-03): The deterministic atlas generator proves 90 distinct drawings and normalized body shapes; native-size sheet, welcome poster, and desktop/tutorial frames were inspected. Welcome and all ten tutorial media validators, TypeScript, production build, bounty integrity, environment inventory, inventory coverage, focused Paul motion/reduced-motion and auth/guide browser checks passed. Exact-head CI and production smoke follow promotion.\n- Score: P2(3)+C2/F2/S0=7; visible character-readability failure without a known access, persistence, or security defect."
     }
   ]
 }

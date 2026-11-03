@@ -1,4 +1,10 @@
+import { readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
+
+const atlas = JSON.parse(
+  readFileSync(new URL("../../../public/desktop/paulwhoisaclippy-poses.json", import.meta.url), "utf8")
+);
+const poseUrl = `${atlas.imageUrl}?v=ghost-portrait-20261103`;
 
 async function enterDesktop(page, request) {
   const response = await request.post("/__test/state", {
@@ -13,6 +19,7 @@ test.describe("interaction inventory - paulwhoisaclippy", () => {
     page,
     request,
   }) => {
+    await page.emulateMedia({ reducedMotion: "no-preference" });
     await enterDesktop(page, request);
 
     const paul = page.getByRole("button", {
@@ -20,24 +27,28 @@ test.describe("interaction inventory - paulwhoisaclippy", () => {
     });
     await expect(paul).toBeVisible();
     await expect(paul).toContainText("paulwhoisaclippy");
-    await expect(paul.locator("img")).toHaveAttribute(
-      "src",
-      "/desktop/paulwhoisaclippy.svg?v=ghost-portrait-20261103"
-    );
+    expect(atlas.imageUrl).toBe("/desktop/paulwhoisaclippy-poses.svg");
+    expect(atlas.frameHeight).toBeGreaterThan(atlas.frameWidth);
+    expect(atlas.frameCount).toBe(90);
+    expect(atlas.frames).toHaveLength(atlas.frameCount);
+    expect(new Set(atlas.frames.map((frame) => frame.sha256)).size).toBe(atlas.frameCount);
+    const pose = paul.locator('[data-paul-pose="true"]');
+    await expect(pose).toBeVisible();
+    expect(await pose.evaluate((element) => getComputedStyle(element).backgroundImage)).toContain(poseUrl);
+    const sheet = await page.evaluate(async (url) => {
+      const image = new Image();
+      image.src = url;
+      await image.decode();
+      return { width: image.naturalWidth, height: image.naturalHeight };
+    }, poseUrl);
+    expect(sheet).toEqual({ width: atlas.columns * atlas.frameWidth, height: atlas.rows * atlas.frameHeight });
+    const portrait = await pose.boundingBox();
+    expect(portrait).not.toBeNull();
+    expect(portrait.height).toBeGreaterThan(portrait.width);
+    const initialFrame = await pose.evaluate((element) => getComputedStyle(element).backgroundPosition);
     await expect
-      .poll(() => paul.locator("img").evaluate((image) => image.complete && image.naturalWidth > 0))
-      .toBe(true);
-    const portrait = await paul.locator("img").evaluate((image) => {
-      const bounds = image.getBoundingClientRect();
-      return {
-        naturalWidth: image.naturalWidth,
-        naturalHeight: image.naturalHeight,
-        renderedWidth: bounds.width,
-        renderedHeight: bounds.height,
-      };
-    });
-    expect(portrait.naturalHeight).toBeGreaterThan(portrait.naturalWidth);
-    expect(portrait.renderedHeight).toBeGreaterThan(portrait.renderedWidth);
+      .poll(() => pose.evaluate((element) => getComputedStyle(element).backgroundPosition))
+      .not.toBe(initialFrame);
 
     await paul.click();
     const whisper = page.locator('[data-desktop-ambient="paulwhoisaclippy"] [role="status"]');
@@ -94,6 +105,12 @@ test.describe("interaction inventory - paulwhoisaclippy", () => {
       sprite
     );
     expect(overlappingIcons).toBe(0);
-    await expect(paul.locator("img")).toHaveCSS("animation-name", "none");
+    const pose = paul.locator('[data-paul-pose="true"]');
+    await expect(pose).toHaveCSS("animation-name", "none");
+    await expect(pose).toHaveCSS("background-position", "0px 0px");
+    const firstFrame = await pose.evaluate((element) => getComputedStyle(element).backgroundPosition);
+    // The atlas runs at eight poses per second; this spans more than three pose intervals.
+    await page.waitForTimeout(450);
+    expect(await pose.evaluate((element) => getComputedStyle(element).backgroundPosition)).toBe(firstFrame);
   });
 });
