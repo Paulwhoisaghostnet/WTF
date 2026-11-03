@@ -1,12 +1,12 @@
 # wtfOS API reference
 
-This is the source-derived inventory of the main wtfOS HTTP API: **961 unique method/path operations**, grouped into **100 route families** and declared across **128 server modules**. It documents what each endpoint is for and the gate visible at its route declaration; handler code remains authoritative for payload schemas and conditional authorization.
+This is the source-derived inventory of the main wtfOS HTTP API: **999 unique method/path operations**, grouped into **101 route families** and declared across **135 server modules**. It documents what each endpoint is for and the gate visible at its route declaration; handler code remains authoritative for payload schemas and conditional authorization.
 
 > Evidence: `[source]`. Probe budget: zero-call pass. Actual spend: zero network calls, zero writes, and no production data access. The inventory was extracted from the local route AST, then deduplicated by method and path.
 
 ## Public platform surface
 
-wtfOS exposes 961 unique method/path declarations across production-reachable routers, four WebSocket transports, and a Streamable HTTP MCP server with 47 registered tools. Feature flags and runtime modes can disable or replace some declared routes.
+wtfOS exposes 999 unique method/path declarations across production-reachable routers, four WebSocket transports, and a Streamable HTTP MCP server with 47 registered tools. Feature flags and runtime modes can disable or replace some declared routes.
 
 The public developer boundary is additive: `/api/v1` aliases the established handlers behind paired bearer-token scopes, `/api/v1/openapi.json` serves OpenAPI 3.1, and `/api/v1/docs` serves the grouped human reference. The legacy `/api/*` surface remains unchanged for browser and internal callers.
 
@@ -141,6 +141,7 @@ The MCP transport is `GET/POST/DELETE /mcp`, authenticated exclusively with a pa
 | `gameshow` | 7 | Operations for the gameshow domain. |
 | `gnocchi` | 1 | Operations for the gnocchi domain. |
 | `health` | 5 | Liveness, readiness, authenticated diagnostics, metrics, and disk status. |
+| `horf` | 38 | Operations for the horf domain. |
 | `in-app-market` | 11 | In-app market catalogue, purchases, sales, pricing, and reconciliation. |
 | `ipfs-pinning` | 5 | Operations for the ipfs pinning domain. |
 | `lasagna` | 1 | Operations for the lasagna domain. |
@@ -197,7 +198,7 @@ The MCP transport is `GET/POST/DELETE /mcp`, authenticated exclusively with a pa
 
 ## Complete endpoint inventory
 
-Method totals: **ALL 13**, **DELETE 45**, **GET 463**, **PATCH 36**, **POST 339**, **PUT 65**. Declared-gate totals: **Admin 103**, **Internal 1**, **MCP bearer 1**, **Permission 142**, **Public/handler 223**, **Session 491**.
+Method totals: **ALL 13**, **DELETE 49**, **GET 482**, **PATCH 36**, **POST 354**, **PUT 65**. Declared-gate totals: **Admin 103**, **Internal 1**, **MCP bearer 1**, **Permission 142**, **Public/handler 261**, **Session 491**.
 
 <details>
 <summary><code>access</code> — 1 operations</summary>
@@ -1098,11 +1099,59 @@ Liveness, readiness, authenticated diagnostics, metrics, and disk status.
 
 | Method | Path | Use | Access | Source |
 | --- | --- | --- | --- | --- |
-| GET | `/api/health` | Read or list health. | Public/handler | `server/routes.ts:233` |
-| GET | `/api/health/diagnostics` | Read or list health diagnostics. | Session | `server/routes.ts:254` |
-| GET | `/api/health/disk` | Read or list health disk. | Session | `server/routes.ts:304` |
-| GET | `/api/health/ready` | Read or list health ready. | Public/handler | `server/routes.ts:239` |
-| GET | `/api/metrics` | Read or list metrics. | Public/handler | `server/routes.ts:272` |
+| GET | `/api/health` | Read or list health. | Public/handler | `server/routes.ts:240` |
+| GET | `/api/health/diagnostics` | Read or list health diagnostics. | Session | `server/routes.ts:261` |
+| GET | `/api/health/disk` | Read or list health disk. | Session | `server/routes.ts:311` |
+| GET | `/api/health/ready` | Read or list health ready. | Public/handler | `server/routes.ts:246` |
+| GET | `/api/metrics` | Read or list metrics. | Public/handler | `server/routes.ts:279` |
+
+</details>
+
+<details>
+<summary><code>horf</code> — 38 operations</summary>
+
+Operations for the horf domain.
+
+| Method | Path | Use | Access | Source |
+| --- | --- | --- | --- | --- |
+| GET | `/api/horf/admin/blacklist` | Read or list horf admin blacklist. | Public/handler | `server/routes/horf-moderation.ts:56` |
+| POST | `/api/horf/admin/blacklist` | Create, submit, or run horf admin blacklist. | Public/handler | `server/routes/horf-moderation.ts:67` |
+| DELETE | `/api/horf/admin/blacklist/:address` | Delete, revoke, or stop horf admin blacklist address. | Public/handler | `server/routes/horf-moderation.ts:91` |
+| POST | `/api/horf/admin/inspection-approvals/:contract/:tokenId/revoke` | Create, submit, or run horf admin inspection approvals contract tokenId revoke. | Public/handler | `server/routes/horf-inspections.ts:266` |
+| GET | `/api/horf/gifts` | Read or list horf gifts. | Public/handler | `server/routes/horf-social.ts:255` |
+| POST | `/api/horf/gifts/:id/returned` | Create, submit, or run horf gifts id returned. | Public/handler | `server/routes/horf-social.ts:270` |
+| POST | `/api/horf/gifts/confirm` | Create, submit, or run horf gifts confirm. | Public/handler | `server/routes/horf-social.ts:190` |
+| GET | `/api/horf/horse/activity` | Read or list horf horse activity. | Public/handler | `server/routes/horf-social.ts:71` |
+| POST | `/api/horf/horse/claim-permit` | Create, submit, or run horf horse claim permit. | Public/handler | `server/routes/horf-social.ts:93` |
+| GET | `/api/horf/horse/config` | Read or list horf horse config. | Public/handler | `server/routes/horf-social.ts:60` |
+| GET | `/api/horf/horse/rewards` | Read or list horf horse rewards. | Public/handler | `server/routes/horf-social.ts:82` |
+| POST | `/api/horf/inspections` | Create, submit, or run horf inspections. | Public/handler | `server/routes/horf-inspections.ts:157` |
+| GET | `/api/horf/inspections/:id` | Read or list horf inspections id. | Public/handler | `server/routes/horf-inspections.ts:199` |
+| POST | `/api/horf/inspections/:id/decision` | Create, submit, or run horf inspections id decision. | Public/handler | `server/routes/horf-inspections.ts:212` |
+| GET | `/api/horf/inspections/pending` | Read or list horf inspections pending. | Public/handler | `server/routes/horf-inspections.ts:186` |
+| GET | `/api/horf/inspections/status` | Read or list horf inspections status. | Public/handler | `server/routes/horf-inspections.ts:147` |
+| GET | `/api/horf/inspectors/status` | Read or list horf inspectors status. | Public/handler | `server/routes/horf-inspections.ts:77` |
+| GET | `/api/horf/open-range` | Read or list horf open range. | Public/handler | `server/routes/horf-open-range.ts:23` |
+| GET | `/api/horf/open-range/offers` | Read or list horf open range offers. | Public/handler | `server/routes/horf-open-range.ts:88` |
+| POST | `/api/horf/open-range/offers` | Create, submit, or run horf open range offers. | Public/handler | `server/routes/horf-open-range.ts:103` |
+| DELETE | `/api/horf/open-range/offers/:id` | Delete, revoke, or stop horf open range offers id. | Public/handler | `server/routes/horf-open-range.ts:140` |
+| GET | `/api/horf/posse` | Read or list horf posse. | Public/handler | `server/routes/horf-social.ts:131` |
+| POST | `/api/horf/posse` | Create, submit, or run horf posse. | Public/handler | `server/routes/horf-social.ts:148` |
+| DELETE | `/api/horf/posse/:id` | Delete, revoke, or stop horf posse id. | Public/handler | `server/routes/horf-social.ts:172` |
+| GET | `/api/horf/season` | Read or list horf season. | Public/handler | `server/routes/horf.ts:11` |
+| GET | `/api/horf/stable-selections` | Read or list horf stable selections. | Public/handler | `server/routes/horf-inspections.ts:87` |
+| POST | `/api/horf/stable-selections` | Create, submit, or run horf stable selections. | Public/handler | `server/routes/horf-inspections.ts:109` |
+| DELETE | `/api/horf/stable-selections/:id` | Delete, revoke, or stop horf stable selections id. | Public/handler | `server/routes/horf-inspections.ts:131` |
+| GET | `/api/horf/stables` | Read or list horf stables. | Public/handler | `server/features/horf/stables/routes.ts:38` |
+| POST | `/api/horf/stables/permit` | Create, submit, or run horf stables permit. | Public/handler | `server/features/horf/stables/routes.ts:52` |
+| GET | `/api/horf/token-eligibility` | Read or list horf token eligibility. | Public/handler | `server/routes/horf-social.ts:111` |
+| GET | `/api/horf/trader-status` | Read or list horf trader status. | Public/handler | `server/routes/horf-moderation.ts:37` |
+| POST | `/api/horf/trades/confirm` | Create, submit, or run horf trades confirm. | Public/handler | `server/routes/horf-social.ts:190` |
+| POST | `/api/horf/wallet/challenge` | Create, submit, or run horf wallet challenge. | Public/handler | `server/routes/horf-wallet.ts:23` |
+| POST | `/api/horf/wallet/disconnect` | Create, submit, or run horf wallet disconnect. | Public/handler | `server/routes/horf-wallet.ts:129` |
+| GET | `/api/horf/wallet/session` | Read or list horf wallet session. | Public/handler | `server/routes/horf-wallet.ts:113` |
+| GET | `/api/horf/wallet/tokens` | Read or list horf wallet tokens. | Public/handler | `server/routes/horf-wallet.ts:141` |
+| POST | `/api/horf/wallet/verify` | Create, submit, or run horf wallet verify. | Public/handler | `server/routes/horf-wallet.ts:37` |
 
 </details>
 
@@ -1555,10 +1604,10 @@ Operations for the public domain.
 
 | Method | Path | Use | Access | Source |
 | --- | --- | --- | --- | --- |
-| GET | `/api/public` | Read or list public. | Public/handler | `server/routes.ts:216` |
-| GET | `/api/public/capabilities` | Read or list public capabilities. | Public/handler | `server/routes.ts:216` |
-| GET | `/api/public/docs` | Read or list public docs. | Public/handler | `server/routes.ts:226` |
-| GET | `/api/public/openapi.json` | Read or list public openapi.json. | Public/handler | `server/routes.ts:221` |
+| GET | `/api/public` | Read or list public. | Public/handler | `server/routes.ts:223` |
+| GET | `/api/public/capabilities` | Read or list public capabilities. | Public/handler | `server/routes.ts:223` |
+| GET | `/api/public/docs` | Read or list public docs. | Public/handler | `server/routes.ts:233` |
+| GET | `/api/public/openapi.json` | Read or list public openapi.json. | Public/handler | `server/routes.ts:228` |
 
 </details>
 

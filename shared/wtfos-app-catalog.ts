@@ -317,6 +317,18 @@ const APP_ENTRIES = [
     accent: "#92400e",
   },
   {
+    key: "horf",
+    route: "/horf",
+    summary: "Track Tezos horse gifts, return rides, and the seasonal trader race.",
+    placement: "default-desktop",
+    necessity: "standard",
+    necessityRank: 2,
+    priceWtfUnits: "0",
+    priceExp: 0,
+    monogram: "H",
+    accent: "#bd532b",
+  },
+  {
     key: "map-lab",
     route: "/map-lab",
     summary: "Map and route-lab utilities for WTF worldbuilding.",

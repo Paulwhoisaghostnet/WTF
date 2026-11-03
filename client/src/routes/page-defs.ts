@@ -123,6 +123,12 @@ const DuesManagerPage = lazy(() =>
 const RatRacePage = lazy(() =>
   import("../pages/RatRace").then((m) => ({ default: m.RatRace }))
 );
+const HorfPage = lazy(() =>
+  import("../pages/Horf").then((m) => ({ default: m.Horf }))
+);
+const HorfOpenRangePage = lazy(() =>
+  import("../pages/HorfOpenRange").then((m) => ({ default: m.HorfOpenRange }))
+);
 const WtfMapLabPage = lazy(() =>
   import("../pages/WtfMapLab").then((m) => ({ default: m.WtfMapLab }))
 );
@@ -513,6 +519,8 @@ export const PAGE_DEFS: PageDef[] = [
   },
   { pattern: "/marketplace", component: MarketplacePage, auth: true, title: "On Chain Market", group: "market", startMenu: true },
   { pattern: "/rat-race", component: RatRacePage, auth: true, title: "Rat Race", group: "market", startMenu: true, desktopIcon: true },
+  { pattern: "/horf", component: HorfPage, auth: false, title: "Horf", group: "market", startMenu: true, desktopIcon: true },
+  { pattern: "/horf/open-range", component: HorfOpenRangePage, auth: false, title: "Horf Open Range", group: "market" },
   {
     pattern: "/map-lab",
     component: WtfMapLabPage,

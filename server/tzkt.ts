@@ -17,6 +17,8 @@ let persistentCacheWarned = false;
 
 interface CacheOptions {
   forceFresh?: boolean;
+  /** Explicit chain source for app-specific public reads; part of cache identity. */
+  sourceBase?: string;
 }
 
 type TzktQueryParams = Record<string, string | number | boolean | undefined | null>;
@@ -261,7 +263,7 @@ export async function getOwnedFa2TokensPage(
   offset = 0,
   options: CacheOptions = {}
 ): Promise<{ items: OwnedFa2Token[]; hasMore: boolean; nextOffset: number }> {
-  const cacheKey = `owned-fa2:${address}:${limit}:${offset}`;
+  const cacheKey = `owned-fa2:${options.sourceBase || "default"}:${address}:${limit}:${offset}`;
   if (!options.forceFresh) {
     const cached = getCached<{
       items: OwnedFa2Token[];
@@ -279,7 +281,7 @@ export async function getOwnedFa2TokensPage(
 
   const safeLimit = Math.min(Math.max(limit, 1), 500);
   const safeOffset = Math.max(offset, 0);
-  const data = await tzkt.getJson<any[]>("/tokens/balances", {
+  const data = await tzkt.getJson<any[]>(`${options.sourceBase || ""}/tokens/balances`, {
     account: address,
     "token.standard": "fa2",
     "balance.gt": 0,

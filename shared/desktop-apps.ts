@@ -62,6 +62,7 @@ export const DEFAULT_DESKTOP_APP_CONFIG: DesktopAppConfig = {
   "crp-nominations": true,
   "wtf-subdomains": true,
   "rat-race": false,
+  horf: true,
   "map-lab": true,
   agent: true,
   applications: true,

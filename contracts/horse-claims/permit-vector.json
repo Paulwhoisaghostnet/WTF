@@ -1,0 +1,11 @@
+{
+  "network": "tezos-mainnet",
+  "chainId": "NetXdQprcVkpaWU",
+  "vault": "KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton",
+  "claimant": "tz1Qi77tcJn9foeHHP1QHj6UX1m1vLVLMbuY",
+  "totalRaw": "2000000000",
+  "oracleEpoch": "0",
+  "type": "pair chain_id (pair address (pair address (pair nat nat)))",
+  "packed": "0x0507070a000000047a06a77007070a0000001601b752c7f3de31759bce246416a6823e86b9756c6c0007070a000000160000379dfd0263493eab3182c1abed190d7bc4e2ac3107070080d0acf30e0000",
+  "source": "SmartPy Tallinn test_claims.py packed_claim_vector"
+}

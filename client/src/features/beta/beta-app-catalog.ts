@@ -976,6 +976,7 @@ const desktopRoutes: Record<DesktopAppKey, string> = {
   "crp-nominations": "/crp-nominate",
   "wtf-subdomains": "/wtf-subdomains",
   "rat-race": "/rat-race",
+  horf: "/horf",
   "map-lab": "/map-lab",
   agent: "/agent",
   applications: "/applications",
@@ -1042,7 +1043,7 @@ function tierFor(appKey: DesktopAppKey): BetaTier {
   return 3;
 }
 function stageFor(appKey: DesktopAppKey): BetaStage {
-  if (["wtfiam", "gallery", "rat-race"].includes(appKey)) return "collect";
+  if (["wtfiam", "gallery", "rat-race", "horf"].includes(appKey)) return "collect";
   if (["studio", "game-studio", "pasta-protocol", "ch-ease", "agent"].includes(appKey)) return "create";
   if (["wim", "w", "tv", "dicksword", "i-hate-telegram", "skywire", "wtf-live", "mail"].includes(appKey)) return "connect";
   if (["arcade", "wtfiap", "casino", "console", "dedrooms", "applications"].includes(appKey)) return "play";
@@ -1053,7 +1054,7 @@ function personasFor(appKey: DesktopAppKey): BetaPersonaKey[] {
   if (appKey === "payroll") return ["builder"];
   if (appKey === "objkt-operator") return ["collector", "curator", "builder"];
   if (["studio", "game-studio", "pasta-protocol", "ch-ease", "ipfs-pinning", "agent"].includes(appKey)) return ["creator", "builder", "curator"];
-  if (["gallery", "wtfiam", "rat-race"].includes(appKey)) return ["collector", "creator", "curator"];
+  if (["gallery", "wtfiam", "rat-race", "horf"].includes(appKey)) return ["collector", "creator", "curator"];
   if (["w", "wim", "tv", "skywire", "wtf-live", "mail"].includes(appKey)) return ["community-member", "creator", "collector"];
   return allPersonas;
 }

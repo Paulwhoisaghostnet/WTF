@@ -153,6 +153,7 @@ const DESKTOP_APP_DOMAIN_KEYS: Partial<Record<DesktopAppKey, keyof typeof WTF_DO
   "crp-nominations": "identityAndSocial",
   "wtf-subdomains": "tezosPlatform",
   "rat-race": "commerceAndWallets",
+  horf: "commerceAndWallets",
   "map-lab": "wtfOs",
   agent: "wtfOs",
   applications: "arcadeConsoleGameStudio",

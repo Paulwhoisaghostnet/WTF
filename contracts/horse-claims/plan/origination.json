@@ -1,0 +1,52 @@
+{
+  "network": "tezos-mainnet",
+  "chainId": "NetXdQprcVkpaWU",
+  "rpc": "https://tcinfra.net/rpc/tezos/mainnet",
+  "contractJsonSha256": "38084d10617c1a70dc474ebe9a2069380d44ed1f66db02c97c5b3bf5d8fd50bb",
+  "admin": "tz1cVRngZw42KZ42VQF2ZCy2CJSPNG3H7Cgt",
+  "horseContract": "KT1E9s2ncE5vXjofmzqwE6gEg9JPruTRBdrM",
+  "horseTokenId": 0,
+  "oraclePublicKey": "edpkv5vGcno1bQEwzPNpUqg3eLBi7j23WrfSjfi7X9DGdBsLXiVThL",
+  "source": "artifacts/contract.json",
+  "storage": {
+    "prim": "Pair",
+    "args": [
+      {
+        "string": "tz1cVRngZw42KZ42VQF2ZCy2CJSPNG3H7Cgt"
+      },
+      {
+        "prim": "Pair",
+        "args": [
+          [],
+          {
+            "prim": "Pair",
+            "args": [
+              {
+                "string": "KT1E9s2ncE5vXjofmzqwE6gEg9JPruTRBdrM"
+              },
+              {
+                "prim": "Pair",
+                "args": [
+                  {
+                    "int": "0"
+                  },
+                  {
+                    "prim": "Pair",
+                    "args": [
+                      {
+                        "int": "0"
+                      },
+                      {
+                        "string": "edpkv5vGcno1bQEwzPNpUqg3eLBi7j23WrfSjfi7X9DGdBsLXiVThL"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

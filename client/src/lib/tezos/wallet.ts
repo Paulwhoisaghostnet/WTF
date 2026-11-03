@@ -670,8 +670,8 @@ export async function ensureWalletProviderForSend(
   expectedAddress?: string,
   options: { network?: string; rpcUrl?: string } = {},
 ): Promise<WalletConnectionResult> {
-  const adapter = await ensureAdapter(resolveWalletConfig());
   const config = resolveWalletConfig(options);
+  const adapter = await ensureAdapter(config);
 
   try {
     return await activateAdapterForSend(adapter, config, expectedAddress);

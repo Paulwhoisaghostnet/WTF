@@ -93,6 +93,7 @@ const desktopDomains: Partial<Record<DesktopAppKey, (typeof domainGuides)[keyof 
   "crp-nominations": domainGuides.identityAndSocial,
   "wtf-subdomains": domainGuides.tezosPlatform,
   "rat-race": domainGuides.commerceAndWallets,
+  horf: domainGuides.commerceAndWallets,
   "map-lab": domainGuides.wtfOs,
   agent: domainGuides.wtfOs,
   applications: domainGuides.arcadeConsoleGameStudio,
@@ -147,6 +148,7 @@ const desktopExternalSystems: Partial<Record<DesktopAppKey, readonly string[]>> 
     "AT Protocol DID proofs",
   ],
   "rat-race": ["tz2at rolling market stream", "Objkt metadata/listing-key supplement", "Tezos wallet preflight"],
+  horf: ["Objkt Tezos mainnet transfer and tag API", "Tezos wallet connection"],
   "map-lab": ["AT Protocol repo reads", "AT Protocol firehose previews", "WTFOS repo save/restore"],
   agent: ["AI providers (browser-direct BYOK)", "local inference endpoints", "MCP paired agents"],
   applications: ["Hetzner remote application host", "Steam Linux runtime", "WebRTC browser media transport"],
@@ -198,6 +200,7 @@ const desktopDataTouched: Partial<Record<DesktopAppKey, readonly string[]>> = {
     "wtfos_atproto_outbox",
   ],
   "rat-race": ["token_sales", "token_mint_events", "token_listings", "token_metadata", "contract_activity_logs"],
+  horf: ["horf_season_sync", "horf_transfer_events"],
   "map-lab": ["system map documents", "local repo drafts", "read-only ingested path summaries", "system_events"],
   agent: [
     "agent browser workspace state",

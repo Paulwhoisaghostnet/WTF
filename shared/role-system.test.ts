@@ -2,10 +2,13 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   COBWEBSAINTS_FULL_USER_ROLE,
+  DEFAULT_ROLE_CATALOG,
+  HORF_MARSHAL_ROLE,
   ROLE_ORDER,
   canOpenAppsForRole,
   canParticipate,
   isAdmin,
+  hasAtLeastRole,
   normalizeUserRoles,
 } from "./types";
 import { canOpenPageDef, getPageAccessState, PAGE_DEFS } from "../client/src/routes/page-defs";
@@ -24,6 +27,16 @@ test("user roles are canonical additive memberships", () => {
     normalizeUserRoles(["badge:first_win", "witness", "builder_tools"]),
     ["witness", "badge:first_win", "builder_tools"]
   );
+});
+
+test("HORF MARSHAL is an assignable scoped inspection role", () => {
+  const marshal = DEFAULT_ROLE_CATALOG.find((role) => role.slug === HORF_MARSHAL_ROLE);
+  assert.equal(marshal?.label, "HORF MARSHAL");
+  assert.equal(marshal?.isAssignable, true);
+  assert.equal(marshal?.defaultWtfOsAccess, true);
+  assert.equal(isAdmin(HORF_MARSHAL_ROLE), false);
+  assert.equal(hasAtLeastRole(HORF_MARSHAL_ROLE, "witness"), false);
+  assert.equal((ROLE_ORDER as readonly string[]).includes(HORF_MARSHAL_ROLE), false);
 });
 
 test("cobwebsaints full user is a primary non-admin creator route role", () => {

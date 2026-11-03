@@ -13486,3 +13486,293 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: A normal redeploy or config-only restart could strand paid credit unless the active contract and script are durable deployment commitments.
 
 **Rule**: Fsync a mounted-volume contract binding before serving credit actions, validate it at startup and in the deploy guard, and refuse contract, script, or payout-mode rotation while credit remains usable there.
+
+---
+
+## 2026-11-03 — Horse-return fixtures must balance pending receipts and counterpart totals
+
+**What happened**: The first Horf browser fixture displayed two horses owed back to Sir Canter but only one waiting horse in the received-token list. The UI rendered each response field faithfully, yet the screenshot implied a ledger state that FIFO reciprocal pairing cannot produce.
+
+**Why it mattered**: A visually passing fixture with contradictory totals could mask a broken return ledger and mislead review of the core horse-trading story.
+
+**Rule**: Make each mocked Horf counterparty total equal the sum of its unmatched received token units, and assert that both the waiting-token row and owed-to panel show the same count. Keep the browser fixture consistent with the backend pairing model before treating screenshots as evidence.
+
+---
+
+## 2026-11-03 — Signed Tezos permits need a cross-language PACK fixture
+
+**What happened**: Horf Stables' first hand-copied expected permit bytes omitted part of a 32-byte nonce, while a SmartPy fixture tried to construct a chain ID from bytes inside a module where that cast is invalid. The contract scenarios passed signature checks, but that alone did not prove the server would sign the same Micheline value.
+
+**Why it mattered**: A one-byte PACK difference makes every otherwise eligible deposit fail on-chain, and a simulator-only chain ID can hide the mismatch until users sign a real FA2 transfer group.
+
+**Rule**: Define one explicit nested Michelson permit type, generate a fixture independently with Taquito, and assert SmartPy `sp.pack` matches its exact bytes using the runtime `sp.chain_id`. Bind the permit to the stable address, depositor, mode, token, amount, nonce, and epoch, then make the server verify its own packing against that fixture before issuing signatures.
+
+---
+
+## 2026-11-03 — Explicit Tezos send networks must initialize the wallet adapter
+
+**What happened**: Horf Stables passed `network: "mainnet"` to the send preflight, but `ensureWalletProviderForSend` initialized Octez Connect from the site's default network before using the explicit network for its RPC. A local `wtf:network` setting for Shadownet could therefore create a Shadownet wallet adapter for a Mainnet-only stable action.
+
+**Why it mattered**: Checking the Mainnet RPC chain ID does not prove the active wallet provider was initialized for Mainnet. A mismatched provider could reject a valid deposit or ask the user to sign against the wrong network.
+
+**Rule**: Resolve one explicit send configuration and pass it to adapter initialization, Taquito provider binding, and chain-ID preflight. Test that an explicit operation network overrides the site's stored default before any wallet submission.
+
+---
+
+## 2026-11-03 — Owned-token browser fixtures must include pagination
+
+**What happened**: Horf's connected-wallet browser story reused the generic harness response for `/api/profile/tokens`, which supplied `items` but omitted `pagination`. The new stable's infinite owned-token query read `pagination.hasMore`, and Horf's app window crashed before the ledger assertions ran.
+
+**Why it mattered**: The production endpoint includes pagination, so the fixture failure obscured the horse-trading behavior under test. A subapp can start reading an existing API endpoint even when the parent story does not exercise that subapp directly.
+
+**Rule**: When a browser story mounts a subapp with an infinite query, mock its owned-token endpoint with the production `items` and `pagination` shape. Keep malformed-response behavior in a separate explicit resilience test.
+
+---
+
+## 2026-11-03 — Actor-backed API writes must pass the session CSRF token
+
+**What happened**: Horf's first live puppet POST and DELETE assertions sent authenticated cookies but omitted `X-CSRF-Token`. The shared middleware returned 403 before the stable permit, posse, or gift handlers ran, so the apparent permission result did not prove any Horf rule.
+
+**Why it mattered**: A status-only 403 assertion can pass at the wrong boundary and hide an untested wallet-ownership check. The posse persistence story also failed before its insert.
+
+**Rule**: Fetch `/api/auth/csrf-token` for each actor request context and include that token on every non-exempt write. Assert a route-specific response body or durable result so a middleware rejection cannot masquerade as the feature's authorization decision.
+
+---
+
+## 2026-11-03 — Participation currency must not score as horse artwork
+
+**What happened**: The planned HORSE reward token has a qualifying horse name. Horf's existing keyword scanner would have treated HORSE sends as eligible horse-art trades, inflating race totals and creating false return rides.
+
+**Why it mattered**: Sending participation rewards to traders and community helpers is a separate action from exchanging horse artwork. A self-referential token name can make a metadata-driven ledger count its own reward currency as the activity it rewards.
+
+**Rule**: Exclude the configured HORSE FA2 contract from horse-art qualification and gift recording, and bind that exclusion to the ledger source-policy version so setting the Mainnet KT1 replays prior scans. Track HORSE receipts and awards through a separate token-activity view.
+
+---
+
+## 2026-11-03 — No-content API responses need an explicit client path
+
+**What happened**: Horf posse removal returns a successful HTTP 204. The shared `api.delete()` helper always calls `res.json()`, so using it would surface a parse error after the trader was already removed. Horf uses `fetchWithCsrf` and checks `response.ok` for this action; the generic wrapper gap is tracked as WTF-BB-764.
+
+**Why it mattered**: A successful removal could look like a failure and prompt the user to retry an already completed action.
+
+**Rule**: Check the endpoint's success body contract before using a JSON-only helper. Handle HTTP 204 explicitly, and keep UI success/error state tied to the actual status rather than JSON parsing.
+
+---
+
+## 2026-11-03 - Taquito wallet origination must send the operation builder
+
+**What happened**: The first HORSE browser handoff called `tezos.wallet.originate({ code, init })` and treated the returned builder as a submitted operation. It had no `confirmation()` method, and no origination appeared from wtf.tez on TzKT. No wallet signature or chain transaction occurred.
+
+**Why it mattered**: A deployment page could report a submission and tempt an unsafe second request without first establishing whether any operation was actually injected.
+
+**Rule**: For Taquito's wallet API, call `.send()` on the origination builder and require a valid returned operation hash before recording a submission. Check the chain and the wallet before retrying after any ambiguous send result; never infer submission from a builder object.
+
+---
+
+## 2026-11-03 — Shared React Query keys need one response contract
+
+**What happened**: Horf Stables and Gifts used the same owned-token query key, but Stables validated API pages while Gifts trusted its TypeScript DTO. A malformed successful response could enter the shared cache and crash Gifts while rendering token items.
+
+**Why it mattered**: A stale or malformed token feed could hide both the gift form and the manual Objkt-link fallback, even though the user could still supply a valid token link.
+
+**Rule**: When components share a query key, share the runtime response parser too. Reject malformed pages before caching them, surface a recoverable query error, and keep independent input paths available.
+
+---
+
+## 2026-11-03 — FA2 transfer success does not prove stable custody
+
+**What happened**: A SmartPy no-op FA2 accepted Horf Stables' `transfer` call without moving tokens. A valid metadata-based permit then let its depositor create a Group listing and receive 30 claim credits despite the stable holding no horse editions.
+
+**Why it mattered**: Objkt metadata and FA2 entrypoint presence do not attest to transfer semantics. An attacker-controlled token could exchange unbacked credits for honest traders' escrowed horses.
+
+**Rule**: Before signing a deposit permit, verify the exact Mainnet token contract against audited immutable code and provenance. Reject unknown code families until their balance, operator, and transfer behavior is reviewed; add a permit-service regression for the no-op family once that trust policy exists.
+
+---
+
+## 2026-11-03 — A cached wallet address is not a Horf ownership proof
+
+**What happened**: Making `/horf` public exposed a difference between the browser's persisted wallet address and server-authorized wallet scope. A guest could appear connected locally while its Horf proof cookie was missing or expired; private posse, gift, and permit requests then returned 403. The first UI copy treated those responses as generic loading failures.
+
+**Why it mattered**: An address alone must not unlock someone else's private Horf records, and a generic error gives the owner no way to restore access. Horf-specific 403 responses must also stay separate from the global WTF OS 401 logout path.
+
+**Rule**: Derive guest personal access only when the selected wallet matches a verified Horf session. Keep public chain reads available, explain private 403 proof expiry or blacklist restriction, and offer an explicit reverify path where proof can restore access.
+
+---
+
+## 2026-11-03 — Inventory primary handles must use canonical event syntax
+
+**What happened**: Horf's new inspection and on-chain blacklist inventory rows placed HTTP method/path strings and a mixed-case SmartPy entrypoint in the Primary handles column. The inventory coverage gate rejected those strings because it represents canonical event handles only.
+
+**Why it mattered**: Routes and contract entrypoints are important parts of the interaction, but treating them as normalized event names makes the generated event registry invalid and blocks coverage verification.
+
+**Rule**: Keep HTTP paths and on-chain entrypoints in the interaction description and API probes. Put only lowercase dot-separated event handles in Primary handles, then rerun inventory coverage after adding a row.
+
+---
+
+## 2026-11-03 — Horf Mainnet reads must not inherit the global Shadownet development source
+
+**What happened**: A live Horf FA2 fingerprint probe failed while parsing an RPC response because local WTF OS configuration pointed generic `TZKT_API_URL` and `TEZOS_RPC_URL` to Shadownet. The Horf feature is Mainnet-only, so a generic upstream client could read the wrong chain or a missing contract even though the Horf route intended Mainnet verification.
+
+**Why it mattered**: Wallet ownership, contract provenance, and full-code hashes must all refer to the same Mainnet chain before a marshal approval can authorize a Stable permit. A Mainnet-looking contract address paired with a Shadownet source is not usable custody evidence.
+
+**Rule**: Give chain-specific Horf reads an explicit Mainnet TzKT/RPC source and verify chain IDs. Keep source URL in cache identity, use feature-specific Mainnet overrides when configured, and never fall back from a Shadownet global development RPC into a Horf trust decision.
+
+---
+
+## 2026-11-03 — Aggregate Horf typecheck needs the measured Node heap
+
+**What happened**: `npm run check -- --pretty false` exhausted Node's default roughly 4 GB heap while the large WTF OS program was being checked, before it reported a TypeScript diagnostic. Rerunning the same aggregate check once with `NODE_OPTIONS=--max-old-space-size=8192` completed successfully with no diagnostics.
+
+**Why it mattered**: A heap crash is a tool-capacity failure, not proof that the Horf code has a type error. Running duplicate aggregate typechecks alongside browser builds also competes for memory and can obscure the true result.
+
+**Rule**: When the measured default-heap failure recurs in this repository, run one aggregate typecheck with the proven 8192 MB heap setting and wait for its exit status before interpreting the result. Keep browser builds and tests out of the same output directory while the build replaces artifacts.
+
+---
+
+## 2026-11-03 - Mainnet handoffs need the approved RPC fallback
+
+**What happened**: The Horf Stables handoff verified on the primary Tezos Mainnet RPC, then its connection preflight failed when that RPC returned HTTP 503. The configured `tcinfra.net` Mainnet fallback returned the expected chain ID.
+
+**Why it mattered**: A healthy contract and wallet could not reach a reviewable Kukai origination request during a transient primary endpoint outage.
+
+**Rule**: Keep the project primary as the default, allow the handoff proxy to take an explicit Mainnet RPC override during a verified outage, and recheck the chain ID before opening a signing request.
+
+---
+
+## 2026-11-03 - Build vault claims from parsed SmartPy and annotated storage
+
+**What happened**: The first HORSE Claim Vault scenario used an underscored integer literal inside `@sp.module`, which SmartPy rejected with an unhelpful parse error. The first origination-plan adapter also searched only the old Stables admin/oracle annotations and missed the new fixed HORSE contract/token fields.
+
+**Why it mattered**: Either error could leave a claim vault without verified compile output or a plan that failed to prove its fixed token identity before a Mainnet signature.
+
+**Rule**: Use plain numeric literals in SmartPy module code, compile before preparing a plan, and have the plan assert every fixed storage annotation exactly once against the compiled storage type.
+
+---
+
+## 2026-11-03 - Compare Michelson sections independently after origination
+
+**What happened**: The first HORSE funding handoff compared the entire compiled Michelson code array with the RPC response. Tezos RPC may return the same sections in a different order, especially on-chain views before parameter, storage, and code.
+
+**Why it mattered**: A valid, verified claim vault would be rejected by the funding page even though its individual sections matched.
+
+**Rule**: Normalize Michelson sections by their section primitive and view name, reject missing or duplicate sections, and compare the complete contents of each section before allowing a funding transfer.
+
+---
+
+## 2026-11-03 - Decode optimized Tezos storage before checking named fields
+
+**What happened**: The HORSE funding handoff tried to walk raw RPC storage using the compiled Pair tree. Tezos RPC returned optimized flattened storage with byte-encoded addresses and keys, so valid Mainnet vault fields appeared missing.
+
+**Why it mattered**: The handoff blocked a verified reward vault's funding even though its code and storage were correct.
+
+**Rule**: After exact compiled-code verification, decode live storage through Taquito's contract schema (or a verified indexer) before comparing annotated admin, token, and oracle values; test the handoff against the originated contract, not only a fixture.
+
+---
+
+## 2026-11-03 - Read absent TzKT big-map keys through a JSON collection
+
+**What happened**: The HORSE Claim Vault's unused `claimed_raw` key returned HTTP 204 with an empty body from TzKT's single-key route. The shared JSON reader raised a parse error even though zero claims was the correct on-chain state.
+
+**Why it mattered**: Every new claimant would see the vault as unavailable before their first claim.
+
+**Rule**: For optional TzKT big-map keys, use the filtered keys collection that returns `[]` as JSON, validate the returned key against the requested address, and treat absence as zero. Keep chain, code-hash, and storage identity checks independent of key absence.
+
+---
+
+## 2026-11-03 - Do not replace a configured claim-source failure with zero
+
+**What happened**: The reward activity read swallowed every Claim Vault lookup error and reported `claimedRaw: "0"`. That was appropriate only before a vault address existed.
+
+**Why it mattered**: Once the vault was configured, a temporary TzKT error could overstate a trader's unclaimed HORSE even though permit issuance remained blocked.
+
+**Rule**: Distinguish an intentionally unconfigured vault from a failed configured vault. The former may report no claim state; the latter must return an unavailable response and never invent a zero claimed balance.
+
+---
+
+## 2026-11-03 - Do not assign zsh's readonly `status` parameter
+
+**What happened**: A Horf build completed, but its wrapper command exited with `read-only variable: status` because zsh reserves that name for the last exit status.
+
+**Why it mattered**: The wrapper falsely reported a failed build and hid the build log tail until rerun.
+
+**Rule**: In zsh build wrappers, use a task-specific name such as `build_exit_code` to capture `$?`, then report that value after printing the log summary.
+
+---
+
+## 2026-11-03 - Merge canonical bounty records before regenerating the board
+
+**What happened**: The Horf branch and current main both added bounty records, and the generated JSON ranks and Markdown board conflicted across hundreds of rows. Both branches also used WTF-BB-757 for different findings.
+
+**Why it mattered**: Taking either generated file wholesale would erase the other branch's audit history or leave duplicate IDs and invalid ranks.
+
+**Rule**: Merge canonical records by ID, move a colliding new finding to the next unused ID, recalculate ranks from the merged point scores, then regenerate and check the Markdown board. Preserve appended lessons from both branches rather than choosing one side.
+
+---
+
+## 2026-11-03 - Clear orphaned inventory harnesses before a full browser run
+
+**What happened**: The Horf inventory command built successfully but Playwright refused to start because a previous `tests/playwright/harness.mjs` process, orphaned to PID 1, still held port 4173.
+
+**Why it mattered**: The required full inventory test reported a setup failure despite no application assertion running.
+
+**Rule**: When Playwright reports its configured web-server port in use, identify the listener and its command first, stop only a confirmed stale test harness, verify the port is free, then rerun the canonical inventory command.
+
+---
+
+## 2026-11-03 - Page historical Objkt mints in timestamp order
+
+**What happened**: The live all-seasons Horf market returned 503 because Objkt timed out a historical timestamp filter ordered by token PK. Even one archived month failed with that ordering.
+
+**Why it mattered**: The required all-seasons market could not display historical horses, although current-season and unrestricted searches worked.
+
+**Rule**: For historical Objkt mint scans, order by timestamp and PK together, advance a matching two-part keyset cursor, and prove consecutive pages against live Objkt before shipping. Keep every season-window filter after retrieval so an optimized query does not omit eligible mints.
+
+---
+
+## 2026-11-03 - Set the intended wallet network inside browser fixtures
+
+**What happened**: Two WTFIAP funding inventory tests assumed Mainnet at startup while the local Vite environment selected Shadownet. The first expected Mainnet text; the second waited for a switch-to-Shadownet button that was absent because Shadownet was already selected.
+
+**Why it mattered**: The full inventory reported two unrelated failures even though the Horf workflows passed.
+
+**Rule**: Tests that assert a network transition must set their initial wallet network explicitly in the browser fixture before navigation, then assert the selected network and available switch action.
+
+---
+
+## 2026-11-03 - Network-switch fixtures must set only their initial wallet network
+
+**What happened**: Two WTFIAP funding recovery browser tests assumed the wallet network started on Mainnet, but the local Vite build used `VITE_TEZOS_NETWORK=shadownet`. Explicitly setting Mainnet with an unconditional Playwright init script fixed the first assertion but reset the network again on reload, disabling a later refund action.
+
+**Why it mattered**: The full inventory suite failed on environment-dependent fixture setup rather than an application regression. A setup script that runs on every navigation can also erase the state change the test is meant to verify.
+
+**Rule**: For a network-switch story, initialize local storage only when its network key is absent. Let the UI's selected network persist across reloads, and verify the affected tests against the actual build configuration.
+
+---
+
+## 2026-11-03 - Put the horse event and reward in the first-view artwork
+
+**What happened**: Horf launched with a large beige panel titled `Season ticket` and a generic date label. The owner identified the event as Neighvember 2026 and said the ticket looked like a sale rather than a horse-trading invitation.
+
+**Why it mattered**: The opening view spent substantial space on a misleading metaphor while burying the event name and sender-only HORSE reward.
+
+**Rule**: For a community event, show its real name and earning rule in the first-view artwork. Keep decorative panels compact, use the event's own imagery and voice, and make archive views distinct from current rewards.
+
+---
+
+## 2026-11-03 - Isolate parallel Playwright output directories
+
+**What happened**: A focused Horf browser run and the live puppet run shared Playwright's default `test-results` directory. One runner cleared trace artifacts while the other was still using them, causing `ENOENT` errors during otherwise unrelated UI checks.
+
+**Why it mattered**: The resulting failures did not identify an application defect and delayed verification of the Horf redesign.
+
+**Rule**: When independent Playwright commands run concurrently, give each command a distinct `--output` directory or run them sequentially. Treat missing trace files from a shared output directory as harness interference and rerun the affected spec in isolation.
+
+---
+
+## 2026-11-03 - Keep static asset directories clear of app routes
+
+**What happened**: New Horf artwork was placed under `public/horf/art`. Express static middleware then redirected `/horf` to `/horf/` because `public/horf` was a directory, and the normal Horf app route no longer opened.
+
+**Why it mattered**: The Open Range route still passed, but the main Horf entry failed for guests. Build and type checks would not catch the HTTP redirect.
+
+**Rule**: Put assets under a path that does not match an app route segment, such as `public/horf-art`, and run a browser or HTTP smoke check on the parent app route whenever adding a new public directory.

@@ -86,6 +86,7 @@ const ICONS: Record<string, string> = {
   "/tz2at": "TZ",
   "/crp-nominate": "CRP",
   "/rat-race": "RR",
+  "/horf": "H",
   "/map-lab": "MAP",
   "/dear-diary": "DD",
   "/messageboard": "🧼",
@@ -161,7 +162,7 @@ const CATEGORY_ITEMS: Record<StartMenuCategoryKey, string[]> = {
   gameshow: ["/dedrooms", "/rounds", "/challenges", "/side-quests", "/wtf-recapture", "/calendar", "/mint-portal"],
   create: ["/studio", "/game-studio", "/mint-portal", "/tools/ch-ease", "/tools/macaroni"],
   social: ["/admin-inbox", "/mail", "/messages", "/wim", "/skywire", "/live", "/tz2at", "/crp-nominate", "/dear-diary", "/messageboard", "/w", "/tv", "/dicksword", "/i-hate-telegram", "/digest", "/wtf-subdomains"],
-  "on-chain": ["/wtfiam", "/marketplace", "/rat-race", "/trade-boards", "/dues", "/swap", "/tezos-intel"],
+  "on-chain": ["/wtfiam", "/marketplace", "/rat-race", "/horf", "/trade-boards", "/dues", "/swap", "/tezos-intel"],
   gaming: ["/casino", "/arcade", "/colilseum", "/console", "/game-studio", "/dedrooms"],
   "my-media": [
     "/file-manager",

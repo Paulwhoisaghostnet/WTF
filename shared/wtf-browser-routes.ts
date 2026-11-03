@@ -33,6 +33,8 @@ export const BROWSER_ROUTE_META: readonly BrowserRouteMeta[] = [
   { pattern: "/wtfiam", auth: true, title: "WTF I AM" },
   { pattern: "/marketplace", auth: true, title: "On Chain Market" },
   { pattern: "/rat-race", auth: true, title: "Rat Race" },
+  { pattern: "/horf", auth: false, title: "Horf" },
+  { pattern: "/horf/open-range", auth: false, title: "Horf Open Range" },
   { pattern: "/map-lab", auth: false, title: "WTF Map Lab" },
   { pattern: "/trade-boards", auth: true, title: "Trade Boards" },
   { pattern: "/w", auth: true, title: "W Feed" },

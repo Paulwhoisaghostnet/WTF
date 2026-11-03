@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Horf Stables · Mainnet origination handoff</title>
+    <style>
+      :root { font: 16px/1.5 Georgia, serif; color: #322119; background: #e9d0a3; }
+      * { box-sizing: border-box; }
+      main { max-width: 760px; margin: 32px auto; padding: 26px; border: 5px double #552726; background: #fff2d4; box-shadow: 8px 8px 0 #a65335; }
+      h1 { margin: 0 0 8px; font-size: clamp(36px, 7vw, 70px); line-height: 1; color: #612b28; }
+      p { margin: 9px 0; }
+      dl { display: grid; grid-template-columns: 160px minmax(0, 1fr); gap: 4px 14px; padding: 16px; background: #f3ddb3; }
+      dt { font-weight: bold; }
+      dd { margin: 0; overflow-wrap: anywhere; }
+      button { margin: 4px 8px 4px 0; padding: 10px 16px; border: 2px solid #4d2922; background: #f4ca67; color: #291a17; font: 700 14px "Courier New", monospace; cursor: pointer; }
+      button:disabled { opacity: .5; cursor: not-allowed; }
+      #status { min-height: 3em; padding: 12px; border-left: 5px solid #49734c; background: #e7f2d3; overflow-wrap: anywhere; }
+      #status.error { border-color: #a5372d; background: #fbe4cf; }
+      code { overflow-wrap: anywhere; }
+      @media (max-width: 560px) { main { margin: 10px; padding: 15px; } dl { grid-template-columns: 1fr; } }
+    </style>
+  </head>
+  <body>
+    <main>
+      <small>WTF OS · Tezos Mainnet</small>
+      <h1>Originate Horf Stables</h1>
+      <p>This one-time wallet handoff creates the Horf reciprocal, Honor, and Group escrow contract. The server signs deposit permits only for horse tokens approved by deputized inspectors. The on-chain admin can blacklist wallets and invalidate outstanding permits.</p>
+      <dl>
+        <dt>Originator/admin</dt><dd><code>wtf.tez · tz1cVRngZw42KZ42VQF2ZCy2CJSPNG3H7Cgt</code></dd>
+        <dt>Network</dt><dd>Tezos Mainnet · NetXdQprcVkpaWU</dd>
+        <dt>Oracle public key</dt><dd><code id="oracle-key">Loading…</code></dd>
+        <dt>Code SHA-256</dt><dd><code id="code-hash">Loading…</code></dd>
+      </dl>
+      <button id="connect" type="button">Connect wtf.tez in Kukai</button>
+      <button id="originate" type="button" disabled>Request Stables origination signature</button>
+      <p id="status" role="status" aria-live="polite">Verify the plan, then connect the wtf.tez wallet.</p>
+      <p><small>Kukai shows the current Tezos fee and storage burn before you sign. This page cannot access your wallet secret. Origination permanently creates the contract; check its code, admin, and oracle before enabling deposits.</small></p>
+    </main>
+    <script type="module" src="./bootstrap.ts"></script>
+  </body>
+</html>

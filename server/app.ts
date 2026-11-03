@@ -377,6 +377,8 @@ export async function createApp() {
       "/api/auth/wallet/challenge",
       "/api/auth/wallet/verify",
       "/api/auth/wallet/register",
+      "/api/horf/wallet/challenge",
+      "/api/horf/wallet/verify",
       "/api/macaroni/reveal-automation/challenge",
       "/api/macaroni/reveal-automation",
     ],

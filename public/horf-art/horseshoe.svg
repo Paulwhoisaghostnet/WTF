@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" fill="none" role="img" aria-label="Golden horseshoe">
+  <path d="M21 24v22c0 24 11 39 27 39s27-15 27-39V24" stroke="#3b2221" stroke-width="23" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M21 24v22c0 24 11 39 27 39s27-15 27-39V24" stroke="#e6ab46" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M21 25v20c0 23 11 38 27 38s27-15 27-38V25" stroke="#ffdf83" stroke-width="3" stroke-linecap="round"/>
+  <g fill="#115a62" stroke="#3b2221" stroke-width="1.5">
+    <circle cx="21" cy="39" r="3"/><circle cx="25" cy="60" r="3"/>
+    <circle cx="35" cy="75" r="3"/><circle cx="61" cy="75" r="3"/>
+    <circle cx="71" cy="60" r="3"/><circle cx="75" cy="39" r="3"/>
+  </g>
+</svg>
