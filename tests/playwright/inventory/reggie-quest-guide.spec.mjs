@@ -66,6 +66,32 @@ async function enterWithQuest(page, request) {
 }
 
 test.describe("interaction inventory - Reggie quest guide", () => {
+  for (const role of ["witness", "admin"]) {
+    test(`${role} accounts do not see or summon Reggie`, async ({ page, request }) => {
+      const response = await request.post("/__test/state", {
+        data: { userRole: role, username: `reggie-${role}`, welcomePending: false },
+      });
+      expect(response.ok()).toBeTruthy();
+
+      let questRequests = 0;
+      await page.route("**/api/reggie/quest", (route) => {
+        questRequests += 1;
+        return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(QUEST) });
+      });
+      await page.goto("/", { waitUntil: "domcontentloaded" });
+      await expect(page.locator('[data-wtf-desktop-content="true"]')).toBeVisible();
+      await expect(page.getByRole("button", { name: "Reggie the quest guide hamster" })).toHaveCount(0);
+      await expect(page.getByRole("dialog", { name: "Reggie quest guide" })).toHaveCount(0);
+
+      await page.locator('[data-wtf-desktop-content="true"]').click({
+        button: "right",
+        position: { x: 580, y: 420 },
+      });
+      await expect(page.getByText("Summon Reggie", { exact: true })).toHaveCount(0);
+      expect(questRequests).toBe(0);
+    });
+  }
+
   test("Paul's Help replay introduces Reggie's quest role", async ({ page, request }) => {
     const response = await request.post("/__test/state", {
       data: { userRole: "contestant", username: "paul-and-reggie-player", welcomePending: false },

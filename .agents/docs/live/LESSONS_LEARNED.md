@@ -13856,3 +13856,13 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: Stale selectors obscured the actual result of the page split and made the test run look like an app regression.
 
 **Rule**: For every section moved to its own route, update the test's starting path and assert against the control's new owning page. Check sidebar links from the sidebar root, and retain a focused test that verifies distinct paths and the absence of unrelated sections.
+
+---
+
+## 2026-11-03 - Gate Reggie's desktop entry points by contestant membership
+
+**What happened**: Reggie mounted for every signed-in account, queried quest state, and exposed a summon command even when the account had no contestant role. The shared `canParticipate` helper also includes noncontestant roles, so it could not express the requested visibility rule.
+
+**Why it mattered**: Witness and admin accounts could see or request challenge guidance that is intended only for contestants.
+
+**Rule**: Use normalized explicit contestant membership for both the assistant mount and its summon entry. Test noncontestant roles for sprite, command, and quest-request absence while retaining the contestant guidance path.
