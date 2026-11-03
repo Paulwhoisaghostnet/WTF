@@ -57,6 +57,10 @@ test.describe("Horf Open Range", () => {
     const primary = frame.locator("[data-horf-primary]");
     const rightRail = frame.locator("[data-horf-right-rail]");
     await expect(frame).toBeVisible();
+    const wtfHome = leftNav.locator("[data-horf-wtf-home]");
+    await expect(wtfHome).toBeVisible();
+    await expect(wtfHome).toHaveAttribute("href", "/");
+    await expect(wtfHome).toContainText("Brought to you by wtfOS.app");
     await expect(leftNav.getByRole("link", { name: "Open Range" })).toHaveAttribute("aria-current", "page");
     await expect(rightRail).toContainText("Range report");
     await expect(page.locator("[data-wtf-desktop]")).toHaveCount(0);
@@ -127,6 +131,8 @@ test.describe("Horf Open Range", () => {
     await page.setViewportSize({ width: 390, height: 844 });
     expect(await range.evaluate((node) => node.scrollWidth - node.clientWidth)).toBeLessThanOrEqual(1);
     await expect(leftNav).toBeVisible();
+    await expect(wtfHome).toBeVisible();
+    await expect(wtfHome).toHaveAccessibleName(/wtf.*home/i);
     await expect(rightRail).toBeHidden();
     const updates = primary.getByRole("button", { name: "Trail updates" });
     await updates.focus();

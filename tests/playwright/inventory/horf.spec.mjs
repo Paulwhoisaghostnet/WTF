@@ -146,6 +146,10 @@ test.describe("Horf horse trading", () => {
 
     const app = page.locator("[data-horf-app]");
     await expect(app).toBeVisible();
+    const wtfHome = page.locator("[data-horf-left-nav] [data-horf-wtf-home]");
+    await expect(wtfHome).toBeVisible();
+    await expect(wtfHome).toHaveAttribute("href", "/");
+    await expect(wtfHome).toContainText("Brought to you by wtfOS.app");
     await expect(app.locator('[data-horf-region="intro"]')).toContainText("No WTF OS account is needed");
     await expect(app.locator("[data-horf-wallet-status]")).toContainText("watch the race without signing in");
     await expect(app.locator('[data-horf-region="race"] [data-horf-lane]')).toHaveCount(3);
@@ -156,6 +160,11 @@ test.describe("Horf horse trading", () => {
     await expect(app.locator('[data-horf-region="inspector-desk"] [data-horf-inspection-queue]')).toHaveCount(0);
     await expect(app.locator('[data-horf-region="trader-ledger"]')).toContainText("Connect and verify your Tezos wallet");
     await expect(page).toHaveURL(/\/horf(?:\?season=current-2026)?$/);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect(wtfHome).toBeVisible();
+    await expect(wtfHome).toHaveAccessibleName(/wtf.*home/i);
+    await wtfHome.click();
+    await expect(page).toHaveURL(/\/$/);
   });
 
   test("keeps a guest on Horf when a wallet proof expires", async ({ page, request }) => {
