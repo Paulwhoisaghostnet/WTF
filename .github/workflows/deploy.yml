@@ -23,6 +23,11 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Use the signer runtime's Node version
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
@@ -68,6 +73,14 @@ jobs:
           git bundle verify "$LOCAL_BUNDLE"
           scp -i ~/.ssh/id_ed25519 "$LOCAL_BUNDLE" \
             "${{ secrets.HETZNER_USER }}@${{ secrets.HETZNER_HOST }}:${DEPLOY_BUNDLE}"
+
+      - name: Sync operator signer before funded-room admission
+        env:
+          HETZNER_SSH_HOST: ${{ secrets.HETZNER_HOST }}
+          HETZNER_SSH_USER: ${{ secrets.HETZNER_USER }}
+        run: |
+          HETZNER_SSH_KEY="$HOME/.ssh/id_ed25519" \
+            bash extensions/wtf-operator-signer/deploy/server-deploy.sh
 
       - name: Deploy on server
         run: |

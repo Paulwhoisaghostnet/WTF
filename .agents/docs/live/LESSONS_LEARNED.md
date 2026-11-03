@@ -13376,3 +13376,13 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: The exact-head quality gate rejected a correct hotfix before running its aggregate tests.
 
 **Rule**: Regenerate the environment inventory from the tracked candidate file set whenever adding a source file, then run its check in the same clean-file view. Keep unrelated untracked local scripts out of generated release metadata.
+
+---
+
+## 2026-11-03 — Admit a funded room build only with a compatible signer
+
+**What happened**: A sponsored Shadownet Party match settled, but its automatic `claim_cash` stayed `submission-unknown`. The live isolated signer bundle predated `claim_cash` and `claim_lot`, because the normal app deployment did not synchronize the signer. The exact claim had no signer journal or chain payment. After a standard signer rebuild, guarded reconciliation of that same intent paid the winner and left zero XTZ in escrow.
+
+**Why it mattered**: App and signer versions could diverge while both services appeared healthy, blocking a real prize payout after the match completed. An unguarded retry of an unknown submission could risk duplicate effects.
+
+**Rule**: Deploy the signer from the same source commit before admitting the app, compare the built and installed bundle hashes, and wait through transient post-restart socket startup within the app's configured signer response window. Require a live socket response that advertises sponsored prize claim actions and matches enabled escrow policy pins. If submission is unknown, inspect the exact signer journal and finalized chain state before retrying the same durable intent.

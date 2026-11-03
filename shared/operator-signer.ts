@@ -345,6 +345,7 @@ export const operatorSignerSuccessResponseSchema = z.object({
   keyringConfigured: z.boolean().optional(),
   wallet: platformWalletPublicSchema.optional(),
   wallets: z.array(platformWalletPublicSchema).optional(),
+  capabilities: z.array(z.string()).optional(),
 });
 
 export const operatorSignerErrorResponseSchema = z.object({

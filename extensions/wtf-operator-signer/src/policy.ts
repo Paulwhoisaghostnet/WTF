@@ -185,6 +185,7 @@ export function okResponse(opts: {
   keyringConfigured?: boolean;
   wallet?: PlatformWalletPublic;
   wallets?: PlatformWalletPublic[];
+  capabilities?: string[];
 }): OperatorSignerResponse {
   return {
     ok: true,
@@ -199,5 +200,6 @@ export function okResponse(opts: {
     keyringConfigured: opts.keyringConfigured,
     wallet: opts.wallet,
     wallets: opts.wallets,
+    capabilities: opts.capabilities,
   };
 }
