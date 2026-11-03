@@ -14029,6 +14029,16 @@ When shop and board are visible together, contextual help must prioritize a sele
 
 ---
 
+## 2026-11-03 - Register Horf subroutes in both browser route manifests
+
+**What happened**: Ten Horf subroutes were added to `PAGE_DEFS` and the inventory, but not to shared `BROWSER_ROUTE_META`. Main Quality Gates reached the aggregate unit suite and failed the route sync invariant.
+
+**Why it mattered**: Shared route discovery and access checks did not represent all public Horf pages, and a green production deploy still had a red independent quality signal.
+
+**Rule**: When adding a browser route, mirror its pattern, authentication gate, and title in `BROWSER_ROUTE_META` in the same change. Run the route sync and access tests before pushing the release candidate.
+
+---
+
 ## 2026-11-03 - Gate Reggie's desktop entry points by contestant membership
 
 **What happened**: Reggie mounted for every signed-in account, queried quest state, and exposed a summon command even when the account had no contestant role. The shared `canParticipate` helper also includes noncontestant roles, so it could not express the requested visibility rule.
