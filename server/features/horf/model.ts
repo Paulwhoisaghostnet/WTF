@@ -64,7 +64,7 @@ export interface HorfTransfer {
   amount: number;
   token: { contract: string; tokenId: string; name: string; image: string | null };
   /** Pool claims count as trades, but their deposit/credit rules settle the return. */
-  settlement?: "stable" | "gift";
+  settlement?: "stable" | "gift" | "market";
   stableMode?: 0 | 1 | 2;
 }
 
@@ -185,7 +185,7 @@ export interface HorfCurrentUser extends HorfLeaderboardEntry {
     counterparty: string;
     token: HorfTransfer["token"];
     amount: number;
-    settlement?: "stable" | "gift";
+    settlement?: "stable" | "gift" | "market";
     stableMode?: 0 | 1 | 2;
   }>;
 }
