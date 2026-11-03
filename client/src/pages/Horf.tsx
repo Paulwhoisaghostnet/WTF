@@ -5,6 +5,7 @@ import styled from "styled-components";
 import { HorfFrame } from "../features/horf/HorfFrame";
 import { HorfStables } from "../features/horf/HorfStables";
 import { HorfHorseSend } from "../features/horf/HorfHorseSend";
+import { HahaCrp } from "../features/haha-crp/HahaCrp";
 import { HorfGifts } from "../features/horf/HorfGifts";
 import { HorfPosse } from "../features/horf/HorfPosse";
 import { HorfTradeHorseCarousel } from "../features/horf/HorfTradeHorseCarousel";
@@ -817,12 +818,14 @@ export function Horf() {
     : routePath === "/horf/outlaw-corral" ? "outlaw"
     : routePath === "/horf/stable" ? "stable"
     : routePath === "/horf/send-horse" ? "horse"
+    : routePath === "/horf/haha-crp" ? "haha"
     : routePath === "/horf/posse" ? "posse"
     : routePath === "/horf/gifts" ? "gifts" : "race";
   const routeTitle = routeSection === "marshal" ? "Marshal’s Market"
     : routeSection === "outlaw" ? "Outlaw Corral"
     : routeSection === "stable" ? "My Stable"
     : routeSection === "horse" ? "Send $HORSE"
+    : routeSection === "haha" ? "HAHA Horse Trader Awards"
     : routeSection === "gifts" ? "Gifts"
     : routeSection === "posse" ? "Posse"
     : routeSection === "traders" ? "Find Other Traders"
@@ -1006,6 +1009,7 @@ export function Horf() {
       {walletError && <div className="rail-section" role="alert"><span className="eyebrow">Wallet alert</span><p>{walletError}</p></div>}
       {personal?.blacklisted === true && <div className="rail-section" role="alert"><span className="eyebrow">Trader standing</span><p>This wallet is restricted from private Horf actions. Review the public standing before trading.</p></div>}
       <div className="rail-section"><span className="eyebrow">🐎 Live trail</span><strong>{seasonDisplayName}</strong><p>{countsProvisional ? "The race is still scanning Mainnet." : hasError ? "Season totals need a refresh." : "Season ledger ready for the next ride."}</p></div>
+      {routeSection === "haha" && <div className="rail-section"><span className="eyebrow">🏆 HAHA ballot</span><strong>Nominate a deserving rider</strong><p>Choose a different Tezos wallet for each nomination in a category. Your wallet signs in to the ballot.</p></div>}
       <div className="rail-section"><span className="eyebrow">Race leader</span><strong>{leaderboard[0] ? traderName(leaderboard[0].name, leaderboard[0].address) : "The starting gate"}</strong><p>{leaderboard[0] ? `${leaderboard[0].trades} ${leaderboard[0].trades === 1 ? "trade" : "trades"} this season` : "No riders ranked yet."}</p></div>
       {routeSection === "profile" && validProfileAddress && <div className="rail-section"><span className="eyebrow">Trader in your sights</span><strong>{traderName(profileRider?.name, validProfileAddress)}</strong><p>{profileRider?.trades ?? 0} season trades · {profileOffersQuery.data?.offers.length ?? 0} active trade signs</p></div>}
       {statusAddress && <div className="rail-section"><span className="eyebrow">Trader in your sights</span><strong>{shortAddress(statusAddress)}</strong><p>Standing and inspection notes are open in the main trail.</p></div>}
@@ -1216,6 +1220,7 @@ export function Horf() {
           <HorfTraderStatus selectedAddress={traderFromUrl ?? statusAddress ?? address} walletAddress={address} onSelect={viewTraderStatus} isAdmin={isAdmin} onChange={() => void query.refetch()} />
         </TradingZone>}
         {routeSection === "horse" && <HorfHorseSend address={address} signedIn={!isGuest} connectWallet={connectWallet} isConnecting={isConnecting} />}
+        {routeSection === "haha" && <HahaCrp />}
         {routeSection === "gifts" && <HorfGifts address={address} isGuest={isGuest} connectWallet={connectWallet} isConnecting={isConnecting} />}
         {routeSection === "posse" && <HorfPosse address={address} connectWallet={connectWallet} isConnecting={isConnecting} />}
 
