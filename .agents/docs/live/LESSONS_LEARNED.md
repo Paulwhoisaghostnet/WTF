@@ -14019,6 +14019,16 @@ When shop and board are visible together, contextual help must prioritize a sele
 
 ---
 
+## 2026-11-03 - Regenerate the environment inventory after integrating Horf source files
+
+**What happened**: The Horf release added 51 scanned source files and references to two new environment variables, but the checked-in environment inventory still described the earlier tree. Production deployed, while main Quality Gates stopped at `env:inventory:check` before TypeScript, build, and browser inventory.
+
+**Why it mattered**: A green production health check could not substitute for the independent release gates, and the stale generated reference hid new HORSE Market configuration from the environment inventory.
+
+**Rule**: After integrating new source files or environment references, regenerate `docs/reference/environment-variables.md` from the exact candidate tree and run its deterministic check and policy test before pushing main. Require the replacement Quality Gates run to pass before calling the release verified.
+
+---
+
 ## 2026-11-03 - Gate Reggie's desktop entry points by contestant membership
 
 **What happened**: Reggie mounted for every signed-in account, queried quest state, and exposed a summon command even when the account had no contestant role. The shared `canParticipate` helper also includes noncontestant roles, so it could not express the requested visibility rule.
