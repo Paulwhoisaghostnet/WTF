@@ -808,6 +808,8 @@ export const DOMAIN_WORKFLOWS = [
       "horf.wallet.selected",
       "horf.trader.viewed",
       "horf.race.viewed",
+      "horf.navigation.selected",
+      "horf.context_rail.opened",
       "swap.submitted",
     ],
     behaviorAssertionIds: ["gameshow.private-project-pages"],

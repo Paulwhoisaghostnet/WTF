@@ -740,7 +740,7 @@ export const PAGE_DEFS: PageDef[] = [
   },
 ];
 
-export const FULLSCREEN_ROUTES = new Set(["/", "/gamma", "/beta", "/login", "/register", "/cli", "/live/r/:roomId"]);
+export const FULLSCREEN_ROUTES = new Set(["/", "/gamma", "/beta", "/login", "/register", "/cli", "/live/r/:roomId", "/horf", "/horf/open-range"]);
 
 function patternToRegex(pattern: string): {
   regex: RegExp;

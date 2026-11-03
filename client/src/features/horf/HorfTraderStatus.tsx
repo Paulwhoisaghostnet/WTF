@@ -27,20 +27,22 @@ type ChainBlacklistSnapshot = {
 };
 
 const Shell = styled.section`
-  margin-top: 20px;
-  padding: 17px;
-  border: 3px solid #542923;
-  background: #f1dfbb;
-  box-shadow: inset 0 0 0 2px #fff2d5, 4px 4px 0 #b7754c;
+  margin-top: clamp(36px, 5vw, 68px);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--horf-ink, #142526);
+  font-family: var(--horf-font, "Avenir Next", "Segoe UI", sans-serif);
   min-width: 0;
-  h2 { margin: 0 0 5px; font-size: clamp(24px, 4cqw, 33px); }
-  h3 { margin: 0 0 8px; font-size: 18px; }
-  p { margin: 5px 0 11px; font-size: 13px; line-height: 1.45; }
-  label { display: block; margin-bottom: 4px; font: 700 12px/1.3 "Courier New", monospace; }
-  input, textarea { width: 100%; min-width: 0; padding: 7px 8px; border: 1px solid #926f50; border-radius: 0; background: #fffdf5; color: #33221b; font: 13px Georgia, serif; }
-  input { min-height: 36px; }
+  h2 { margin: 8px 0 10px; font: 700 clamp(30px, 4cqw, 48px)/1.06 var(--horf-display, Georgia, serif); letter-spacing: -.025em; text-wrap: balance; }
+  h3 { margin: 0 0 9px; font-size: 21px; letter-spacing: -.02em; }
+  p { margin: 5px 0 12px; color: var(--horf-muted, #50625e); font-size: 14px; line-height: 1.55; }
+  label { display: block; margin-bottom: 6px; font: 700 13px/1.3 var(--horf-font, "Avenir Next", sans-serif); }
+  input, textarea { width: 100%; min-width: 0; padding: 9px 11px; border: 1px solid #aebfba; border-radius: 9px; background: #fff; color: var(--horf-ink, #142526); font: 14px var(--horf-font, "Avenir Next", sans-serif); }
+  input { min-height: 42px; }
   textarea { min-height: 70px; resize: vertical; }
-  button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visible { outline: 3px solid #086d77; outline-offset: 2px; }
+  button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visible { outline: 3px solid var(--horf-teal, #087e7a); outline-offset: 2px; }
 `;
 
 const Row = styled.div`
@@ -53,37 +55,42 @@ const Row = styled.div`
 `;
 
 const Action = styled.button<{ $danger?: boolean }>`
-  min-height: 36px;
-  padding: 6px 10px;
-  border: 2px solid #5a3026;
-  background: ${(props) => props.$danger ? "#f0a27d" : "#f5cc75"};
-  color: #38221d;
-  box-shadow: 2px 2px 0 #af7955;
+  min-height: 40px;
+  padding: 9px 15px;
+  border: 1px solid ${(props) => props.$danger ? "#b74931" : "var(--horf-deep, #132326)"};
+  border-radius: 999px;
+  background: ${(props) => props.$danger ? "#b74931" : "var(--horf-deep, #132326)"};
+  color: #fff;
   cursor: pointer;
-  font: 700 12px/1.25 "Courier New", monospace;
-  &:disabled { opacity: 0.55; cursor: not-allowed; box-shadow: none; }
+  font: 750 13px/1.2 var(--horf-font, "Avenir Next", sans-serif);
+  transition: background 160ms ease, transform 160ms ease;
+  &:hover:not(:disabled) { transform: translateY(-1px); background: ${(props) => props.$danger ? "#963620" : "#294448"}; }
+  &:disabled { opacity: 0.55; cursor: not-allowed; }
+  @media (prefers-reduced-motion: reduce) { transition: none; &:hover:not(:disabled) { transform: none; } }
 `;
 
 const Report = styled.div<{ $listed?: boolean }>`
   margin: 13px 0;
-  padding: 12px 14px;
-  border-left: 5px solid ${(props) => props.$listed ? "#a83d2e" : "#507c53"};
-  background: ${(props) => props.$listed ? "#fff0d7" : "#eef3db"};
+  padding: 15px 17px;
+  border: 1px solid ${(props) => props.$listed ? "#e7a495" : "#9dd0c5"};
+  border-radius: 12px;
+  background: ${(props) => props.$listed ? "#fff1ed" : "#eaf7f3"};
   overflow-wrap: anywhere;
-  strong { display: block; margin-bottom: 4px; font: 700 16px/1.25 Georgia, serif; }
-  small { display: block; margin-top: 7px; font: 11px/1.35 "Courier New", monospace; }
+  strong { display: block; margin-bottom: 4px; font: 700 17px/1.25 var(--horf-display, Georgia, serif); }
+  small { display: block; margin-top: 7px; font: 12px/1.4 var(--horf-font, "Avenir Next", sans-serif); }
 `;
 
 const AdminPanel = styled.div`
   margin-top: 18px;
-  padding: 13px;
-  border-top: 4px solid #78392b;
-  background: #fff9e9;
+  padding: 20px;
+  border: 1px solid var(--horf-line, #d6ded8);
+  border-radius: 14px;
+  background: var(--horf-surface, #fff);
   > form { display: grid; gap: 8px; }
   ul { list-style: none; margin: 10px 0 0; padding: 0; }
-  li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 9px 0; border-top: 1px solid #d5b391; }
+  li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 0; border-top: 1px solid var(--horf-line, #d6ded8); }
   li span { min-width: 0; overflow-wrap: anywhere; }
-  li small { display: block; color: #795c4a; font: 11px/1.35 "Courier New", monospace; }
+  li small { display: block; color: var(--horf-muted, #50625e); font: 12px/1.4 var(--horf-font, "Avenir Next", sans-serif); }
 `;
 
 function shortAddress(address: string): string {
