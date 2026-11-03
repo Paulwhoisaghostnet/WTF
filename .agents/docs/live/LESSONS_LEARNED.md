@@ -13385,4 +13385,4 @@ When shop and board are visible together, contextual help must prioritize a sele
 
 **Why it mattered**: App and signer versions could diverge while both services appeared healthy, blocking a real prize payout after the match completed. An unguarded retry of an unknown submission could risk duplicate effects.
 
-**Rule**: Deploy the signer from the same source commit before admitting the app, compare the built and installed bundle hashes, and require a live socket response that advertises sponsored prize claim actions and matches enabled escrow policy pins. If submission is unknown, inspect the exact signer journal and finalized chain state before retrying the same durable intent.
+**Rule**: Deploy the signer from the same source commit before admitting the app, compare the built and installed bundle hashes, and wait through transient post-restart socket startup within the app's configured signer response window. Require a live socket response that advertises sponsored prize claim actions and matches enabled escrow policy pins. If submission is unknown, inspect the exact signer journal and finalized chain state before retrying the same durable intent.

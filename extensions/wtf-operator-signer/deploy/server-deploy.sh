@@ -33,8 +33,8 @@ hash_file() {
 remote_hash() {
   ssh "${SSH_OPTS[@]}" "$REMOTE" "sudo sha256sum '$1' 2>/dev/null | cut -d' ' -f1" || true
 }
-verify_health() {
-  ssh "${SSH_OPTS[@]}" "$REMOTE" "sudo bash /opt/wtf-operator-signer/deploy/verify-service.sh"
+wait_for_health() {
+  ssh "${SSH_OPTS[@]}" "$REMOTE" "sudo bash /opt/wtf-operator-signer/deploy/verify-service.sh --wait-ready"
 }
 
 local_bundle_hash="$(hash_file dist/index.cjs)"
@@ -48,7 +48,7 @@ remote_lock_hash="$(remote_hash /opt/wtf-operator-signer/package-lock.json)"
 remote_unit_hash="$(remote_hash /etc/systemd/system/wtf-operator-signer.service)"
 
 if [[ "$local_bundle_hash" == "$remote_bundle_hash" && "$local_lock_hash" == "$remote_lock_hash" && "$local_unit_hash" == "$remote_unit_hash" ]] && \
-   ssh "${SSH_OPTS[@]}" "$REMOTE" "sudo systemctl is-active --quiet wtf-operator-signer" && verify_health; then
+   ssh "${SSH_OPTS[@]}" "$REMOTE" "sudo systemctl is-active --quiet wtf-operator-signer" && wait_for_health; then
   echo "✓ signer bundle already matches source and reports sponsored prize claim support"
   exit 0
 fi
@@ -68,6 +68,6 @@ echo "→ restarting systemd unit"
 ssh "${SSH_OPTS[@]}" "$REMOTE" "sudo systemctl restart wtf-operator-signer"
 ssh "${SSH_OPTS[@]}" "$REMOTE" "sudo systemctl is-active --quiet wtf-operator-signer"
 [[ "$(remote_hash /opt/wtf-operator-signer/dist/index.cjs)" == "$local_bundle_hash" ]] || { echo "Signer bundle hash differs after install." >&2; exit 1; }
-verify_health
+wait_for_health
 
 echo "✓ signer deploy complete: bundle hash $local_bundle_hash"

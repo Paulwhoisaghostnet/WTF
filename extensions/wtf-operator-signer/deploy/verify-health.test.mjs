@@ -20,10 +20,13 @@ const shadownet = {
 const wallet = { id: 'shadownet-referee', address: 'tz1ShadownetReferee', chainId: 'NetXsqzbfFenSTS' };
 const required = ['wtfiap_sponsor_escrow.claim_cash', 'wtfiap_sponsor_escrow.claim_lot'];
 
-async function probe({ capabilities = required, env = shadownet, wallets = [wallet] } = {}) {
+async function probe({ capabilities = required, env = shadownet, wallets = [wallet],
+  disconnectOnce = false, waitReady = false } = {}) {
   const directory = await mkdtemp(join(tmpdir(), 'wtfiap-signer-health-'));
   const socketPath = join(directory, 'signer.sock');
+  let connections = 0;
   const server = createServer((connection) => {
+    connections += 1;
     let input = '';
     connection.on('data', (chunk) => {
       input += chunk.toString();
@@ -31,13 +34,17 @@ async function probe({ capabilities = required, env = shadownet, wallets = [wall
       if (end < 0) return;
       const request = JSON.parse(input.slice(0, end));
       assert.equal(request.intent, 'health');
+      if (disconnectOnce && connections === 1) {
+        connection.destroy();
+        return;
+      }
       connection.end(JSON.stringify({ ok: true, version: 1, requestId: request.requestId,
         intent: 'health', capabilities, wallets }) + '\n');
     });
   });
   await new Promise((resolve) => server.listen(socketPath, resolve));
   try {
-    const child = spawn(process.execPath, [script], { env: {
+    const child = spawn(process.execPath, [script, ...(waitReady ? ['--wait-ready'] : [])], { env: {
       ...process.env, WTF_OPERATOR_SIGNER_AUTH_TOKEN: 'test-auth',
       WTF_OPERATOR_SIGNER_SOCKET: socketPath, ...env,
     } });
@@ -45,7 +52,7 @@ async function probe({ capabilities = required, env = shadownet, wallets = [wall
     child.stdout.on('data', (part) => { stdout += part; });
     child.stderr.on('data', (part) => { stderr += part; });
     const exit = await new Promise((resolve) => child.on('exit', resolve));
-    return { exit, stdout, stderr };
+    return { exit, stdout, stderr, connections };
   } finally {
     await new Promise((resolve) => server.close(resolve));
     await rm(directory, { recursive: true, force: true });
@@ -58,9 +65,16 @@ test('deployment probe accepts a live signer with both claim actions and matchin
   assert.match(result.stdout, /capabilities verified/);
 });
 
+test('post-restart probe waits through a transient socket close before admitting the app', async () => {
+  const result = await probe({ disconnectOnce: true, waitReady: true });
+  assert.equal(result.exit, 0, result.stderr);
+  assert.equal(result.connections, 2);
+});
+
 test('deployment probe rejects the old signer that lacks a prize claim action', async () => {
-  const result = await probe({ capabilities: [required[0]] });
+  const result = await probe({ capabilities: [required[0]], waitReady: true });
   assert.notEqual(result.exit, 0);
+  assert.equal(result.connections, 1);
   assert.match(result.stderr, /lacks sponsored prize action claim_lot/);
 });
 

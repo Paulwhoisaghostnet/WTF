@@ -11,4 +11,4 @@ if [[ -z "$app_auth" || "$app_auth" != "${WTF_OPERATOR_SIGNER_AUTH_TOKEN:-}" ]];
   echo 'App and signer authentication tokens differ.' >&2
   exit 1
 fi
-node /opt/wtf-operator-signer/deploy/verify-health.mjs
+node /opt/wtf-operator-signer/deploy/verify-health.mjs "$@"
