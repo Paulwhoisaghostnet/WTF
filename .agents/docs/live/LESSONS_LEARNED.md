@@ -13936,3 +13936,13 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: CI could not verify the release, and CLI/browser route metadata lacked those public destinations.
 
 **Rule**: When adding a page pattern, add its matching title and access policy to the shared browser route metadata in the same pass. Run the route sync test before pushing.
+
+---
+
+## 2026-11-03 - Regenerate source inventories after merging main into a release branch
+
+**What happened**: The Reggie branch passed its environment inventory check before merging newer main, but that merge changed the tracked source-file count. Quality Gates then rejected the stale generated header even though the variable rows were unchanged.
+
+**Why it mattered**: A release branch with correct application code could not pass the mandatory clean CI gate.
+
+**Rule**: After the final main merge or rebase, regenerate tracked source inventories and run their equality checks on the exact branch head before pushing. Review the generated diff for secret values and unrelated changes.
