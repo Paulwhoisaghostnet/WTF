@@ -13866,3 +13866,13 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: Witness and admin accounts could see or request challenge guidance that is intended only for contestants.
 
 **Rule**: Use normalized explicit contestant membership for both the assistant mount and its summon entry. Test noncontestant roles for sprite, command, and quest-request absence while retaining the contestant guidance path.
+
+---
+
+## 2026-11-03 - Keep browser route metadata aligned with new Horf pages
+
+**What happened**: Nine Horf routes were added to the page registry without matching entries in the shared browser route metadata. The Reggie release then failed the route sync test in Quality Gates after the stale environment inventory was refreshed.
+
+**Why it mattered**: CI could not verify the release, and CLI/browser route metadata lacked those public destinations.
+
+**Rule**: When adding a page pattern, add its matching title and access policy to the shared browser route metadata in the same pass. Run the route sync test before pushing.
