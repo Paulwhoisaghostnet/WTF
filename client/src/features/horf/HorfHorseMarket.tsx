@@ -1,0 +1,362 @@
+import { useMemo, useState, type FormEvent } from "react";
+import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
+import styled from "styled-components";
+import { api } from "../../lib/api";
+import { advanceResolvedMediaFallback, resolveTokenThumbnail } from "../../lib/media-resolve";
+import { logClientSystemEvent } from "../../lib/system-log";
+import {
+  HORF_MARKET_CHAIN_ID,
+  buyHorseOnObjktInHorf,
+  buyHorseWithHorse,
+  cancelHorseMarketListing,
+  formatHorseRaw,
+  horseAmountToRaw,
+  listHorseForHorse,
+  type HorfHorseMarketContract,
+  type HorfHorseMarketListing,
+  type HorfHorseMarketPermit,
+  type HorfObjktPurchase,
+} from "../../lib/tezos/horf-horse-market";
+import { toNatString } from "../../lib/tezos/nat";
+import { parseHorfOwnedTokenPage } from "./owned-tokens";
+import { objktTokenUrl } from "./token-input";
+
+type MarketSnapshot = {
+  status: "ready" | "unconfigured";
+  network: "mainnet";
+  chainId: string;
+  contractAddress: string | null;
+  horseContractAddress: string | null;
+  permitReady: boolean;
+};
+type MarketListings = { listings: HorfHorseMarketListing[] };
+type Inspection = { status: "none" | "pending" | "approved" | "rejected" | "revoked"; reason: string | null };
+type ObjktListings = { listings: HorfObjktPurchase[] };
+type Pending = { action: "list" | "buy" | "cancel" | "objkt"; stage: "eligibility" | "preflight" | "preparing" | "wallet" | "confirming"; opHash: string | null };
+
+const Page = styled.section`
+  width: min(100%, 1400px);
+  margin: 0 auto;
+  padding: clamp(18px, 3vw, 42px);
+  color: var(--horf-ink);
+  h2, h3, p { margin-top: 0; }
+  button { cursor: pointer; }
+  button:disabled { cursor: not-allowed; opacity: .55; }
+`;
+const Hero = styled.header`
+  position: relative;
+  min-height: 226px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(180px, .7fr);
+  overflow: hidden;
+  border-radius: 25px;
+  background: #132b2d;
+  color: #f8fcf9;
+  box-shadow: 0 18px 45px #1a363725;
+  .copy { position: relative; z-index: 1; align-self: center; padding: clamp(25px, 4vw, 48px); }
+  .kicker { color: #ffc363; font-weight: 850; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; }
+  h2 { max-width: 12ch; margin: 8px 0 12px; color: #fff; font: 700 clamp(35px, 4cqw, 62px)/.99 var(--horf-display); letter-spacing: -.045em; }
+  p { max-width: 62ch; margin: 0; color: #d2e6de; font-size: 14px; line-height: 1.55; }
+  .photo { position: relative; min-height: 226px; background: url('/horf-art/horse-portrait-photo.jpg') center 35% / cover; }
+  .photo:before { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, #132b2d 0%, #132b2d11 46%); }
+  .seal { position: absolute; right: 18px; bottom: 18px; display: grid; place-items: center; width: 112px; height: 112px; border: 2px dashed #ffd187; border-radius: 50%; background: #132b2dd9; color: #ffcf73; font: 700 14px/1.2 var(--horf-display); text-align: center; transform: rotate(11deg); }
+  @container (max-width: 660px) { grid-template-columns: 1fr; .photo { min-height: 130px; background-position: center 32%; } .photo:before { background: linear-gradient(180deg, #132b2d, transparent 80%); } .seal { width: 93px; height: 93px; font-size: 12px; } }
+`;
+const Toolbar = styled.div`
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;
+  margin: 28px 0 16px;
+  h3 { margin: 0; font: 700 27px/1.1 var(--horf-display); }
+  p { margin: 3px 0 0; color: var(--horf-muted); font-size: 13px; }
+`;
+const Action = styled.button<{ $strong?: boolean; $gold?: boolean }>`
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  min-height: 43px; padding: 10px 17px;
+  border: 1px solid ${(p) => p.$gold ? '#a3621d' : p.$strong ? '#132b2d' : '#c6d5d0'};
+  border-radius: 999px;
+  background: ${(p) => p.$gold ? '#ffcc70' : p.$strong ? '#132b2d' : '#fff'};
+  color: ${(p) => p.$gold ? '#352310' : p.$strong ? '#fff' : '#173634'};
+  font-weight: 800; font-size: 13px; line-height: 1.2;
+  &:hover:not(:disabled) { filter: brightness(.95); transform: translateY(-1px); }
+  &:focus-visible { outline: 3px solid var(--horf-teal); outline-offset: 3px; }
+  @media (prefers-reduced-motion: reduce) { &:hover:not(:disabled) { transform: none; } }
+`;
+const Notice = styled.div<{ $error?: boolean }>`
+  margin: 12px 0; padding: 13px 16px; border: 1px solid ${(p) => p.$error ? '#e8a38f' : '#a0cbbf'};
+  border-radius: 12px; background: ${(p) => p.$error ? '#fff0eb' : '#e9f7f0'};
+  font-size: 13px; line-height: 1.5; overflow-wrap: anywhere;
+  a { color: #087e7a; }
+`;
+const Layout = styled.div`
+  display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(300px, .75fr); gap: 20px; align-items: start;
+  @container (max-width: 850px) { grid-template-columns: 1fr; }
+`;
+const Grid = styled.div`
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 15px;
+  @container (max-width: 600px) { grid-template-columns: 1fr; }
+`;
+const Card = styled.article<{ $selected: boolean }>`
+  min-width: 0; overflow: hidden; border: 1px solid ${(p) => p.$selected ? '#0b8780' : '#d7e0da'};
+  border-radius: 18px; background: #fff; box-shadow: ${(p) => p.$selected ? '0 10px 30px #087e7a1b' : '0 3px 12px #1736340a'};
+  .art { position: relative; aspect-ratio: 1.35; overflow: hidden; background: #dce6dd; }
+  .art img { width: 100%; height: 100%; object-fit: contain; display: block; }
+  .art .photo { object-fit: cover; }
+  .tag { position: absolute; top: 11px; left: 11px; padding: 6px 9px; border-radius: 999px; background: #ffcf76; color: #382a17; font: 850 10px/1 var(--horf-font); text-transform: uppercase; }
+  .body { padding: 15px; }
+  h4 { margin: 0 0 4px; font: 700 20px/1.15 var(--horf-display); overflow-wrap: anywhere; }
+  p { margin: 0; color: var(--horf-muted); font-size: 12px; }
+  .price { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 7px; margin: 17px 0; }
+  .price strong { font: 750 24px/1 var(--horf-display); color: #164b48; }
+  .price span { color: var(--horf-muted); font-size: 11px; }
+  .body > button { width: 100%; }
+`;
+const Panel = styled.aside`
+  min-width: 0; padding: 21px; border: 1px solid #cbd9d4; border-radius: 18px;
+  background: #fff; box-shadow: 0 6px 22px #1736340a;
+  h3 { margin-bottom: 5px; font: 700 24px/1.1 var(--horf-display); }
+  h4 { margin: 22px 0 6px; font: 700 17px/1.15 var(--horf-display); }
+  p { margin-bottom: 12px; color: var(--horf-muted); font-size: 13px; line-height: 1.5; }
+  label { display: block; margin: 13px 0 6px; font-weight: 750; font-size: 12px; }
+  input, select { width: 100%; min-width: 0; min-height: 43px; padding: 10px 11px; border: 1px solid #a9bdb6; border-radius: 9px; background: #fff; color: var(--horf-ink); font-size: 14px; }
+  input:focus-visible, select:focus-visible { outline: 3px solid var(--horf-teal); outline-offset: 2px; }
+  form > button, .wide { width: 100%; margin-top: 14px; }
+  .rule { height: 1px; margin: 22px 0; background: #dde7e0; }
+  .small { font-size: 11px; }
+  .meta { overflow-wrap: anywhere; }
+`;
+const Stamp = styled.span`
+  display: inline-flex; align-items: center; gap: 5px; padding: 5px 9px; border-radius: 999px;
+  background: #ddf2e8; color: #12634f; font-size: 11px; font-weight: 800;
+`;
+
+function shortAddress(value: string) { return value.length > 18 ? `${value.slice(0, 8)}…${value.slice(-6)}` : value; }
+function isPositive(value: string) { try { return BigInt(value) > 0n; } catch { return false; } }
+function xtzPrice(mutez: string) { const raw = BigInt(toNatString(mutez)); return `${(raw / 1_000_000n).toLocaleString()}.${(raw % 1_000_000n).toString().padStart(6, '0').replace(/0+$/, '') || '0'}`; }
+function pendingText(pending: Pending) {
+  if (pending.stage === "eligibility") return "Checking the Marshal’s approval and preparing your one-use listing permit…";
+  if (pending.stage === "preflight") return "Checking your wallet and Tezos Mainnet…";
+  if (pending.stage === "preparing") return pending.action === "objkt" ? "Checking the current Objkt ask on-chain…" : "Preparing the horse trade…";
+  if (pending.stage === "wallet") return "Approve this Tezos transaction in your wallet…";
+  return "Waiting for Tezos confirmation…";
+}
+
+export function HorfHorseMarket({ address, connectWallet, isConnecting }: {
+  address: string | null; connectWallet: () => Promise<void>; isConnecting: boolean;
+}) {
+  const qc = useQueryClient();
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedOwnedKey, setSelectedOwnedKey] = useState("");
+  const [ownedSearchDraft, setOwnedSearchDraft] = useState("");
+  const [ownedSearch, setOwnedSearch] = useState("");
+  const [quantity, setQuantity] = useState("1");
+  const [price, setPrice] = useState("");
+  const [buyQuantity, setBuyQuantity] = useState("1");
+  const [pending, setPending] = useState<Pending | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<{ text: string; opHash: string } | null>(null);
+
+  const configQuery = useQuery({ queryKey: ["horf", "horse-market", "config"], queryFn: () => api.get<MarketSnapshot>("/api/horf/horse-market/config"), refetchOnWindowFocus: true });
+  const listingQuery = useQuery({ queryKey: ["horf", "horse-market", "listings"], queryFn: () => api.get<MarketListings>("/api/horf/horse-market/listings"), refetchOnWindowFocus: true });
+  const snapshot = configQuery.data;
+  const configured = snapshot?.status === "ready" && snapshot.chainId === HORF_MARKET_CHAIN_ID && snapshot.network === "mainnet" &&
+    Boolean(snapshot.contractAddress && snapshot.horseContractAddress);
+  const contract: HorfHorseMarketContract | null = configured ? {
+    contractAddress: snapshot!.contractAddress!, chainId: snapshot!.chainId, horseContractAddress: snapshot!.horseContractAddress!,
+  } : null;
+  const listings = (listingQuery.data?.listings ?? []).filter((item) => isPositive(item.remaining));
+  const selected = listings.find((item) => item.id === selectedId) ?? listings[0] ?? null;
+  const ownedQuery = useInfiniteQuery({
+    queryKey: ["horf", "owned-tokens", address, ownedSearch],
+    queryFn: ({ pageParam }) => {
+      const params = new URLSearchParams({ address: address!, offset: String(pageParam) });
+      if (ownedSearch) params.set("q", ownedSearch);
+      return api.get<unknown>(`/api/horf/wallet/tokens?${params}`).then(parseHorfOwnedTokenPage);
+    },
+    initialPageParam: 0,
+    getNextPageParam: (page) => page.pagination.hasMore ? page.pagination.nextOffset : undefined,
+    enabled: Boolean(address),
+  });
+  const owned = useMemo(() => (ownedQuery.data?.pages.flatMap((page) => page.items) ?? [])
+    .filter((token) => token.walletAddress === address && isPositive(token.balance)), [address, ownedQuery.data]);
+  const selectedOwned = owned.find((item) => `${item.contract}:${item.tokenId}` === selectedOwnedKey) ?? null;
+  const inspectionQuery = useQuery({
+    queryKey: ["horf", "inspection-status", selectedOwned?.contract, selectedOwned?.tokenId],
+    queryFn: () => api.get<Inspection>(`/api/horf/inspections/status?contract=${encodeURIComponent(selectedOwned!.contract)}&tokenId=${encodeURIComponent(selectedOwned!.tokenId)}`),
+    enabled: Boolean(selectedOwned), refetchOnWindowFocus: true,
+  });
+  const objktQuery = useQuery({
+    queryKey: ["horf", "horse-market", "objkt", selected?.tokenContract, selected?.tokenId],
+    queryFn: () => api.get<ObjktListings>(`/api/horf/horse-market/objkt-listings?tokenContract=${encodeURIComponent(selected!.tokenContract)}&tokenId=${encodeURIComponent(selected!.tokenId)}`),
+    enabled: Boolean(selected), refetchOnWindowFocus: true,
+  });
+  const objktAsk = objktQuery.data?.listings?.[0] ?? null;
+  const busy = pending !== null;
+
+  function stage(action: Pending["action"]) {
+    return {
+      onStage: (step: Exclude<Pending["stage"], "eligibility">) => setPending((current) => ({ action, stage: step, opHash: current?.opHash ?? null })),
+      onSubmitted: (hash: string) => setPending((current) => ({ action, stage: "confirming", opHash: hash })),
+    };
+  }
+  async function list(event: FormEvent) {
+    event.preventDefault();
+    if (!address || !contract || !selectedOwned || busy) return;
+    setError(null); setSuccess(null);
+    let submitted: string | null = null;
+    try {
+      const units = toNatString(quantity);
+      if (units === "0" || BigInt(units) > BigInt(selectedOwned.balance)) throw new Error("Choose an edition quantity held by this wallet.");
+      const rawPrice = horseAmountToRaw(price);
+      if (inspectionQuery.data?.status !== "approved") throw new Error("A Horf Marshal must approve this token before it can enter the HORSE Market.");
+      setPending({ action: "list", stage: "eligibility", opHash: null });
+      const permit = await api.post<HorfHorseMarketPermit>("/api/horf/horse-market/permit", {
+        address, tokenContract: selectedOwned.contract, tokenId: selectedOwned.tokenId, quantity: units, unitPriceHorseRaw: rawPrice,
+      });
+      const handlers = stage("list");
+      const opHash = await listHorseForHorse(address, contract, permit, {
+        ...handlers, onSubmitted: (hash) => { submitted = hash; handlers.onSubmitted(hash); },
+      });
+      setSuccess({ text: "Horse listed for HORSE. Your editions are now held by the Market contract until sold or cancelled.", opHash });
+      logClientSystemEvent({ eventType: "horf.horse_market.listed", message: "Marshal-approved horse listed for HORSE", metadata: { tokenContract: selectedOwned.contract, tokenId: selectedOwned.tokenId, quantity: units, unitPriceHorseRaw: rawPrice, opHash } });
+      setSelectedOwnedKey(""); setQuantity("1"); setPrice("");
+      await Promise.all([listingQuery.refetch(), qc.invalidateQueries({ queryKey: ["horf", "owned-tokens", address] })]);
+    } catch (cause) {
+      setError(`${cause instanceof Error ? cause.message : "Could not list this horse."}${submitted ? " The transaction was submitted; check its explorer status before retrying." : ""}`);
+    } finally { setPending(null); }
+  }
+  async function buy(listing: HorfHorseMarketListing) {
+    if (!address || !contract || busy) return;
+    setError(null); setSuccess(null);
+    let submitted: string | null = null;
+    try {
+      const units = toNatString(buyQuantity);
+      if (units === "0" || BigInt(units) > BigInt(listing.remaining)) throw new Error("Choose an available edition quantity.");
+      setPending({ action: "buy", stage: "preflight", opHash: null });
+      const handlers = stage("buy");
+      const opHash = await buyHorseWithHorse(address, contract, listing, units, {
+        ...handlers, onSubmitted: (hash) => { submitted = hash; handlers.onSubmitted(hash); },
+      });
+      setSuccess({ text: `${units} horse ${units === "1" ? "edition" : "editions"} bought with HORSE. The full HORSE price went to the seller.`, opHash });
+      logClientSystemEvent({ eventType: "horf.horse_market.bought", message: "Horse bought with HORSE", metadata: { listingId: listing.id, quantity: units, opHash } });
+      setBuyQuantity("1");
+      await listingQuery.refetch();
+    } catch (cause) {
+      setError(`${cause instanceof Error ? cause.message : "The HORSE purchase could not be completed."}${submitted ? " The transaction was submitted; check its explorer status before retrying." : ""}`);
+    } finally { setPending(null); }
+  }
+  async function cancel(listing: HorfHorseMarketListing) {
+    if (!address || !contract || busy) return;
+    setError(null); setSuccess(null);
+    let submitted: string | null = null;
+    try {
+      setPending({ action: "cancel", stage: "preflight", opHash: null });
+      const handlers = stage("cancel");
+      const opHash = await cancelHorseMarketListing(address, contract, listing.id, {
+        ...handlers, onSubmitted: (hash) => { submitted = hash; handlers.onSubmitted(hash); },
+      });
+      setSuccess({ text: "Unsold horse editions returned to your wallet.", opHash });
+      logClientSystemEvent({ eventType: "horf.horse_market.cancelled", message: "HORSE Market listing cancelled", metadata: { listingId: listing.id, opHash } });
+      await listingQuery.refetch();
+    } catch (cause) {
+      setError(`${cause instanceof Error ? cause.message : "The listing could not be cancelled."}${submitted ? " The transaction was submitted; check its explorer status before retrying." : ""}`);
+    } finally { setPending(null); }
+  }
+  async function buyOnObjkt(ask: HorfObjktPurchase) {
+    if (!address || busy) return;
+    setError(null); setSuccess(null);
+    let submitted: string | null = null;
+    try {
+      setPending({ action: "objkt", stage: "preflight", opHash: null });
+      const handlers = stage("objkt");
+      const opHash = await buyHorseOnObjktInHorf(address, ask, async () => {
+        const result = await api.post<{ purchase: HorfObjktPurchase }>("/api/horf/horse-market/objkt-preflight", {
+          marketplaceContract: ask.marketplaceContract, askId: ask.askId, tokenContract: ask.tokenContract,
+          tokenId: ask.tokenId, sellerAddress: ask.sellerAddress, priceMutez: ask.priceMutez,
+        });
+        return result.purchase;
+      }, { ...handlers, onSubmitted: (hash) => { submitted = hash; handlers.onSubmitted(hash); } });
+      setSuccess({ text: "Objkt XTZ purchase confirmed. This buy used Objkt’s Mainnet contract inside Horf.", opHash });
+      logClientSystemEvent({ eventType: "horf.horse_market.objkt_bought", message: "Horse bought with XTZ through Objkt in Horf", metadata: { tokenContract: ask.tokenContract, tokenId: ask.tokenId, askId: ask.askId, opHash } });
+      await Promise.all([objktQuery.refetch(), listingQuery.refetch()]);
+    } catch (cause) {
+      setError(`${cause instanceof Error ? cause.message : "The Objkt purchase could not be completed."}${submitted ? " The transaction was submitted; check its explorer status before retrying." : ""}`);
+    } finally { setPending(null); }
+  }
+
+  return <Page data-horf-region="horse-market" aria-label="Horf HORSE Market">
+    <Hero>
+      <div className="copy"><span className="kicker">Marshal’s seal · 🪢 The HORSE Market</span><h2>Fine horses. Fair HORSE.</h2><p>Hang a HORSE price on your inspected horse and let another rider take the reins. Every Mainnet swap sends the full HORSE price to the seller. 🤠</p></div>
+      <div className="photo" role="img" aria-label="Horse photograph"><span className="seal">MARSHAL<br />APPROVED<br />🐎</span></div>
+    </Hero>
+    {configQuery.isPending && <Notice role="status">Checking the HORSE Market contract…</Notice>}
+    {configQuery.isError && <Notice $error role="alert">Market configuration is unavailable. Refresh before signing a transaction.</Notice>}
+    {snapshot?.status === "unconfigured" && <Notice role="status">The HORSE Market is being prepared for Mainnet. Listings and purchases will open when its contract is deployed and verified.</Notice>}
+    {snapshot?.status === "ready" && !configured && <Notice $error role="alert">Market configuration does not match Tezos Mainnet. Signing is paused.</Notice>}
+    {configured && <Notice role="status"><Stamp>✦ Mainnet contract ready</Stamp> <a href={`https://tzkt.io/${contract!.contractAddress}`} target="_blank" rel="noopener noreferrer">{shortAddress(contract!.contractAddress)}</a> · HORSE is the only currency accepted by this Market. Objkt XTZ asks below use Objkt’s own contract.</Notice>}
+    {!address && <Notice>Browse the corral freely. Connect a Tezos wallet to list or buy. <Action type="button" onClick={() => void connectWallet()} disabled={isConnecting}>{isConnecting ? "Connecting…" : "Connect my wallet"}</Action></Notice>}
+    {pending && <Notice role="status" aria-live="polite">{pendingText(pending)} {pending.opHash && <a href={`https://tzkt.io/${encodeURIComponent(pending.opHash)}`} target="_blank" rel="noopener noreferrer">View submitted operation</a>}</Notice>}
+    {error && <Notice $error role="alert">{error}</Notice>}
+    {success && <Notice role="status">{success.text} <a href={`https://tzkt.io/${encodeURIComponent(success.opHash)}`} target="_blank" rel="noopener noreferrer">View operation</a></Notice>}
+
+    <Toolbar><div><h3>Horses on the block 🐎</h3><p>Inspected editions priced in HORSE by their owners.</p></div><Action type="button" onClick={() => void Promise.all([listingQuery.refetch(), configQuery.refetch()])} disabled={listingQuery.isFetching || configQuery.isFetching}>↻ Refresh market</Action></Toolbar>
+    <Layout>
+      <div>
+        {listingQuery.isPending && <Notice role="status">Rounding up the live listings…</Notice>}
+        {listingQuery.isError && <Notice $error role="alert">Listings could not be read. Refresh to try again.</Notice>}
+        {!listingQuery.isPending && !listingQuery.isError && listings.length === 0 && <Notice>No horses on the block yet. A Marshal-approved horse can be the first in the ring.</Notice>}
+        <Grid>{listings.map((listing) => {
+          const name = listing.token?.name || `Horse #${listing.tokenId}`;
+          const art = listing.token?.image ? resolveTokenThumbnail({ thumbnail: listing.token.image }) : null;
+          return <Card key={listing.id} $selected={selected?.id === listing.id} data-horf-horse-market-listing>
+            <div className="art">{art ? <img src={art.src} alt={`${name} token artwork`} onError={(event) => { if (!advanceResolvedMediaFallback(event.currentTarget, art)) { event.currentTarget.src = "/horf-art/horse-portrait-photo.jpg"; event.currentTarget.classList.add("photo"); event.currentTarget.alt = "Horse photograph placeholder"; } }} /> : <img className="photo" src="/horf-art/horse-portrait-photo.jpg" alt="Horse photograph placeholder" />}<span className="tag">✦ Marshal approved</span></div>
+            <div className="body"><h4>{name}</h4><p>{listing.remaining} {listing.remaining === "1" ? "edition" : "editions"} · {shortAddress(listing.sellerAddress)}</p><div className="price"><div><span>Per edition</span><br /><strong>{formatHorseRaw(listing.unitPriceHorseRaw)}</strong> <span>HORSE</span></div><span>100% to seller</span></div><Action type="button" $strong={selected?.id === listing.id} onClick={() => setSelectedId(listing.id)} aria-label={`Inspect ${name} listing and payment options`}>Inspect this horse →</Action></div>
+          </Card>;
+        })}</Grid>
+      </div>
+      <div>
+        <Panel data-horf-horse-market-details>
+          <h3>At the hitching post 🪢</h3>
+          {!selected && <p>Select a horse from the corral to see its payment choices.</p>}
+          {selected && <>
+            <p><Stamp>✦ Inspected horse</Stamp></p>
+            <p className="meta"><a href={objktTokenUrl(selected.tokenContract, selected.tokenId)} target="_blank" rel="noopener noreferrer">{selected.token?.name || `Horse token #${selected.tokenId}`}</a><br />Token #{selected.tokenId} · seller {shortAddress(selected.sellerAddress)}</p>
+            <label htmlFor="horf-market-buy-quantity">Editions to buy with HORSE</label>
+            <input id="horf-market-buy-quantity" data-horf-horse-market-buy-quantity type="number" min="1" step="1" max={selected.remaining} value={buyQuantity} onChange={(event) => setBuyQuantity(event.target.value)} disabled={busy || !configured} />
+            <p className="small">{formatHorseRaw(selected.unitPriceHorseRaw)} HORSE per edition. Your wallet signs the swap and pays XTZ gas.</p>
+            {address === selected.sellerAddress ? <Action className="wide" type="button" onClick={() => void cancel(selected)} disabled={!configured || busy}>Cancel my listing</Action> : <Action className="wide" $strong type="button" onClick={() => void buy(selected)} disabled={!address || !configured || busy}>Buy with HORSE</Action>}
+            <div className="rule" />
+            <h4>Objkt XTZ trail ↗</h4>
+            <p>When this same token has an active XTZ ask on Objkt, buy one edition here through Objkt’s contract.</p>
+            {objktQuery.isPending && <p role="status">Checking current Objkt asks…</p>}
+            {objktQuery.isError && <p role="alert">Objkt asks are unavailable. Refresh this horse to try again.</p>}
+            {objktAsk && <><p className="meta">One edition · <strong>{xtzPrice(objktAsk.priceMutez)} XTZ</strong> · seller {shortAddress(objktAsk.sellerAddress)} · {objktAsk.amountLeft} available</p><Action className="wide" $gold type="button" onClick={() => void buyOnObjkt(objktAsk)} disabled={!address || busy}>Buy on Objkt for {xtzPrice(objktAsk.priceMutez)} XTZ</Action></>}
+            {!objktQuery.isPending && !objktQuery.isError && !objktAsk && <p>No active XTZ ask for this token was found on Objkt.</p>}
+          </>}
+        </Panel>
+        <Panel style={{ marginTop: 16 }} data-horf-horse-market-list-form>
+          <h3>Hang a HORSE price 🤠</h3>
+          <p>Only token identities approved by a Horf Marshal can be listed. Your wallet deposits the selected editions into the Market when you sign.</p>
+          {!address && <Action type="button" onClick={() => void connectWallet()} disabled={isConnecting}>{isConnecting ? "Connecting…" : "Connect to list"}</Action>}
+          {address && <form onSubmit={list}>
+            <label htmlFor="horf-market-search">Find a horse in your wallet</label>
+            <div style={{ display: "flex", gap: 7 }}><input id="horf-market-search" value={ownedSearchDraft} onChange={(event) => setOwnedSearchDraft(event.target.value)} placeholder="Name, contract or ID" /><Action type="button" onClick={() => { setOwnedSearch(ownedSearchDraft.trim()); setSelectedOwnedKey(""); }}>Find</Action></div>
+            <label htmlFor="horf-market-owned">Choose a horse token</label>
+            <select id="horf-market-owned" data-horf-horse-market-owned value={selectedOwnedKey} onChange={(event) => setSelectedOwnedKey(event.target.value)} disabled={busy}>
+              <option value="">{ownedQuery.isPending ? "Loading horses…" : "Select a horse"}</option>
+              {owned.map((token) => <option key={`${token.contract}:${token.tokenId}`} value={`${token.contract}:${token.tokenId}`}>{token.name || `Token #${token.tokenId}`} · {token.balance} owned</option>)}
+            </select>
+            {ownedQuery.hasNextPage && <Action type="button" onClick={() => void ownedQuery.fetchNextPage()} disabled={ownedQuery.isFetchingNextPage}>More wallet tokens</Action>}
+            {ownedQuery.isError && <p role="alert">Wallet tokens are unavailable. Search again to retry.</p>}
+            {selectedOwned && <p role="status">Inspection: <strong>{inspectionQuery.isPending ? "checking…" : inspectionQuery.isError ? "unavailable" : inspectionQuery.data?.status}</strong>{inspectionQuery.data?.status !== "approved" && <><br />Take this horse to <a href="/horf/stable">your personal stable</a> and ask a Marshal to inspect it.</>}</p>}
+            <label htmlFor="horf-market-quantity">Editions to list</label>
+            <input id="horf-market-quantity" type="number" inputMode="numeric" min="1" max={selectedOwned?.balance} step="1" value={quantity} onChange={(event) => setQuantity(event.target.value)} disabled={busy} />
+            <label htmlFor="horf-market-price">HORSE per edition</label>
+            <input id="horf-market-price" data-horf-horse-market-price inputMode="decimal" value={price} onChange={(event) => setPrice(event.target.value)} placeholder="e.g. 25 or 2.5" disabled={busy} />
+            <p className="small">Set any positive HORSE amount, up to eight decimal places. The full price goes to you when a horse sells. Tezos gas applies to listing and buying.</p>
+            <Action type="submit" $strong disabled={!configured || snapshot?.permitReady !== true || !selectedOwned || inspectionQuery.data?.status !== "approved" || busy}>List horse for HORSE</Action>
+            {configured && snapshot?.permitReady !== true && <p role="status">Marshal listing permits are temporarily unavailable.</p>}
+          </form>}
+        </Panel>
+      </div>
+    </Layout>
+  </Page>;
+}
