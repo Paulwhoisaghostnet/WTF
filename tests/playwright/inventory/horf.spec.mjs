@@ -9,7 +9,7 @@ const season = {
   key: "current-2026",
   startsAt: "2026-11-01T00:00:00.000Z",
   endsAt: null,
-  label: "November 2026 season",
+  label: "Neighvember 2026",
   inferred: false,
 };
 
@@ -311,7 +311,12 @@ test.describe("Horf horse trading", () => {
     await expect(app.locator('[data-horf-region="intro"]')).toContainText(/horse trader/i);
     await expect(app.locator('[data-horf-region="intro"]')).toContainText("Find other riders");
     await expect(app.locator('[data-horf-region="intro"]')).toContainText("recent trades");
-    await expect(app.locator('[data-horf-region="intro"]')).toContainText("November 2026 season");
+    const poster = app.locator("[data-horf-wanted-poster]");
+    await expect(poster).toContainText("Wanted");
+    await expect(poster).toContainText("Horse traders · all riders welcome");
+    await expect(poster).toContainText("Neighvember 2026");
+    await expect(poster).toContainText("10 $HORSE");
+    await expect(poster).toContainText("sender only");
     await expect(app.getByRole("button", { name: "Browse Trade Boards" })).toBeVisible();
     await expect(app.locator("[data-horf-open-range-open]")).toHaveText("Browse the Open Range");
     await expect(app.locator("[data-horf-wallet-connect]")).toBeVisible();
@@ -402,6 +407,8 @@ test.describe("Horf horse trading", () => {
     expect(observedSeasons).toContain("neighvember-2025");
     await seasonSelect.scrollIntoViewIfNeeded();
     await expect(app.locator('[data-horf-region="intro"]')).toContainText("Neighvember 2025");
+    await expect(app.locator("[data-horf-wanted-poster]")).toContainText("Past rides");
+    await expect(app.locator("[data-horf-wanted-poster]")).not.toContainText("10 $HORSE");
     await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
     await page.screenshot({ path: "test-results/horf-archive-desktop.png", fullPage: true });
     await page.setViewportSize({ width: 390, height: 844 });
@@ -413,6 +420,7 @@ test.describe("Horf horse trading", () => {
     await seasonSelect.selectOption("current-2026");
     await expect(page).toHaveURL(/\?season=current-2026$/);
     await expect(app.locator("[data-horf-lane]").first()).toContainText("Sir Canter");
+    await expect(app.locator("[data-horf-wanted-poster]")).toContainText("10 $HORSE");
     await expect(app.locator('[data-horf-region="waiting-horses"]')).toContainText("Neighvember 2026 #7");
     expect(observedAddresses.at(-1)).toBe(traderWallet);
     expect(observedSeasons).toContain("current-2026");

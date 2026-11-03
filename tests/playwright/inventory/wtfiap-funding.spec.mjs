@@ -510,6 +510,9 @@ test.describe("interaction inventory - WTFIAP funding safety", () => {
   });
 
   test("terminal funding recovery remains reachable when the battlefield cannot restore", async ({ page }) => {
+    await page.addInitScript(() => {
+      if (!localStorage.getItem("wtf:network")) localStorage.setItem("wtf:network", "mainnet");
+    });
     const roomCode = "11111111-1111-4111-8111-111111111111", room = fixtureRoom(roomCode);
     room.status = "settled"; room.chainStatus = "settled"; room.depositedCount = 8; room.potAtomic = "8000000";
     room.prizeSummary = { quantumAtomic: "10000", allocatedPlayerPrizesAtomic: "8000000", treasuryRemainderAtomic: "0", treasuryClaimed: true };
@@ -563,6 +566,9 @@ test.describe("interaction inventory - WTFIAP funding safety", () => {
   });
 
   test("withdrawal recovery permits redeposit and technical-void refunds survive disabled new funding", async ({ page }) => {
+    await page.addInitScript(() => {
+      if (!localStorage.getItem("wtf:network")) localStorage.setItem("wtf:network", "mainnet");
+    });
     const roomCode = "33333333-3333-4333-8333-333333333333", room = fixtureRoom(roomCode);
     room.terms = { ...room.terms, currency: "WTF", decimals: 8, entryAtomic: "1000000", entryFee: "0.01" }; room.feeQuantumAtomic = "1000000";
     room.roster[0].deposited = true; room.depositedCount = 1; room.potAtomic = "1000000";

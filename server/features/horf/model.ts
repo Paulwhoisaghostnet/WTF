@@ -1,7 +1,7 @@
 import { normalizeIpfsUri } from "@shared/ipfs-gateways";
 
 export const HORF_SEASON_START = "2026-11-01T00:00:00.000Z";
-export const HORF_SEASON_LABEL = "Season from 1 November 2026";
+export const HORF_SEASON_LABEL = "Neighvember 2026";
 
 // Objkt's `tag` index is queried with this expression; the classifier below
 // makes the final semantic decision so `neighbor`, `nightmare`, etc. do not count.

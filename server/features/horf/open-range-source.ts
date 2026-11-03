@@ -1,6 +1,6 @@
 import { objkt } from "../../lib/upstream";
 import { approvedHorseTags, HORF_CANDIDATE_REGEX, tokenQualifies, type ObjktToken } from "./model";
-import { HORF_SEASONS, resolveHorfSeason } from "./seasons";
+import { HORF_CURRENT_SEASON_KEY, HORF_SEASONS, resolveHorfSeason } from "./seasons";
 import { OBJKT_PAGE_SIZE } from "./source";
 import { horseContractAddress } from "./horse-config";
 import { normalizeIpfsUri } from "@shared/ipfs-gateways";
@@ -8,6 +8,15 @@ import { HORF_MAINNET_BLOCK_MS } from "./mainnet";
 
 export const HORF_OPEN_RANGE_QUERY = `query HorfOpenRange($where: token_bool_exp!, $cursor: bigint!, $pageSize: Int!) {
   token(where: { _and: [$where, { pk: { _gt: $cursor } }] }, order_by: { pk: asc }, limit: $pageSize) {
+    pk fa_contract token_id timestamp name description decimals thumbnail_uri display_uri
+    tags { tag { name token_count } }
+  }
+}`;
+
+// Objkt's PK ordering times out when combined with older timestamp ranges.
+// Timestamp-first ordering uses its date index and keeps historical pages fast.
+export const HORF_OPEN_RANGE_TIME_QUERY = `query HorfOpenRangeByTime($where: token_bool_exp!, $pageSize: Int!) {
+  token(where: $where, order_by: [{ timestamp: asc }, { pk: asc }], limit: $pageSize) {
     pk fa_contract token_id timestamp name description decimals thumbnail_uri display_uri
     tags { tag { name token_count } }
   }
@@ -30,7 +39,25 @@ export interface OpenRangeItem {
 
 export type OpenRangeMode = "all-seasons" | "all-horse-search" | string;
 
-export function openRangeWhere(mode: OpenRangeMode) {
+function timeOrdered(mode: OpenRangeMode) {
+  return mode !== "all-horse-search" && mode !== HORF_CURRENT_SEASON_KEY;
+}
+
+function timeCursor(cursor: string): { timestamp: string; pk: string } | null {
+  if (cursor === "0") return null;
+  const match = /^(\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z)\|(\d+)$/.exec(cursor);
+  if (!match || !Number.isFinite(Date.parse(match[1])) || new Date(match[1]).toISOString() !== match[1]) {
+    throw new Error("Invalid Objkt mint cursor");
+  }
+  return { timestamp: match[1], pk: BigInt(match[2]).toString() };
+}
+
+export function validOpenRangeCursor(mode: OpenRangeMode, cursor: string): boolean {
+  if (!timeOrdered(mode)) return /^\d+$/.test(cursor);
+  try { timeCursor(cursor); return true; } catch { return false; }
+}
+
+export function openRangeWhere(mode: OpenRangeMode, cursor = "0") {
   const candidate = { _or: [
     { name: { _iregex: HORF_CANDIDATE_REGEX } },
     { description: { _iregex: HORF_CANDIDATE_REGEX } },
@@ -39,11 +66,20 @@ export function openRangeWhere(mode: OpenRangeMode) {
     { tags: { tag: { name: { _iregex: HORF_CANDIDATE_REGEX } } } },
   ] };
   if (mode === "all-horse-search") return candidate;
-  const windows = mode === "all-seasons" ? HORF_SEASONS : [resolveHorfSeason(mode)].filter((value) => !!value);
-  if (!windows.length) throw new Error("Unknown Horf season");
-  return { _and: [candidate, { _or: windows.map((season) => ({
-    timestamp: { _gte: season.startsAt, ...(season.endsAt ? { _lt: season.endsAt } : {}) },
-  })) }] };
+  const selected = resolveHorfSeason(mode);
+  if (mode !== "all-seasons" && !selected) throw new Error("Unknown Horf season");
+  const first = selected || HORF_SEASONS[0];
+  const filters: Record<string, unknown>[] = [candidate, {
+    timestamp: { _gte: first.startsAt, ...(selected?.endsAt ? { _lt: selected.endsAt } : {}) },
+  }];
+  if (timeOrdered(mode)) {
+    const after = timeCursor(cursor);
+    if (after) filters.push({ _or: [
+      { timestamp: { _gt: after.timestamp } },
+      { _and: [{ timestamp: { _eq: after.timestamp } }, { pk: { _gt: after.pk } }] },
+    ] });
+  }
+  return { _and: filters };
 }
 
 function safeImage(uri: unknown): string | null {
@@ -62,10 +98,12 @@ function pk(value: unknown): string | null {
 export async function fetchOpenRangeMintPage(
   mode: OpenRangeMode,
   cursor = "0",
-  load: (where: ReturnType<typeof openRangeWhere>, cursor: string) => Promise<OpenRangeMint[]> = async (where, after) => {
+  load: (where: ReturnType<typeof openRangeWhere>, cursor: string, mode: OpenRangeMode) => Promise<OpenRangeMint[]> = async (where, after, selectedMode) => {
     const response = await objkt.postJson<{ data?: { token?: OpenRangeMint[] }; errors?: Array<{ message?: string }> }>("", {
-      query: HORF_OPEN_RANGE_QUERY,
-      variables: { where, cursor: after, pageSize: OBJKT_PAGE_SIZE },
+      query: timeOrdered(selectedMode) ? HORF_OPEN_RANGE_TIME_QUERY : HORF_OPEN_RANGE_QUERY,
+      variables: timeOrdered(selectedMode)
+        ? { where, pageSize: OBJKT_PAGE_SIZE }
+        : { where, cursor: after, pageSize: OBJKT_PAGE_SIZE },
     });
     if (response.errors?.length || !Array.isArray(response.data?.token)) {
       throw new Error(`Objkt mint index failed: ${response.errors?.map((error) => error.message).join("; ") || "invalid page"}`);
@@ -73,15 +111,22 @@ export async function fetchOpenRangeMintPage(
     return response.data.token;
   },
 ) {
-  if (!/^\d+$/.test(cursor)) throw new Error("Invalid Objkt mint cursor");
-  const rows = await load(openRangeWhere(mode), BigInt(cursor).toString());
+  if (!validOpenRangeCursor(mode, cursor)) throw new Error("Invalid Objkt mint cursor");
+  const byTime = timeOrdered(mode);
+  const rows = await load(openRangeWhere(mode, cursor), byTime ? cursor : BigInt(cursor).toString(), mode);
   if (!Array.isArray(rows)) throw new Error("Objkt mint page is invalid");
-  let after = BigInt(cursor);
+  let after = byTime ? 0n : BigInt(cursor);
+  let lastTime = byTime ? timeCursor(cursor)?.timestamp || null : null;
   const items: OpenRangeItem[] = [];
   for (const row of rows) {
     const current = pk(row.pk);
-    if (!current || BigInt(current) <= after) throw new Error("Objkt mint cursor did not advance");
+    const rowTime = row.timestamp == null ? NaN : Date.parse(row.timestamp);
+    if (!current || (byTime
+      ? !Number.isFinite(rowTime) || (lastTime !== null &&
+        (rowTime < Date.parse(lastTime) || (rowTime === Date.parse(lastTime) && BigInt(current) <= after)))
+      : BigInt(current) <= after)) throw new Error("Objkt mint cursor did not advance");
     after = BigInt(current);
+    if (byTime) lastTime = new Date(rowTime).toISOString();
     if (row.fa_contract === horseContractAddress()) continue;
     if (typeof row.fa_contract !== "string" || !/^KT1[1-9A-HJ-NP-Za-km-z]{33}$/.test(row.fa_contract) ||
         typeof row.token_id !== "string" || !/^\d+$/.test(row.token_id) ||
@@ -102,7 +147,7 @@ export async function fetchOpenRangeMintPage(
       mintedAt: time === null || !Number.isFinite(time) ? null : new Date(time).toISOString(),
       creatorAddress: null });
   }
-  return { items, nextCursor: rows.length ? after.toString() : null,
+  return { items, nextCursor: rows.length ? (byTime ? `${lastTime}|${after}` : after.toString()) : null,
     hasMore: rows.length === OBJKT_PAGE_SIZE, asOf: new Date().toISOString(),
     sourceRows: rows.length };
 }

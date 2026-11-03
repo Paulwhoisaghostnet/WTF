@@ -13676,3 +13676,43 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: The required full inventory test reported a setup failure despite no application assertion running.
 
 **Rule**: When Playwright reports its configured web-server port in use, identify the listener and its command first, stop only a confirmed stale test harness, verify the port is free, then rerun the canonical inventory command.
+
+---
+
+## 2026-11-03 - Page historical Objkt mints in timestamp order
+
+**What happened**: The live all-seasons Horf market returned 503 because Objkt timed out a historical timestamp filter ordered by token PK. Even one archived month failed with that ordering.
+
+**Why it mattered**: The required all-seasons market could not display historical horses, although current-season and unrestricted searches worked.
+
+**Rule**: For historical Objkt mint scans, order by timestamp and PK together, advance a matching two-part keyset cursor, and prove consecutive pages against live Objkt before shipping. Keep every season-window filter after retrieval so an optimized query does not omit eligible mints.
+
+---
+
+## 2026-11-03 - Set the intended wallet network inside browser fixtures
+
+**What happened**: Two WTFIAP funding inventory tests assumed Mainnet at startup while the local Vite environment selected Shadownet. The first expected Mainnet text; the second waited for a switch-to-Shadownet button that was absent because Shadownet was already selected.
+
+**Why it mattered**: The full inventory reported two unrelated failures even though the Horf workflows passed.
+
+**Rule**: Tests that assert a network transition must set their initial wallet network explicitly in the browser fixture before navigation, then assert the selected network and available switch action.
+
+---
+
+## 2026-11-03 - Network-switch fixtures must set only their initial wallet network
+
+**What happened**: Two WTFIAP funding recovery browser tests assumed the wallet network started on Mainnet, but the local Vite build used `VITE_TEZOS_NETWORK=shadownet`. Explicitly setting Mainnet with an unconditional Playwright init script fixed the first assertion but reset the network again on reload, disabling a later refund action.
+
+**Why it mattered**: The full inventory suite failed on environment-dependent fixture setup rather than an application regression. A setup script that runs on every navigation can also erase the state change the test is meant to verify.
+
+**Rule**: For a network-switch story, initialize local storage only when its network key is absent. Let the UI's selected network persist across reloads, and verify the affected tests against the actual build configuration.
+
+---
+
+## 2026-11-03 - Put the horse event and reward in the first-view artwork
+
+**What happened**: Horf launched with a large beige panel titled `Season ticket` and a generic date label. The owner identified the event as Neighvember 2026 and said the ticket looked like a sale rather than a horse-trading invitation.
+
+**Why it mattered**: The opening view spent substantial space on a misleading metaphor while burying the event name and sender-only HORSE reward.
+
+**Rule**: For a community event, show its real name and earning rule in the first-view artwork. Keep decorative panels compact, use the event's own imagery and voice, and make archive views distinct from current rewards.

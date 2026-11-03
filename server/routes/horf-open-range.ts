@@ -2,7 +2,7 @@ import { Router } from "express";
 import { and, asc, eq, or } from "drizzle-orm";
 import { db } from "../db";
 import { horfGiftTransfers, horfInspectionApprovals, horfOpenRangeOffers, horfStableClaimEvents } from "@shared/schema";
-import { cachedOpenRangeMintPage } from "../features/horf/open-range-source";
+import { cachedOpenRangeMintPage, validOpenRangeCursor } from "../features/horf/open-range-source";
 import { HORF_SEASONS, resolveHorfSeason } from "../features/horf/seasons";
 import { isTezosWallet } from "../features/horf/model";
 import { assertCurrentOwner, HorfTokenNotOwnedError } from "../features/horf/inspections";
@@ -27,13 +27,13 @@ router.get("/api/horf/open-range", async (req, res) => {
   if (!selected && mode !== "all-seasons" && mode !== "all-horse-search") {
     return res.status(400).json({ error: "Unknown horse season", seasons: HORF_SEASONS });
   }
-  if (typeof cursor !== "string" || !/^\d+$/.test(cursor)) {
+  if (typeof cursor !== "string" || !validOpenRangeCursor(mode, cursor)) {
     return res.status(400).json({ error: "Invalid Objkt mint cursor" });
   }
   try {
     // One measured Objkt metadata-safe source page per HTTP request. Empty
     // postfilter pages still carry the cursor; the browser can continue.
-    const page = await cachedOpenRangeMintPage(mode, BigInt(cursor).toString());
+    const page = await cachedOpenRangeMintPage(mode, cursor);
     const scannedSourceRows = page.sourceRows;
 
     const items = page.items;

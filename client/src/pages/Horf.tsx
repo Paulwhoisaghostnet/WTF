@@ -161,9 +161,9 @@ const Shell = styled.div`
 
 const Masthead = styled.header`
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 20px;
-  align-items: center;
+  grid-template-columns: minmax(0, 1fr) minmax(228px, 280px);
+  gap: 14px 22px;
+  align-items: start;
   padding: 18px 22px;
   border: 4px double var(--horf-gold);
   outline: 2px solid #572523;
@@ -193,23 +193,31 @@ const Masthead = styled.header`
   @container (max-width: 610px) { grid-template-columns: 1fr; }
 `;
 
-const Ticket = styled.div`
-  align-self: stretch;
-  min-width: 150px;
-  display: grid;
-  place-content: center;
+const WantedPoster = styled.aside`
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
   text-align: center;
-  padding: 12px;
-  border: 2px dashed #5a2f22;
-  background: #f5cc6e;
-  color: #412319;
-  box-shadow: inset 0 0 0 4px #ffe49b;
-  transform: rotate(2deg);
-  font: 700 12px/1.3 "Courier New", monospace;
-  text-transform: uppercase;
-  span { display: block; margin-top: 5px; font: 900 21px/1.1 Georgia, serif; }
-  span { overflow-wrap: anywhere; }
-  @container (max-width: 610px) { transform: none; min-width: 0; }
+  padding: 9px 12px 11px;
+  border: 4px solid #f8d16b;
+  outline: 2px solid #162f34;
+  background: linear-gradient(145deg, #ffe09a, #f8b45d 62%, #eb8053);
+  color: #351d20;
+  box-shadow: 5px 5px 0 #102c32, inset 0 0 0 2px #9b4138;
+  font-family: Georgia, "Times New Roman", serif;
+  &::before, &::after { content: "★"; position: absolute; top: 7px; color: #0c5960; font-size: 18px; }
+  &::before { left: 10px; }
+  &::after { right: 10px; }
+  .wanted { display: block; color: #902d31; font: 900 26px/1 Georgia, serif; text-transform: uppercase; }
+  .traders { display: block; margin: 2px 0 3px; font: 800 11px/1.1 "Courier New", monospace; text-transform: uppercase; }
+  .horse-art { display: grid; place-items: center; height: 96px; margin: 4px 6px 5px; border-top: 2px solid #a84638; border-bottom: 2px solid #a84638; background: radial-gradient(ellipse at center, #ffe8b3 0 40%, transparent 72%); }
+  .horse-art img { display: block; height: 94px; width: 142px; max-width: 100%; object-fit: cover; object-position: center top; filter: sepia(.35) contrast(1.2) drop-shadow(2px 2px 0 #a34d3a); }
+  h2 { margin: 0 0 5px; font: 900 20px/1.05 Georgia, serif; overflow-wrap: anywhere; }
+  .reward { display: block; margin: 0 -12px 7px; padding: 6px 8px; background: #0b5b64; color: #fff6dd; box-shadow: inset 0 2px 0 #f6d27d, inset 0 -2px 0 #f6d27d; }
+  .reward strong { display: block; font: 900 25px/1 Georgia, serif; }
+  .reward span { display: block; margin-top: 2px; font: 700 11px/1.2 "Courier New", monospace; }
+  p { margin: 0; color: #4e2524; font: 700 11px/1.25 "Courier New", monospace; }
+  @container (max-width: 610px) { width: min(100%, 300px); justify-self: center; }
 `;
 
 const SeasonPicker = styled.section`
@@ -245,10 +253,11 @@ const SeasonPicker = styled.section`
 `;
 
 const IntroActions = styled.div`
+  grid-column: 1 / -1;
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin: 18px 0 0;
+  margin: 2px 0 0;
   font: 700 13px/1.2 "Courier New", monospace;
 `;
 
@@ -676,6 +685,7 @@ export function Horf() {
   const data = query.data;
   const availableSeasons = data?.seasons ?? seasonManifest;
   const selectedSeason = data?.season ?? availableSeasons.find((season) => season.key === selectedSeasonKey);
+  const seasonDisplayName = selectedSeasonKey === CURRENT_SEASON_KEY ? "Neighvember 2026" : selectedSeason?.label ?? "Horf archive";
   const leaderboard = useMemo(
     () => [...(data?.leaderboard ?? [])].sort((a, b) => b.trades - a.trades || a.address.localeCompare(b.address)),
     [data?.leaderboard],
@@ -759,14 +769,28 @@ export function Horf() {
   }
 
   return (
-    <AppWindow title="Horf · Horse Trading Season">
+    <AppWindow title={`Horf · ${seasonDisplayName}`}>
       <Shell data-horf-app>
         <Masthead data-horf-region="intro">
           <div>
             <small>WTF OS · Tezos horse trading</small>
             <h1>HORF! <span aria-hidden="true">★</span></h1>
             <p>Howdy, horse trader. Find other riders on the race board and open their Objkt profiles. Gather owned horses in your personal stable, ride an inspected horse through Marshal’s Market, or make a direct trade in the Outlaw Corral. Send $HORSE to your posse and keep an eye on recent trades and return rides after you verify your wallet.{isGuest ? " No WTF OS account is needed; the separate WTF Trade Boards app requires sign-in." : " You can also browse the WTF Trade Boards."}</p>
-            <IntroActions>
+          </div>
+          <WantedPoster data-horf-wanted-poster aria-label={`${seasonDisplayName} horse trader notice`}>
+            <span className="wanted">Wanted</span>
+            <span className="traders">Horse traders · all riders welcome</span>
+            <div className="horse-art"><img src="/creation-tools/pixalerce/stamps/packs/collage/animales/horse.webp" alt="" /></div>
+            <h2>{seasonDisplayName}</h2>
+            {selectedSeasonKey === CURRENT_SEASON_KEY ? <>
+              <span className="reward"><strong>10 $HORSE</strong><span>per recognized horse trade/send</span></span>
+              <p>Neighvember 2026 sender only, for each qualifying horse edition. Return a ride to earn your own.</p>
+            </> : <>
+              <span className="reward"><strong>Past rides</strong><span>Archive race board</span></span>
+              <p>Follow the hoofprints from this earlier season.</p>
+            </>}
+          </WantedPoster>
+          <IntroActions>
               <Action type="button" $primary onClick={findTraders}>Find horse traders</Action>
               <Action data-horf-open-range-open type="button" onClick={() => windowManager.openPage(`/horf/open-range?season=${encodeURIComponent(selectedSeasonKey)}`)}>Browse the Open Range</Action>
               <Action type="button" onClick={() => visitSection("horf-trader-status")}>Check trader standing</Action>
@@ -778,13 +802,7 @@ export function Horf() {
               <Action type="button" onClick={() => visitSection("horf-horse-send")}>Send $HORSE</Action>
               <Action type="button" onClick={() => visitSection("horf-gifts")}>Gift horses</Action>
               {!isGuest && <Action type="button" onClick={() => windowManager.openPage("/trade-boards")}>Browse Trade Boards</Action>}
-            </IntroActions>
-          </div>
-          <Ticket>
-            Season ticket
-            <span>{selectedSeason?.label ?? "Horf"}</span>
-            {selectedSeason ? seasonDateRange(selectedSeason) : "Tezos mainnet"}
-          </Ticket>
+          </IntroActions>
         </Masthead>
 
         <WalletStatus data-horf-wallet-status role="status">
@@ -809,14 +827,14 @@ export function Horf() {
               onChange={(event) => selectSeason(event.currentTarget.value)}
             >
               {!availableSeasons.some((season) => season.key === selectedSeasonKey) && (
-                <option value={selectedSeasonKey}>{selectedSeasonKey === CURRENT_SEASON_KEY ? "Current season" : selectedSeasonKey}</option>
+                <option value={selectedSeasonKey}>{selectedSeasonKey === CURRENT_SEASON_KEY ? "Neighvember 2026" : selectedSeasonKey}</option>
               )}
               {!availableSeasons.length && selectedSeasonKey !== CURRENT_SEASON_KEY && (
-                <option value={CURRENT_SEASON_KEY}>Current season</option>
+                <option value={CURRENT_SEASON_KEY}>Neighvember 2026</option>
               )}
               {availableSeasons.map((season) => (
                 <option key={season.key} value={season.key}>
-                  {season.label}{season.inferred ? " · archive" : " · current"}
+                  {season.key === CURRENT_SEASON_KEY ? "Neighvember 2026" : season.label}{season.inferred ? " · archive" : " · current"}
                 </option>
               ))}
             </select>
@@ -847,7 +865,7 @@ export function Horf() {
           <h2>Who’s out in front?</h2>
           <p>Every counted horse trade gives a rider a little more giddyup. Rank and trade totals sit beside each horse, whether the trade rode through a Stable or crossed wallets directly.</p>
           <RaceFrame>
-            <RaceHeader><span>Riders · {selectedSeason?.label ?? "current season"}</span><span>Finish line</span></RaceHeader>
+            <RaceHeader><span>Riders · {seasonDisplayName}</span><span>Finish line</span></RaceHeader>
             {leaderboard.length ? (
               <Race>
                 {leaderboard.map((row, index) => (
