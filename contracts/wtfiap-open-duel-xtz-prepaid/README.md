@@ -30,6 +30,12 @@ and lifecycle journal prove a credit top-up, prepaid seat, cancellation, win
 paid in XTZ, and technical void restoring credit. The lifecycle is synthetic;
 it tests custody mechanics, not the authoritative game result.
 
+The Mainnet origination defaults to the configured primary RPC. After a primary
+injection failure has been reconciled against the chain and mempool, an operator
+can use `--fallback` with a new journal directory. The fallback config names
+only the authorized Mainnet fallback; the original attempt's journal remains
+untouched.
+
 The app exposes authenticated credit balance and top-up quote endpoints under
 `/api/wtfiap/open-duel/prepaid-credit`, and exact finalized operation status
 under `/prepaid-credit/operations/:hash` and `/rooms/:code/operations/:hash`.
