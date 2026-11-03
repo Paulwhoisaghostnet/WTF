@@ -4,7 +4,7 @@ import { expect, test } from "@playwright/test";
 const catalog = JSON.parse(
   readFileSync(new URL("../../../public/desktop/paul-tutorials/catalog.json", import.meta.url), "utf8")
 );
-const visualVersion = "?v=ghost-red-glasses-20261102";
+const visualVersion = "?v=ghost-portrait-20261103";
 
 async function setTutorialPlayer(request) {
   const response = await request.post("/__test/state", {
