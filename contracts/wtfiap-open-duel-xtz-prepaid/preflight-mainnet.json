@@ -1,0 +1,12 @@
+{
+  "kind": "open-duel-xtz-prepaid",
+  "network": "mainnet",
+  "expectedChainId": "NetXdQprcVkpaWU",
+  "rpcUrl": "https://tezos-mainnet.octez.io/",
+  "artifactPath": "contracts/wtfiap-open-duel-xtz-prepaid/artifacts/contract.json",
+  "artifactSha256": "45116ef39837aebaf08eabb4fab504c32839c7beb8d501420fd15faf746230e0",
+  "source": "tz1hNbUXWdjPpUuGK3tMWM8uSJzBBGonWB5u",
+  "creator": "tz1W4pW7zEsovK5tQ3HqfqQAcWifRYeYAUTo",
+  "walletId": "reward-disburser",
+  "treasuryAddress": "tz1cVRngZw42KZ42VQF2ZCy2CJSPNG3H7Cgt"
+}

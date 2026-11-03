@@ -90,7 +90,9 @@ WITH escrow_bindings AS (
   'roomId',document->>'roomId','termsHash',document->>'termsHash',
   'matchId',document->'lock'->>'matchId',
   'network',document->'config'->>'network',
-  'escrowContract',document->'config'->>'escrowContract') AS binding
+  'escrowContract',document->'config'->>'escrowContract',
+  'technicalVoid',document->'technicalVoid','chain',document->'chain',
+  'intents',document->'intents') AS binding
  FROM wtfiap_sponsor_funding
 )
 SELECT 'WTFIAP_SNAPSHOT:' || COALESCE(jsonb_agg(binding),'[]'::jsonb)::text FROM escrow_bindings;
@@ -100,9 +102,13 @@ SELECT 'WTFIAP_SNAPSHOT:' || COALESCE(jsonb_agg(binding),'[]'::jsonb)::text FROM
   catch (error) { await release(); throw error; }
 }
 
-export async function guardedReplacement({ incomingRules, acquire, readLocks, replace }) {
+export async function guardedReplacement({ incomingRules, acquire, readLocks, assertPrepaid = async () => {}, replace }) {
   const lease = await acquire();
-  try { assertFundingCompatibility(lease.records, await readLocks(), incomingRules); return await replace(); }
+  try {
+    assertFundingCompatibility(lease.records, await readLocks(), incomingRules);
+    await assertPrepaid();
+    return await replace();
+  }
   finally { await lease.release(); }
 }
 
@@ -113,6 +119,10 @@ async function main() {
   const incomingRules = rules.getRuntimeRulesHash();
   await guardedReplacement({ incomingRules, acquire: acquireSnapshot,
     readLocks: async () => JSON.parse(await capture('docker', ['compose', 'run', '--rm', '--no-deps', '--entrypoint', 'node', 'app', 'scripts/wtfiap/read-funding-locks.cjs'])),
+    assertPrepaid: async () => {
+      await capture('docker', ['compose', 'run', '--rm', '--no-deps', '--entrypoint', 'node', 'app',
+        'scripts/wtfiap/prepaid-credit-binding.cjs']);
+    },
     replace: async () => {
       console.log(`[wtfiap-deploy] Funded-room compatibility verified for rules ${incomingRules}; admission gate held during replacement.`);
       await new Promise((resolve, reject) => {

@@ -17,6 +17,8 @@ const Surface = styled.section`
   button:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
   .actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
   .step { border: 1px solid #9c8350; border-radius: 6px; padding: 12px; margin: 12px 0; }
+  details.step > summary { cursor: pointer; font-weight: 700; }
+  details.step[open] > summary { margin-bottom: 10px; }
   .primary { background: #d9bb72; color: #102322; border: 1px solid #d9bb72; font-weight: 700; }
   .status { padding: 10px; border: 1px solid currentColor; overflow-wrap: anywhere; }
   .error { color: #ffaaa0; } code { overflow-wrap: anywhere; }
@@ -231,9 +233,15 @@ export function SponsorFundingPanel({ roomCode, onReturn }: { roomCode: string; 
     room?.status === "voided" ? "Room voided. Refunds are shown below." :
     room?.sponsorFunded ? "Sponsor prizes verified in escrow." :
     "Waiting for sponsor prizes to be verified in escrow.";
+  const nextStep = pending ? "Checking the wallet transaction" : room?.self.canBind ? "Connect your wallet" :
+    room?.self.canOpen ? "Open prize escrow" : actions?.sponsorXtz || actions?.sponsorWtf || actions?.sponsorLots?.length ?
+      "Stake the sponsor prizes" : actions?.entry ? "Confirm your entry" : room?.self.canStart ?
+      "Start the funded match" : room?.prizeSelection?.nextPlace !== null && room?.self.canPick ?
+      "Choose your FA2 prize" : "Check escrow progress";
   return <Surface aria-label="Prize escrow" aria-busy={busy}>
     <h2>Room prizes</h2>
     <p>{room ? `Tezos ${room.network} · ${room.terms.minimumHumans} human entrants needed to start` : "Checking room rules…"}</p>
+    {pending && <p className="status" role="status">Wallet transaction submitted: <code>{pending.opHash}</code>. The room checks Tezos automatically. Do not send another payment while this is pending.</p>}
     {room?.config.reason && !room.config.enabled && <p className="status" role="status">{room.config.reason} New prize and entry payments are paused. Existing refund and claim actions remain available for an opened room.</p>}
     {refereePending && <p className="status" role="status">{refereeProgress(refereePending.kind)} on Tezos {room?.network}. The room checks automatically while confirmation is pending. Do not repeat a wallet payment. You can return to the room and come back.</p>}
     {room && selectedNetwork !== room.network && <section className="step" role="status"><h3>Choose this room’s network</h3>
@@ -241,7 +249,7 @@ export function SponsorFundingPanel({ roomCode, onReturn }: { roomCode: string; 
       <button onClick={() => { localStorage.setItem("wtf:network", room.network); window.dispatchEvent(new Event("wtf:network-selected")); setSelectedNetwork(getNetwork()); }}>Switch to {room.network}</button>
     </section>}
     {room && <>
-      <section className="step"><h3>Prizes</h3><ul>{room.terms.places.map(place => <li key={place.place}><strong>Place {place.place}</strong>
+      <details className="step"><summary>Prize plan and entry rules</summary><ul>{room.terms.places.map(place => <li key={place.place}><strong>Place {place.place}</strong>
         {atomic(place.xtzAtomic) > 0n && ` · ${formatFundingAmount(place.xtzAtomic, 6)} XTZ`}
         {atomic(place.wtfAtomic) > 0n && ` · ${formatFundingAmount(place.wtfAtomic, 8)} WTF`}
         {room.terms.tokens.filter(token => token.place === place.place).map(token => ` · FA2 ${token.contract} #${token.tokenId} ×${token.amount}`).join("")}
@@ -249,7 +257,7 @@ export function SponsorFundingPanel({ roomCode, onReturn }: { roomCode: string; 
         {room.terms.mode !== "fixed" && <p>FA2 prizes use {room.terms.mode === "random" ? "a seeded random allocation" : "finish-place picks"} when the match ends.</p>}
         {room.terms.tokens.length > 0 && <p><small>Token custody checks use <a href="https://tzkt.io" target="_blank" rel="noopener noreferrer">data provided by TzKT API</a>.</small></p>}
         <p>{entry?.currency === "FREE" ? "Free entry" : `Entry: ${formatFundingAmount(entry?.entryAtomic || "0", entry?.currency === "WTF" ? 8 : 6)} ${entry?.currency} per human`}. Sponsor prize funding is separate from entry payment.</p>
-      </section>
+      </details>
       {room.prizeSelection && <section className="step" aria-label="Finish-place FA2 prize picks">
         <h3>Choose FA2 prizes</h3>
         {room.prizeSelection.nextPlace === null
@@ -266,7 +274,7 @@ export function SponsorFundingPanel({ roomCode, onReturn }: { roomCode: string; 
             Pick FA2 {lot.contract} #{lot.tokenId} ×{lot.amount}
           </button>)}</div>}
       </section>}
-      <section className="step"><h3>Fund and enter</h3>
+      <section className="step"><h3>{nextStep}</h3>
         <p>{fundingSummary} {room.depositedCount} entrant deposits verified.</p>
         {room.lotVerification?.pending && room.status !== "settled" && room.status !== "voided" && <p role="status">FA2 prize transfer seen on Tezos; token custody verification is pending. The room cannot start until the transfer and escrow balance are confirmed.</p>}
         <div className="actions">
@@ -277,6 +285,11 @@ export function SponsorFundingPanel({ roomCode, onReturn }: { roomCode: string; 
           {actions?.sponsorLots?.map(lot => <button key={lot.index} className="primary" disabled={fundingDisabled} onClick={() => void run(() => send("sponsorLot", lot.action, lot.index))}>Stake FA2 #{room.terms.tokens[lot.index]?.tokenId} · lot {lot.index + 1}</button>)}
           {actions?.entry && <button className="primary" disabled={fundingDisabled} onClick={() => void run(() => send("entry", actions.entry!))}>{entry?.currency === "FREE" ? "Confirm free entry" : `Pay entry · ${formatFundingAmount(entry?.entryAtomic || "0", entry?.currency === "WTF" ? 8 : 6)} ${entry?.currency}`}</button>}
           {room.self.canStart && <button className="primary" disabled={fundingDisabled} onClick={() => void run(async () => { await post("start"); setMessage("Match start requested. It begins after escrow verifies every required deposit."); })}>Start funded match</button>}
+          <button disabled={busy} onClick={() => void run(async () => {
+            if (pending) await post("observe", { operationHash: pending.opHash, action: observedAction(pending.kind, pending.index, pending.currency) });
+            else await post("reconcile");
+            await refresh();
+          })}>Refresh escrow status</button>
         </div>
       </section>
       {(actions?.cancel || actions?.refundEntry || actions?.refundSponsorXtz || actions?.refundSponsorWtf || actions?.refundSponsorLots?.length || actions?.cashClaims?.length || actions?.lotClaims?.length) ?
@@ -294,14 +307,9 @@ export function SponsorFundingPanel({ roomCode, onReturn }: { roomCode: string; 
       <p><small>Escrow: <code>{room.escrowContract}</code></small></p>
       <ul aria-label="Human entrant funding">{room.roster.map((player, index) => <li key={index}>{player.name} · {entry?.currency === "FREE" ? "Free entry" : player.deposited ? "Entry verified" : "Entry pending"}</li>)}</ul>
     </>}
-    {pending && <p className="status" role="status">Wallet transaction submitted: <code>{pending.opHash}</code>. The room checks Tezos automatically. Do not send another payment while this is pending.</p>}
     {unreadableCheckpoint && <p className="status error" role="alert">The saved wallet operation for this room cannot be read. New wallet payments are paused. Keep this browser data intact and contact wtfOS support with room {roomCode} before trying again.</p>}
     {message && <p className="status" role="status">{message}</p>}
     {error && <p className="error" role="alert">{error}</p>}
-    <div className="actions"><button disabled={busy} onClick={() => void run(async () => {
-      if (pending) await post("observe", { operationHash: pending.opHash, action: observedAction(pending.kind, pending.index, pending.currency) });
-      else await post("reconcile");
-      await refresh();
-    })}>Refresh escrow status</button><button onClick={onReturn}>Return to room</button></div>
+    <div className="actions"><button onClick={onReturn}>Back to room</button></div>
   </Surface>;
 }

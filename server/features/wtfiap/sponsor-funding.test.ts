@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { commitment, clone } from "./funding";
 import { createSponsorFundingService, type SponsorChainRoom,
   type SponsorConfig, type SponsorGame, type SponsorPlan,
@@ -22,11 +23,13 @@ const freePlan: SponsorPlan = { mode: "fixed", minimumHumans: 2,
   places: [{ place: 1, xtzAtomic: "1000000", wtfAtomic: "0", poolWeight: "0" }],
   tokens: [], deposit: { xtzAtomic: "1000000", wtfAtomic: "0" } };
 
-function fixture(plan = freePlan, enabled = true) {
+function fixture(plan = freePlan, enabled = true, revealedSeed?: string) {
   const rows = new Map<string, SponsorRecord>();
   const submissions: string[] = [];
   let failures: Array<{ userId: string; action: string; operationHash: string; blockHash: string; level: number }> = [];
   let failureReadUnavailable = false;
+  let unknownVoidSubmission = false;
+  let auditResult: any = { ok: true, code: "healthy", evidence: {} };
   const saved: any = { roomCode: "sponsor-room", hostPlayerId: "p1",
     sponsorAccountId: "1", config: { roomType: "tournament", sponsorNetwork: "mainnet",
       sponsorCompetes: true, sponsor: clone(plan) }, phase: "lobby",
@@ -45,14 +48,16 @@ function fixture(plan = freePlan, enabled = true) {
   const game: SponsorGame = {
     inspect: () => clone(saved), list: () => [saved.roomCode],
     lock: (_code, binding) => {
-      saved.lock = { ...binding, seedCommitment: "c".repeat(64) };
+      saved.lock = { ...binding, seedCommitment: revealedSeed
+        ? createHash("sha256").update(revealedSeed).digest("hex") : "c".repeat(64) };
       return clone(saved);
     },
-    audit: () => ({ ok: true, code: "healthy", evidence: {} }),
+    audit: () => auditResult,
     markVoided: () => { saved.phase = "voided"; },
     start: () => { saved.phase = "preparation"; return clone(saved); },
     update: () => undefined,
     result: () => null,
+    revealSeed: () => revealedSeed || "",
   };
   const lane = { ...config, enabled,
     ...(enabled ? {} : { reason: "Sponsor contract has not been deployed." }) };
@@ -65,6 +70,8 @@ function fixture(plan = freePlan, enabled = true) {
       },
       submit: async (_record, intent) => {
         submissions.push(intent.kind);
+        if (intent.kind === "void_room" && unknownVoidSubmission)
+          throw new Error("Signer response was lost after submission.");
         return { operationHash: "o" + "1".repeat(50) };
       } },
     configs: { mainnet: lane, shadownet: { ...lane, network: "shadownet" } },
@@ -76,8 +83,10 @@ function fixture(plan = freePlan, enabled = true) {
   const setChain = (room: SponsorChainRoom | null) => { chainRoom = clone(room); };
   const setFailures = (value: typeof failures) => { failures = clone(value); };
   const setFailureReadUnavailable = (value: boolean) => { failureReadUnavailable = value; };
+  const setUnknownVoidSubmission = (value: boolean) => { unknownVoidSubmission = value; };
+  const setAudit = (value: any) => { auditResult = value; };
   return { rows, store, game, saved, setChain, setFailures,
-    setFailureReadUnavailable, submissions, service };
+    setFailureReadUnavailable, setUnknownVoidSubmission, setAudit, submissions, service };
 }
 
 function observed(record: SponsorRecord): SponsorChainRoom {
@@ -159,6 +168,71 @@ test("paid sponsor tournament verifies prize, house fee, and every entrant befor
   chain.status = "active"; chain.matchId = f.rows.get("sponsor-room")!.lock.matchId;
   f.setChain(chain); await f.service.drain();
   assert.equal(f.saved.phase, "preparation");
+  await f.service.close();
+});
+
+test("audited sponsor void freezes an active room and exposes exact cash, entry and FA2 refunds", async () => {
+  const plan: SponsorPlan = { ...clone(freePlan),
+    entry: { currency: "XTZ", entryAtomic: "1000000", poolNumerator: "0",
+      poolDenominator: "1", designatedWallet: treasuryWallet },
+    tokens: [{ contract: token, tokenId: "7", amount: "1", place: 1 }] };
+  const f = fixture(plan);
+  await f.service.bind("sponsor-room", "1", sponsorWallet);
+  await f.service.open("sponsor-room", "1");
+  await f.service.drain();
+  f.saved.players.push({ playerId: "p2", accountId: "2", name: "Entrant", isAI: false });
+  await f.service.bind("sponsor-room", "2", entrantWallet);
+  const record = f.rows.get("sponsor-room")!;
+  const chain = observed(record);
+  chain.status = "active"; chain.matchId = record.lock.matchId;
+  chain.entrants = [sponsorWallet, entrantWallet];
+  chain.paid = [sponsorWallet, entrantWallet];
+  chain.sponsorXtzFunded = true; chain.heldXtz = "3500000";
+  chain.fundedLots = [0]; chain.verifiedLots = [0];
+  f.setChain(chain); f.saved.phase = "preparation";
+  await f.service.drain();
+  await assert.rejects(f.service.requestTechnicalVoid("sponsor-room", "operator"),
+    /audit did not reproduce/);
+  f.setAudit({ ok: false, code: "authoritative-game-failure",
+    evidence: { roomCode: "sponsor-room", fileSha256: "a".repeat(64) } });
+  await f.service.requestTechnicalVoid("sponsor-room", "operator");
+  const intent = f.rows.get("sponsor-room")!.intents.find(item => item.kind === "void_room")!;
+  assert.equal(f.rows.get("sponsor-room")!.status, "voiding");
+  assert.equal(intent.params.reason_hash, f.rows.get("sponsor-room")!.technicalVoid!.reasonHash);
+  assert.equal((await f.service.view("sponsor-room", "1")).self.canStart, false);
+  f.setUnknownVoidSubmission(true);
+  await f.service.drain();
+  assert.equal(f.rows.get("sponsor-room")!.intents.find(item => item.kind === "void_room")!.status,
+    "submission-unknown");
+  await f.service.drain();
+  assert.equal(f.submissions.filter(kind => kind === "void_room").length, 1);
+  chain.status = "voided"; chain.voidReasonHash = "f".repeat(64);
+  chain.voidEvidenceHash = intent.params.evidence_hash;
+  f.setChain(chain); await f.service.drain();
+  assert.equal(f.saved.phase, "preparation");
+  assert.match(f.rows.get("sponsor-room")!.error!, /differs from the audited failure/);
+  chain.voidReasonHash = intent.params.reason_hash;
+  f.setChain(chain); await f.service.drain();
+  assert.equal(f.saved.phase, "voided");
+  assert.equal(f.rows.get("sponsor-room")!.intents.find(item => item.kind === "void_room")!.status,
+    "applied");
+  assert.equal(f.rows.get("sponsor-room")!.intents.find(item => item.kind === "void_room")!.appliedAtBlock,
+    chain.blockHash);
+  assert.equal(f.rows.get("sponsor-room")!.intents.find(item => item.kind === "void_room")!.appliedAtLevel,
+    chain.level);
+  const sponsor = await f.service.view("sponsor-room", "1");
+  const entrant = await f.service.view("sponsor-room", "2");
+  assert.equal(sponsor.self.actions.refundSponsorXtz.amountMutez, "0");
+  assert.equal(sponsor.self.actions.refundSponsorLots[0].action.entrypoint,
+    "refund_sponsor_lot");
+  assert.equal(entrant.self.actions.refundEntry.entrypoint, "refund_entry");
+  chain.paid = []; chain.sponsorXtzFunded = false;
+  chain.fundedLots = []; chain.verifiedLots = []; chain.heldXtz = "0";
+  f.setChain(chain); await f.service.drain();
+  assert.equal((await f.service.view("sponsor-room", "1")).self.actions.refundSponsorXtz,
+    undefined);
+  assert.equal((await f.service.view("sponsor-room", "2")).self.actions.refundEntry,
+    undefined);
   await f.service.close();
 });
 
@@ -415,5 +489,43 @@ test("finish-place FA2 picks are recorded in rank order before settlement", asyn
   assert.deepEqual(final?.params.lot_places, [1, 2, 1]);
   assert.equal(f.submissions.at(-1), "finalize_room");
   assert.equal((await f.service.view("sponsor-room", "2")).prizeSelection?.nextPlace, null);
+  await f.service.close();
+});
+
+test("random FA2 prizes derive their lot places from the committed room seed", async () => {
+  const seed = "a".repeat(64);
+  const plan: SponsorPlan = { ...clone(freePlan), mode: "random",
+    places: [
+      { place: 1, xtzAtomic: "1000000", wtfAtomic: "0", poolWeight: "0" },
+      { place: 2, xtzAtomic: "0", wtfAtomic: "0", poolWeight: "0" },
+    ],
+    tokens: [
+      { contract: token, tokenId: "7", amount: "1" },
+      { contract: token, tokenId: "8", amount: "1" },
+    ], pickCounts: [1, 1] };
+  const f = fixture(plan, true, seed);
+  await f.service.bind("sponsor-room", "1", sponsorWallet);
+  await f.service.open("sponsor-room", "1"); await f.service.drain();
+  f.saved.players.push({ playerId: "p2", accountId: "2", name: "Entrant", isAI: false });
+  await f.service.bind("sponsor-room", "2", entrantWallet);
+  const record = f.rows.get("sponsor-room")!;
+  const chain = observed(record);
+  chain.status = "active"; chain.matchId = record.lock.matchId;
+  chain.sponsorXtzFunded = true; chain.heldXtz = "1000000";
+  chain.entrants = [sponsorWallet, entrantWallet];
+  chain.paid = [sponsorWallet, entrantWallet];
+  chain.fundedLots = [0, 1]; chain.verifiedLots = [0, 1];
+  f.setChain(chain); f.saved.phase = "finished";
+  (f.game as any).result = () => ({ matchId: "party:sponsor-room",
+    receiptsHash: "d".repeat(64), groups: ["p1", "p2", "a1", "a2", "a3", "a4", "a5", "a6"]
+      .map(playerId => ({ playerIds: [playerId] })) });
+  (f.game as any).sponsorHumanRanks = () => ({ matchId: "party:sponsor-room",
+    rankedPlayerIds: ["p1", "p2"], seedCommitment: record.lock.seedCommitment,
+    tieBreaks: [] });
+  await f.service.drain();
+  assert(f.rows.get("sponsor-room")!.finalResult,
+    JSON.stringify({ record: f.rows.get("sponsor-room"), health: f.service.health }));
+  assert.deepEqual(f.rows.get("sponsor-room")!.finalResult?.params.lot_places, [2, 1]);
+  assert.equal(f.submissions.at(-1), "finalize_room");
   await f.service.close();
 });

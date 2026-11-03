@@ -13446,3 +13446,43 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: A generated document based on local untracked files can pass locally and still fail the release job, obscuring the actual source change.
 
 **Rule**: Regenerate the environment inventory with local untracked scripts outside the scanned tree, restore those scripts afterward, and verify the generated diff reflects only tracked release sources before pushing.
+
+---
+
+## 2026-11-03 — Sort a copy of saved sponsored prize lists
+
+**What happened**: Seeded random prize settlement sorted a frozen list of FA2 lots in place. A valid completed room could fail before distributing its prizes.
+
+**Why it mattered**: Match settlement must use the saved seed and immutable plan, but immutable inputs cannot be mutated while assigning winners.
+
+**Rule**: Copy the committed lot list before sorting or shuffling it. Exercise fixed, random, and finish-place pick assignments through the hosted settlement path, including the actual claim intents.
+
+---
+
+## 2026-11-03 — Carry finalized void evidence into deployment snapshots
+
+**What happened**: The sponsored contract supported technical voids, but the hosted service lacked an audited request path. The deployment guard also required a finalized `appliedAtBlock` marker that sponsored intents did not store, while its SQL snapshot omitted the void proof fields.
+
+**Why it mattered**: A failed funded match could not reach the approved refund path, and even a later successful void would still block an incompatible rules deployment.
+
+**Rule**: Persist the exact reason, evidence, on-chain commitments, and finalized block identity when a void applies. Include those fields in the deployment snapshot and prove the actual persisted shape satisfies the guard before releasing pinned rules.
+
+---
+
+## 2026-11-03 — Distinguish wallet preflight, rejection, failure, and uncertainty
+
+**What happened**: A room seat-claim operation that failed on chain left a saved pending checkpoint. A prepaid-credit purchase wrote an unknown checkpoint before wallet preflight, so ordinary RPC errors or a rejected wallet prompt could also trap the player.
+
+**Why it mattered**: An unresolved submission must never be duplicated, but an operation that was never broadcast or is proven failed must not block the player indefinitely.
+
+**Rule**: Write an unknown submission checkpoint only at the actual wallet send boundary. Clear it on explicit prebroadcast rejection; clear sent room checkpoints only with exact finalized failed-operation proof. Leave truly unknown submissions pending and allow unrelated direct-stake actions where safe.
+
+---
+
+## 2026-11-03 — Keep nonwithdrawable prepaid credit bound to its contract
+
+**What happened**: Mainnet prepaid Duel credit is held as XTZ in a specific escrow contract and cannot be withdrawn directly. Rotating the app to a new contract could hide a real balance even though custody remained on chain.
+
+**Why it mattered**: A normal redeploy or config-only restart could strand paid credit unless the active contract and script are durable deployment commitments.
+
+**Rule**: Fsync a mounted-volume contract binding before serving credit actions, validate it at startup and in the deploy guard, and refuse contract, script, or payout-mode rotation while credit remains usable there.

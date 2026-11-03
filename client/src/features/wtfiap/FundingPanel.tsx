@@ -31,6 +31,8 @@ const Panel = styled.section`
   .payment-step button:disabled { background: #61736e; }
   .status { padding: 10px; border: 1px solid currentColor; }
   .error { color: var(--wtf-error-color, #900); }
+  details { border-top: 1px solid currentColor; margin-top: 16px; padding-top: 12px; }
+  summary { cursor: pointer; font-weight: 700; }
 `;
 
 type RoomResponse = { ok: true; room: FundingRoom };
@@ -215,9 +217,7 @@ function LegacyFundingPanel({ roomCode, onReturn }: { roomCode: string; onReturn
   const refundLabel = room?.chainStatus === "funding" ? "Withdraw full entry to bound wallet" : "Claim full refund to bound wallet";
   return <Panel aria-label="Room funding" aria-busy={busy}>
     <h2>{room?.roomType === "duel" ? "Duel funding" : "Tournament funding"}</h2>
-    <p>{room?.roomType === "duel" ? "Two paying players · the winner receives the prize pool. Exact ties share it equally." : `${room?.payingEntrants ?? "—"} paying humans · ${room?.aiFill ? "AI fill to eight battlefield seats" : "eight human battlefield seats"} · 50% / 35% / 15% before rounding. Exact ties share the combined prizes for their occupied places.`} Each player’s prize is rounded down to the room’s prize increment.</p>
-    <p>Entry and prizes use the room’s currency. Wallet deposits go to escrow; the game server validates matches and submits results. Only your wallet can collect its prize.</p>
-    <p><a href={`/colilseum/${encodeURIComponent(roomCode)}?funding=1`}>Open this room’s funding recovery page</a> · Save this link to check deposits and claims independently of the battlefield.</p>
+    <p>{room ? `Tezos ${room.network} · ${formatFundingAmount(room.terms.entryAtomic, room.terms.decimals)} ${room.terms.currency} per paying player · ${room.depositedCount} of ${room.payingEntrants} deposits verified` : "Checking this room’s escrow…"}</p>
     {config && !config.enabled && <p className="status">{config.reason || "New tournament funding is unavailable on this deployment."}{room?.chainStatus ? " Existing verified prize claims and eligible full entry refunds remain available to their bound wallets." : " No entry can be deposited here while funding is unavailable."}</p>}
     {room && <>
       {networkMismatch && <div className="status"><p>This room stays on Tezos {room.network}. wtfOS currently uses {currentNetwork} for wallet operations. Select the room’s network before depositing, withdrawing or claiming. Account ownership is verified separately on Mainnet; the shared wallet connector will request the room’s network when you submit an operation.</p><button disabled={busy} onClick={() => void run(async () => {
@@ -239,8 +239,13 @@ function LegacyFundingPanel({ roomCode, onReturn }: { roomCode: string; onReturn
         {room.self.canStart && <button disabled={actionsDisabled || !config?.enabled} onClick={() => void run(async () => { await mutate("start"); setMessage("Match start requested. The room will start after the on-chain start is verified."); })}>Start funded {room.roomType}</button>}
         {room.self.actions.claim && <button disabled={busy || pending || networkMismatch} onClick={() => void run(() => send("claim"))}>Claim prize to bound wallet</button>}
         {room.self.actions.refund && <button disabled={busy || pending || networkMismatch} onClick={() => void run(() => send("refund"))}>{refundLabel}</button>}
+        <button disabled={busy} onClick={() => void run(refresh)}>Recheck status</button>
       </div>
       </section>
+      <details><summary>Wager rules and contract details</summary>
+      <p>{room.roomType === "duel" ? "Two paying players · the winner receives the prize pool. Exact ties share it equally." : `${room.payingEntrants} paying humans · ${room.aiFill ? "AI fill to eight battlefield seats" : "eight human battlefield seats"} · 50% / 35% / 15% before rounding. Exact ties share the combined prizes for their occupied places.`} Each player’s prize is rounded down to the room’s prize increment.</p>
+      <p>Entry and prizes use the room’s currency. Wallet deposits go to escrow; the game server validates matches and submits results. Only your wallet can collect its prize.</p>
+      <p><a href={`/colilseum/${encodeURIComponent(roomCode)}?funding=1`}>Open this room’s funding recovery page</a> · Save this link to check deposits and claims independently of the battlefield.</p>
       <dl>
         <dt>Room</dt><dd>{room.roomCode}</dd>
         <dt>Network</dt><dd>Tezos {room.network} · <code>{room.chainId}</code></dd>
@@ -259,7 +264,7 @@ function LegacyFundingPanel({ roomCode, onReturn }: { roomCode: string; onReturn
         {room.self.payout && <><dt>Your prize</dt><dd>{formatFundingAmount(room.self.payout.amount, room.terms.decimals)} {room.terms.currency} · {room.self.payout.claimed ? "Claim verified" : room.self.payout.amount === "0" ? "No payable prize" : "Available to claim"}</dd></>}
         {room.prizeSummary && <><dt>Verified player prizes</dt><dd>{formatFundingAmount(room.prizeSummary.allocatedPlayerPrizesAtomic, room.terms.decimals)} {room.terms.currency}</dd><dt>wtf.tez remainder</dt><dd>{formatFundingAmount(room.prizeSummary.treasuryRemainderAtomic, room.terms.decimals)} {room.terms.currency} · {room.prizeSummary.treasuryClaimed ? "Transfer verified" : "Reserved for treasury"}</dd></>}
         {room.terms.currency === "WTF" && <><dt>WTF asset</dt><dd><code>{room.wtfToken.contract}</code> · token {room.wtfToken.tokenId}</dd></>}
-      </dl>
+      </dl></details>
       <p>Wallet bindings and entry terms freeze when the host opens escrow. Deposits are verified on-chain before the host can start the match.</p>
       {room.chainStatus === "voided" && <p className="status">This match was technically voided. Each paid entrant can recover their full entry from escrow; no prizes are awarded.</p>}
       {refunded && room.chainStatus === "funding" && room.self.actions.deposit && <p className="status">Your full entry withdrawal is verified. You can deposit again while this room remains open for funding.</p>}
@@ -273,6 +278,6 @@ function LegacyFundingPanel({ roomCode, onReturn }: { roomCode: string; onReturn
     {room?.operations.filter(item => item.operationHash).map(item => <p key={`${item.kind}:${item.operationHash}`}><strong>{item.kind}: {item.status}</strong> · <code>{item.operationHash}</code></p>)}
     {message && <p className="status" role="status">{message}</p>}
     {error && <p className="error" role="alert">{error}</p>}
-    <div className="actions"><button disabled={busy} onClick={() => void run(refresh)}>Recheck status</button><button onClick={onReturn}>Return to game</button></div>
+    <div className="actions"><button onClick={onReturn}>Back to room</button></div>
   </Panel>;
 }

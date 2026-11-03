@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "title": "coLILseum prepaid-credit open-seat XTZ duel escrow",
+  "policyStatus": "owner-approved",
+  "compiler": "smartpy-tezos==0.24.1",
+  "sourceHashes": {
+    "OpenDuelXtzEscrowPrepaid.py": "a159187bdb0dcb036d43cbe91fe9af1c1afc8065b3a291a2a9a6f9b67bb3d671",
+    "test_open_duel_prepaid.py": "40cd52f97182af661d6ee0541e57bd0ce50462468c3e58743949668dd7f0038d"
+  },
+  "artifacts": {
+    "contract.json": {
+      "sha256": "45116ef39837aebaf08eabb4fab504c32839c7beb8d501420fd15faf746230e0",
+      "bytes": 177290,
+      "canonicalTypedScriptSha256": "26ff7d8db669e2eeefcdeacb8bd38d113ff402a2afb3aed819ace25053161c2f"
+    }
+  },
+  "checks": {
+    "smartpyScenarios": "passed",
+    "houseFeeMutez": "500000",
+    "entryQuantumMutez": "10000",
+    "prepaidCreditPrecision": "1 mutez",
+    "creditWithdrawalEntrypoint": false,
+    "winnerPayout": "atomic XTZ transfer with settlement",
+    "tiePrestartAndVoidRefund": "prepaid credit restored"
+  }
+}

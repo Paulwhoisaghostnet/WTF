@@ -73,9 +73,85 @@ test.describe("interaction inventory - WTFIAP funding safety", () => {
     await page.goto(`/colilseum/${roomCode}?funding=1`);
     const panel = surface(page).getByRole("region", { name: "Open-seat duel wager" });
     await expect(panel).toContainText("Shadownet · test XTZ");
-    await expect(panel).toContainText("Creator stakes 0.51 XTZ");
+    await expect(panel).toContainText("Your stake: 0.51 XTZ including the 0.5 XTZ house fee");
     await expect(panel.getByRole("button", { name: "Stake wager" })).toBeVisible();
-    await expect(panel).toContainText("The creator can fund now and leave this room open");
+    await expect(panel).toContainText("The creator can fund before a challenger arrives");
+    await expect(panel.locator("details")).not.toHaveAttribute("open", "");
+  });
+
+  test("Mainnet challenger sees prepaid balance, cash alternative and credit refund terms in the room", async ({ page }) => {
+    const roomCode = "69696969-6969-4696-8696-696969696969";
+    const walletAddress = "tz1" + "A".repeat(33);
+    const room = {
+      roomCode, status: "funding", network: "mainnet", chainId: "NetXdQprcVkpaWU",
+      escrowContract: "KT1PrepaidReadOnlyFixture", terms: { currency: "XTZ", entryAtomic: "5000000" },
+      houseFeeAtomic: "500000", treasuryAddress: "tz1ReadOnlyTreasury", depositedCount: 1,
+      chainStatus: "funding", potAtomic: "5000000", authorized: true, authorizationPending: false,
+      guestDepositVerified: false, guestSeatReady: false,
+      self: { isHost: false, canBind: false, walletAddress, playerId: null,
+        creditBalanceAtomic: "5000000", prepaidSeat: false, payout: null, actions: {
+          prepaidJoin: { entrypoint: "accept_prepaid", params: { room_id: "a".repeat(64), expected_terms_hash: "b".repeat(64) },
+            amountMutez: "0", expectedWallet: walletAddress, contract: "KT1PrepaidReadOnlyFixture", network: "mainnet", chainId: "NetXdQprcVkpaWU" },
+          deposit: { entrypoint: "accept_offer", params: { room_id: "a".repeat(64), expected_terms_hash: "b".repeat(64) },
+            amountMutez: "5000000", expectedWallet: walletAddress, contract: "KT1PrepaidReadOnlyFixture", network: "mainnet", chainId: "NetXdQprcVkpaWU" },
+        } },
+      config: { enabled: true, reason: null, prepaidEnabled: true },
+    };
+    await page.route(`**/api/wtfiap/open-duel/rooms/${roomCode}`, route => route.fulfill({ json: { ok: true, room } }));
+    await page.goto(`/colilseum/${roomCode}?funding=1`);
+    const panel = surface(page).getByRole("region", { name: "Open-seat duel wager" });
+    await expect(panel.getByRole("button", { name: "Use 5 XTZ credit to claim seat" })).toBeVisible();
+    await expect(panel.getByRole("button", { name: "Stake 5 XTZ" })).toBeVisible();
+    await expect(panel).toContainText("Available: 5 XTZ credit");
+    await expect(panel).toContainText("Unspent credit cannot be withdrawn as XTZ");
+    room.self.prepaidSeat = true;
+    room.self.actions.refund = { entrypoint: "withdraw_guest", params: { room_id: "a".repeat(64) },
+      amountMutez: "0", expectedWallet: walletAddress, contract: room.escrowContract, network: "mainnet", chainId: room.chainId };
+    await page.reload();
+    await expect(panel.getByRole("button", { name: "Return entry to prepaid credit" })).toBeVisible();
+    const user = await page.request.get("/api/auth/user").then(response => response.json());
+    const opHash = "o" + "3".repeat(50);
+    const checkpointKey = `wtfiap:prepaid-credit:pending:${user.id}:${room.escrowContract}`;
+    await page.evaluate(({ key, hash, wallet }) => localStorage.setItem(key,
+      JSON.stringify({ opHash: hash, walletAddress: wallet, amountMutez: "5000000" })),
+      { key: checkpointKey, hash: opHash, wallet: walletAddress });
+    let creditOperationStatus = "pending";
+    await page.route(`**/api/wtfiap/open-duel/prepaid-credit/operations/${opHash}*`, route =>
+      route.fulfill({ json: { ok: true, operation: { status: creditOperationStatus, operationHash: opHash } } }));
+    await page.reload();
+    await expect(panel.getByRole("button", { name: "Review credit purchase in wallet" })).toBeDisabled();
+    await expect(panel).toContainText("Do not send it again");
+    creditOperationStatus = "applied";
+    room.self.creditBalanceAtomic = "10000000";
+    await expect.poll(() => page.evaluate(key => localStorage.getItem(key), checkpointKey)).toBeNull();
+    await expect(panel).toContainText("Available: 10 XTZ credit");
+    await page.evaluate(({ key, wallet }) => localStorage.setItem(key,
+      JSON.stringify({ opHash: "unknown", walletAddress: wallet, amountMutez: "5000000" })),
+      { key: checkpointKey, wallet: walletAddress });
+    await page.reload();
+    await expect(panel.getByRole("button", { name: "Review credit purchase in wallet" })).toBeDisabled();
+    await expect(panel.getByRole("button", { name: "Stake 5 XTZ" })).toBeEnabled();
+    await expect(panel).toContainText("Other room actions remain available");
+    await page.evaluate(key => localStorage.removeItem(key), checkpointKey);
+    const roomHash = "o" + "4".repeat(50);
+    const roomCheckpointKey = `wtfiap:open-duel:pending:${user.id}:${roomCode}`;
+    await page.evaluate(({ key, hash }) => localStorage.setItem(key,
+      JSON.stringify({ entrypoint: "accept_prepaid", opHash: hash })),
+      { key: roomCheckpointKey, hash: roomHash });
+    await page.route(`**/api/wtfiap/open-duel/rooms/${roomCode}/operations/${roomHash}*`, route =>
+      route.fulfill({ json: { ok: true, operation: { status: "failed", operationHash: roomHash } } }));
+    await page.reload();
+    await expect.poll(() => page.evaluate(key => localStorage.getItem(key), roomCheckpointKey)).toBeNull();
+    await expect(panel.getByRole("button", { name: "Stake 5 XTZ" })).toBeEnabled();
+    await expect(panel).toContainText("wallet operation failed on-chain");
+    room.chainStatus = "settled";
+    room.payoutMode = "automatic";
+    room.paidOutAtomic = "10000000";
+    room.self.payout = { amount: "5000000", claimed: true };
+    room.self.actions = {};
+    await page.reload();
+    await panel.locator("details summary").click();
+    await expect(panel).toContainText("prepaid entry was restored as credit on an exact tie");
   });
 
   test("automatic duel settlement shows the paid prize without a claim action", async ({ page }) => {
@@ -405,6 +481,8 @@ test.describe("interaction inventory - WTFIAP funding safety", () => {
     room.self.actions.deposit = { entrypoint: "join_room", params: { room_id: room.roomId, expected_terms_hash: room.termsHash }, amountMutez: "1000000", expectedWallet: room.self.walletAddress, contract: room.escrowContract, network: room.network, chainId: room.chainId };
     await page.route("**/api/wtfiap/funding/**", route => route.fulfill({ json: new URL(route.request().url()).pathname.endsWith("/config") ? { ok: true, config: fixtureConfig } : { ok: true, room } }));
     await frame.getByRole("button", { name: "Deposit or manage wager" }).click();
+    await expect(surface(page).getByRole("region", { name: "In-room escrow" })).toBeVisible();
+    await expect(frame.locator("#session")).toBeVisible();
     const panel = surface(page).getByRole("region", { name: "Room funding" });
     const deposit = panel.getByRole("button", { name: "Deposit 1 XTZ" });
     await expect(deposit).toBeVisible();
@@ -467,7 +545,7 @@ test.describe("interaction inventory - WTFIAP funding safety", () => {
     await expect(panel).toBeVisible();
     expect(await panel.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
     await page.screenshot({ path: test.info().outputPath("funding-mobile-fixture.png"), fullPage: true });
-    await panel.getByRole("button", { name: "Return to game" }).click();
+    await panel.getByRole("button", { name: "Back to room" }).last().click();
     // Exercise funded disclosure with explicit public-metadata fixtures. The
     // real local room remains an unfunded preview throughout this test.
     await page.route(`**/api/wtfiap/party/rooms/${roomCode}`, async route => {
@@ -530,6 +608,7 @@ test.describe("interaction inventory - WTFIAP funding safety", () => {
     await panel.getByRole("button", { name: "Use shadownet for wallet operations" }).click();
     await expect(panel).toContainText("No wallet operation was sent");
     await expect(panel.getByRole("button", { name: "Claim prize to bound wallet" })).toBeEnabled();
+    await panel.locator("details").first().locator("summary").click();
     await expect(panel.getByRole("link", { name: "Open this room’s funding recovery page" })).toHaveAttribute("href", `/colilseum/${roomCode}?funding=1`);
     expect(walletMutations).toBe(0);
     await page.screenshot({ path: test.info().outputPath("funding-terminal-recovery-fixture.png"), fullPage: true });

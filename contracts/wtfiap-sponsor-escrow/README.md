@@ -131,6 +131,16 @@ both make exact sponsor assets, entrants' entries, and the house fee refundable
 to their original funders. A rejecting destination rolls back only its own
 claim or refund call, not the room's other claims.
 
+The hosted sponsor technical-void path is private operator maintenance. Stop
+the application, run `scripts/wtfiap/request-sponsor-technical-void.mjs` with
+the exact room code and operator identity through the platform's host wrapper,
+then restart the normal worker. Maintenance audits the saved match under its
+pinned rules, records the failure and finalized chain checkpoint, and archives
+the broken state without signing. The normal worker submits the frozen void
+intent once and verifies its reason and evidence hashes before exposing
+entrant, sponsor-cash, and FA2-lot refunds. Healthy and completed matches
+cannot use this path; a lost signer response never causes an automatic retry.
+
 ## Interface
 
 The authoritative Michelson parameter and storage types are in
@@ -173,11 +183,14 @@ storage after origination. A real Shadownet paid and free XTZ custody-to-claim
 lifecycle followed. The configured Shadownet Dummy WTF cash-prize path has
 also passed deposit, hosted chain-reader verification, settlement, payout, and
 zero-reserve checks. This verifies the deployed Shadownet contract and chain
-reader; the game room's `open`/`observe`/`reconcile`/`start` integration still
-requires a test through the newly deployed host. The Mainnet mixed-prize proof
+reader. A local authenticated hosted-room proof now covers free fixed, paid
+random, and paid finish-order-pick sponsor terms on the respective Shadownet
+and Mainnet lanes through room start with synthetic wallets and chain
+observations. It also checks stopped-room audit and failure archive. The Mainnet mixed-prize proof
 above verifies the deployed contract and production chain reader with funded
 XTZ, WTF, and FA2 lot claims. Arbitrary third-party FA2 token behavior still
-needs its own live receipt.
+needs its own live receipt, as do hosted random/pick settlement and technical
+void refunds on the deployed networks.
 
 `test-shadownet-wtf.ts` is the journaled Shadownet cash-prize proof. Its
 `--preflight` checks the configured indexed Dummy WTF balance, signers, RPC
