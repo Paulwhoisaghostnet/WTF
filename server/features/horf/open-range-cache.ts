@@ -3,7 +3,13 @@ import { HORF_CURRENT_SEASON_KEY, resolveHorfSeason } from "./seasons";
 import { HORF_MAINNET_BLOCK_MS } from "./mainnet";
 import { fetchOpenRangeMintPage, type OpenRangeMode } from "./open-range-source";
 
-export type OpenRangeMintPage = Awaited<ReturnType<typeof fetchOpenRangeMintPage>>;
+// A classifier change must replace old discovery pages. Their historical
+// union deliberately retains prior matches, including tokens no longer
+// eligible under the new rule.
+const HORF_ELIGIBILITY_CACHE_VERSION = 2;
+export type OpenRangeMintPage = Awaited<ReturnType<typeof fetchOpenRangeMintPage>> & {
+  eligibilityVersion?: number;
+};
 export type CachedOpenRangeMintPage = OpenRangeMintPage & {
   cacheStatus: "cached" | "refreshed" | "stale";
 };
@@ -29,7 +35,9 @@ export function mergeOpenRangeMintPages(
   previous: OpenRangeMintPage | null,
   fresh: OpenRangeMintPage,
 ): OpenRangeMintPage {
-  if (!previous) return fresh;
+  if (!previous || previous.eligibilityVersion !== HORF_ELIGIBILITY_CACHE_VERSION) {
+    return { ...fresh, eligibilityVersion: HORF_ELIGIBILITY_CACHE_VERSION };
+  }
   const items = new Map(previous.items.map((item) => [`${item.contract}/${item.tokenId}`, item]));
   for (const item of fresh.items) items.set(`${item.contract}/${item.tokenId}`, item);
   const keepPriorCursor = previous.hasMore && previous.nextCursor !== null;
@@ -40,6 +48,7 @@ export function mergeOpenRangeMintPages(
     asOf: fresh.asOf,
     sourceRows: fresh.sourceRows,
     mediaVersion: fresh.mediaVersion,
+    eligibilityVersion: HORF_ELIGIBILITY_CACHE_VERSION,
   };
 }
 
@@ -129,7 +138,8 @@ export function createOpenRangePageCache(
     // Older cache snapshots only contain Objkt's collection thumbnail. A page
     // version avoids repeatedly refreshing historical rows retained by merge.
     const lacksTokenMedia = stored && stored.page.mediaVersion !== 1;
-    if (stored && !options.refresh && !lacksTokenMedia) {
+    const outdatedEligibility = stored && stored.page.eligibilityVersion !== HORF_ELIGIBILITY_CACHE_VERSION;
+    if (stored && !options.refresh && !lacksTokenMedia && !outdatedEligibility) {
       const key = pageKey(mode, cursor);
       const lastAttempt = lastBackgroundAttempt.get(key) ?? 0;
       if (activeSource(mode) && now() - stored.fetchedAt >= HORF_MAINNET_BLOCK_MS &&
@@ -144,7 +154,8 @@ export function createOpenRangePageCache(
       const page = await refresh(mode, cursor);
       return { ...page, cacheStatus: "refreshed" };
     } catch (error) {
-      if (stored) return { ...stored.page, cacheStatus: "stale" };
+      // A stale page from an older classifier can contain false horse cards.
+      if (stored && !outdatedEligibility) return { ...stored.page, cacheStatus: "stale" };
       throw error;
     }
   };

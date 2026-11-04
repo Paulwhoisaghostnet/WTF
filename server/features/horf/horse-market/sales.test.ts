@@ -79,7 +79,7 @@ test("a three-edition sale counts one trade each and awards only the seller 10 H
   assert.deepEqual(race.leaderboard.map((row) => [row.address, row.trades]), [[buyer, 1], [seller, 1]]);
   assert.deepEqual(race.currentUser?.owedTo, []);
   const rewards = buildHorfRewardEntitlements([{ kind: "market", sourceKey: `${market}:${sale.id}`,
-    from: seller, to: buyer, units: "1", tokenContract: horse }], HORF_HORSE_MAINNET_CONTRACT);
+    from: seller, to: buyer, units: "1", tokenContract: horse, tokenId: "49633" }], HORF_HORSE_MAINNET_CONTRACT);
   assert.deepEqual(rewards, [{ sourceKind: "market", sourceKey: `${market}:${sale.id}`,
     traderAddress: seller, counterpartyAddress: buyer, units: "1", amountRaw: HORF_HORSE_REWARD_RAW_PER_UNIT.toString() }]);
 });

@@ -8,6 +8,7 @@ const tokenId = "7";
 test("Marshal Open Range evidence checks a horse without inventing an owner", async () => {
   const reads: string[] = [];
   const evidence = await loadInspectionEvidence(null, contract, tokenId, {
+    exclusionCheck: async () => false,
     readIndex: async (path) => {
       reads.push(path);
       if (path === "/tokens/transfers") return [{
@@ -66,7 +67,8 @@ test("Owner-submitted evidence still requires the submitter's current Mainnet ba
       if (path === "/tokens/balances" || path === "/tokens/transfers") return [] as never;
       throw new Error(`Unexpected indexed read: ${path}`);
     },
-    loadToken: async () => ({ fa_contract: contract, token_id: tokenId, name: "Horse Art 2026", decimals: 0 }),
+    loadToken: async () => ({ fa_contract: contract, token_id: tokenId, name: "Horse Art 2026", decimals: 0,
+      tags: [{ tag: { name: "horse art" } }] }),
     readIdentity: async () => ({
       contract, creatorAddress: owner, codeHash: 123, codeSha256: "a".repeat(64),
       asOf: "2026-11-03T12:00:00Z", source: "Tezos Mainnet TzKT and RPC",

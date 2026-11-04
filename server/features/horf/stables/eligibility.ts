@@ -1,7 +1,11 @@
 import { normalizeIpfsUri } from "@shared/ipfs-gateways";
+import { horfInspectionApprovals } from "@shared/schema";
+import { and, eq } from "drizzle-orm";
+import { db } from "../../../db";
 import { objkt } from "../../../lib/upstream";
-import { approvedHorseTags, tokenQualifies, type ObjktToken } from "../model";
+import { approvedHorseTags, horseTagEvidence, type ObjktToken } from "../model";
 import { HORF_MAINNET_BLOCK_MS } from "../mainnet";
+import { isExcludedHorseToken } from "../nonhorse-reports";
 
 export const HORF_STABLE_TOKEN_QUERY = `query HorfStableToken($contract: String!, $tokenId: String!) {
   token(where: { fa_contract: { _eq: $contract }, token_id: { _eq: $tokenId } }, limit: 1) {
@@ -71,6 +75,7 @@ export async function inspectHorseToken(
   contract: string,
   tokenId: string,
   loadToken: TokenLoader = loadObjktToken,
+  options: { forMarshalReview?: boolean; exclusionCheck?: typeof isExcludedHorseToken } = {},
 ) {
   const token = await loadToken(contract, tokenId);
   if (!token || token.fa_contract !== contract || token.token_id !== tokenId) {
@@ -81,8 +86,21 @@ export async function inspectHorseToken(
   }
   const tags = (token.tags || []).map((item) => item.tag || {});
   const approved = new Set(approvedHorseTags(tags));
-  if (!tokenQualifies(token, approved)) {
+  const evidence = horseTagEvidence(token, approved);
+  if (evidence === "none") {
     throw new HorseTokenIneligibleError("This token has no qualifying horse mint keyword or Objkt tag group");
+  }
+  if (await (options.exclusionCheck ?? isExcludedHorseToken)(contract, tokenId)) {
+    throw new HorseTokenIneligibleError("A HORF MARSHAL decided that this token is not a horse");
+  }
+  if (evidence === "haha-review" && !options.forMarshalReview) {
+    const [approval] = await db.select({ tokenId: horfInspectionApprovals.tokenId })
+      .from(horfInspectionApprovals).where(and(
+        eq(horfInspectionApprovals.tokenContract, contract),
+        eq(horfInspectionApprovals.tokenId, tokenId),
+        eq(horfInspectionApprovals.active, true),
+      )).limit(1);
+    if (!approval) throw new HorseTokenIneligibleError("A HAHA-only tag needs HORF MARSHAL approval before this token can trade");
   }
   return {
     contract,

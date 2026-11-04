@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   approvedHorseTags,
+  horseTagEvidence,
   HORF_SEASON_START,
   isHorseRelatedTag,
   normalizeHorfTransfer,
@@ -39,22 +40,40 @@ function event(overrides: Partial<ObjktTransferEvent> = {}): ObjktTransferEvent 
   };
 }
 
-test("listed mint keywords and year suffixes qualify without a group-size gate", () => {
+test("listed horse mint tags and year suffixes qualify without a group-size gate", () => {
   for (const value of [
     "horse", "horseart", "horse art", "horsetrade", "horse trade",
-    "horse trader", "horse trading", "horsetraders", "haha", "horf",
+    "horse trader", "horse trading", "horsetraders", "horf",
     "neighvember", "neighvember2025", "horse of july 2024", "horseofjuly2026",
   ]) {
-    assert.equal(tokenQualifies({ name: value }, new Set()), true, value);
+    assert.equal(tokenQualifies({ tags: [{ tag: { name: value, token_count: 1 } }] }, new Set()), true, value);
   }
   assert.equal(tokenQualifies({ tags: [{ tag: { name: "#horsetrading 2024", token_count: 1 } }] }, new Set()), true);
 });
 
-test("unrelated substring collisions do not count as horse mint keywords", () => {
+test("titles, descriptions, and unrelated tag substrings do not count as horse evidence", () => {
+  assert.equal(tokenQualifies({ name: "Horse Art 2026", description: "Neighvember horse trade" }, new Set()), false);
+  assert.equal(tokenQualifies({ name: "The OG", description: "HAHA, just joking!", tags: [
+    { tag: { name: "clown" } }, { tag: { name: "gif" } },
+    { tag: { name: "pastel" } }, { tag: { name: "pastelverse" } },
+  ] }, new Set()), false);
   for (const value of ["shahabvfx", "nightmare", "neighborhood", "horsepower", "coltrane"]) {
-    assert.equal(tokenQualifies({ name: value }, new Set()), false, value);
+    assert.equal(tokenQualifies({ tags: [{ tag: { name: value, token_count: 100 } }] }, new Set()), false, value);
     assert.equal(isHorseRelatedTag(value), false, value);
   }
+});
+
+test("a HAHA-only mint tag waits for a Marshal and a horse tag wins independently", () => {
+  const haha = { tags: [{ tag: { name: "HAHA 2026", token_count: 100 } }] };
+  assert.equal(horseTagEvidence(haha, new Set()), "haha-review");
+  assert.equal(tokenQualifies(haha, new Set()), false);
+  assert.equal(tokenQualifies(haha, new Set(), true), true);
+  assert.equal(horseTagEvidence({ tags: [...haha.tags, { tag: { name: "horse", token_count: 1 } }] }, new Set()), "horse");
+  assert.equal(horseTagEvidence({ name: "HAHA", description: "horse" }, new Set()), "none");
+  const hahaTransfer = event({ token: { ...event().token!, name: "The OG", description: "HAHA, just joking!",
+    tags: [{ tag: { name: "haha", token_count: 100 } }] } });
+  assert.equal(normalizeHorfTransfer(hahaTransfer, new Set()), null);
+  assert.ok(normalizeHorfTransfer(hahaTransfer, new Set(), HORF_SEASON_START, null, null, true));
 });
 
 test("additional horse-family Objkt tags require more than five indexed tokens", () => {

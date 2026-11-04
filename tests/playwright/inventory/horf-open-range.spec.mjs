@@ -28,6 +28,73 @@ async function mockSeasons(page) {
 }
 
 test.describe("Horf Open Range", () => {
+  test("shows a Marshal rejection as a reviewed horse card", async ({ page, request }) => {
+    expect((await request.post("/__test/state", { data: { userRole: "anonymous" } })).ok()).toBeTruthy();
+    await mockSeasons(page);
+    await page.route("**/api/horf/inspectors/status", (route) => route.fulfill({
+      status: 200, contentType: "application/json", body: JSON.stringify({ active: false, role: null }),
+    }));
+    await page.route("**/api/horf/open-range?*", (route) => route.fulfill({
+      status: 200, contentType: "application/json", body: JSON.stringify({
+        season: current, items: [horse("77", { inspectionStatus: "rejected" })],
+        nextCursor: null, hasMore: false, asOf: now,
+      }),
+    }));
+    await page.goto("/horf/open-range");
+    await expect(page.locator("[data-horf-open-range-horse]")).toContainText("Marshal reviewed · rejected for trade");
+  });
+
+  test("lets a guest report a suspected non-horse for Marshal review", async ({ page, request }) => {
+    expect((await request.post("/__test/state", { data: { userRole: "anonymous" } })).ok()).toBeTruthy();
+    await mockSeasons(page);
+    await page.route("**/api/horf/inspectors/status", (route) => route.fulfill({
+      status: 200, contentType: "application/json", body: JSON.stringify({ active: false, role: null }),
+    }));
+    await page.route("**/api/horf/open-range?*", (route) => route.fulfill({
+      status: 200, contentType: "application/json", body: JSON.stringify({
+        season: current, items: [horse("77")], nextCursor: null, hasMore: false, asOf: now,
+      }),
+    }));
+    const reports = [];
+    await page.route("**/api/horf/reports/not-a-horse", (route) => {
+      reports.push(route.request().postDataJSON());
+      return route.fulfill({ status: 201, contentType: "application/json",
+        body: JSON.stringify({ status: "pending", inspectionId: 77 }) });
+    });
+
+    await page.goto("/horf/open-range");
+    const card = page.locator("[data-horf-open-range-horse]");
+    await card.locator("[data-horf-open-range-not-horse]").click();
+    await expect(card.locator("[data-horf-open-range-not-horse]")).toHaveText("Sent to Marshal review");
+    await expect(card.locator("[data-horf-open-range-not-horse]")).toBeDisabled();
+    await expect(page.locator("[data-horf-right-rail]")).toContainText("sent to a HORF Marshal for horse review");
+    await card.locator("[data-horf-open-range-view-horse]").click();
+    await expect(page.locator("[data-horf-open-range-detail-not-horse]")).toBeDisabled();
+    expect(reports).toEqual([{ tokenContract: contract, tokenId: "77" }]);
+    await expect(card).toBeVisible();
+  });
+
+  test("tells a rate-limited horse reporter to hold their horses", async ({ page, request }) => {
+    expect((await request.post("/__test/state", { data: { userRole: "anonymous" } })).ok()).toBeTruthy();
+    await mockSeasons(page);
+    await page.route("**/api/horf/inspectors/status", (route) => route.fulfill({
+      status: 200, contentType: "application/json", body: JSON.stringify({ active: false, role: null }),
+    }));
+    await page.route("**/api/horf/open-range?*", (route) => route.fulfill({
+      status: 200, contentType: "application/json", body: JSON.stringify({
+        season: current, items: [horse("77")], nextCursor: null, hasMore: false, asOf: now,
+      }),
+    }));
+    await page.route("**/api/horf/reports/not-a-horse", (route) => route.fulfill({
+      status: 429, contentType: "application/json", body: JSON.stringify({ error: "Try again when the review desk has room." }),
+    }));
+    await page.goto("/horf/open-range");
+    const reportButton = page.locator("[data-horf-open-range-not-horse]");
+    await reportButton.click();
+    await expect(page.getByRole("alert").first()).toContainText("Hold Your Horses");
+    await expect(reportButton).toBeEnabled();
+  });
+
   test("lets a Marshal approve a horse from its card without opening evidence", async ({ page, request }) => {
     expect((await request.post("/__test/state", { data: { userRole: "admin" } })).ok()).toBeTruthy();
     await mockSeasons(page);

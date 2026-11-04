@@ -16,7 +16,8 @@ test("trader holdings use the Horf mint test and current positive balances", () 
   ];
   const indexed = [
     { fa_contract: contract, token_id: "1", name: "Horse Art 2026", timestamp: "2026-11-02T10:00:00Z", decimals: 0,
-      thumbnail_uri: "ipfs://QmCollectionThumbnail", artifact_uri: "ipfs://QmFirstHorse", mime: "image/png" },
+      thumbnail_uri: "ipfs://QmCollectionThumbnail", artifact_uri: "ipfs://QmFirstHorse", mime: "image/png",
+      tags: [{ tag: { name: "horse art" } }] },
     { fa_contract: contract, token_id: "2", name: "Untitled", decimals: 0,
       thumbnail_uri: "ipfs://QmCollectionThumbnail", artifact_uri: "ipfs://QmSecondHorse", mime: "image/jpeg",
       tags: [{ tag: { name: "pony", token_count: 6 } }] },
@@ -36,4 +37,16 @@ test("trader holdings use the Horf mint test and current positive balances", () 
   const horses = qualifyingTraderHorses(owned, indexed);
   assert.equal(horses[0].image, horses[1].image);
   assert.notEqual(horses[0].artifactUri, horses[1].artifactUri);
+});
+
+test("a HAHA-only holding stays off public profiles until a Marshal approves its token", () => {
+  const owned = [{ contract, tokenId: "9", balance: "3" }];
+  const indexed = [{ fa_contract: contract, token_id: "9", name: "The Laughing Clown",
+    description: "Nothing equine here", decimals: 0,
+    tags: [{ tag: { name: "haha", token_count: 100 } }] }];
+  assert.equal(qualifyingTraderHorses(owned, indexed).length, 0);
+  assert.deepEqual(qualifyingTraderHorses(owned, indexed, new Set([`${contract}/9`]))
+    .map((horse) => [horse.tokenId, horse.balance]), [["9", "3"]]);
+  assert.equal(qualifyingTraderHorses(owned, indexed, new Set([`${contract}/9`]),
+    new Set([`${contract}/9`])).length, 0);
 });

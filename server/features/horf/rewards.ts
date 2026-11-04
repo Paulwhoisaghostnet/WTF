@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { pool } from "../../db";
-import { getHorfSeasonSnapshot } from "./ledger";
+import { getHorfSeasonSnapshot, horfLedgerPolicyVersion } from "./ledger";
 import { HORF_CURRENT_SEASON_KEY, HORF_SEASONS } from "./seasons";
 import { horseContractAddress } from "./horse-config";
 import { horfStablesContractAddress } from "./stables/config";
@@ -13,6 +13,13 @@ export const HORF_HORSE_REWARD_RAW_PER_UNIT = HORF_HORSE_REWARD_PER_UNIT * 100_0
 const CURRENT = HORF_SEASONS.find((season) => season.key === HORF_CURRENT_SEASON_KEY)!;
 let lastReconciledSourceFingerprint: string | null = null;
 
+export function completedHorfRewardSource(source: {
+  status: string; as_of: Date | null; policy_version: string;
+} | undefined): source is { status: "ready"; as_of: Date; policy_version: string } {
+  return !!source && source.status === "ready" && !!source.as_of &&
+    source.policy_version === horfLedgerPolicyVersion();
+}
+
 export interface HorfRewardSourceEvent {
   kind: "direct" | "stable" | "market" | "objkt";
   sourceKey: string;
@@ -20,6 +27,7 @@ export interface HorfRewardSourceEvent {
   to: string;
   units: string;
   tokenContract: string;
+  tokenId: string;
 }
 
 export interface HorfRewardEntitlementInput {
@@ -35,12 +43,14 @@ export interface HorfRewardEntitlementInput {
 export function buildHorfRewardEntitlements(
   events: HorfRewardSourceEvent[],
   excludedHorseContract: string | null,
+  excludedTokens: ReadonlySet<string> = new Set(),
 ): HorfRewardEntitlementInput[] {
   const rows: HorfRewardEntitlementInput[] = [];
   for (const event of events) {
     if (!isTezosWallet(event.from) || !isTezosWallet(event.to) || event.from === event.to ||
         !/^\d+$/.test(event.units) || BigInt(event.units) <= 0n ||
-        (excludedHorseContract && event.tokenContract === excludedHorseContract)) continue;
+        (excludedHorseContract && event.tokenContract === excludedHorseContract) ||
+        excludedTokens.has(`${event.tokenContract}/${event.tokenId}`)) continue;
     const units = BigInt(event.units).toString();
     const amountRaw = (BigInt(units) * HORF_HORSE_REWARD_RAW_PER_UNIT).toString();
     rows.push({ sourceKind: event.kind, sourceKey: event.sourceKey,
@@ -55,6 +65,7 @@ interface RawDirect {
   to_address: string;
   amount: string;
   token_contract: string;
+  token_id: string;
 }
 
 interface RawStable {
@@ -63,6 +74,7 @@ interface RawStable {
   owner_address: string;
   claimant_address: string;
   token_contract: string;
+  token_id: string;
 }
 
 interface RawMarket {
@@ -71,6 +83,7 @@ interface RawMarket {
   seller_address: string;
   buyer_address: string;
   token_contract: string;
+  token_id: string;
 }
 
 interface RawObjkt {
@@ -78,6 +91,7 @@ interface RawObjkt {
   seller_address: string;
   buyer_address: string;
   token_contract: string;
+  token_id: string;
 }
 
 /** Rebuild pending rewards from the ready current-season source, preserving paid receipts. */
@@ -93,10 +107,11 @@ export async function reconcileCurrentHorfRewards(): Promise<{ status: "ready" |
     // The public snapshot reports `syncing` as soon as a fresh block is due,
     // even while the prior source is complete. Lock raw source state so a
     // partial page cannot be reconciled or paid while its sync is advancing.
-    const source = await client.query<{ status: string; as_of: Date | null }>(
-      `SELECT status, as_of FROM public.horf_season_sync
+    const source = await client.query<{ status: string; as_of: Date | null; policy_version: string }>(
+      `SELECT status, as_of, policy_version FROM public.horf_season_sync
         WHERE season_start = $1::timestamptz FOR SHARE`, [CURRENT.startsAt]);
-    if (source.rows[0]?.status !== "ready" || !source.rows[0]?.as_of) {
+    const sourceRow = source.rows[0];
+    if (!completedHorfRewardSource(sourceRow)) {
       await client.query("ROLLBACK");
       return { status, asOf: snapshot.asOf, reconciled: false };
     }
@@ -128,7 +143,7 @@ export async function reconcileCurrentHorfRewards(): Promise<{ status: "ready" |
       FROM public.horf_objkt_purchase_intents WHERE status = 'verified'
         AND occurred_at >= $1::timestamptz
         AND ($2::timestamptz IS NULL OR occurred_at < $2::timestamptz)`, [CURRENT.startsAt, CURRENT.endsAt]);
-    const fingerprint = [CURRENT.startsAt, new Date(source.rows[0].as_of).toISOString(),
+    const fingerprint = [CURRENT.startsAt, new Date(sourceRow.as_of).toISOString(),
       stableAddress ?? "", stableAsOf ?? "", marketAddress ?? "", marketAsOf ?? "",
       objktSource.rows[0]?.count ?? "0", horseContractAddress() ?? ""].join("|");
     if (lastReconciledSourceFingerprint === fingerprint) {
@@ -136,41 +151,48 @@ export async function reconcileCurrentHorfRewards(): Promise<{ status: "ready" |
       return { status, asOf: snapshot.asOf, reconciled: true };
     }
     const direct = await client.query<RawDirect>(
-      `SELECT event_id, from_address, to_address, amount, token_contract
+      `SELECT event_id, from_address, to_address, amount, token_contract, token_id
          FROM public.horf_transfer_events WHERE season_start = $1::timestamptz
          ORDER BY event_id ASC`, [CURRENT.startsAt]);
     const stable = stableAddress ? await client.query<RawStable>(
-      `SELECT contract_address, tzkt_event_id, owner_address, claimant_address, token_contract
+      `SELECT contract_address, tzkt_event_id, owner_address, claimant_address, token_contract, token_id
          FROM public.horf_stable_claim_events
         WHERE contract_address = $1 AND occurred_at >= $2::timestamptz
           AND ($3::timestamptz IS NULL OR occurred_at < $3::timestamptz)
         ORDER BY tzkt_event_id ASC`, [stableAddress, CURRENT.startsAt, CURRENT.endsAt]) : { rows: [] as RawStable[] };
     const market = marketAddress ? await client.query<RawMarket>(
-      `SELECT contract_address, tzkt_event_id, seller_address, buyer_address, token_contract
+      `SELECT contract_address, tzkt_event_id, seller_address, buyer_address, token_contract, token_id
          FROM public.horf_horse_market_sale_events
         WHERE contract_address = $1 AND verified_at IS NOT NULL
           AND occurred_at >= $2::timestamptz
           AND ($3::timestamptz IS NULL OR occurred_at < $3::timestamptz)
         ORDER BY tzkt_event_id ASC`, [marketAddress, CURRENT.startsAt, CURRENT.endsAt]) : { rows: [] as RawMarket[] };
-    const objktPurchases = await client.query<RawObjkt>(`SELECT id, seller_address, buyer_address, token_contract
+    const objktPurchases = await client.query<RawObjkt>(`SELECT id, seller_address, buyer_address, token_contract, token_id
       FROM public.horf_objkt_purchase_intents WHERE status = 'verified'
         AND occurred_at >= $1::timestamptz
         AND ($2::timestamptz IS NULL OR occurred_at < $2::timestamptz)
       ORDER BY occurred_at ASC, id ASC`, [CURRENT.startsAt, CURRENT.endsAt]);
     const events: HorfRewardSourceEvent[] = [
       ...direct.rows.map((row) => ({ kind: "direct" as const, sourceKey: String(row.event_id),
-        from: row.from_address, to: row.to_address, units: String(row.amount), tokenContract: row.token_contract })),
+        from: row.from_address, to: row.to_address, units: String(row.amount),
+        tokenContract: row.token_contract, tokenId: row.token_id })),
       ...stable.rows.map((row) => ({ kind: "stable" as const,
         sourceKey: `${row.contract_address}:${row.tzkt_event_id}`,
-        from: row.owner_address, to: row.claimant_address, units: "1", tokenContract: row.token_contract })),
+        from: row.owner_address, to: row.claimant_address, units: "1",
+        tokenContract: row.token_contract, tokenId: row.token_id })),
       ...market.rows.map((row) => ({ kind: "market" as const,
         sourceKey: `${row.contract_address}:${row.tzkt_event_id}`,
-        from: row.seller_address, to: row.buyer_address, units: "1", tokenContract: row.token_contract })),
+        from: row.seller_address, to: row.buyer_address, units: "1",
+        tokenContract: row.token_contract, tokenId: row.token_id })),
       ...objktPurchases.rows.map((row) => ({ kind: "objkt" as const,
         sourceKey: row.id, from: row.seller_address, to: row.buyer_address,
-        units: "1", tokenContract: row.token_contract })),
+        units: "1", tokenContract: row.token_contract, tokenId: row.token_id })),
     ];
-    const entitlements = buildHorfRewardEntitlements(events, horseContractAddress());
+    const exclusions = await client.query<{ token_contract: string; token_id: string }>(
+      `SELECT token_contract, token_id FROM public.horf_token_nonhorse_decisions WHERE active = true`,
+    );
+    const excludedTokens = new Set(exclusions.rows.map((row) => `${row.token_contract}/${row.token_id}`));
+    const entitlements = buildHorfRewardEntitlements(events, horseContractAddress(), excludedTokens);
     const runId = randomUUID();
     if (entitlements.length) {
       await client.query(
@@ -251,10 +273,10 @@ export async function issueHorfHorseClaimPermit(address: string) {
   try {
     await client.query("BEGIN");
     await client.query("SELECT pg_advisory_xact_lock(hashtext('horf-rewards-current-2026'))");
-    const source = await client.query<{ status: string; as_of: Date | null }>(
-      `SELECT status, as_of FROM public.horf_season_sync
+    const source = await client.query<{ status: string; as_of: Date | null; policy_version: string }>(
+      `SELECT status, as_of, policy_version FROM public.horf_season_sync
         WHERE season_start = $1::timestamptz FOR SHARE`, [CURRENT.startsAt]);
-    if (source.rows[0]?.status !== "ready" || !source.rows[0]?.as_of) {
+    if (!completedHorfRewardSource(source.rows[0])) {
       throw new HorfHorseClaimSyncError("HORSE season source is still syncing");
     }
     const stableAddress = horfStablesContractAddress();

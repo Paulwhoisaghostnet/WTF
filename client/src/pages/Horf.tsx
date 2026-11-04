@@ -1359,8 +1359,9 @@ export function Horf() {
           <h2>Is It a Horse?</h2>
           <p>Horf uses the same horse test for Open Range discovery and a trader’s “All horses held” profile tab. A Tezos Mainnet FA2 edition must be indexed by Objkt and be a whole token (zero or unset decimals). The profile shows qualifying editions the wallet currently holds.</p>
           <LedgerPanel><h3>Words that open the stable gate</h3><HorseTestList>
-            <li>Whole-keyword matches in the minted name, description, or Objkt tag: horse, horseart, horse art, horsetrade, horse trade, horse trader, horse trading, haha, and horf.</li>
-            <li>Neighvember and Horse of July, including year-suffixed campaign names.</li>
+            <li>Objkt mint tags with whole-keyword matches: horse, horseart, horse art, horsetrade, horse trade, horse trader, horse trading, and horf.</li>
+            <li>Neighvember and Horse of July mint tags, including year-suffixed campaign names. A word in the title or description alone does not qualify.</li>
+            <li>A HAHA mint tag by itself needs a Marshal’s approval before the token appears as a horse or counts as a trade.</li>
             <li>Other equine-related Objkt tag groups, such as pony, mare, or foal, when Objkt shows more than five tokens in that tag. Substrings such as “horsepower” and “neighbor” do not count.</li>
           </HorseTestList></LedgerPanel>
           <LedgerPanel><h3>What counts as a trade?</h3><HorseTestList>

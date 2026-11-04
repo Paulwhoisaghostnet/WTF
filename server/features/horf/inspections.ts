@@ -3,6 +3,7 @@ import { loadObjktToken, inspectHorseToken, HorseTokenIneligibleError, HorseToke
 import { readHorfFa2Identity, type HorfFa2Identity } from "./stables/custody";
 import { HORF_MAINNET_CHAIN_ID } from "./stables/config";
 import { isTezosWallet } from "./model";
+import { isExcludedHorseToken } from "./nonhorse-reports";
 
 export class HorfTokenNotOwnedError extends Error {}
 
@@ -15,6 +16,7 @@ export interface InspectionSources {
   readIndex: typeof horfMainnetIndex.getJson;
   loadToken: TokenLoader;
   readIdentity: (contract: string) => Promise<HorfFa2Identity>;
+  exclusionCheck?: typeof isExcludedHorseToken;
 }
 
 const defaultSources: InspectionSources = {
@@ -61,7 +63,10 @@ export async function loadInspectionEvidence(
     ),
   ]);
   if (!rawToken) throw new HorseTokenNotFoundError("Token was not found in Objkt's Tezos mainnet index");
-  const eligible = await inspectHorseToken(contract, tokenId, async () => rawToken);
+  // A HAHA-only mint tag is a review candidate, not a public horse, until a
+  // Marshal accepts it. The evidence screen must be able to open that candidate.
+  const eligible = await inspectHorseToken(contract, tokenId, async () => rawToken,
+    { forMarshalReview: true, exclusionCheck: sources.exclusionCheck });
   if (!Array.isArray(transfers)) throw new Error("Mainnet FA2 transfer evidence is unavailable");
   const sample = transfers.map((row) => {
     if (row.token?.contract?.address !== contract || String(row.token?.tokenId) !== tokenId ||

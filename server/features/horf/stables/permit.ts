@@ -13,6 +13,7 @@ import {
 } from "./config";
 import { assertHorfStablesMainnet, readHorfStablesStorage, type ChainReader } from "./chain";
 import { assertHorfCustodyTrusted } from "./custody";
+import { isExcludedHorseToken } from "../nonhorse-reports";
 
 type MichelsonNode = { prim?: string; args?: MichelsonNode[]; bytes?: string; int?: string };
 
@@ -96,6 +97,7 @@ export async function issueHorfDepositPermit(
     env?: NodeJS.ProcessEnv;
     nonce?: string;
     approvalCheck?: typeof assertHorfCustodyTrusted;
+    exclusionCheck?: typeof isExcludedHorseToken;
   } = {},
 ): Promise<HorfDepositPermitResponse> {
   const env = options.env ?? process.env;
@@ -129,7 +131,8 @@ export async function issueHorfDepositPermit(
   if (signerKey !== storage.oracle_key) {
     throw new HorfStablesUnconfiguredError("Horf stable oracle key does not match deployed contract");
   }
-  const token = await inspectHorseToken(request.tokenContract, tokenId, options.loadToken);
+  const token = await inspectHorseToken(request.tokenContract, tokenId, options.loadToken,
+    { exclusionCheck: options.exclusionCheck });
   const nonce = (options.nonce ?? randomBytes(32).toString("hex"))
     .replace(/^0x/i, "").toLowerCase();
   const oracleEpoch = nat(storage.oracle_epoch, "oracle epoch");

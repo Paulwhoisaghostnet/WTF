@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { and, asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { db } from "../db";
 import { horfInspectionApprovals, horfInspectionRequests, horfStableSelections } from "@shared/schema";
 import { currentHorfRole } from "../features/horf/roles";
@@ -50,6 +50,10 @@ async function status(contract: string, tokenId: string) {
   if (latest?.status === "pending") return { contract, tokenId, status: "pending", inspectionId: latest.id, reason: null };
   if (approval && !approval.active) return { contract, tokenId, status: "revoked", inspectionId: approval.inspectionId,
     reason: approval.revocationReason };
+  // A rider report kept by a Marshal is not an FA2 custody approval.
+  if (latest?.source === "community_report" && latest.status === "approved") {
+    return { contract, tokenId, status: "none", inspectionId: latest.id, reason: latest.reviewReason };
+  }
   return { contract, tokenId, status: latest?.status ?? "none", inspectionId: latest?.id ?? null,
     reason: latest?.reviewReason ?? null };
 }
@@ -93,13 +97,18 @@ router.get("/api/horf/stable-selections", async (req, res) => {
       .where(eq(horfStableSelections.ownerWalletAddress, address))
       .orderBy(asc(horfStableSelections.selectedAt), asc(horfStableSelections.id));
     const selections = await Promise.all(rows.map(async (row) => {
+      try { await inspectHorseToken(row.tokenContract, row.tokenId); }
+      catch (error) {
+        if (error instanceof HorseTokenIneligibleError || error instanceof HorseTokenNotFoundError) return null;
+        throw error;
+      }
       const review = await status(row.tokenContract, row.tokenId);
       return { id: row.id, ownerAddress: address, tokenContract: row.tokenContract,
         tokenId: row.tokenId, selectedAt: row.selectedAt.toISOString(),
         token: { name: row.tokenName || `Token #${row.tokenId}`, image: row.tokenImage },
         inspectionStatus: review.status, inspectionId: review.inspectionId };
     }));
-    return res.json({ selections });
+    return res.json({ selections: selections.filter((row) => row !== null) });
   } catch (error) {
     console.error("[horf] stable selections failed:", error);
     return res.status(503).json({ error: "Personal Stable selections are temporarily unavailable" });
@@ -261,7 +270,7 @@ router.post("/api/horf/inspections/:id/decision", requireHorfCsrf, async (req, r
     if (request.status !== "pending") return res.status(409).json({ error: "Inspection has already been decided" });
     let identity: HorfFa2Identity | null = null;
     if (decision === "approve") {
-      await inspectHorseToken(request.tokenContract, request.tokenId);
+      await inspectHorseToken(request.tokenContract, request.tokenId, undefined, { forMarshalReview: true });
       identity = await readHorfFa2Identity(request.tokenContract);
       const submitted = request.chainEvidence.identity as HorfFa2Identity | undefined;
       if (!submitted || !identityMatchesApproval(identity, { active: true,
@@ -288,6 +297,10 @@ router.post("/api/horf/inspections/:id/decision", requireHorfCsrf, async (req, r
             inspectorUserId: marshal.userId, approvedAt: reviewedAt,
             creatorAddress: identity.creatorAddress, codeHash: identity.codeHash, codeSha256: identity.codeSha256,
             revokedByUserId: null, revokedAt: null, revocationReason: null } });
+        // A newly accepted HAHA-only tag can make older transfers count. The
+        // season ledger must replay before it publishes rewards from that art.
+        await tx.execute(sql`UPDATE public.horf_season_sync
+          SET policy_version = 'marshal-approval-changed', updated_at = now()`);
       }
       return row;
     });
@@ -302,10 +315,15 @@ router.post("/api/horf/admin/inspection-approvals/:contract/:tokenId/revoke", re
   const reason = typeof req.body?.reason === "string" ? req.body.reason.trim() : "";
   if (!key || !reason) return res.status(400).json({ error: "Approved token and revocation reason are required" });
   try {
-    const [row] = await db.update(horfInspectionApprovals).set({ active: false,
-      revokedByUserId: actor, revokedAt: new Date(), revocationReason: reason })
-      .where(and(eq(horfInspectionApprovals.tokenContract, key.tokenContract),
-        eq(horfInspectionApprovals.tokenId, key.tokenId), eq(horfInspectionApprovals.active, true))).returning();
+    const row = await db.transaction(async (tx) => {
+      const [revoked] = await tx.update(horfInspectionApprovals).set({ active: false,
+        revokedByUserId: actor, revokedAt: new Date(), revocationReason: reason })
+        .where(and(eq(horfInspectionApprovals.tokenContract, key.tokenContract),
+          eq(horfInspectionApprovals.tokenId, key.tokenId), eq(horfInspectionApprovals.active, true))).returning();
+      if (revoked) await tx.execute(sql`UPDATE public.horf_season_sync
+        SET policy_version = 'marshal-approval-changed', updated_at = now()`);
+      return revoked;
+    });
     if (!row) return res.status(404).json({ error: "Active token approval not found" });
     return res.json({ ...(await status(key.tokenContract, key.tokenId)),
       existingPermitsMayRemainValid: true,

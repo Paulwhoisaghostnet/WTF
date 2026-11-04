@@ -86,6 +86,39 @@ async function mockLinkedWallet(page) {
 }
 
 test.describe("Horf Stables", () => {
+  test("HAHA-only art waits at the Marshal desk before entering public Open Range", async ({ page, request }) => {
+    await seedTrader(request);
+    await mockSeason(page);
+    const candidate = { contract: tokenContract, tokenId: "19", name: "HAHA mystery",
+      description: "Tagged HAHA, awaiting human review", image: null, artifactUri: null,
+      mime: "image/png", mintedAt: "2026-11-03T12:00:00.000Z", creatorAddress: null,
+      eligibility: "marshal-review", tradedThroughHorf: false, activelyForTradeOnHorf: false,
+      approvedForMarshalsMarket: false, offers: [] };
+    const reads = [];
+    await page.route("**/api/horf/inspectors/status", (route) => route.fulfill({
+      status: 200, contentType: "application/json", body: JSON.stringify({ active: true, role: "horf_marshal" }),
+    }));
+    await page.route("**/api/horf/inspections/pending", (route) => route.fulfill({
+      status: 200, contentType: "application/json", body: JSON.stringify({ inspections: [] }),
+    }));
+    await page.route("**/api/horf/open-range?*", (route) => {
+      const marshal = new URL(route.request().url()).searchParams.get("marshal") === "1";
+      reads.push(marshal);
+      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({
+        season, items: marshal ? [candidate] : [], nextCursor: null, hasMore: false,
+        asOf: "2026-11-03T12:00:00.000Z",
+      }) });
+    });
+    await page.goto("/horf/open-range");
+    await expect.poll(() => reads.includes(false)).toBe(true);
+    await expect(page.locator("[data-horf-open-range-view-horse]")).toHaveCount(0);
+    await page.goto("/horf/marshals-market");
+    await expect(page.locator("[data-horf-marshal-candidate]")).toContainText("HAHA mystery");
+    await expect(page.locator("[data-horf-marshal-candidate-review]")).toBeVisible();
+    expect(reads).toContain(false);
+    expect(reads).toContain(true);
+  });
+
   test("Marshal previews keep distinct token artwork when Objkt thumbnails match", async ({ page, request }) => {
     await seedTrader(request);
     await mockSeason(page);

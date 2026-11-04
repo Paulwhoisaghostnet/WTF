@@ -7,7 +7,7 @@ import { horfInspectionApprovals, horfOpenRangeOffers, horfTraderProfiles, horfT
 import { getOwnedFa2TokensPage } from "../tzkt";
 import { HORF_HORSE_CHAIN_ID } from "../features/horf/horse-config";
 import { horfMainnetIndex, HORF_MAINNET_TZKT_BASE } from "../features/horf/mainnet-index";
-import { isTezosWallet } from "../features/horf/model";
+import { approvedHorseTags, horseTagEvidence, isTezosWallet } from "../features/horf/model";
 import { resolveHorfSeason } from "../features/horf/seasons";
 import { requireHorfCsrf, requireHorfWallet } from "../features/horf/wallet-scope";
 import { sanitizeProfilePfpImageUrl } from "../features/profile/pfp-policy";
@@ -16,6 +16,7 @@ import {
   loadTraderObjktTokens, qualifyingTraderHorses, traderTokenMedia, traderTokenKey,
 } from "../features/horf/trader-horses";
 import { editionKey, getTraderEditionCounts } from "../features/horf/trader-editions";
+import { excludedHorseTokenKeys } from "../features/horf/nonhorse-reports";
 
 const router = Router();
 // Match the existing public Horf wallet page. Every qualifying holding remains
@@ -205,18 +206,18 @@ router.get("/api/horf/traders/:address/horses", async (req, res) => {
     const page = await getOwnedFa2TokensPage(address, BALANCE_PAGE_SIZE, offset,
       { sourceBase: HORF_MAINNET_TZKT_BASE, forceFresh: refresh });
     const indexed = await loadTraderObjktTokens(page.items);
-    const horses = qualifyingTraderHorses(page.items, indexed);
-    const approvalRows = horses.length ? await db.select({
+    const [approvalRows, excluded] = await Promise.all([page.items.length ? db.select({
       contract: horfInspectionApprovals.tokenContract,
       tokenId: horfInspectionApprovals.tokenId,
     }).from(horfInspectionApprovals).where(and(
       eq(horfInspectionApprovals.active, true),
-      or(...horses.map((horse) => and(
-        eq(horfInspectionApprovals.tokenContract, horse.contract),
-        eq(horfInspectionApprovals.tokenId, horse.tokenId),
+      or(...page.items.map((token) => and(
+        eq(horfInspectionApprovals.tokenContract, token.contract),
+        eq(horfInspectionApprovals.tokenId, token.tokenId),
       ))),
-    )) : [];
+    )) : Promise.resolve([]), excludedHorseTokenKeys(page.items)]);
     const approved = new Set(approvalRows.map((row) => traderTokenKey(row)));
+    const horses = qualifyingTraderHorses(page.items, indexed, approved, excluded);
     let viewerBalances: Map<string, string> | null = null;
     if (typeof viewer === "string") {
       try { viewerBalances = viewer === address
@@ -259,12 +260,30 @@ router.get("/api/horf/traders/:address/offers", async (req, res) => {
     }
     const byKey = new Map(indexed.filter((token) => typeof token.fa_contract === "string" && typeof token.token_id === "string")
       .map((token) => [traderTokenKey({ contract: token.fa_contract!, tokenId: token.token_id! }), token]));
+    const [approvalRows, excluded] = await Promise.all([rows.length ? db.select({
+      contract: horfInspectionApprovals.tokenContract,
+      tokenId: horfInspectionApprovals.tokenId,
+    }).from(horfInspectionApprovals).where(and(eq(horfInspectionApprovals.active, true),
+      or(...rows.map((row) => and(eq(horfInspectionApprovals.tokenContract, row.tokenContract),
+        eq(horfInspectionApprovals.tokenId, row.tokenId)))))) : Promise.resolve([]),
+      excludedHorseTokenKeys(rows.map((row) => ({ contract: row.tokenContract, tokenId: row.tokenId })))]);
+    const approved = new Set(approvalRows.map((row) => traderTokenKey(row)));
+    // Old direct offers remain in the database, but they cannot advertise art
+    // that no longer passes the mint-tag policy or lacks HAHA review.
+    const visibleRows = rows.filter((row) => {
+      if (excluded.has(traderTokenKey({ contract: row.tokenContract, tokenId: row.tokenId }))) return false;
+      const token = byKey.get(traderTokenKey({ contract: row.tokenContract, tokenId: row.tokenId }));
+      if (!token) return false;
+      const tags = (token.tags || []).map((item) => item.tag || {});
+      const evidence = horseTagEvidence(token, new Set(approvedHorseTags(tags)));
+      return evidence === "horse" || (evidence === "haha-review" && approved.has(traderTokenKey({ contract: row.tokenContract, tokenId: row.tokenId })));
+    });
     let ownerBalances: Map<string, string> | null = null;
     let viewerBalances: Map<string, string> | null = null;
     try {
       const head = await horfMainnetIndex.getJson<{ chainId?: string }>("/head");
       if (head.chainId !== HORF_HORSE_CHAIN_ID) throw new Error("Trader balances require the Tezos Mainnet index");
-      const keys = rows.map((row) => ({ contract: row.tokenContract, tokenId: row.tokenId }));
+      const keys = visibleRows.map((row) => ({ contract: row.tokenContract, tokenId: row.tokenId }));
       ownerBalances = await getTraderEditionCounts(address, keys, BALANCE_PAGE_SIZE);
       if (typeof viewer === "string") viewerBalances = viewer === address
         ? ownerBalances : await getTraderEditionCounts(viewer, keys, BALANCE_PAGE_SIZE);
@@ -277,7 +296,7 @@ router.get("/api/horf/traders/:address/offers", async (req, res) => {
       address,
       metadataStatus,
       balanceStatus: ownerBalances ? "ready" : "unavailable",
-      offers: rows.map((row) => {
+      offers: visibleRows.map((row) => {
         const token = byKey.get(traderTokenKey({ contract: row.tokenContract, tokenId: row.tokenId }));
         const key = editionKey({ contract: row.tokenContract, tokenId: row.tokenId });
         return {

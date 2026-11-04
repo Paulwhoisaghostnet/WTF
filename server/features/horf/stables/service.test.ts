@@ -24,19 +24,33 @@ const token = {
 };
 
 test("stable eligibility uses live Objkt metadata and group counts", async () => {
-  const found = await inspectHorseToken(tokenContract, tokenId, async () => token);
+  const exclusionCheck = async () => false;
+  const found = await inspectHorseToken(tokenContract, tokenId, async () => token, { exclusionCheck });
   assert.equal(found.name, token.name);
   assert.match(found.image || "", /^https:\/\//);
   const groupOnly = { ...token, name: "Untitled", description: "", tags: [{ tag: { name: "pony", token_count: 6 } }] };
-  assert.equal((await inspectHorseToken(tokenContract, tokenId, async () => groupOnly)).tokenId, tokenId);
+  assert.equal((await inspectHorseToken(tokenContract, tokenId, async () => groupOnly, { exclusionCheck })).tokenId, tokenId);
   await assert.rejects(
-    inspectHorseToken(tokenContract, tokenId, async () => ({ ...groupOnly, tags: [{ tag: { name: "pony", token_count: 5 } }] })),
+    inspectHorseToken(tokenContract, tokenId, async () => ({ ...groupOnly, tags: [{ tag: { name: "pony", token_count: 5 } }] }), { exclusionCheck }),
     HorseTokenIneligibleError,
   );
   await assert.rejects(
-    inspectHorseToken(tokenContract, tokenId, async () => ({ ...token, decimals: 2 })),
+    inspectHorseToken(tokenContract, tokenId, async () => ({ ...token, decimals: 2 }), { exclusionCheck }),
     HorseTokenIneligibleError,
   );
+});
+
+test("a HAHA-only tag can enter Marshal inspection before it can trade", async () => {
+  const candidate = { ...token, name: "The Laughing Clown", description: "HAHA, just joking!",
+    tags: [{ tag: { name: "haha", token_count: 100 } }] };
+  const reviewed = await inspectHorseToken(tokenContract, tokenId, async () => candidate,
+    { forMarshalReview: true, exclusionCheck: async () => false });
+  assert.equal(reviewed.name, candidate.name);
+});
+
+test("a Marshal-confirmed non-horse cannot pass Stable eligibility", async () => {
+  await assert.rejects(inspectHorseToken(tokenContract, tokenId, async () => token,
+    { exclusionCheck: async () => true }), /not a horse/i);
 });
 
 test("permit input rejects forged identities and preserves natural numbers", () => {
@@ -69,6 +83,7 @@ test("permit signs packed chain, contract, sender, stable, token, nonce, and epo
       env: { TEZOS_NETWORK: "mainnet", HORF_STABLES_CONTRACT_ADDRESS: stable },
       nonce: "ab".repeat(32),
       approvalCheck: async () => {},
+      exclusionCheck: async () => false,
     },
   );
   assert.equal(result.signature, "edsig-test");

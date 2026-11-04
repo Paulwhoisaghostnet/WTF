@@ -15,7 +15,7 @@ function page(tokenIds: string[], nextCursor: string | null, hasMore: boolean, l
   return {
     items: tokenIds.map((tokenId) => ({ contract: CONTRACT, tokenId,
       name: `${label} ${tokenId}`, description: null, image: null, artifactUri: null, mime: null,
-      mintedAt: "2026-11-03T00:00:00.000Z", creatorAddress: null })),
+      mintedAt: "2026-11-03T00:00:00.000Z", creatorAddress: null, eligibility: "auto" as const })),
     nextCursor, hasMore, asOf: "2026-11-03T00:00:00.000Z", sourceRows: tokenIds.length, mediaVersion: 1,
   };
 }
@@ -50,7 +50,7 @@ test("a discovered page survives a new cache instance without another source loo
   assert.equal(lookups, 1);
 });
 
-test("a legacy cached page refreshes its missing per-token media on first read", async () => {
+test("a legacy cached page is replaced by the current eligibility policy", async () => {
   const { store, rows, key } = memoryStore();
   const old = page(["180", "181"], null, false);
   delete (old as Partial<typeof old>).mediaVersion;
@@ -70,9 +70,21 @@ test("a legacy cached page refreshes its missing per-token media on first read",
   const result = await cached("all-horse-search", "0");
   assert.equal(result.cacheStatus, "refreshed");
   assert.equal(result.items.find((item) => item.tokenId === "181")?.artifactUri, "https://ipfs.fileship.xyz/QmHorseVideo");
-  assert.deepEqual(result.items.map((item) => item.tokenId), ["180", "181"]);
+  assert.deepEqual(result.items.map((item) => item.tokenId), ["181"]);
+  assert.equal(result.eligibilityVersion, 2);
   assert.equal((await cached("all-horse-search", "0")).cacheStatus, "cached");
   assert.equal(lookups, 1);
+});
+
+test("an outdated eligibility page is never returned when reclassification fails", async () => {
+  const { store, rows, key } = memoryStore();
+  rows.set(key("all-horse-search", "0"), {
+    page: page(["180"], null, false), fetchedAt: Date.now(),
+  });
+  const cached = createOpenRangePageCache(store, async () => {
+    throw new Error("Objkt unavailable");
+  });
+  await assert.rejects(cached("all-horse-search", "0"), /Objkt unavailable/);
 });
 
 test("explicit refresh updates metadata and retains earlier horses and cursor path", async () => {

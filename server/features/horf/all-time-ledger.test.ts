@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { combineHorfSeasonSnapshots, dueForSync } from "./ledger";
+import { combineHorfSeasonSnapshots, dueForSync, withoutExcludedHorseTokens } from "./ledger";
 import { summarizeSeason, type HorfTransfer } from "./model";
 import { HORF_ALL_TIME_SEASON, HORF_SEASONS, HORF_SEASON_CHOICES, resolveHorfSeason } from "./seasons";
 import { horseContractAddress } from "./horse-config";
@@ -68,11 +68,24 @@ test("completed closed seasons do not each launch a scan on an All time read", (
     season_end: new Date(archive.endsAt!), cursor: "0", status: "ready" as const,
     as_of: new Date("2026-11-02T00:00:00.000Z"),
     updated_at: new Date("2026-11-02T00:00:00.000Z"),
-    policy_version: `2:${horseContractAddress() ?? ""}`,
+    policy_version: `3:${horseContractAddress() ?? ""}`,
   } as Parameters<typeof dueForSync>[0];
   const now = Date.parse("2026-11-03T00:00:00.000Z");
   assert.equal(dueForSync(state, archive, now), false);
   assert.equal(dueForSync({ ...state, season_end: null }, current, now), true);
   assert.equal(dueForSync({ ...state, policy_version: "old-policy" }, archive, now), true);
   assert.equal(dueForSync({ ...state, season_end: new Date("2023-09-02T00:00:00.000Z") }, archive, now), true);
+});
+
+test("an exact nonhorse decision removes that edition from every trade settlement", () => {
+  const transfers: HorfTransfer[] = [
+    { id: 1, timestamp: "2026-11-03T00:00:00.000Z", from: alice, to: bob, amount: 1, token },
+    { id: 2, timestamp: "2026-11-03T00:00:00.000Z", from: alice, to: bob, amount: 1, token, settlement: "stable" },
+    { id: 3, timestamp: "2026-11-03T00:00:00.000Z", from: alice, to: bob, amount: 1, token, settlement: "market" },
+    { id: 4, timestamp: "2026-11-03T00:00:00.000Z", from: alice, to: bob, amount: 1, token, settlement: "objkt" },
+    { id: 5, timestamp: "2026-11-03T00:00:00.000Z", from: alice, to: bob, amount: 1,
+      token: { ...token, tokenId: "2" }, settlement: "stable" },
+  ];
+  const visible = withoutExcludedHorseTokens(transfers, new Set([`${token.contract}/${token.tokenId}`]));
+  assert.deepEqual(visible.map((transfer) => transfer.id), [5]);
 });

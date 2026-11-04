@@ -10,6 +10,7 @@ import {
   logExpressError,
 } from "./lib/system-log";
 import { createRateLimit } from "./lib/create-rate-limit";
+import { horfApiRateLimitKey, isHorfApiRequest } from "./lib/horf-rate-limit";
 import {
   allowedOriginsForRuntime,
   corsOptionsFor,
@@ -118,6 +119,7 @@ function isAppHostSessionRequest(req: Request): boolean {
 }
 
 function shouldSkipApiRateLimit(req: Request): boolean {
+  if (isHorfApiRequest(req)) return true;
   return isMediaStreamRequest(req) || isAppHostSessionRequest(req) || isRateLimitExempt(req);
 }
 
@@ -410,6 +412,21 @@ export async function createApp() {
 
   await setupAuth(app);
   app.use(authenticatePublicApi);
+  // Horf's public browsing, wallet reads, and Marshal patrol share a focused
+  // app shell. The generic API quota runs before auth and therefore keys all
+  // riders behind one IP together. Keep its existing 200/min ceiling, but
+  // apply it here after auth so proved riders have separate Horf buckets.
+  app.use(
+    "/api/horf/",
+    createRateLimit({
+      name: "horf-session",
+      windowMs: 60 * 1000,
+      max: 200,
+      keyGenerator: horfApiRateLimitKey,
+      message: { error: "Hold Your Horses. Too many Horf requests; please try again shortly" },
+      skip: isRateLimitExempt,
+    })
+  );
   app.use(csrfProtection);
   app.use(
     "/api/apphost/",

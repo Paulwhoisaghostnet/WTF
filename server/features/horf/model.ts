@@ -3,7 +3,7 @@ import { normalizeIpfsUri } from "@shared/ipfs-gateways";
 export const HORF_SEASON_START = "2026-11-01T00:00:00.000Z";
 export const HORF_SEASON_LABEL = "Neighvember 2026";
 
-// Objkt's `tag` index is queried with this expression; the classifier below
+// Objkt's mint-tag index is queried with this expression; the classifier below
 // makes the final semantic decision so `neighbor`, `nightmare`, etc. do not count.
 export const HORF_CANDIDATE_REGEX =
   "horse|horf|haha|neigh|pony|ponies|stallion|foal|equine|unicorn|pegasus|gallop|mustang|mare|colt|filly|equestrian|saddle|hoof|hooves|bridle|canter|donkey";
@@ -15,7 +15,8 @@ const TEZOS_BURN_ADDRESS = "tz1burnburnburnburnburnburnburjAYjjX";
 // A keyword is a whole mint tag/word, one of the listed horse compounds, or
 // that form with a four-digit year. Raw substrings would admit `shahabvfx`
 // through `haha` and `horsepower` through `horse`.
-const EXPLICIT_KEYWORD_RE = /(?:^|[^a-z0-9])(?:horse(?:[\s_-]*art|[\s_-]*trad(?:e|er(?:s)?|ing)|[\s_-]*of[\s_-]*july)?|haha|horf|neighvember)(?:[\s#_-]*\d{4})?(?=$|[^a-z0-9])/i;
+const AUTO_KEYWORD_RE = /(?:^|[^a-z0-9])(?:horse(?:[\s_-]*art|[\s_-]*trad(?:e|er(?:s)?|ing)|[\s_-]*of[\s_-]*july)?|horf|neighvember)(?:[\s#_-]*\d{4})?(?=$|[^a-z0-9])/i;
+const HAHA_KEYWORD_RE = /(?:^|[^a-z0-9])haha(?:[\s#_-]*\d{4})?(?=$|[^a-z0-9])/i;
 const HORSE_TAG_WORDS = new Set([
   "pony", "ponies", "stallion", "stallions", "foal", "foals", "equine",
   "equines", "unicorn", "unicorns", "pegasus", "gallop", "galloping",
@@ -82,29 +83,35 @@ function normalizedTag(value: unknown): string {
 export function isHorseRelatedTag(name: unknown): boolean {
   const tag = normalizedTag(name);
   if (!tag) return false;
-  if (EXPLICIT_KEYWORD_RE.test(tag)) return true;
+  if (AUTO_KEYWORD_RE.test(tag) || HAHA_KEYWORD_RE.test(tag)) return true;
   if (tag.includes("horse") && !tag.includes("horsepower")) return true;
   return tag.split(/[^a-z]+/).some((word) => HORSE_TAG_WORDS.has(word));
 }
 
-/** The listed mint keywords always qualify; extra horse family tags need >5 Objkt tokens. */
-export function tokenQualifies(token: ObjktToken, approvedTags: ReadonlySet<string>): boolean {
-  const text = `${token.name || ""} ${token.description || ""}`.normalize("NFKC");
-  if (EXPLICIT_KEYWORD_RE.test(text)) return true;
+/** Mint tags are the only horse evidence. A lone HAHA tag needs Marshal review. */
+export function horseTagEvidence(token: ObjktToken, approvedTags: ReadonlySet<string>): "horse" | "haha-review" | "none" {
+  let hahaTag = false;
   for (const item of token.tags || []) {
     const tag = normalizedTag(item?.tag?.name);
     if (!tag) continue;
-    if (EXPLICIT_KEYWORD_RE.test(tag)) return true;
-    if (approvedTags.has(tag) && isHorseRelatedTag(tag)) return true;
+    if (AUTO_KEYWORD_RE.test(tag)) return "horse";
+    if (HAHA_KEYWORD_RE.test(tag)) { hahaTag = true; continue; }
+    if (approvedTags.has(tag) && isHorseRelatedTag(tag)) return "horse";
   }
-  return false;
+  return hahaTag ? "haha-review" : "none";
+}
+
+/** HAHA-only mint tags require a durable token-specific Marshal approval. */
+export function tokenQualifies(token: ObjktToken, approvedTags: ReadonlySet<string>, marshalApproved = false): boolean {
+  const evidence = horseTagEvidence(token, approvedTags);
+  return evidence === "horse" || (evidence === "haha-review" && marshalApproved);
 }
 
 export function approvedHorseTags(tags: ObjktTag[]): string[] {
   return Array.from(new Set(tags
     .filter((tag) => Number(tag.token_count) > 5 && isHorseRelatedTag(tag.name))
     .map((tag) => normalizedTag(tag.name))
-    .filter((tag) => !EXPLICIT_KEYWORD_RE.test(tag)))).sort();
+    .filter((tag) => !AUTO_KEYWORD_RE.test(tag) && !HAHA_KEYWORD_RE.test(tag)))).sort();
 }
 
 function safeImage(uri: string | null | undefined): string | null {
@@ -125,13 +132,14 @@ export function normalizeHorfTransfer(
   seasonStart = HORF_SEASON_START,
   seasonEnd: string | null = null,
   excludedContract: string | null = null,
+  marshalApproved = false,
 ): HorfTransfer | null {
   if (event.event_type !== "transfer" || event.reverted !== false) return null;
   if (event.marketplace_event_type || event.marketplace_contract) return null;
   if (!isTezosWallet(event.creator_address) || !isTezosWallet(event.recipient_address)) return null;
   if (event.creator_address === event.recipient_address) return null;
   const token = event.token;
-  if (!token || !tokenQualifies(token, approvedTags)) return null;
+  if (!token || !tokenQualifies(token, approvedTags, marshalApproved)) return null;
   // The HORSE reward currency is not itself a traded horse artwork.
   if (excludedContract && token.fa_contract === excludedContract) return null;
   if (token.decimals != null && token.decimals !== 0) return null;

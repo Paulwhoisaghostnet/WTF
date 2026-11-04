@@ -38,11 +38,7 @@ function eventQuery(closedWindow: boolean): string {
       marketplace_event_type: { _is_null: true }
       marketplace_contract: { _is_null: true }
       token: {
-        _or: [
-          { name: { _iregex: $candidate } }
-          { description: { _iregex: $candidate } }
-          { tags: { tag: { name: { _iregex: $candidate } } } }
-        ]
+        tags: { tag: { name: { _iregex: $candidate } } }
       }
     }
     order_by: { id: asc }
@@ -75,19 +71,14 @@ function eventQuery(closedWindow: boolean): string {
 export const HORF_EVENT_QUERY = eventQuery(false);
 export const HORF_CLOSED_EVENT_QUERY = eventQuery(true);
 
-// An older token can acquire a newly qualifying name, description, or tag
-// after its transfer was already passed by the event ID cursor. Detect that
-// case from Objkt's metadata-update clock and replay the season.
+// An older token can acquire a newly qualifying mint tag after its transfer
+// was passed by the event ID cursor. Detect the metadata update and replay.
 export const HORF_METADATA_UPDATE_QUERY = `query HorfMetadataUpdates($since: timestamptz!, $candidate: String!) {
   token(
     where: {
       last_metadata_update: { _gt: $since }
       timestamp: { _lte: $since }
-      _or: [
-        { name: { _iregex: $candidate } }
-        { description: { _iregex: $candidate } }
-        { tags: { tag: { name: { _iregex: $candidate } } } }
-      ]
+      tags: { tag: { name: { _iregex: $candidate } } }
     }
     limit: 1
   ) { pk }

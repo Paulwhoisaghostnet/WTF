@@ -14238,3 +14238,25 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: The oversized shell was a real architecture regression, and the stale source assertion reported a missing event even though the new owner emitted it. Both stopped the release before the rest of the quality path could finish.
 
 **Rule**: Keep desktop behavior in its feature owner when adding interactions, then update source-inspection policies to follow that ownership. Run the focused modularity and event-parity policies on the exact candidate tree before pushing a release head.
+
+---
+
+## 2026-11-04 - Use mint tags for horse identity and keep human reports distinct from escrow review
+
+**What happened**: An unrelated clown token had only clown, gif, pastel, and pastelverse Objkt tags, but its description ended “HAHA, just joking!” Horf treated that casual word as a horse keyword. The broad classifier fed public cards, token eligibility, the trade ledger, and HORSE rewards; persistent Open Range pages and transfer rows could retain the false positive after a code change.
+
+**Why it mattered**: Mint or transfer timing and freeform prose are weak evidence of a horse. A mistaken horse card can also become a trade offer or reward entitlement. An ordinary rejected escrow inspection does not necessarily mean the artwork is not a horse.
+
+**Rule**: Use Objkt token tags as the only automatic horse evidence, with the documented group-size rule. Route HAHA-only tag cases to a Marshal before public horse display. Give riders a report action that enters a durable Marshal queue; require a separate explicit “not a horse” decision to hide an otherwise qualifying token. When the eligibility policy changes, invalidate cached discovery pages and replay the ledger, and pause claim permits until the new policy is fully reconciled.
+
+---
+
+---
+
+## 2026-11-04 - Key Horf rate limits after wallet and WTF session verification
+
+**What happened**: The generic API rate limiter ran before authentication and keyed Horf requests by IP. Riders behind one network shared the same allowance with each other and with unrelated wtfOS tabs, so ordinary browsing could return HTTP 429 even for verified wallets.
+
+**Why it mattered**: A rider could be blocked from browsing, inspecting, or claiming HORSE because of another session’s traffic. Changing only the error wording would leave that shared bucket in place.
+
+**Rule**: Keep the existing request ceiling and wallet authentication protection, but apply Horf’s quota after session verification. Key verified WTF users and Horf wallet sessions separately; retain IP fallback for anonymous traffic. Test both the request key and the middleware order when moving rate limits.

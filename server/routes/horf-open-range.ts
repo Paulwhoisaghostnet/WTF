@@ -1,18 +1,21 @@
 import { Router } from "express";
-import { and, asc, eq, or } from "drizzle-orm";
+import { and, asc, desc, eq, or } from "drizzle-orm";
 import { db } from "../db";
-import { horfGiftTransfers, horfInspectionApprovals, horfOpenRangeOffers, horfStableClaimEvents } from "@shared/schema";
+import { horfGiftTransfers, horfInspectionApprovals, horfInspectionRequests, horfOpenRangeOffers, horfStableClaimEvents } from "@shared/schema";
 import { validOpenRangeCursor } from "../features/horf/open-range-source";
 import { cachedOpenRangeMintPage } from "../features/horf/open-range-cache";
+import { visibleOpenRangeItems } from "../features/horf/open-range-visibility";
 import { HORF_SEASONS, resolveHorfSeason } from "../features/horf/seasons";
 import { isTezosWallet } from "../features/horf/model";
 import { assertCurrentOwner, HorfTokenNotOwnedError } from "../features/horf/inspections";
-import { HorseTokenIneligibleError, HorseTokenNotFoundError, inspectHorseToken } from "../features/horf/stables/eligibility";
+import { HorseTokenIneligibleError, HorseTokenNotFoundError, inspectHorseToken, inspectHorseTokenCached } from "../features/horf/stables/eligibility";
 import { requireHorfCsrf, requireHorfWallet } from "../features/horf/wallet-scope";
 import { loadHorfTraderNames } from "../features/horf/trader-names";
 import { editionKey, getTraderEditionCounts } from "../features/horf/trader-editions";
 import { horfMainnetIndex } from "../features/horf/mainnet-index";
 import { HORF_MAINNET_CHAIN_ID } from "../features/horf/stables/config";
+import { currentHorfRole } from "../features/horf/roles";
+import { excludedHorseTokenKeys } from "../features/horf/nonhorse-reports";
 
 const router = Router();
 const CONTRACT_RE = /^KT1[1-9A-HJ-NP-Za-km-z]{33}$/;
@@ -47,12 +50,31 @@ router.get("/api/horf/open-range", async (req, res) => {
     return res.status(400).json({ error: "Invalid Open Range refresh value" });
   }
   try {
+    const marshalPatrol = req.query.marshal === "1";
+    if (req.query.marshal != null && !marshalPatrol) return res.status(400).json({ error: "Invalid Marshal patrol value" });
+    if (marshalPatrol) {
+      const role = await currentHorfRole(req);
+      if (!role?.admin && !role?.marshal) return res.status(403).json({ error: "HORF MARSHAL role required" });
+    }
     // Horse metadata comes from durable discovery pages. Offer, trade, and
     // inspection state below is joined live on every request.
     const page = await cachedOpenRangeMintPage(mode, cursor, { refresh });
     const scannedSourceRows = page.sourceRows;
-
-    const items = page.items;
+    if (!page.items.length) return res.json({
+      season: selected || { key: mode, label: mode === "all-seasons" ? "All Horse Seasons" : "All Horse Search",
+        startsAt: null, endsAt: null },
+      items: [], nextCursor: page.nextCursor, hasMore: page.hasMore,
+      asOf: page.asOf, scannedSourceRows, cacheStatus: page.cacheStatus, balanceStatus: "ready",
+    });
+    const [approvalRows, excluded] = await Promise.all([db.select({ contract: horfInspectionApprovals.tokenContract,
+      tokenId: horfInspectionApprovals.tokenId })
+      .from(horfInspectionApprovals).where(and(eq(horfInspectionApprovals.active, true),
+        or(...page.items.map((item) => and(
+          eq(horfInspectionApprovals.tokenContract, item.contract), eq(horfInspectionApprovals.tokenId, item.tokenId)))))),
+      excludedHorseTokenKeys(page.items)]);
+    const approved = new Set(approvalRows.map((row) => key(row.contract, row.tokenId)));
+    const items = visibleOpenRangeItems(page.items, approved, marshalPatrol)
+      .filter((item) => !excluded.has(key(item.contract, item.tokenId)));
     if (!items.length) return res.json({
       season: selected || { key: mode, label: mode === "all-seasons" ? "All Horse Seasons" : "All Horse Search",
         startsAt: null, endsAt: null },
@@ -75,20 +97,26 @@ router.get("/api/horf/open-range", async (req, res) => {
       eq(horfStableClaimEvents.tokenContract, item.contract), eq(horfStableClaimEvents.tokenId, item.tokenId))));
     const offerFilter = or(...items.map((item) => and(
       eq(horfOpenRangeOffers.tokenContract, item.contract), eq(horfOpenRangeOffers.tokenId, item.tokenId))));
-    const approvalFilter = or(...items.map((item) => and(
-      eq(horfInspectionApprovals.tokenContract, item.contract), eq(horfInspectionApprovals.tokenId, item.tokenId))));
-    const [confirmed, claims, offers, approvals] = await Promise.all([
+    const inspectionFilter = or(...items.map((item) => and(
+      eq(horfInspectionRequests.tokenContract, item.contract), eq(horfInspectionRequests.tokenId, item.tokenId))));
+    const [confirmed, claims, offers, inspections] = await Promise.all([
       db.select({ contract: horfGiftTransfers.tokenContract, tokenId: horfGiftTransfers.tokenId })
         .from(horfGiftTransfers).where(transferFilter),
       db.select({ contract: horfStableClaimEvents.tokenContract, tokenId: horfStableClaimEvents.tokenId })
         .from(horfStableClaimEvents).where(claimFilter),
       db.select().from(horfOpenRangeOffers).where(and(eq(horfOpenRangeOffers.active, true), offerFilter)),
-      db.select({ contract: horfInspectionApprovals.tokenContract, tokenId: horfInspectionApprovals.tokenId })
-        .from(horfInspectionApprovals).where(and(eq(horfInspectionApprovals.active, true), approvalFilter)),
+      db.select({ contract: horfInspectionRequests.tokenContract, tokenId: horfInspectionRequests.tokenId,
+        status: horfInspectionRequests.status, source: horfInspectionRequests.source })
+        .from(horfInspectionRequests).where(inspectionFilter).orderBy(desc(horfInspectionRequests.id)),
     ]);
     const traded = new Set([...confirmed, ...claims].map((row) => key(row.contract, row.tokenId)));
-    const approved = new Set(approvals.map((row) => key(row.contract, row.tokenId)));
     const offersByToken = new Map<string, ReturnType<typeof offerDto>[]>();
+    const reviewed = new Map<string, string>();
+    for (const row of inspections) {
+      const tokenKey = key(row.contract, row.tokenId);
+      if (!reviewed.has(tokenKey)) reviewed.set(tokenKey,
+        row.source === "community_report" && row.status === "approved" ? "reviewed" : row.status);
+    }
     for (const row of offers) {
       const tokenKey = key(row.tokenContract, row.tokenId);
       offersByToken.set(tokenKey, [...(offersByToken.get(tokenKey) || []), offerDto(row)]);
@@ -101,6 +129,7 @@ router.get("/api/horf/open-range", async (req, res) => {
         tradedThroughHorf: traded.has(key(item.contract, item.tokenId)),
         activelyForTradeOnHorf: offersByToken.has(key(item.contract, item.tokenId)),
         approvedForMarshalsMarket: approved.has(key(item.contract, item.tokenId)),
+        inspectionStatus: approved.has(key(item.contract, item.tokenId)) ? "approved" : reviewed.get(key(item.contract, item.tokenId)) ?? "none",
         offers: offersByToken.get(key(item.contract, item.tokenId)) || [],
       })),
       nextCursor: page.nextCursor, hasMore: page.hasMore,
@@ -121,8 +150,16 @@ router.get("/api/horf/open-range/offers", async (req, res) => {
       .where(address ? and(eq(horfOpenRangeOffers.active, true), eq(horfOpenRangeOffers.ownerWalletAddress, address))
         : eq(horfOpenRangeOffers.active, true))
       .orderBy(asc(horfOpenRangeOffers.createdAt), asc(horfOpenRangeOffers.id));
-    const names = await loadHorfTraderNames(rows.map((row) => row.ownerWalletAddress));
-    return res.json({ offers: rows.map((row) => ({ ...offerDto(row),
+    const checked = await Promise.all(rows.map(async (row) => {
+      try { await inspectHorseTokenCached(row.tokenContract, row.tokenId); return row; }
+      catch (error) {
+        if (error instanceof HorseTokenIneligibleError || error instanceof HorseTokenNotFoundError) return null;
+        throw error;
+      }
+    }));
+    const visible = checked.filter((row) => row !== null);
+    const names = await loadHorfTraderNames(visible.map((row) => row.ownerWalletAddress));
+    return res.json({ offers: visible.map((row) => ({ ...offerDto(row),
       ownerName: names.get(row.ownerWalletAddress)?.displayName ?? null })) });
   } catch (error) {
     console.error("[horf] Open Range offers failed:", error);

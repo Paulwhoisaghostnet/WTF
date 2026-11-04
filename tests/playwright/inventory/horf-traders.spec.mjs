@@ -210,7 +210,10 @@ test.describe("Horf trader discovery and horse test", () => {
     await expect(info).toContainText("indexed by Objkt");
     await expect(info).toContainText("zero or unset decimals");
     await expect(info).toContainText("horseart");
+    await expect(info).toContainText("Objkt mint tags");
     await expect(info).toContainText("Neighvember and Horse of July");
+    await expect(info).toContainText("A word in the title or description alone does not qualify");
+    await expect(info).toContainText("A HAHA mint tag by itself needs a Marshal’s approval");
     await expect(info).toContainText("more than five tokens");
     await expect(info).toContainText("horsepower");
     await expect(info).toContainText("different wallets");

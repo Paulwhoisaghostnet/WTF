@@ -180,6 +180,19 @@ export const horfInspectionApprovals = pgTable("horf_inspection_approvals", {
   primaryKey({ columns: [table.tokenContract, table.tokenId] }),
 ]);
 
+/** A Marshal's explicit judgment that an exact token is not a horse. */
+export const horfTokenNonhorseDecisions = pgTable("horf_token_nonhorse_decisions", {
+  tokenContract: text("token_contract").notNull(),
+  tokenId: text("token_id").notNull(),
+  active: boolean("active").notNull().default(true),
+  inspectionId: bigint("inspection_id", { mode: "number" }).notNull().references(() => horfInspectionRequests.id),
+  marshalUserId: integer("marshal_user_id").notNull().references(() => users.id),
+  reason: text("reason").notNull(),
+  decidedAt: timestamp("decided_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  primaryKey({ columns: [table.tokenContract, table.tokenId] }),
+]);
+
 /** Non-escrow owner signals for direct Open Range horse trades. */
 export const horfOpenRangeOffers = pgTable("horf_open_range_offers", {
   id: bigserial("id", { mode: "number" }).primaryKey(),

@@ -1,5 +1,5 @@
 import { objkt } from "../../lib/upstream";
-import { approvedHorseTags, HORF_CANDIDATE_REGEX, tokenQualifies, type ObjktToken } from "./model";
+import { approvedHorseTags, HORF_CANDIDATE_REGEX, horseTagEvidence, type ObjktToken } from "./model";
 import { HORF_CURRENT_SEASON_KEY, HORF_SEASONS, resolveHorfSeason } from "./seasons";
 import { OBJKT_PAGE_SIZE } from "./source";
 import { horseContractAddress } from "./horse-config";
@@ -36,6 +36,7 @@ export interface OpenRangeItem {
   mime: string | null;
   mintedAt: string | null;
   creatorAddress: null;
+  eligibility: "auto" | "marshal-review";
 }
 
 export type OpenRangeMode = "all-seasons" | "all-horse-search" | string;
@@ -59,13 +60,9 @@ export function validOpenRangeCursor(mode: OpenRangeMode, cursor: string): boole
 }
 
 export function openRangeWhere(mode: OpenRangeMode, cursor = "0") {
-  const candidate = { _or: [
-    { name: { _iregex: HORF_CANDIDATE_REGEX } },
-    { description: { _iregex: HORF_CANDIDATE_REGEX } },
-    // Explicit tag keywords qualify regardless of group size, so the source
-    // branch must not impose token_count > 5. The postfilter applies that rule.
-    { tags: { tag: { name: { _iregex: HORF_CANDIDATE_REGEX } } } },
-  ] };
+  // Explicit mint tags qualify regardless of group size. The postfilter
+  // applies the >5 rule to broader equine tag groups.
+  const candidate = { tags: { tag: { name: { _iregex: HORF_CANDIDATE_REGEX } } } };
   if (mode === "all-horse-search") return candidate;
   const selected = resolveHorfSeason(mode);
   if (mode !== "all-seasons" && !selected) throw new Error("Unknown Horf season");
@@ -133,7 +130,8 @@ export async function fetchOpenRangeMintPage(
         typeof row.token_id !== "string" || !/^\d+$/.test(row.token_id) ||
         (row.decimals != null && row.decimals !== 0)) continue;
     const tagNames = (row.tags || []).map((entry) => entry.tag || {});
-    if (!tokenQualifies(row, new Set(approvedHorseTags(tagNames)))) continue;
+    const evidence = horseTagEvidence(row, new Set(approvedHorseTags(tagNames)));
+    if (evidence === "none") continue;
     const time = row.timestamp == null ? null : Date.parse(row.timestamp);
     if (mode !== "all-horse-search" && (time === null || !Number.isFinite(time))) continue;
     const selected = resolveHorfSeason(mode);
@@ -148,7 +146,7 @@ export async function fetchOpenRangeMintPage(
       artifactUri: safeImage(row.artifact_uri),
       mime: typeof row.mime === "string" ? row.mime.trim().toLowerCase() || null : null,
       mintedAt: time === null || !Number.isFinite(time) ? null : new Date(time).toISOString(),
-      creatorAddress: null });
+      creatorAddress: null, eligibility: evidence === "horse" ? "auto" : "marshal-review" });
   }
   return { items, nextCursor: rows.length ? (byTime ? `${lastTime}|${after}` : after.toString()) : null,
     hasMore: rows.length === OBJKT_PAGE_SIZE, asOf: new Date().toISOString(),

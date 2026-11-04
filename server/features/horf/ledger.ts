@@ -22,10 +22,10 @@ import { HORF_MAINNET_BLOCK_MS } from "./mainnet";
 // Tezos mainnet's Tallinn block interval is six seconds. Objkt offers no
 // subscription, so one source scan per block is shared across all viewers.
 const MAINNET_BLOCK_MS = HORF_MAINNET_BLOCK_MS;
-function policyVersion(): string {
-  // Changing the configured reward-token contract replays the season so HORSE
-  // transfers cannot inflate the horse-art race or create reciprocal debt.
-  return `2:${horseContractAddress() ?? ""}`;
+export function horfLedgerPolicyVersion(): string {
+  // A classifier change or reward-token change must replay every season so
+  // false positives leave the race, trade debts, and reward entitlements.
+  return `3:${horseContractAddress() ?? ""}`;
 }
 const PUBLIC_SYNC_ERROR = "The horse trade index is temporarily unavailable. Last completed data is shown when available.";
 
@@ -206,7 +206,7 @@ async function syncSeason(season: HorfSeason): Promise<void> {
     const approvedTags = await discoverApprovedHorseTags();
     const priorTags = Array.isArray(state.approved_tags) ? [...state.approved_tags].sort() : [];
     const changedTags = !tagsEqual(priorTags, approvedTags);
-    const currentPolicy = policyVersion();
+    const currentPolicy = horfLedgerPolicyVersion();
     const changedPolicy = state.policy_version !== currentPolicy;
     const changedBoundary = boundaryChanged(state, season);
     const metadataChanged = !changedTags && !changedPolicy && !changedBoundary && state.as_of
@@ -231,11 +231,27 @@ async function syncSeason(season: HorfSeason): Promise<void> {
         season.endsAt],
     );
 
+    // Read approvals after publishing the scan's policy version. A concurrent
+    // Marshal decision invalidates that version and triggers a later replay;
+    // it cannot be accidentally overwritten by this scan's startup update.
+    const approvals = await client.query<{ token_contract: string; token_id: string }>(
+      `SELECT token_contract, token_id FROM public.horf_inspection_approvals WHERE active = true`,
+    );
+    const approvedTokens = new Set(approvals.rows.map((row) => `${row.token_contract}/${row.token_id}`));
+    const exclusions = await client.query<{ token_contract: string; token_id: string }>(
+      `SELECT token_contract, token_id FROM public.horf_token_nonhorse_decisions WHERE active = true`,
+    );
+    const excludedTokens = new Set(exclusions.rows.map((row) => `${row.token_contract}/${row.token_id}`));
+
     const approvedSet = new Set(approvedTags);
     while (true) {
       const page = await fetchHorfEventPage(cursor, season.startsAt, season.endsAt);
       const accepted = page.flatMap((event) => {
-        const transfer = normalizeHorfTransfer(event, approvedSet, season.startsAt, season.endsAt, horseContractAddress());
+        const token = event.token;
+        if (token && excludedTokens.has(`${token.fa_contract}/${token.token_id}`)) return [];
+        const marshalApproved = !!token && approvedTokens.has(`${token.fa_contract}/${token.token_id}`);
+        const transfer = normalizeHorfTransfer(event, approvedSet, season.startsAt, season.endsAt,
+          horseContractAddress(), marshalApproved);
         return transfer ? [transfer] : [];
       });
       if (page.length) cursor = safeNumber(page[page.length - 1]!.id!, "event cursor");
@@ -268,7 +284,7 @@ async function syncSeason(season: HorfSeason): Promise<void> {
 }
 
 export function dueForSync(state: SyncState, season: HorfSeason, now: number): boolean {
-  if (state.policy_version !== policyVersion()) return true;
+  if (state.policy_version !== horfLedgerPolicyVersion()) return true;
   if (boundaryChanged(state, season)) return true;
   if (state.status === "syncing") return true;
   // A completed closed window contains immutable chain events. Keep its
@@ -334,11 +350,16 @@ export function applyGiftSettlements(transfers: HorfTransfer[], gifts: GiftSettl
   });
 }
 
+/** A Marshal's exact-token nonhorse decision applies to every settlement path. */
+export function withoutExcludedHorseTokens(transfers: HorfTransfer[], excluded: ReadonlySet<string>): HorfTransfer[] {
+  return transfers.filter((transfer) => !excluded.has(`${transfer.token.contract}/${transfer.token.tokenId}`));
+}
+
 export async function getHorfSeasonSnapshot(address: string | null, season: HorfSeason) {
   const state = await getOrCreateState(season);
   const now = Date.now();
   const due = dueForSync(state, season, now);
-  const invalidSnapshot = state.policy_version !== policyVersion() || boundaryChanged(state, season);
+  const invalidSnapshot = state.policy_version !== horfLedgerPolicyVersion() || boundaryChanged(state, season);
   const effectiveStatus = invalidSnapshot || (due && state.status === "ready") ? "syncing" : state.status;
   const asOf = !invalidSnapshot && state.as_of ? new Date(state.as_of).toISOString() : null;
   const stableClaims = await getStableClaimSnapshot(season);
@@ -368,8 +389,13 @@ export async function getHorfSeasonSnapshot(address: string | null, season: Horf
     );
     directTransfers = applyGiftSettlements(result.rows.map(readStoredTransfer), gifts.rows);
   }
-  ({ leaderboard, currentUser } = summarizeSeason([...directTransfers, ...stableClaims.transfers,
-    ...marketSales.transfers, ...objktPurchases.transfers], address));
+  const exclusions = await pool.query<{ token_contract: string; token_id: string }>(
+    `SELECT token_contract, token_id FROM public.horf_token_nonhorse_decisions WHERE active = true`,
+  );
+  const excluded = new Set(exclusions.rows.map((row) => `${row.token_contract}/${row.token_id}`));
+  ({ leaderboard, currentUser } = summarizeSeason(withoutExcludedHorseTokens([
+    ...directTransfers, ...stableClaims.transfers, ...marketSales.transfers, ...objktPurchases.transfers,
+  ], excluded), address));
   if (due) kickSync(season);
   const reference = effectiveStatus === "ready" ? state.as_of : state.updated_at;
   const dueAt = reference ? new Date(reference).getTime() + MAINNET_BLOCK_MS : now + MAINNET_BLOCK_MS;

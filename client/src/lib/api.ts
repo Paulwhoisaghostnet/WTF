@@ -34,6 +34,28 @@ export function isApiRequestError(err: unknown): err is ApiRequestError {
   return err instanceof ApiRequestError;
 }
 
+const HORF_ERROR_TITLES: Record<number, string> = {
+  400: "Whoa There",
+  401: "Saddle Up",
+  403: "No Passage, Pardner",
+  404: "That Horse Has Left the Stable",
+  409: "Hold the Reins",
+  422: "That Horse Won’t Trot",
+  429: "Hold Your Horses",
+  500: "Rough Trail Ahead",
+  502: "The Trail Is Blocked",
+  503: "Stable Is Taking a Breather",
+  504: "The Trail Timed Out",
+};
+
+/** Keep Horf API failures recognizable while preserving the useful server detail. */
+export function horfApiErrorMessage(status: number, detail: string): string {
+  const title = HORF_ERROR_TITLES[status] ?? (status >= 500 ? "Rough Trail Ahead" : "Whoa There");
+  const explanation = detail.trim();
+  return `Error ${status}: ${explanation.toLowerCase().startsWith(title.toLowerCase())
+    ? explanation : `${title}${explanation ? ` — ${explanation}` : ""}`}`;
+}
+
 export function isAuthSessionInvalidError(err: unknown): boolean {
   return isApiRequestError(err) && err.status === 401 && shouldSignalAuthSessionInvalid(err.path, err.status);
 }
@@ -151,7 +173,8 @@ async function request<T>(
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
-    const message = err.error || `Request failed: ${res.status}`;
+    const detail = typeof err.error === "string" ? err.error : `Request failed: ${res.status}`;
+    const message = path.startsWith("/api/horf/") ? horfApiErrorMessage(res.status, detail) : detail;
     if (shouldSignalAuthSessionInvalid(path, res.status)) {
       signalAuthSessionInvalid(path, requestId);
     }

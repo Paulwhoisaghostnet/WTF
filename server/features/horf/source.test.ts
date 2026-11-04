@@ -22,11 +22,15 @@ test("Objkt source queries use stable cursors, full metadata, and direct transfe
   assert.match(HORF_EVENT_QUERY, /\bophash\b/);
   assert.match(HORF_EVENT_QUERY, /recipient_address/);
   assert.match(HORF_EVENT_QUERY, /thumbnail_uri/);
+  assert.match(HORF_EVENT_QUERY, /tags:\s*\{ tag:\s*\{ name:\s*\{ _iregex: \$candidate \}/);
+  assert.doesNotMatch(HORF_EVENT_QUERY, /token:\s*\{\s*_or:/);
+  assert.doesNotMatch(HORF_EVENT_QUERY, /description:\s*\{ _iregex: \$candidate \}/);
   assert.match(HORF_CLOSED_EVENT_QUERY, /timestamp:\s*\{ _gte: \$since, _lt: \$until \}/);
   assert.equal(buildHorfEventVariables(1, "2023-07-01T00:00:00Z", "2023-08-01T00:00:00Z").until, "2023-08-01T00:00:00Z");
   assert.match(HORF_TAG_QUERY, /token_count:\s*\{ _gt: 5 \}/);
   assert.match(HORF_METADATA_UPDATE_QUERY, /last_metadata_update:\s*\{ _gt: \$since \}/);
   assert.match(HORF_METADATA_UPDATE_QUERY, /timestamp:\s*\{ _lte: \$since \}/);
+  assert.match(HORF_METADATA_UPDATE_QUERY, /tags:\s*\{ tag:\s*\{ name:\s*\{ _iregex: \$candidate \}/);
   assert.equal(isLastHorfEventPage(new Array(100).fill({})), false);
   assert.equal(isLastHorfEventPage([]), true);
 });

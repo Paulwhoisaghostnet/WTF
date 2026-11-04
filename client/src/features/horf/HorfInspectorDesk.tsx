@@ -11,7 +11,7 @@ import { objktTokenUrl, parseObjktToken } from "./token-input";
 
 type Inspection = {
   id: number;
-  source?: "owner_submission" | "open_range";
+  source?: "owner_submission" | "open_range" | "community_report";
   submitterAddress: string | null;
   token: { contract: string; tokenId: string };
   status: "pending" | "approved" | "rejected" | "revoked";
@@ -34,6 +34,7 @@ type Inspection = {
     identity: { contract: string; creatorAddress: string; codeHash: number; codeSha256: string; asOf: string; source: string };
     recentTransfers: Array<{ id: number; transactionId: number | null; from: string | null; to: string | null; amount: string | null; timestamp: string }>;
     note: string;
+    communityReport?: unknown;
   };
   submittedAt: string;
   reviewedByWalletAddress: string | null;
@@ -52,6 +53,7 @@ type OpenRangeCandidate = {
   mintedAt: string | null;
   creatorAddress: string | null;
   approvedForMarshalsMarket: boolean;
+  inspectionStatus?: "none" | "pending" | "approved" | "rejected" | "reviewed";
 };
 type OpenRangePage = {
   items: OpenRangeCandidate[];
@@ -255,7 +257,16 @@ function CandidateThumbnail({ horse }: { horse: OpenRangeCandidate }) {
   </div>;
 }
 
+function isHorseReport(item: Inspection | undefined): boolean {
+  if (!item) return false;
+  const report = item.chainEvidence?.communityReport;
+  const pendingReport = !!report && typeof report === "object" &&
+    (report as { resolution?: unknown }).resolution === "pending";
+  return item.source === "community_report" || pendingReport;
+}
+
 function inspectionOrigin(item: Inspection): string {
+  if (isHorseReport(item)) return "Rider report · That’s not a horse";
   return item.source === "open_range" || !item.submitterAddress
     ? "Open Range review"
     : shortAddress(item.submitterAddress);
@@ -279,6 +290,7 @@ export function HorfInspectorDesk({ isGuest, isAdmin }: {
   const handoff = useMemo(() => inspectHandoff(path), [path]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [decision, setDecision] = useState<"approve" | "reject">("approve");
+  const [reportDecision, setReportDecision] = useState<"hide" | "keep">("hide");
   const [reviewReason, setReviewReason] = useState("");
   const [revokeLink, setRevokeLink] = useState("");
   const [revokeReason, setRevokeReason] = useState("");
@@ -303,7 +315,7 @@ export function HorfInspectorDesk({ isGuest, isAdmin }: {
   const queue = Array.isArray(queueQuery.data?.inspections) ? queueQuery.data.inspections : [];
   const openRangeQuery = useInfiniteQuery({
     queryKey: ["horf", "marshal-open-range"],
-    queryFn: ({ pageParam }) => api.get<OpenRangePage>(`/api/horf/open-range?season=all-horse-search&cursor=${encodeURIComponent(pageParam)}${refreshHorseCache.current ? "&refresh=1" : ""}`),
+    queryFn: ({ pageParam }) => api.get<OpenRangePage>(`/api/horf/open-range?season=all-horse-search&marshal=1&cursor=${encodeURIComponent(pageParam)}${refreshHorseCache.current ? "&refresh=1" : ""}`),
     initialPageParam: "0",
     getNextPageParam: (page) => page.hasMore && page.nextCursor ? page.nextCursor : undefined,
     enabled: deputized,
@@ -397,14 +409,21 @@ export function HorfInspectorDesk({ isGuest, isAdmin }: {
     try {
       if (!reviewReason.trim()) throw new Error("Record a reason for this inspection decision.");
       setBusy(true);
-      await api.post(`/api/horf/inspections/${detail.id}/decision`, { decision, reason: reviewReason.trim() });
+      if (isHorseReport(detail)) {
+        await api.post(`/api/horf/reports/not-a-horse/${detail.id}/decision`, {
+          decision: reportDecision, reason: reviewReason.trim(),
+        });
+      } else {
+        await api.post(`/api/horf/inspections/${detail.id}/decision`, { decision, reason: reviewReason.trim() });
+      }
       setReviewReason("");
       setSelectedId(null);
-      await qc.invalidateQueries({ queryKey: ["horf", "inspection-queue"] });
-      await qc.invalidateQueries({ queryKey: ["horf", "marshal-open-range"] });
-      await qc.invalidateQueries({ queryKey: ["horf", "inspection-status", detail.token.contract, detail.token.tokenId] });
-      setSuccess(`Inspection ${decision === "approve" ? "approved" : "rejected"} for token #${detail.token.tokenId}.`);
-      logClientSystemEvent({ eventType: "horf.inspection.decided", message: "Horf inspector decision recorded", metadata: { inspectionId: detail.id, decision, tokenContract: detail.token.contract, tokenId: detail.token.tokenId } });
+      await qc.invalidateQueries({ queryKey: ["horf"] });
+      const finalDecision = isHorseReport(detail) ? reportDecision : decision;
+      setSuccess(isHorseReport(detail)
+        ? reportDecision === "hide" ? `Token #${detail.token.tokenId} is hidden from Horf horse displays.` : `Token #${detail.token.tokenId} stays on the horse trail.`
+        : `Inspection ${decision === "approve" ? "approved" : "rejected"} for token #${detail.token.tokenId}.`);
+      logClientSystemEvent({ eventType: "horf.inspection.decided", message: "Horf inspector decision recorded", metadata: { inspectionId: detail.id, decision: finalDecision, tokenContract: detail.token.contract, tokenId: detail.token.tokenId } });
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Could not save the inspection decision."); }
     finally { setBusy(false); }
   }
@@ -435,7 +454,7 @@ export function HorfInspectorDesk({ isGuest, isAdmin }: {
       <QueueStack>
       <Panel data-horf-inspection-open-range><h3>Open Range patrol</h3><p>All known horse mints. Approve now or read the full papers.</p>
         {handoff && handoffCandidate && <Handoff data-horf-marshal-handoff><strong>Horse brought from the Open Range: {handoffCandidate.name}</strong><small>{handoff.contract} / #{handoff.tokenId}</small>
-          {handoffStatusQuery.isPending ? <span role="status">Checking this horse’s papers…</span> : handoffStatusQuery.isError ? <span role="alert">Approval status is unavailable. Refresh the desk to try again.</span> : handoffStatusQuery.data?.status === "approved" ? <span className="approved">✓ Already Marshal approved</span> : <><Action data-horf-marshal-handoff-approve type="button" disabled={busy} onClick={() => void approveNow(handoffCandidate, pendingByToken.get(`${handoff.contract}/${handoff.tokenId}`)?.id)}>Approve horse now</Action><Action data-horf-marshal-handoff-review type="button" disabled={busy} onClick={() => void startMarshalReview(handoffCandidate)}>{pendingByToken.has(`${handoff.contract}/${handoff.tokenId}`) ? "Continue inspection" : "Open this horse’s evidence"}</Action></>}
+          {handoffStatusQuery.isPending ? <span role="status">Checking this horse’s papers…</span> : handoffStatusQuery.isError ? <span role="alert">Approval status is unavailable. Refresh the desk to try again.</span> : handoffStatusQuery.data?.status === "approved" ? <span className="approved">✓ Already Marshal approved</span> : <>{!isHorseReport(pendingByToken.get(`${handoff.contract}/${handoff.tokenId}`)) && <Action data-horf-marshal-handoff-approve type="button" disabled={busy} onClick={() => void approveNow(handoffCandidate, pendingByToken.get(`${handoff.contract}/${handoff.tokenId}`)?.id)}>Approve horse now</Action>}<Action data-horf-marshal-handoff-review type="button" disabled={busy} onClick={() => void startMarshalReview(handoffCandidate)}>{pendingByToken.has(`${handoff.contract}/${handoff.tokenId}`) ? "Continue inspection" : "Open this horse’s evidence"}</Action></>}
           <p><a href={objktTokenUrl(handoff.contract, handoff.tokenId)} target="_blank" rel="noopener noreferrer">See this horse on Objkt</a></p>
         </Handoff>}
         {openRangeQuery.isPending && <p role="status">Reading the Open Range horse trail…</p>}
@@ -444,8 +463,8 @@ export function HorfInspectorDesk({ isGuest, isAdmin }: {
           const pending = pendingByToken.get(`${candidate.contract}/${candidate.tokenId}`);
           return <li key={`${candidate.contract}/${candidate.tokenId}`} data-horf-marshal-candidate>
             <CandidateThumbnail horse={candidate} />
-            <div><strong>{candidate.name || `Horse token #${candidate.tokenId}`}</strong><small>#{candidate.tokenId} · {shortAddress(candidate.contract)}{candidate.mintedAt ? ` · minted ${formatWhen(candidate.mintedAt)}` : ""}</small><small>{candidate.creatorAddress ? `Creator ${shortAddress(candidate.creatorAddress)}` : "Creator unknown"}</small>
-              <div className="candidate-actions">{candidate.approvedForMarshalsMarket ? <span className="approved">✓ Marshal approved</span> : <><Action data-horf-marshal-candidate-approve type="button" disabled={busy} onClick={() => void approveNow(candidate, pending?.id)}>Approve horse now</Action><Action data-horf-marshal-candidate-review type="button" disabled={busy} onClick={() => void startMarshalReview(candidate)}>{pending ? "Continue inspection" : "Open evidence"}</Action></>}<a href={objktTokenUrl(candidate.contract, candidate.tokenId)} target="_blank" rel="noopener noreferrer">See horse on Objkt</a></div>
+            <div><strong>{candidate.name || `Horse token #${candidate.tokenId}`}</strong><small>#{candidate.tokenId} · {shortAddress(candidate.contract)}{candidate.mintedAt ? ` · minted ${formatWhen(candidate.mintedAt)}` : ""}</small><small>{candidate.creatorAddress ? `Creator ${shortAddress(candidate.creatorAddress)}` : "Creator unknown"}</small>{candidate.inspectionStatus === "rejected" && <small className="approved">Marshal reviewed · rejected</small>}{candidate.inspectionStatus === "reviewed" && <small className="approved">Marshal reviewed · kept</small>}
+              <div className="candidate-actions">{candidate.approvedForMarshalsMarket ? <span className="approved">✓ Marshal approved</span> : <>{!(pending && isHorseReport(pending)) && <Action data-horf-marshal-candidate-approve type="button" disabled={busy} onClick={() => void approveNow(candidate, pending?.id)}>Approve horse now</Action>}<Action data-horf-marshal-candidate-review type="button" disabled={busy} onClick={() => void startMarshalReview(candidate)}>{pending && isHorseReport(pending) ? "Review horse report" : pending ? "Continue inspection" : "Open evidence"}</Action></>}<a href={objktTokenUrl(candidate.contract, candidate.tokenId)} target="_blank" rel="noopener noreferrer">See horse on Objkt</a></div>
             </div>
           </li>;
         })}</CandidateList>}
@@ -455,7 +474,7 @@ export function HorfInspectorDesk({ isGuest, isAdmin }: {
       <Panel data-horf-inspection-queue><h3>Horses at the gate</h3><p>Pending Marshal and trader reviews.</p>
         {queueQuery.isPending && <p>Reading the inspection queue…</p>}
         {queueQuery.isError && <Note $error role="alert">The queue is unavailable. Refresh the desk to try again.</Note>}
-        {queue.length ? <Queue>{queue.map((item) => <li key={item.id} data-horf-inspection-queue-row><strong>{item.objktMetadata?.name || `Horse token #${item.token.tokenId}`}</strong><span>#{item.id} · {inspectionOrigin(item)} · {formatWhen(item.submittedAt)}</span><Action data-horf-inspection-approve-now type="button" disabled={busy} onClick={() => void approveNow(item.token, item.id)}>Approve now</Action><Action data-horf-inspection-open type="button" onClick={() => setSelectedId(item.id)}>Review evidence</Action></li>)}</Queue> : !queueQuery.isPending && !queueQuery.isError && <p>The corral gate is quiet. No inspections await review.</p>}
+        {queue.length ? <Queue>{queue.map((item) => <li key={item.id} data-horf-inspection-queue-row><strong>{item.objktMetadata?.name || `Horse token #${item.token.tokenId}`}</strong><span>#{item.id} · {inspectionOrigin(item)} · {formatWhen(item.submittedAt)}</span>{!isHorseReport(item) && <Action data-horf-inspection-approve-now type="button" disabled={busy} onClick={() => void approveNow(item.token, item.id)}>Approve now</Action>}<Action data-horf-inspection-open type="button" onClick={() => { setSelectedId(item.id); setReportDecision("hide"); }}>{isHorseReport(item) ? "Review horse report" : "Review evidence"}</Action></li>)}</Queue> : !queueQuery.isPending && !queueQuery.isError && <p>The corral gate is quiet. No inspections await review.</p>}
       </Panel>
       </QueueStack>
       <Panel ref={detailPanelRef} tabIndex={-1} data-horf-inspection-detail><h3>Evidence saddlebag</h3>
@@ -464,6 +483,7 @@ export function HorfInspectorDesk({ isGuest, isAdmin }: {
         {selectedId && detailQuery.isError && <Note $error role="alert">This inspection could not be loaded. Choose another row or refresh the desk.</Note>}
         {detail && <>
           <p><strong><a href={objktTokenUrl(detail.token.contract, detail.token.tokenId)} target="_blank" rel="noopener noreferrer">{detail.objktMetadata.name || `Token #${detail.token.tokenId}`}</a></strong> · inspection #{detail.id}</p>
+          {isHorseReport(detail) && <Note role="status">A rider flagged this art as “That’s not a horse.” Check its image and Objkt mint tags before deciding.</Note>}
           {detailVideo ? <HorseVideo key={`${detail.id}:${detailVideo.src}`} src={detailVideo.src} controls playsInline preload="metadata" aria-label={`${detail.objktMetadata.name || `Horse token #${detail.token.tokenId}`} video artwork`} onError={(event) => { if (!advanceResolvedMediaFallback(event.currentTarget, detailVideo)) event.currentTarget.style.display = "none"; }} /> : detailArt ? <HorseArt key={`${detail.id}:${detailArt.src}`} src={detailArt.src} alt={`${detail.objktMetadata.name || `Horse token #${detail.token.tokenId}`} artwork`} onError={(event) => { if (!advanceResolvedMediaFallback(event.currentTarget, detailArt)) event.currentTarget.style.display = "none"; }} /> : <Note>Token preview unavailable. Check the Objkt link above before approving.</Note>}
           {detail.objktMetadata.description && <p>{detail.objktMetadata.description}</p>}
           <Evidence>
@@ -483,11 +503,16 @@ export function HorfInspectorDesk({ isGuest, isAdmin }: {
           {detail.chainEvidence.recentTransfers.length ? <TransferList>{detail.chainEvidence.recentTransfers.map((transfer) => <li key={transfer.id}>#{transfer.id} · {shortAddress(transfer.from || "mint")} → {shortAddress(transfer.to || "burn")} · {transfer.amount || "?"} editions · {formatWhen(transfer.timestamp)}</li>)}</TransferList> : <p>No recent indexed transfers in this evidence sample.</p>}
           {detail.status === "pending" && <form onSubmit={(event) => void decide(event)}>
             <h4>Inspector’s decision</h4>
-            <label><input type="radio" name="horf-inspection-decision" checked={decision === "approve"} onChange={() => setDecision("approve")} /> Approve token identity</label>
-            <label><input type="radio" name="horf-inspection-decision" checked={decision === "reject"} onChange={() => setDecision("reject")} /> Reject token identity</label>
+            {isHorseReport(detail) ? <>
+              <label><input type="radio" name="horf-report-decision" checked={reportDecision === "hide"} onChange={() => setReportDecision("hide")} /> Hide this token from Horf</label>
+              <label><input type="radio" name="horf-report-decision" checked={reportDecision === "keep"} onChange={() => setReportDecision("keep")} /> Keep this token on Horf</label>
+            </> : <>
+              <label><input type="radio" name="horf-inspection-decision" checked={decision === "approve"} onChange={() => setDecision("approve")} /> Approve token identity</label>
+              <label><input type="radio" name="horf-inspection-decision" checked={decision === "reject"} onChange={() => setDecision("reject")} /> Reject token identity</label>
+            </>}
             <label htmlFor="horf-inspection-reason">Reason recorded for this decision</label>
             <textarea id="horf-inspection-reason" data-horf-inspection-reason value={reviewReason} onChange={(event) => setReviewReason(event.target.value)} disabled={busy} />
-            <Action data-horf-inspection-decide type="submit" $danger={decision === "reject"} disabled={busy || !reviewReason.trim()}>{busy ? "Recording…" : decision === "approve" ? "Approve inspection" : "Reject inspection"}</Action>
+            <Action data-horf-inspection-decide type="submit" $danger={isHorseReport(detail) ? reportDecision === "hide" : decision === "reject"} disabled={busy || !reviewReason.trim()}>{busy ? "Recording…" : isHorseReport(detail) ? reportDecision === "hide" ? "Hide from Horf" : "Keep on Horf" : decision === "approve" ? "Approve inspection" : "Reject inspection"}</Action>
           </form>}
         </>}
       </Panel>

@@ -2,7 +2,7 @@ import { normalizeIpfsUri } from "@shared/ipfs-gateways";
 import { objkt } from "../../lib/upstream";
 import { type OwnedFa2Token } from "../../tzkt";
 import { horseContractAddress } from "./horse-config";
-import { approvedHorseTags, tokenQualifies, type ObjktToken } from "./model";
+import { approvedHorseTags, horseTagEvidence, type ObjktToken } from "./model";
 
 export const HORF_TRADER_TOKEN_QUERY = `query HorfTraderTokens($where: token_bool_exp!) {
   token(where: $where) {
@@ -65,7 +65,10 @@ export async function loadTraderObjktTokens(tokens: TokenKey[]): Promise<ObjktTo
 }
 
 /** Apply the same mint metadata and whole-edition test used for Horf trading. */
-export function qualifyingTraderHorses(owned: OwnedFa2Token[], indexed: ObjktToken[]): HorfTraderHorse[] {
+export function qualifyingTraderHorses(
+  owned: OwnedFa2Token[], indexed: ObjktToken[], marshalApproved: ReadonlySet<string> = new Set(),
+  excluded: ReadonlySet<string> = new Set(),
+): HorfTraderHorse[] {
   const byKey = new Map<string, ObjktToken>();
   for (const token of indexed) {
     if (typeof token.fa_contract === "string" && typeof token.token_id === "string") {
@@ -74,11 +77,13 @@ export function qualifyingTraderHorses(owned: OwnedFa2Token[], indexed: ObjktTok
   }
   const rewardContract = horseContractAddress();
   return owned.flatMap((balance) => {
-    if (balance.contract === rewardContract || !/^\d+$/.test(balance.balance) || BigInt(balance.balance) <= 0n) return [];
+    if (balance.contract === rewardContract || excluded.has(key(balance)) ||
+        !/^\d+$/.test(balance.balance) || BigInt(balance.balance) <= 0n) return [];
     const token = byKey.get(key(balance));
     if (!token || (token.decimals != null && token.decimals !== 0)) return [];
     const tags = (token.tags || []).map((item) => item.tag || {});
-    if (!tokenQualifies(token, new Set(approvedHorseTags(tags)))) return [];
+    const evidence = horseTagEvidence(token, new Set(approvedHorseTags(tags)));
+    if (evidence !== "horse" && !(evidence === "haha-review" && marshalApproved.has(key(balance)))) return [];
     return [{
       contract: balance.contract,
       tokenId: balance.tokenId,
