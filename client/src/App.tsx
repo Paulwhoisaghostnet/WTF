@@ -402,10 +402,22 @@ function FullscreenRouteRenderer({
 
 /* ═══ URL ↔ WindowManager sync ═══════════════════════ */
 
+const LOCAL_QUERY_WINDOW_PATHS = new Set([
+  "/profile",
+  "/collekt",
+  "/skywire",
+  "/live",
+  "/messageboard",
+  "/marketplace",
+]);
+
 function URLSync({ appAvailability }: { appAvailability: DesktopAppAvailability }) {
   const [location, setLocation] = useLocation();
   const search = useSearch();
   const routeLocation = search ? `${location}${search.startsWith("?") ? search : `?${search}`}` : location;
+  // These apps update query parameters for callbacks or local view state.
+  // Their window identity stays stable while the URL changes.
+  const windowLocation = LOCAL_QUERY_WINDOW_PATHS.has(location) ? location : routeLocation;
   const wm = useWindowManager();
   const { user, isLoading } = useAuth();
   const initialised = useRef(false);
@@ -447,22 +459,30 @@ function URLSync({ appAvailability }: { appAvailability: DesktopAppAvailability 
       return;
     }
 
-    if (!wm.openPages.includes(routeLocation) && colilseumRoomFromPath(routeLocation)) {
+    // Query navigation changes the state of the focused app window. Keep its
+    // geometry and focus instead of opening a second copy of the same route.
+    if (!wm.openPages.includes(windowLocation) && wm.focusedPath?.split("?")[0] === location) {
+      wm.replacePage(wm.focusedPath, windowLocation);
+      initialised.current = true;
+      return;
+    }
+
+    if (!wm.openPages.includes(windowLocation) && colilseumRoomFromPath(routeLocation)) {
       const existingGamePath = wm.openPages.find((path) => path === "/colilseum" || path === "/wtfiap");
       if (existingGamePath) {
-        wm.replacePage(existingGamePath, routeLocation);
+        wm.replacePage(existingGamePath, windowLocation);
         initialised.current = true;
         return;
       }
     }
 
-    if (!wm.openPages.includes(routeLocation)) {
-      wm.openPage(routeLocation);
-    } else if (wm.focusedPath !== routeLocation || wm.isMinimized(routeLocation)) {
-      wm.focus(routeLocation);
+    if (!wm.openPages.includes(windowLocation)) {
+      wm.openPage(windowLocation);
+    } else if (wm.focusedPath !== windowLocation || wm.isMinimized(windowLocation)) {
+      wm.focus(windowLocation);
     }
     initialised.current = true;
-  }, [accessSurfaceIds, appAvailability, isLoading, routeLocation, roleInput, setLocation]);
+  }, [accessSurfaceIds, appAvailability, isLoading, routeLocation, roleInput, setLocation, windowLocation]);
 
   return null;
 }

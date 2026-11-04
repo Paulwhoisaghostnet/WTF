@@ -570,7 +570,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     verificationCommand:
       "npx tsx --test server/auth/oauth-base.test.ts server/auth/twitter-proof.test.ts server/auth/twitter-proof-snapshot.test.ts client/src/pages/profile-social-link-policy.test.ts && npm run build && npx playwright test tests/playwright/inventory/profile-x-proof.spec.mjs --project=chromium --reporter=list",
     userVisibleAssertion:
-      "Profile lets a first-time user connect X without entering a handle, accepts an optional intended handle for targeted account changes, and displays a specific recovery message if X returns another account or omits identity. The provider callback stays on canonical wtfos.app even if legacy platform env is present.",
+      "Profile lets a first-time user connect X without entering a handle, accepts an optional intended handle for targeted account changes, and displays a specific recovery message if X returns another account or omits identity. The message remains visible when Profile clears the transient callback query. The provider callback stays on canonical wtfos.app even if legacy platform env is present.",
     durableSideEffectAssertion:
       "The server binds a one-time signed OAuth 1.0a request token to the wtfOS session, requires provider-returned user ID and screen name, enforces any supplied intended handle, and compares the saved X link at callback with its start snapshot before replacing it. It clears credentials from a different previously linked X account and performs no metered user lookup. The browser stories cover blank-handle first link, targeted handoff, and callback error; external provider consent and durable DB write still require a live account-backed proof before full E2E coverage can be claimed.",
   },
@@ -583,7 +583,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     verificationCommand:
       "npx tsx --test server/auth/discord-link.test.ts server/auth/discord-strategy.test.ts server/auth/discord-ownership.test.ts && npm run build && npx playwright test tests/playwright/inventory/profile-social-linking.spec.mjs --project=chromium --reporter=list",
     userVisibleAssertion:
-      "Profile groups X, Discord, and AT Protocol account proofs under Social network linking, lets a first-time Discord link open sign-in without a username, accepts an optional username for targeted account changes, and reports a different-account callback without replacing the displayed linked identity.",
+      "Profile groups X, Discord, and AT Protocol account proofs under Social network linking, lets a first-time Discord link open sign-in without a username, accepts an optional username for targeted account changes, and reports a different-account callback without replacing the displayed linked identity or losing the error message when the callback query clears.",
     durableSideEffectAssertion:
       "The Discord callback binds the signed-in WTF session and OAuth state, accepts the provider-signed identity for a blank first link, enforces an optional intended username, and pins an existing Discord ID on blank reverification so another account cannot replace it. Profile OAuth and bot proof serialize claims for one Discord ID and reject a different WTF owner before persistence. The browser stories cover blank and targeted handoffs plus error presentation; external Discord consent and the actual database write require an account-backed live proof.",
   },
@@ -596,7 +596,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     verificationCommand:
       "npx tsx --test server/features/atproto/profile-proof.test.ts server/features/atproto/oauth-session-restore.test.ts && npm run build && npx playwright test tests/playwright/inventory/profile-social-linking.spec.mjs --project=chromium --reporter=list",
     userVisibleAssertion:
-      "Profile lets a first-time AT Protocol link open provider sign-in without a handle, accepts an optional handle for targeted account changes, and returns from the identity-only proof to Profile; a different-account callback reports the mismatch and leaves the existing link visible.",
+      "Profile lets a first-time AT Protocol link open provider sign-in without a handle, accepts an optional handle for targeted account changes, and returns from the identity-only proof to Profile; a different-account callback reports the mismatch and leaves the existing link and error message visible after callback query cleanup.",
     durableSideEffectAssertion:
       "The AT Protocol callback binds the provider-returned DID to the signed-in WTF session, accepts it for a blank first link, pins the existing DID on blank reverification, and enforces an optional intended actor before changing the durable account row. Profile proof advertises its own public OAuth client metadata and identity-only `atproto` scope, preserving richer Skywire grants when reverifying the same DID; it rejects a DID already linked to another WTF user. The browser stories cover blank and targeted handoffs plus error presentation; external provider consent and the actual database write require an account-backed live proof.",
   },
@@ -1023,7 +1023,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     verificationCommand:
       "npx tsx --test server/features/collekt/duplicates.test.ts && npm run check && npm run test:e2e:inventory:coverage && npm run build && npx playwright test tests/playwright/inventory/collekt-duplicates.spec.mjs --project=chromium",
     userVisibleAssertion:
-      "A signed-in collector can scan any Tezos wallet, see only duplicate zero-decimal FA2 art with proven supply at or below 5,000, compare paid price with last sale and delta, inspect edition share and acquisition date, then preview exact owner/token/quantity/signer terms before connecting a wallet and placing a WTF offer.",
+      "A signed-in collector can scan any Tezos wallet, see only duplicate zero-decimal FA2 art with proven supply at or below 5,000, compare paid price with last sale and delta, inspect edition share and acquisition date, then preview exact owner/token/quantity/signer terms before connecting a wallet and placing a WTF offer. Updating the wallet query keeps the completed scan results visible.",
     durableSideEffectAssertion:
       "The scan, terms preview, and confirmed offer produce normalized colleKT SystemEvents; offer execution reuses the network-verified marketplace helper, approves the configured WTF FA2 operator, submits one exact V2 place_offer call, waits for confirmation, and records the canonical operation hash.",
   },
@@ -1172,7 +1172,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     verificationCommand:
       "npx tsx --test client/src/features/admin/admin-control-suite-policy.test.ts client/src/features/admin-os/admin-surface-registry.test.ts shared/wtf-browser-route-access.test.ts shared/role-system.test.ts server/features/admin/help-index-policy.test.ts && npm run build && npx playwright test tests/playwright/inventory/admin-control-suite.spec.mjs tests/playwright/inventory/system-integration.spec.mjs",
     userVisibleAssertion:
-      "Only a strict admin can discover or open the Admin Panel; an admin starts from task routing, searches URL-backed sections, reviews users in a sortable table with highest assigned role and level, opens a user name into a complete WTF Passport, reviews roles and curses in broad tables, and narrows into an acute record without hunting through one giant action row.",
+      "Only a strict admin can discover or open the Admin Panel; an admin starts from task routing, searches URL-backed sections, reviews users in a sortable table with highest assigned role and level, opens a user name into a complete WTF Passport in the same Admin Panel window, reviews roles and curses in broad tables, and narrows into an acute record without hunting through one giant action row.",
     durableSideEffectAssertion:
       "The focused source and browser harness assert the user Passport composes canonical roles, permissions, curses, wtfOS access, desktop settings, wallets, domains, and EXP activity; desktop settings saves use optimistic concurrency and audited admin routes; role and curse handoffs preserve the selected user context.",
   },
@@ -1503,7 +1503,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     verificationCommand:
       "npm run build && npx playwright test tests/playwright/inventory/skywire-feed.spec.mjs -g \"OAuth|Chat add-on\"",
     userVisibleAssertion:
-      "When a user enables the Skywire Chat Add-on through OAuth, Skywire uses the current browser window, reports unresolved Bluesky handles instead of looking stalled, returns to the account/settings tab on canonical wtfos.app, and reflects the granted durable chat permission there instead of creating a second upgraded Skywire window.",
+      "When a user enables the Skywire Chat Add-on through OAuth, Skywire uses the current browser window, keeps unresolved Bluesky handle notices visible while cleaning the callback query, returns to the account/settings tab on canonical wtfos.app, and reflects the granted durable chat permission there instead of creating a second upgraded Skywire window.",
     durableSideEffectAssertion:
       "OAuth start preflights unresolved handles before provider handoff; the SDK nonce state and Skywire app-owned pending state are persisted durably and the callback translates the SDK `state` query param back to the app state before relying on browser session metadata; the callback recovers the app-owned OAuth state including the start origin and explicit platform-actor intent, requires explicit confirmation before connecting reserved shared platform actor handles, refuses callbacks whose returned handle differs from the requested handle, refuses chat upgrades when the returned handle/DID does not match the user's already-linked account, writes requested tier/scope, granted scope, chat add-on state, encrypted token material, encrypted DPoP key, and user+DID account identity to the canonical account row from the SDK saved session object rather than the live callback wrapper, appends callback params to `/skywire?tab=account` on canonical wtfos.app, broadcasts completion to any already-open original Skywire window, `/api/atproto/me` returns the durable account row with `session.reconnectRequired=false` without masking it to null, popup/local metadata cannot mark chat enabled unless canonical `/api/atproto/me` also has durable chat permission, and stale OAuth completion/storage events cannot keep forcing the user back to Settings after durable completion.",
   },
@@ -1611,7 +1611,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     verificationCommand:
       "npm run build && npx playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs -g \"game room\" --project=chromium --reporter=list",
     userVisibleAssertion:
-      "A signed-in WTF LIVE owner can create a game room, see it represented as a game room in the room dashboard and public room frame, start Jackbox host apps from owner-only controls inside that room, publish the hosted game stream as the room's shared screen, control the game from the room frame, and keep room mic/camera controls available for players.",
+      "A signed-in WTF LIVE owner can create a game room and keep its success notice visible while the dashboard updates the room query, see it represented as a game room in the room dashboard and public room frame, start Jackbox host apps from owner-only controls inside that room, publish the hosted game stream as the room's shared screen, control the game from the room frame, and keep room mic/camera controls available for players.",
     durableSideEffectAssertion:
       "The API persists room_kind=game, game room settings use the game roomKind bucket, the live-room join envelope returns game capabilities, the room frame starts apphost launch/session/stream-offer/input flows for the selected Jackbox title, and the received apphost MediaStream is attached to WTF LIVE screen sharing rather than opening Applications as a side route.",
   },
@@ -1659,7 +1659,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     verificationCommand:
       "npm run build && npx playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs",
     userVisibleAssertion:
-      "A signed-in WTF LIVE host can create a private WTF-user room, sees it labeled as private with no public guest URL, edits the allowed username list from the selected room view, and joins it through the signed-in room entry path.",
+      "A signed-in WTF LIVE host can create a private WTF-user room, keep its success notice visible while the dashboard updates the room query, see it labeled as private with no public guest URL, edit the allowed username list from the selected room view, and join it through the signed-in room entry path.",
     durableSideEffectAssertion:
       "The inventory harness stores the private-room fixture separately from public rooms, verifies /api/wtf-live/rooms/private and /api/wtf-live/rooms/:roomId/access reflect the access list, verifies the public guest endpoint does not expose the private room, and verifies private room dashboard messages remain realtime-only instead of public Skywire records.",
   },
@@ -1683,7 +1683,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     verificationCommand:
       "npm run build && npx playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs",
     userVisibleAssertion:
-      "A WTF LIVE stage owner sees owned-stage details plus Close/Reopen/Delete controls in the Stages tab.",
+      "A WTF LIVE stage owner keeps the creation notice visible while the selected stage query updates, and sees owned-stage details plus Close/Reopen/Delete controls in the Stages tab.",
     durableSideEffectAssertion:
       "The inventory harness toggles the owned-stage fixture through the WTF LIVE stage PATCH API and deletes it through the DELETE API, then verifies the selected stage card reflects the lifecycle change.",
   },
@@ -1759,7 +1759,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     verificationCommand:
       "node --test client/src/features/reggie/reggie-assistant-policy.test.ts server/challenges/routes/reggie-policy.test.ts && npm run build && npx playwright test tests/playwright/inventory/reggie-quest-guide.spec.mjs && npm run test:e2e:inventory:coverage",
     userVisibleAssertion:
-      "Reggie stays quiet on the signed-in desktop until the player clicks or summons him. His bubble offers a current step in the authored Reggie quest path, quest log, progress check, Quest HQ, and quest destination, without a general question field or periodic nags. The player can hide and later summon him from the desktop context menu, or snooze him for ten minutes and see him wake without a bubble. WIM identifies his quest messages as Reggie messages.",
+      "Only signed-in accounts with the contestant role see Reggie or the Summon Reggie desktop command; witness and admin accounts without contestant membership see neither and make no Reggie quest request. For contestants, Reggie stays quiet until clicked or summoned. His bubble offers a current step in the authored Reggie quest path, quest log, progress check, Quest HQ, and quest destination, without a general question field or periodic nags. Contestants can hide and later summon him from the desktop context menu, or snooze him for ten minutes and see him wake without a bubble. WIM identifies his quest messages as Reggie messages.",
     durableSideEffectAssertion:
       "Reggie speech posts through /api/reggie/messages, which chooses the authenticated user server-side, writes a Reggie-authored DM conversation/message, tags the message metadata as assistant=reggie/source=reggie-assistant, and indexes the item for WIM/Inbox recovery.",
   },
