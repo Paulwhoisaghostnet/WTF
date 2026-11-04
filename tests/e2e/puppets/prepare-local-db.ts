@@ -364,6 +364,16 @@ export async function runLocalE2eDbPreparation(options: PrepareOptions = {}) {
 
   const applied: string[] = [];
   for (const migration of planned) {
+    // Applied migration files are immutable in production. The local puppet
+    // bootstrap may run repeatedly, so skip this atomic migration once its
+    // durable table exists instead of editing the deployed SQL checksum.
+    if (migration.endsWith("/0155_horf_nonhorse_reports.sql")) {
+      const existing = await pool.query("SELECT to_regclass($1) AS relation", ["public.horf_token_nonhorse_decisions"]);
+      if (existing.rows[0]?.relation) {
+        applied.push(migration);
+        continue;
+      }
+    }
     const sqlText = await readFile(migration, "utf8");
     for (const statement of migrationStatements(sqlText)) {
       try {

@@ -30,7 +30,8 @@ test("local puppet DB preparation includes durable Horf discovery and nonhorse d
   const reportsMigration = await readFile(
     new URL("../drizzle/0155_horf_nonhorse_reports.sql", import.meta.url), "utf8"
   );
-  assert.match(reportsMigration, /CREATE TABLE IF NOT EXISTS public\.horf_token_nonhorse_decisions/);
+  assert.match(reportsMigration, /CREATE TABLE public\.horf_token_nonhorse_decisions/);
+  assert.match(preparationSource, /to_regclass\(\$1\).*public\.horf_token_nonhorse_decisions/);
 });
 
 test("local puppet DB preparation includes current WTF LIVE room schemas", () => {

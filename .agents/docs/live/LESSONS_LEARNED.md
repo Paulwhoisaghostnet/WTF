@@ -14330,3 +14330,13 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: The feature deployed while its independent CI signal was red, repeating a Horf release failure already documented under WTF-BB-777.
 
 **Rule**: Regenerate the environment inventory from the exact final tracked source tree immediately before committing a release that adds tests or code; run the deterministic check and focused policy test, then require replacement main Quality Gates to pass before calling the release verified.
+
+---
+
+## 2026-11-04 - Never edit a migration after production has applied it
+
+**What happened**: Horf migration 0155 was changed from `CREATE TABLE` to `CREATE TABLE IF NOT EXISTS` to let local puppet preparation run repeatedly. Production had already recorded the original checksum, so the Hetzner deploy refused the changed migration and stopped before switching the app.
+
+**Why it mattered**: The code and image build passed, but the release could not go live. Local test convenience had changed immutable production history.
+
+**Rule**: Restore an applied migration byte for byte when its checksum is recorded. Make repeatable test setup skip an already applied atomic migration using a local schema check, or add a new migration for a real schema change. Check the deployed migration checksum before retrying the release.
