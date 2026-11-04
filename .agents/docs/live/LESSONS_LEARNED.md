@@ -14228,3 +14228,13 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: A text merge could overwrite one issue or lose the new operational lessons, and stale generated ranks would fail the release gate.
 
 **Rule**: At the final main integration, compare canonical record identities against the merge base, assign a fresh ID to a distinct collision, preserve all lesson sections, and regenerate the board and environment inventory from the exact merged tree.
+
+---
+
+## 2026-11-04 - Recheck policy ownership after moving desktop interactions
+
+**What happened**: The starter desktop grew `Desktop.tsx` past its enforced modularity boundary, while permanent shortcut deletion moved into the Wastebasket page but a client-event policy still searched only the old desktop shell. PR #64 Quality Gates failed both policies on the release head.
+
+**Why it mattered**: The oversized shell was a real architecture regression, and the stale source assertion reported a missing event even though the new owner emitted it. Both stopped the release before the rest of the quality path could finish.
+
+**Rule**: Keep desktop behavior in its feature owner when adding interactions, then update source-inspection policies to follow that ownership. Run the focused modularity and event-parity policies on the exact candidate tree before pushing a release head.

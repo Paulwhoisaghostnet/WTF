@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **754** · Open: **9** · Claimed: **42** · In Progress: **16** · Blocked: **4** · Fixed: **145** · Verified: **533** · Archived: **5**
+Total: **756** · Open: **9** · Claimed: **42** · In Progress: **16** · Blocked: **4** · Fixed: **145** · Verified: **535** · Archived: **5**
 
 ## Canonical Board
 
@@ -37,7 +37,7 @@ Total: **754** · Open: **9** · Claimed: **42** · In Progress: **16** · Block
 | WTF-BB-238 | Open | - | 2026-06-29 | E2E / Playwright harness artifact stability | P2 | 8 | 646 | 2 | 3 | 0 | Full inventory can report unrelated failures when build/trace artifacts disappear or the shared harness dies mid-run; current focused fresh-harness reruns pass, so hardening should isolate build output, trace artifacts, and harness lifecycle per run |
 | WTF-BB-754 | Open | Unassigned | 2026-11-01 | Inbox / channel status clarity | P2 | 7 | 702 | 2 | 2 | 0 | Inbox says inbound and outbound are off while an internal WIM message sends |
 | WTF-BB-753 | Open | Unassigned | 2026-11-01 | WTF Arcade / cartridge readability | P2 | 7 | 702 | 2 | 2 | 0 | Arcade cartridge text and play-cost badge are difficult to read at desktop width |
-| WTF-BB-764 | Open | Unassigned | 2026-11-03 | Client API / no-content responses | P2 | 6 | 734 | 1 | 2 | 0 | API JSON wrapper rejects successful no-content DELETE responses |
+| WTF-BB-764 | Open | Unassigned | 2026-11-03 | Client API / no-content responses | P2 | 6 | 736 | 1 | 2 | 0 | API JSON wrapper rejects successful no-content DELETE responses |
 | WTF-BB-500 | Claimed | Codex Ravioli v3 contract hardening | - | Pasta Protocol / buyer funds and fulfillment solvency | P0 | 20 | 1 | 5 | 5 | 5 | Ravioli released blind-sale proceeds before child delivery |
 | WTF-BB-545 | Claimed | Codex Ravioli authenticated post-event-86 correction | - | Pasta Protocol / Ravioli recovery plan and proof finality | P0 | 19 | 3 | 5 | 5 | 4 | Ravioli's post-event-86 plan and terminal model cannot complete truthfully |
 | WTF-BB-507 | Claimed | Codex Ravioli v3 Shadownet proof | - | Pasta Protocol / live proof dependency identity | P0 | 19 | 3 | 5 | 5 | 4 | The accepted Rotini proof contract predates Ravioli's recipient-independent seed ABI |
@@ -242,8 +242,8 @@ Total: **754** · Open: **9** · Claimed: **42** · In Progress: **16** · Block
 | WTF-BB-170 | Fixed | Codex Skywire profile disconnect pass | 2026-05-24 | Profile / Identity bridge UX | P2 | 8 | 646 | 1 | 4 | 0 | Profile shows linked Skywire identity but lacks a manual disconnect action |
 | WTF-BB-157 | Fixed | Codex Skywire full-send gate repair | 2026-05-24 | Build / shared DTO typing | P2 | 8 | 646 | 1 | 4 | 0 | Communication route resolver leaks nullable browser policy reason into non-null DTO |
 | WTF-BB-773 | Fixed | Codex coLILseum escrow completion | 2026-11-03 | coLILseum / prepaid payout clarity | P2 | 7 | 702 | 1 | 2 | 1 | Prepaid tie receipt says XTZ paid when the guest receives credit |
-| WTF-BB-755 | Fixed | Codex release integration | 2026-11-02 | AT Protocol / Profile OAuth CI test precondition | P2 | 6 | 734 | 1 | 2 | 0 | Profile AT OAuth client metadata tests reject a clean CI local origin before assertions |
-| WTF-BB-747 | Fixed | Codex Pasta mainnet alpha integration | 2026-10-29 | Pasta Protocol / IPFS Pinning inventory test | P2 | 6 | 734 | 1 | 2 | 0 | Gamma pinning inventory waits for obsolete Connect Porcupin button |
+| WTF-BB-755 | Fixed | Codex release integration | 2026-11-02 | AT Protocol / Profile OAuth CI test precondition | P2 | 6 | 736 | 1 | 2 | 0 | Profile AT OAuth client metadata tests reject a clean CI local origin before assertions |
+| WTF-BB-747 | Fixed | Codex Pasta mainnet alpha integration | 2026-10-29 | Pasta Protocol / IPFS Pinning inventory test | P2 | 6 | 736 | 1 | 2 | 0 | Gamma pinning inventory waits for obsolete Connect Porcupin button |
 | WTF-BB-011 | Fixed | Codex warning cleanup pass | 2026-05-06 | Frontend bundle | P3 | 9 | 570 | 4 | 2 | 1 | Wallet/Tezos bundle chunks are huge and pull Node core externals |
 | WTF-BB-508 | Verified | Codex wtfOS contract deployment pass | - | Tezos / WTF reward claims and contract ownership | P0 | 19 | 3 | 5 | 5 | 4 | Reward escrow is tested but absent from the live reward path |
 | WTF-BB-218 | Verified | Codex Marketplace V2 production cutover | 2026-07-24 | Tezos / WTF marketplace contract | P0 | 19 | 3 | 4 | 5 | 5 | Marketplace V2 is Shadownet-proven, separately administered, live on mainnet, and active on wtfOS; legacy V1 remains unmodified with its abandoned offer for later human recovery |
@@ -634,6 +634,7 @@ Total: **754** · Open: **9** · Claimed: **42** · In Progress: **16** · Block
 | WTF-BB-681 | Verified | Codex gameshow Gamma CI alignment | 2026-10-18 | CI / Gamma gameshow presentation | P1 | 8 | 646 | 1 | 3 | 0 | Gamma inventory assertions still require the replaced gameshow landing surfaces |
 | WTF-BB-593 | Verified | Codex public API full-send | 2026-08-09 | Release governance / environment inventory | P1 | 8 | 646 | 1 | 3 | 0 | Public API reference tooling is represented in the deterministic environment inventory and the clean candidate passes the canonical inventory check |
 | WTF-BB-592 | Verified | Codex full-send dirty-worktree integration | 2026-08-08 | Pasta Protocol / desktop packaging assets | P1 | 8 | 646 | 1 | 3 | 0 | Icon policy now proves tracked canonical Sugo source and real preparation ownership instead of requiring an ignored dirty-worktree output |
+| WTF-BB-789 | Verified | Codex starter desktop release-gate repair | 2026-11-04 | Desktop OS / shell modularity release gate | P1 | 7 | 702 | 1 | 2 | 0 | Starter desktop shell exceeds its enforced modularity boundary |
 | WTF-BB-615 | Verified | Codex Payroll full-send | 2026-08-18 | Client architecture / release integration | P1 | 7 | 702 | 1 | 2 | 0 | Payroll replay duplicates desktop role normalization and pushes the shell beyond its enforced modularity boundary |
 | WTF-BB-014 | Verified | Codex security hardening pass | 2026-05-30 | Auth / CSRF | P2 | 13 | 191 | 3 | 3 | 4 | Cookie-authenticated write routes have no visible CSRF token layer |
 | WTF-BB-646 | Verified | Codex cockpit wallet sync reconciliation | 2026-09-01 | Authorization / Tezos indexing | P2 | 12 | 284 | 3 | 4 | 2 | Manual cockpit wallet sync accepts arbitrary wallet targets |
@@ -731,6 +732,7 @@ Total: **754** · Open: **9** · Claimed: **42** · In Progress: **16** · Block
 | WTF-BB-096 | Verified | Codex in-app market cart pass | 2026-05-05 | In-app market / listing IDs | P2 | 8 | 646 | 1 | 3 | 1 | Seeded item listing id collides with cart router sentinel |
 | WTF-BB-079 | Verified | Codex deploy hardening pass | 2026-05-03 | Deploy / release metadata | P2 | 8 | 646 | 2 | 3 | 0 | `server-deploy.sh` can inherit a stale `COMMIT_SHA` and mislabel the live revision |
 | WTF-BB-043 | Verified | Codex TV refresh query reconciliation | 2026-09-02 | TV microapp / refresh scale | P2 | 8 | 646 | 2 | 2 | 1 | WTF TV refresh currently sorts all wallet rows randomly |
+| WTF-BB-790 | Verified | Codex starter desktop release-gate repair | 2026-11-04 | Desktop telemetry / shortcut policy ownership | P2 | 7 | 702 | 2 | 2 | 0 | Shortcut deletion policy scans the old desktop file after Wastebasket takes ownership |
 | WTF-BB-774 | Verified | Codex Paul portrait ghost correction | 2026-11-03 | Desktop OS / Paul character silhouette | P2 | 7 | 702 | 2 | 2 | 0 | Paul needs the approved compact portrait ghost and 90-pose desktop animation |
 | WTF-BB-763 | Verified | Codex Horf HORSE social backend | 2026-11-03 | Horf / reward currency and race separation | P2 | 7 | 702 | 1 | 3 | 0 | HORSE reward sends can inflate horse-art race and reciprocal debts |
 | WTF-BB-758 | Verified | Codex coLILseum sponsor-prize rollout | 2026-11-02 | coLILseum / sponsored prize wallet amounts | P2 | 7 | 702 | 1 | 3 | 0 | Free-entry Mainnet XTZ prize includes a paid-room fee in the wallet prompt |
@@ -757,26 +759,26 @@ Total: **754** · Open: **9** · Claimed: **42** · In Progress: **16** · Block
 | WTF-BB-121 | Verified | Codex release-readiness pass | 2026-05-08 | Deploy / DB migrations | P2 | 7 | 702 | 1 | 3 | 0 | Arcade migrations reused existing migration numbers |
 | WTF-BB-118 | Verified | Codex arcade/console split pass | 2026-05-08 | Console catalog / dedupe | P2 | 7 | 702 | 1 | 3 | 0 | DB-backed stock rows duplicated installed Console cartridges |
 | WTF-BB-114 | Verified | Codex arcade/console split pass | 2026-05-08 | Console catalog / manifest parity | P2 | 7 | 702 | 1 | 3 | 0 | Console stock classifier and installed manifest drifted |
-| WTF-BB-783 | Verified | Codex Reggie contestant visibility pass | 2026-11-03 | Desktop OS / Reggie role visibility | P2 | 6 | 734 | 1 | 2 | 0 | Reggie appears and offers challenge guidance to accounts without the contestant role |
-| WTF-BB-779 | Verified | Codex Horf race direction correction | 2026-11-03 | Horf / race presentation | P2 | 6 | 734 | 1 | 2 | 0 | Horse icons run away from the finish line on the Horf race board |
-| WTF-BB-768 | Verified | Codex Horf Neighvember poster pass | 2026-11-03 | Horf / season identity and welcome design | P2 | 6 | 734 | 1 | 2 | 0 | Generic season ticket obscures Neighvember and implies a sale |
-| WTF-BB-757 | Verified | Codex coLILseum sponsor-prize rollout | 2026-11-02 | coLILseum / sponsored prize status | P2 | 6 | 734 | 1 | 2 | 0 | Claimed FA2 prize makes a settled room look unfunded |
-| WTF-BB-748 | Verified | Codex Pasta WTF.ME release-ops continuation | 2026-10-30 | Pasta release / WTF.ME operator instructions | P2 | 6 | 734 | 1 | 2 | 0 | Pasta live readiness points to a missing WTF.ME publish runbook |
-| WTF-BB-685 | Verified | Codex WTFIAP-v0.01 publication | 2026-10-19 | Game rendering / artwork readiness | P2 | 6 | 734 | 1 | 2 | 0 | Queued pointer events draw WTFIAP heroes before artwork decoding completes |
-| WTF-BB-590 | Verified | Codex full-send dirty-worktree integration | 2026-08-08 | Release hygiene / generated assets | P2 | 6 | 734 | 1 | 2 | 0 | Git preserves the exact clean-built Particle Painter wallet chunk while narrowly excluding that generated pattern from whitespace diagnostics |
-| WTF-BB-440 | Verified | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / static policy drift | P2 | 6 | 734 | 1 | 2 | 0 | The aggregate publisher policy still required the obsolete `CAP_BELOW_MINTED` guard after Gnocchi strengthened cap safety to `CAP_BELOW_COMMITTED`, which includes outstanding Ravioli reservations; the expectation now follows the compiled source invariant and the complete 15-test static policy passes |
-| WTF-BB-385 | Verified | Codex full-send cleanup pass | 2026-07-15 | E2E / Gamma Colander selector ownership | P2 | 6 | 734 | 1 | 2 | 0 | Gamma presentation proof targets the canonical contract-address test id while retaining the control-panel and placeholder assertions; the focused Gamma Pasta/Colander story passes |
-| WTF-BB-382 | Verified | Codex full-send cleanup pass | 2026-07-15 | Developer experience / generated configuration docs | P2 | 6 | 734 | 1 | 2 | 0 | The release unit gate caught a stale checked-in environment inventory after final env-reading edits; deterministic regeneration and the inventory check now agree on 1,076 variables across 2,149 source files |
-| WTF-BB-301 | Verified | Codex live user-story gap loop | 2026-06-22 | Public site / SEO and installability | P2 | 6 | 734 | 1 | 2 | 0 | SEO/PWA static discovery paths fell through to SPA HTML; fixed in `6fb5351` with explicit typed robots, sitemap, and web manifest handlers plus inventory-owned regression coverage, then verified live on `https://wtfos.app` |
-| WTF-BB-695 | Verified | Codex October desktop security activation | 2026-10-22 | Desktop release verification / legacy manifest compatibility | P2 | 5 | 749 | 1 | 1 | 0 | Macaroni live verifier incorrectly requires a product field absent from the established direct manifest |
+| WTF-BB-783 | Verified | Codex Reggie contestant visibility pass | 2026-11-03 | Desktop OS / Reggie role visibility | P2 | 6 | 736 | 1 | 2 | 0 | Reggie appears and offers challenge guidance to accounts without the contestant role |
+| WTF-BB-779 | Verified | Codex Horf race direction correction | 2026-11-03 | Horf / race presentation | P2 | 6 | 736 | 1 | 2 | 0 | Horse icons run away from the finish line on the Horf race board |
+| WTF-BB-768 | Verified | Codex Horf Neighvember poster pass | 2026-11-03 | Horf / season identity and welcome design | P2 | 6 | 736 | 1 | 2 | 0 | Generic season ticket obscures Neighvember and implies a sale |
+| WTF-BB-757 | Verified | Codex coLILseum sponsor-prize rollout | 2026-11-02 | coLILseum / sponsored prize status | P2 | 6 | 736 | 1 | 2 | 0 | Claimed FA2 prize makes a settled room look unfunded |
+| WTF-BB-748 | Verified | Codex Pasta WTF.ME release-ops continuation | 2026-10-30 | Pasta release / WTF.ME operator instructions | P2 | 6 | 736 | 1 | 2 | 0 | Pasta live readiness points to a missing WTF.ME publish runbook |
+| WTF-BB-685 | Verified | Codex WTFIAP-v0.01 publication | 2026-10-19 | Game rendering / artwork readiness | P2 | 6 | 736 | 1 | 2 | 0 | Queued pointer events draw WTFIAP heroes before artwork decoding completes |
+| WTF-BB-590 | Verified | Codex full-send dirty-worktree integration | 2026-08-08 | Release hygiene / generated assets | P2 | 6 | 736 | 1 | 2 | 0 | Git preserves the exact clean-built Particle Painter wallet chunk while narrowly excluding that generated pattern from whitespace diagnostics |
+| WTF-BB-440 | Verified | Codex Pasta proof-package pass | 2026-07-18 | Pasta Protocol / static policy drift | P2 | 6 | 736 | 1 | 2 | 0 | The aggregate publisher policy still required the obsolete `CAP_BELOW_MINTED` guard after Gnocchi strengthened cap safety to `CAP_BELOW_COMMITTED`, which includes outstanding Ravioli reservations; the expectation now follows the compiled source invariant and the complete 15-test static policy passes |
+| WTF-BB-385 | Verified | Codex full-send cleanup pass | 2026-07-15 | E2E / Gamma Colander selector ownership | P2 | 6 | 736 | 1 | 2 | 0 | Gamma presentation proof targets the canonical contract-address test id while retaining the control-panel and placeholder assertions; the focused Gamma Pasta/Colander story passes |
+| WTF-BB-382 | Verified | Codex full-send cleanup pass | 2026-07-15 | Developer experience / generated configuration docs | P2 | 6 | 736 | 1 | 2 | 0 | The release unit gate caught a stale checked-in environment inventory after final env-reading edits; deterministic regeneration and the inventory check now agree on 1,076 variables across 2,149 source files |
+| WTF-BB-301 | Verified | Codex live user-story gap loop | 2026-06-22 | Public site / SEO and installability | P2 | 6 | 736 | 1 | 2 | 0 | SEO/PWA static discovery paths fell through to SPA HTML; fixed in `6fb5351` with explicit typed robots, sitemap, and web manifest handlers plus inventory-owned regression coverage, then verified live on `https://wtfos.app` |
+| WTF-BB-695 | Verified | Codex October desktop security activation | 2026-10-22 | Desktop release verification / legacy manifest compatibility | P2 | 5 | 751 | 1 | 1 | 0 | Macaroni live verifier incorrectly requires a product field absent from the established direct manifest |
 | WTF-BB-511 | Verified | Codex wtfOS contract release | - | Rewards / in-app market reconciliation | P3 | 11 | 399 | 3 | 3 | 3 | Numeric TzKT transaction ids were queried as operation hashes |
 | WTF-BB-317 | Verified | Codex challenge automation harness parity verification | 2026-09-02 | E2E / Playwright harness parity | P3 | 7 | 702 | 2 | 3 | 0 | Local Playwright harness returns `/api/admin/challenge-automation/registry` with legacy `actions` instead of production-shaped `rewardActions`, so direct Automation tab proofs need local route stubs or can crash the admin UI under harness data despite the real server route returning `rewardActions`; likely correction is to align `tests/playwright/harness.mjs` with `server/challenges/routes/admin.ts` and add a focused harness contract assertion |
-| WTF-BB-230 | Verified | Codex WTF LIVE chat toolbox pass | 2026-06-09 | WTF LIVE / room chat style controls | P3 | 6 | 734 | 2 | 2 | 0 | WTF LIVE chat now has a compact one-row style toolbox with bounded font, color, 8-14 size, bold/italic, and reset controls, plus sanitized realtime style relay |
-| WTF-BB-735 | Verified | Codex Pasta alpha remaining release gates | 2026-10-27 | E2E / Gamma IPFS Pinning route coverage | P3 | 5 | 749 | 1 | 2 | 0 | Gamma media infrastructure inventory story waits for a retired Own-node setup button |
-| WTF-BB-721 | Verified | Codex October 28 security full send | 2026-10-28 | Dependencies / conditional and build-only leaf advisories | P3 | 5 | 749 | 1 | 1 | 1 | New qs and desktop fast-uri advisory matches have compatible leaf patches |
-| WTF-BB-672 | Verified | Codex profile picture preview repair | 2026-09-03 | Profile / IPFS preview reliability | P3 | 5 | 749 | 1 | 2 | 0 | Profile picture picker bypassed FileShip and had no alternate gateway recovery |
-| WTF-BB-120 | Verified | Codex arcade/console boundary pass | 2026-05-08 | SDK / domain boundaries | P3 | 5 | 749 | 1 | 2 | 0 | Regular Console SDK exposed source compatibility alias |
-| WTF-BB-117 | Verified | Codex arcade/console split pass | 2026-05-08 | Game Studio / domain boundaries | P3 | 5 | 749 | 1 | 2 | 0 | Studio publish handoff leaked Console ownership after Arcade split |
+| WTF-BB-230 | Verified | Codex WTF LIVE chat toolbox pass | 2026-06-09 | WTF LIVE / room chat style controls | P3 | 6 | 736 | 2 | 2 | 0 | WTF LIVE chat now has a compact one-row style toolbox with bounded font, color, 8-14 size, bold/italic, and reset controls, plus sanitized realtime style relay |
+| WTF-BB-735 | Verified | Codex Pasta alpha remaining release gates | 2026-10-27 | E2E / Gamma IPFS Pinning route coverage | P3 | 5 | 751 | 1 | 2 | 0 | Gamma media infrastructure inventory story waits for a retired Own-node setup button |
+| WTF-BB-721 | Verified | Codex October 28 security full send | 2026-10-28 | Dependencies / conditional and build-only leaf advisories | P3 | 5 | 751 | 1 | 1 | 1 | New qs and desktop fast-uri advisory matches have compatible leaf patches |
+| WTF-BB-672 | Verified | Codex profile picture preview repair | 2026-09-03 | Profile / IPFS preview reliability | P3 | 5 | 751 | 1 | 2 | 0 | Profile picture picker bypassed FileShip and had no alternate gateway recovery |
+| WTF-BB-120 | Verified | Codex arcade/console boundary pass | 2026-05-08 | SDK / domain boundaries | P3 | 5 | 751 | 1 | 2 | 0 | Regular Console SDK exposed source compatibility alias |
+| WTF-BB-117 | Verified | Codex arcade/console split pass | 2026-05-08 | Game Studio / domain boundaries | P3 | 5 | 751 | 1 | 2 | 0 | Studio publish handoff leaked Console ownership after Arcade split |
 | WTF-BB-513 | Verified | Codex wtfOS contract release | - | Club Dues / contract authority | P4 | 13 | 191 | 4 | 4 | 4 | Club Dues V1 had immutable legacy authority and payable admin traps |
 | WTF-BB-154 | Archived | Codex dirty-worktree duplicate reconciliation | 2026-09-01 | Build / dirty worktree isolation | P1 | 12 | 284 | 3 | 4 | 1 | Unrelated dirty Mastodon/Subdomains work can block scoped W verification |
 | WTF-BB-386 | Archived | Codex full-send cleanup pass | 2026-07-15 | Pasta Suite Desktop / native Colander | P1 | 11 | 399 | 3 | 4 | 0 | A failure captured while the same generated source was still changing could not reproduce on the settled tree; fresh asset preparation proves native project persistence, contract detection, sale configuration, and attachment, with runtime-error monitoring added |
@@ -13820,6 +13822,21 @@ Copy this when adding a new issue:
 - Local verification:
   - Icon policy passes 5/5 and Pasta Suite package policy passes 6/6. Real preparation produced a byte-identical Pasta Suite SVG with SHA-256 `a10842aec3ff62efbebfe27f92164827702470cd3f27f2f1ca94e4cc5d20f361`; the ignored output was removed from the candidate afterward.
 
+### WTF-BB-789 - Starter desktop shell exceeds its enforced modularity boundary
+
+- Category: Desktop OS / shell modularity release gate
+- Priority: P1
+- Status: Verified
+- Owner/Session: Codex starter desktop release-gate repair
+- Last touched: 2026-11-04
+- Score: C1 + F2 + S0 + P1(4) = 7
+- Evidence (2026-11-04): PR #64 Quality Gates runs 41745009617 and 41744990101 on head 0bcaa7be failed `client/src/features/desktop/desktop-shell-modularity-policy.test.ts`: `Desktop.tsx has 1544 lines`. The project policy requires the shell to remain below 1,500 lines.
+- Why it matters: The starter release cannot pass the aggregate unit gate, and onboarding/Wastebasket coordination has grown inside the central shell rather than its desktop feature modules. Historical WTF-BB-615 closed an earlier, distinct Payroll-triggered breach of the same architectural contract.
+- Correction direction: Move starter icon layout or Wastebasket coordination into a desktop-owned module while preserving the existing shell imports and behavior; keep the policy threshold unchanged.
+- Verification idea: Run the focused desktop shell modularity policy and starter/Wastebasket behavior tests, then require exact-head Quality Gates to pass before production promotion.
+- Correction (2026-11-04): Extracted visible desktop icon layout reconciliation into `client/src/features/desktop/desktop-icon-layout.ts` and imported it from the shell. `Desktop.tsx` now has 1,489 lines by the policy test’s newline count, below the unchanged 1,500-line boundary.
+- Verification (2026-11-04): `./node_modules/.bin/tsx --test client/src/features/desktop/desktop-shell-modularity-policy.test.ts server/routes/desktop-client-event-policy.test.ts` passed 5/5, including all three shell modularity assertions. The production build passed in the release worktree. Exact-head PR Quality Gates remain a release gate after commit and push.
+
 ### WTF-BB-615 - Payroll replay duplicates desktop role normalization and pushes the shell beyond its enforced modularity boundary
 
 - Category: Client architecture / release integration
@@ -15836,6 +15853,21 @@ Copy this when adding a new issue:
 - Verification (2026-09-02):
   - Focused policy suite passes 2/2, proving the refresh source contains no SQL `RANDOM()`, the deterministic order is present, and migration/schema index definitions agree. `1ac70168` is an ancestor of live production commit `1238a78d`; public health is alive.
   - The unbounded random-sort condition described by this record is absent, so WTF-BB-043 is Verified.
+
+### WTF-BB-790 - Shortcut deletion policy scans the old desktop file after Wastebasket takes ownership
+
+- Category: Desktop telemetry / shortcut policy ownership
+- Priority: P2
+- Status: Verified
+- Owner/Session: Codex starter desktop release-gate repair
+- Last touched: 2026-11-04
+- Score: C2 + F2 + S0 + P2(3) = 7
+- Evidence (2026-11-04): PR #64 Quality Gates runs 41745009617 and 41744990101 on head 0bcaa7be failed `server/routes/desktop-client-event-policy.test.ts` with `desktop.shortcut.deleted must still be emitted by the desktop client`. The test scans only `client/src/components/layout/Desktop.tsx`, while permanent deletion now emits that canonical event from `client/src/pages/Wastebasket.tsx`; the server allowlist and interaction inventory still declare it.
+- Why it matters: The aggregate unit gate reports a missing event despite the new owning UI emitting it, and the stale source assertion no longer protects the real permanent-delete action. Historical WTF-BB-549 addressed a different server normalization gap for the same handle.
+- Correction direction: Make the policy inspect the actual Wastebasket permanent-delete emitter as well as desktop-owned shortcut/context-menu actions, and retain the explicit server allowlist and normalized handle.
+- Verification idea: Run the focused desktop client event policy, inventory coverage, and a Wastebasket permanent-delete behavior check; require exact-head Quality Gates before production promotion.
+- Correction (2026-11-04): The client-event policy now checks `client/src/pages/Wastebasket.tsx` for restore, permanent delete, and empty events, while checking `Desktop.tsx` for context-menu, create, open, move, and trash events. The server allowlist remains explicit and unknown names still fall back to the generic click handle.
+- Verification (2026-11-04): The focused two-event-policy assertions passed within the same 5/5 command above. `npm run test:e2e:inventory:coverage` passed with 284/284 inventory rows, 1,058/1,058 normalized handles, 137/137 route fixtures, and 16/16 top-level concerns. The existing Wastebasket browser flow in WTF-BB-784 covers permanent deletion. Exact-head PR Quality Gates remain a release gate after commit and push.
 
 ### WTF-BB-774 - Paul needs the approved compact portrait ghost and 90-pose desktop animation
 

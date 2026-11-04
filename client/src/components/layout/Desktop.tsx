@@ -38,10 +38,13 @@ import {
   buildDesktopIconDefs,
   clampIconPosition,
   DraggableIcon,
+  BlangDesktopIcon,
   ICON_H,
   ICON_W,
+  ShortcutGlyph,
   type DesktopIconDef,
 } from "../../features/desktop/DesktopIcons";
+import { reconcileVisibleIconLayout } from "../../features/desktop/desktop-icon-layout";
 import { SundayGrass } from "../../features/desktop/SundayGrass";
 import { PaulWhoIsAClippy } from "../../features/desktop/PaulWhoIsAClippy";
 import { useDesktopIconPhysics } from "../../features/desktop/useDesktopPhysics";
@@ -113,64 +116,6 @@ const DISABLED_DESKTOP_APPS = Object.fromEntries(
 ) as Record<DesktopAppKey, boolean>;
 
 const DESKTOP_SETTINGS_QUERY_KEY = ["desktop", "settings"] as const;
-
-const ShortcutGlyph = styled.span`
-  width: 30px;
-  height: 30px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid #101010;
-  background:
-    linear-gradient(135deg, transparent 0 68%, #ffffff 68% 76%, #000080 76% 100%),
-    #d7d7d7;
-  color: #101010;
-  font-family: "MS Sans Serif", "Segoe UI", Tahoma, sans-serif;
-  font-size: 14px;
-  font-weight: 700;
-  line-height: 1;
-  box-shadow: inset 1px 1px 0 #ffffff, inset -1px -1px 0 #808080;
-`;
-
-const BlangDesktopIcon = styled.img`
-  width: 36px;
-  height: 36px;
-  object-fit: contain;
-  display: block;
-  margin-bottom: 0;
-  filter: drop-shadow(1px 1px 0 rgba(0, 0, 0, 0.45));
-`;
-
-function reconcileVisibleIconLayout(
-  current: DesktopIconLayout,
-  visibleIcons: DesktopIconDef[],
-  savedLayout: DesktopIconLayout | undefined,
-  surfaceSize: { width: number; height: number },
-  preferSaved: boolean
-): DesktopIconLayout {
-  const next: DesktopIconLayout = {};
-  const hiddenKeys = new Set(Object.keys(current));
-  let changed = false;
-
-  for (const def of visibleIcons) {
-    hiddenKeys.delete(def.key);
-    const defaultPosition = { x: def.defaultX, y: def.defaultY };
-    const source = preferSaved
-      ? savedLayout
-        ? savedLayout[def.key] ?? defaultPosition
-        : current[def.key] ?? defaultPosition
-      : current[def.key] ?? savedLayout?.[def.key] ?? defaultPosition;
-    const position = clampIconPosition(source, surfaceSize);
-    next[def.key] = position;
-    const previous = current[def.key];
-    if (!previous || previous.x !== position.x || previous.y !== position.y) {
-      changed = true;
-    }
-  }
-
-  if (hiddenKeys.size > 0) changed = true;
-  return changed ? next : current;
-}
 
 const DesktopContainer = styled.div<{
   $appearance: DesktopAppearance;
