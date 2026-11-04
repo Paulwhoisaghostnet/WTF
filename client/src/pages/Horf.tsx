@@ -1,5 +1,5 @@
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
 import styled from "styled-components";
 import { HorfFrame } from "../features/horf/HorfFrame";
@@ -15,14 +15,16 @@ import { HorfTraderStatus } from "../features/horf/HorfTraderStatus";
 import { HorfPersonalStable } from "../features/horf/HorfPersonalStable";
 import { HorfPublicTraderProfile, parseProfile } from "../features/horf/HorfTraderProfile";
 import { findHorfMintSeason } from "../features/horf/mint-season";
+import { approveHorseDirectly } from "../features/horf/marshal-approval";
 import { HorfInspectorDesk } from "../features/horf/HorfInspectorDesk";
+import { resolveHorfHorseArt, resolveHorfHorseVideo, type HorfHorseMedia } from "../features/horf/horse-media";
 import { formatHorseAmount } from "../features/horf/recipient-input";
 import { objktTokenUrl } from "../features/horf/token-input";
 import { useHorfWallet } from "../features/horf/useHorfWallet";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth-context";
 import { logClientSystemEvent } from "../lib/system-log";
-import { advanceResolvedMediaFallback, resolveTokenThumbnail } from "../lib/media-resolve";
+import { advanceResolvedMediaFallback } from "../lib/media-resolve";
 import { useWindowManager, WindowPathContext } from "../lib/window-context";
 
 const CURRENT_SEASON_KEY = "current-2026";
@@ -103,6 +105,8 @@ type PublicOffer = {
   acceptedTokenPolicy: "marshal_only" | "any_qualifying";
   name: string | null;
   image: string | null;
+  artifactUri?: string | null;
+  mime?: string | null;
   ownerBalance?: string | null;
   viewerBalance?: string | null;
 };
@@ -113,10 +117,13 @@ type PublicHeldHorse = {
   balance: string;
   name: string | null;
   image: string | null;
+  artifactUri?: string | null;
+  mime?: string | null;
   description: string | null;
   creatorAddress: string | null;
   mintedAt?: string | null;
   viewerBalance?: string | null;
+  approvedForMarshalsMarket?: boolean;
 };
 
 type PublicHorsePage = {
@@ -550,7 +557,7 @@ const Runner = styled.div`
   margin-top: -24px;
   color: var(--horf-gold);
   transition: left 700ms ease-out;
-  span { display: block; width: 58px; height: 48px; font-size: 35px; line-height: 48px; text-align: center; filter: drop-shadow(0 3px 2px rgba(73, 55, 37, .16)); }
+  span { display: block; width: 58px; height: 48px; font-size: 35px; line-height: 48px; text-align: center; transform: scaleX(-1); filter: drop-shadow(0 3px 2px rgba(73, 55, 37, .16)); }
   @media (prefers-reduced-motion: reduce) { transition: none; }
 `;
 
@@ -662,13 +669,41 @@ const ProfileHorseCard = styled.article`
   border-radius: 17px;
   background: var(--horf-surface);
   .art { display: grid; place-items: center; height: 205px; background: var(--horf-field); }
-  img { display: block; width: 100%; height: 100%; object-fit: contain; }
+  .art img, .art video { display: block; width: 100%; height: 100%; object-fit: contain; }
+  .art .missing-preview { padding: 20px; color: var(--horf-muted); font-size: 12px; text-align: center; }
+  .art-open { display: block; width: 100%; height: 100%; padding: 0; border: 0; background: transparent; cursor: zoom-in; }
   .copy { padding: 14px 16px 17px; }
   h3 { margin: 0 0 8px; color: var(--horf-ink); font: 750 19px/1.2 var(--horf-display, sans-serif); overflow-wrap: anywhere; }
+  h3 button { padding: 0; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+  h3 button:hover { text-decoration: underline; text-underline-offset: 3px; }
+  button:focus-visible { outline: 3px solid var(--horf-focus); outline-offset: 3px; }
   p { margin: 0 0 8px; color: var(--horf-muted); font-size: 12px; line-height: 1.45; }
   .mint-badge { display: inline-flex; align-items: center; gap: 5px; max-width: 100%; margin: 0 0 9px; padding: 3px 8px 3px 5px; border: 1px solid #856838; border-radius: 999px; background: #392f20; color: #f0d39a; font: 750 11px/1.25 var(--horf-font); }
   .mint-badge img { width: 15px; height: 15px; flex: 0 0 15px; object-fit: contain; }
   a { font-size: 12px; font-weight: 800; }
+  ${Action} { width: 100%; min-height: 38px; margin-top: 11px; }
+`;
+
+const ProfileHorseDetail = styled.dialog`
+  width: min(980px, calc(100vw - 28px));
+  max-height: calc(100vh - 28px);
+  overflow: auto;
+  padding: clamp(18px, 3vw, 30px);
+  border: 1px solid var(--horf-line);
+  border-radius: 16px;
+  background: var(--horf-surface);
+  color: var(--horf-ink);
+  box-shadow: 0 28px 70px #081512bd;
+  &::backdrop { background: #07120fcb; backdrop-filter: blur(5px); }
+  .detail-head { display: flex; justify-content: space-between; align-items: start; gap: 16px; margin-bottom: 18px; }
+  .detail-head h2 { margin: 4px 0 0; font: 750 clamp(25px, 4vw, 40px)/1.1 var(--horf-display, sans-serif); }
+  .detail-grid { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 24px; }
+  .detail-art { display: grid; place-items: center; min-height: 300px; max-height: 68vh; border-radius: 12px; overflow: hidden; background: var(--horf-field); }
+  .detail-art img, .detail-art video { display: block; width: 100%; max-height: 68vh; object-fit: contain; }
+  .detail-copy p { line-height: 1.5; overflow-wrap: anywhere; }
+  .detail-copy a { color: var(--horf-teal); }
+  button:focus-visible, a:focus-visible { outline: 3px solid var(--horf-focus); outline-offset: 3px; }
+  @media (max-width: 650px) { .detail-grid { grid-template-columns: 1fr; } .detail-art { min-height: 220px; max-height: 40vh; } .detail-art img, .detail-art video { max-height: 40vh; } }
 `;
 
 const HorseTestList = styled.ul`
@@ -785,11 +820,19 @@ function TraderLink({ address, name }: { address: string; name?: string | null }
   );
 }
 
-function ProfileArt({ image, name }: { image: string | null; name: string }) {
-  const resolved = image ? resolveTokenThumbnail({ thumbnail: image }) : null;
-  return <img src={resolved?.src ?? "/horf-art/horse-gallop-photo.jpg"} alt={`${name} horse token artwork`} onError={(event) => {
-    if (!resolved || !advanceResolvedMediaFallback(event.currentTarget, resolved)) event.currentTarget.src = "/horf-art/horse-gallop-photo.jpg";
+function ProfileArt({ media, name }: { media: HorfHorseMedia; name: string }) {
+  const [videoFailed, setVideoFailed] = useState(false);
+  const [imageFailed, setImageFailed] = useState(false);
+  useEffect(() => { setVideoFailed(false); setImageFailed(false); }, [media.image, media.artifactUri, media.mime]);
+  const video = resolveHorfHorseVideo(media);
+  const art = resolveHorfHorseArt(media);
+  if (video && !videoFailed) return <video src={video.src} controls playsInline preload="metadata" aria-label={`${name} video artwork`} onError={(event) => {
+    if (!advanceResolvedMediaFallback(event.currentTarget, video)) setVideoFailed(true);
   }} />;
+  if (art && !imageFailed) return <img src={art.src} alt={`${name} horse token artwork`} loading="lazy" onError={(event) => {
+    if (!advanceResolvedMediaFallback(event.currentTarget, art)) setImageFailed(true);
+  }} />;
+  return <span className="missing-preview">Token preview unavailable</span>;
 }
 
 function TraderListPanel({ title, description, rows, empty, region }: {
@@ -819,6 +862,7 @@ function TraderListPanel({ title, description, rows, empty, region }: {
 
 export function Horf() {
   const { address, isGuest, isConnecting, walletError, guestSessionLoading, localWalletAddress, connectWallet, disconnectWallet } = useHorfWallet();
+  const qc = useQueryClient();
   const [location, navigate] = useLocation();
   const { isAdmin } = useAuth();
   const windowManager = useWindowManager();
@@ -855,6 +899,11 @@ export function Horf() {
   const [seasonManifest, setSeasonManifest] = useState<HorfSeason[]>([]);
   const [statusAddress, setStatusAddress] = useState<string | null>(null);
   const [profileTab, setProfileTab] = useState<"for-trade" | "all-horses">("for-trade");
+  const [selectedProfileHorse, setSelectedProfileHorse] = useState<PublicHeldHorse | PublicOffer | null>(null);
+  const profileHorseDialogRef = useRef<HTMLDialogElement>(null);
+  const [profileApprovalBusy, setProfileApprovalBusy] = useState(false);
+  const [profileApprovalStatus, setProfileApprovalStatus] = useState<string | null>(null);
+  const [profileApprovalResults, setProfileApprovalResults] = useState<Record<string, { status: "approved" | "failed"; message: string }>>({});
   const query = useQuery({
     queryKey: ["horf", "season", selectedSeasonKey, address],
     queryFn: async () => {
@@ -902,6 +951,12 @@ export function Horf() {
     enabled: routeSection === "profile" && Boolean(validProfileAddress) && profileTab === "all-horses",
     refetchOnWindowFocus: true,
   });
+  const profileMarshalQuery = useQuery({
+    queryKey: ["horf", "inspector-status", isGuest],
+    queryFn: () => api.get<{ active: boolean; role: "horf_marshal" | "admin" | null }>("/api/horf/inspectors/status"),
+    enabled: routeSection === "profile",
+    refetchOnWindowFocus: true,
+  });
   const profileIdentityQuery = useQuery({
     queryKey: ["horf", "trader-profile", validProfileAddress, profileSeasonKey],
     queryFn: () => api.get<unknown>(`/api/horf/traders/${encodeURIComponent(validProfileAddress!)}/profile?season=${encodeURIComponent(profileSeasonKey)}`).then(parseProfile),
@@ -932,6 +987,8 @@ export function Horf() {
   }, [leaderboard, directoryOffersQuery.data?.offers]);
   const profileRider = leaderboard.find((row) => row.address === validProfileAddress);
   const profileHorses = profileHorsesQuery.data?.pages.flatMap((page) => page.items) ?? [];
+  const selectedProfileContract = selectedProfileHorse && ("contract" in selectedProfileHorse ? selectedProfileHorse.contract : selectedProfileHorse.tokenContract);
+  const selectedProfileName = selectedProfileHorse?.name || (selectedProfileHorse ? `Horse token #${selectedProfileHorse.tokenId}` : "Horse card");
   const leadTrades = leaderboard.reduce((lead, row) => Math.max(lead, row.trades), 1);
   const personal = address && data?.currentUser?.address === address
     ? data.currentUser
@@ -983,7 +1040,19 @@ export function Horf() {
     }
   }, [address, data, personal, routeSection]);
 
-  useEffect(() => { setProfileTab("for-trade"); }, [profileAddress]);
+  useEffect(() => {
+    setProfileTab("for-trade");
+    setSelectedProfileHorse(null);
+    setProfileApprovalStatus(null);
+    setProfileApprovalResults({});
+  }, [profileAddress]);
+
+  useEffect(() => {
+    const dialog = profileHorseDialogRef.current;
+    if (!dialog) return;
+    if (selectedProfileHorse && !dialog.open) dialog.showModal();
+    if (!selectedProfileHorse && dialog.open) dialog.close();
+  }, [selectedProfileHorse]);
 
   useEffect(() => {
     const key = `${routeSection}:${profileAddress ?? ""}:${selectedSeasonKey}`;
@@ -1012,6 +1081,73 @@ export function Horf() {
     if (tab === profileTab) return;
     setProfileTab(tab);
     logClientSystemEvent({ eventType: "horf.trader_profile.tab_selected", message: "Horf trader horses tab selected", metadata: { address: profileAddress, tab } });
+  }
+
+  async function approveProfileHorse(horse: PublicHeldHorse) {
+    if (!validProfileAddress || !profileMarshalQuery.data?.active || profileApprovalBusy) return;
+    const key = `${horse.contract}/${horse.tokenId}`;
+    if (horse.approvedForMarshalsMarket || profileApprovalResults[key]?.status === "approved") return;
+    setProfileApprovalBusy(true);
+    setProfileApprovalStatus(`Checking ${horse.name || `horse #${horse.tokenId}`}…`);
+    try {
+      const inspectionId = await approveHorseDirectly(horse);
+      setProfileApprovalResults((current) => ({ ...current, [key]: { status: "approved", message: "Marshal approved" } }));
+      setProfileApprovalStatus(`${horse.name || `Horse #${horse.tokenId}`} is Marshal approved.`);
+      await qc.invalidateQueries({ queryKey: ["horf", "trader-profile-horses", validProfileAddress] });
+      logClientSystemEvent({ eventType: "horf.inspection.decided", message: "Horf Marshal approved a trader profile horse directly", metadata: { inspectionId, decision: "approve", mode: "direct", tokenContract: horse.contract, tokenId: horse.tokenId, profileAddress: validProfileAddress } });
+    } catch (cause) {
+      const message = cause instanceof Error ? cause.message : "This horse could not be approved.";
+      setProfileApprovalResults((current) => ({ ...current, [key]: { status: "failed", message } }));
+      setProfileApprovalStatus(`Horse #${horse.tokenId}: ${message}`);
+    } finally { setProfileApprovalBusy(false); }
+  }
+
+  async function approveAllProfileHorses() {
+    if (!validProfileAddress || !profileMarshalQuery.data?.active || profileApprovalBusy) return;
+    setProfileApprovalBusy(true);
+    setProfileApprovalStatus("Checking every holdings page…");
+    setProfileApprovalResults({});
+    try {
+      const allHorses = new Map<string, PublicHeldHorse>();
+      let offset = 0;
+      while (true) {
+        const page: PublicHorsePage = await api.get<PublicHorsePage>(`/api/horf/traders/${encodeURIComponent(validProfileAddress)}/horses?offset=${offset}&refresh=1`);
+        if (page.address !== validProfileAddress || !Array.isArray(page.items) || !page.pagination ||
+            typeof page.pagination.hasMore !== "boolean" || !Number.isSafeInteger(page.pagination.nextOffset)) {
+          throw new Error("The trader’s horse pages changed during the scan. Refresh and try again.");
+        }
+        for (const horse of page.items) allHorses.set(`${horse.contract}/${horse.tokenId}`, horse);
+        setProfileApprovalStatus(`Checking every holdings page… ${allHorses.size} horses found.`);
+        if (!page.pagination.hasMore) break;
+        if (page.pagination.nextOffset <= offset) throw new Error("The trader’s horse pages stopped advancing. Refresh and try again.");
+        offset = page.pagination.nextOffset;
+      }
+      const horses = [...allHorses.values()];
+      const toApprove = horses.filter((horse) => !horse.approvedForMarshalsMarket);
+      let approved = 0;
+      let failed = 0;
+      for (const [index, horse] of toApprove.entries()) {
+        const key = `${horse.contract}/${horse.tokenId}`;
+        setProfileApprovalStatus(`Approving ${index + 1} of ${toApprove.length} horses… ${approved} approved, ${failed} failed.`);
+        try {
+          const inspectionId = await approveHorseDirectly(horse);
+          approved += 1;
+          setProfileApprovalResults((current) => ({ ...current, [key]: { status: "approved", message: "Marshal approved" } }));
+          logClientSystemEvent({ eventType: "horf.inspection.decided", message: "Horf Marshal approved a trader profile horse directly", metadata: { inspectionId, decision: "approve", mode: "direct", tokenContract: horse.contract, tokenId: horse.tokenId, profileAddress: validProfileAddress } });
+        } catch (cause) {
+          failed += 1;
+          setProfileApprovalResults((current) => ({ ...current, [key]: { status: "failed", message: cause instanceof Error ? cause.message : "Approval failed" } }));
+        }
+      }
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["horf", "trader-profile-horses", validProfileAddress] }),
+        qc.invalidateQueries({ queryKey: ["horf", "open-range"] }),
+        qc.invalidateQueries({ queryKey: ["horf", "marshal-open-range"] }),
+      ]);
+      setProfileApprovalStatus(`Checked all ${horses.length} held horses: ${approved} approved, ${horses.length - toApprove.length} already approved, ${failed} failed.`);
+    } catch (cause) {
+      setProfileApprovalStatus(cause instanceof Error ? cause.message : "Could not finish checking this trader’s horses. Review each card before retrying.");
+    } finally { setProfileApprovalBusy(false); }
   }
 
   useEffect(() => {
@@ -1174,26 +1310,47 @@ export function Horf() {
                   {profileOffersQuery.data.offers.map((offer) => {
                     const name = offer.name || `Horse token #${offer.tokenId}`;
                     return <ProfileHorseCard key={offer.id} data-horf-profile-horse>
-                      <div className="art"><ProfileArt image={offer.image} name={name} /></div>
-                      <div className="copy"><h3>{name}</h3><p>{offer.amount} {offer.amount === "1" ? "edition" : "editions"} offered · {offer.acceptedTokenPolicy === "marshal_only" ? "Marshal-approved horse wanted" : "Any qualifying horse welcome"}</p><p data-horf-edition-holdings>{holdingsText(offer.ownerBalance, offer.viewerBalance, Boolean(address))}</p><a href={objktTokenUrl(offer.tokenContract, offer.tokenId)} target="_blank" rel="noopener noreferrer">View token on Objkt ↗</a></div>
+                      <div className="art">{resolveHorfHorseVideo(offer) ? <ProfileArt media={offer} name={name} /> : <button className="art-open" type="button" aria-label={`View ${name} horse card`} onClick={() => setSelectedProfileHorse(offer)}><ProfileArt media={offer} name={name} /></button>}</div>
+                      <div className="copy"><h3><button type="button" onClick={() => setSelectedProfileHorse(offer)}>{name}</button></h3><p>{offer.amount} {offer.amount === "1" ? "edition" : "editions"} offered · {offer.acceptedTokenPolicy === "marshal_only" ? "Marshal-approved horse wanted" : "Any qualifying horse welcome"}</p><p data-horf-edition-holdings>{holdingsText(offer.ownerBalance, offer.viewerBalance, Boolean(address))}</p><a href={objktTokenUrl(offer.tokenContract, offer.tokenId)} target="_blank" rel="noopener noreferrer">View token on Objkt ↗</a><Action data-horf-profile-view-horse type="button" onClick={() => setSelectedProfileHorse(offer)}>View horse card</Action></div>
                     </ProfileHorseCard>;
                   })}
                 </ProfileHorseGrid> : <LedgerPanel><h3>No trade signs up</h3><p>This rider has no horses offered for direct trade on Horf right now.</p></LedgerPanel>}
               </> : <>
                 <p>Every currently held token that passes Horf’s <Link href="/horf/info">Is It a Horse? Test</Link>, across mint dates. Balances come from Tezos Mainnet.</p>
+                {profileMarshalQuery.data?.active && <Action data-horf-profile-approve-all type="button" disabled={profileApprovalBusy} onClick={() => void approveAllProfileHorses()}>{profileApprovalBusy ? "Checking the herd…" : "Approve all held horses"}</Action>}
+                {profileApprovalStatus && <p data-horf-profile-approval-progress role="status" aria-live="polite">{profileApprovalStatus}</p>}
+                {Object.entries(profileApprovalResults).filter(([, result]) => result.status === "failed").map(([key, result]) => <Warning key={key} data-horf-profile-approval-failure role="alert">{key}: {result.message}</Warning>)}
                 {profileHorsesQuery.isPending ? <p>Checking this rider’s stable…</p> : profileHorsesQuery.isError ? <Warning role="alert">This rider’s horses could not be loaded. Try again shortly.</Warning> : <>
                   {profileHorses.length > 0 ? <ProfileHorseGrid>{profileHorses.map((horse) => {
                     const name = horse.name || `Horse token #${horse.tokenId}`;
                     const mintedSeason = findHorfMintSeason(horse, availableSeasons);
+                    const approval = profileApprovalResults[`${horse.contract}/${horse.tokenId}`];
+                    const isApproved = horse.approvedForMarshalsMarket || approval?.status === "approved";
                     return <ProfileHorseCard key={`${horse.contract}:${horse.tokenId}`} data-horf-profile-horse>
-                      <div className="art"><ProfileArt image={horse.image} name={name} /></div>
-                      <div className="copy"><h3>{name}</h3>{mintedSeason && <span className="mint-badge" data-horf-mint-badge><img src="/horf-art/horseshoe.svg" alt="" aria-hidden="true" />{mintedSeason.label}</span>}<p data-horf-edition-holdings>{holdingsText(horse.balance, horse.viewerBalance, Boolean(address))}</p><p>{shortAddress(horse.contract)} / #{horse.tokenId}</p><a href={objktTokenUrl(horse.contract, horse.tokenId)} target="_blank" rel="noopener noreferrer">View token on Objkt ↗</a></div>
+                      <div className="art">{resolveHorfHorseVideo(horse) ? <ProfileArt media={horse} name={name} /> : <button className="art-open" type="button" aria-label={`View ${name} horse card`} onClick={() => setSelectedProfileHorse(horse)}><ProfileArt media={horse} name={name} /></button>}</div>
+                      <div className="copy"><h3><button type="button" onClick={() => setSelectedProfileHorse(horse)}>{name}</button></h3>{mintedSeason && <span className="mint-badge" data-horf-mint-badge><img src="/horf-art/horseshoe.svg" alt="" aria-hidden="true" />{mintedSeason.label}</span>}<p data-horf-edition-holdings>{holdingsText(horse.balance, horse.viewerBalance, Boolean(address))}</p><p>{shortAddress(horse.contract)} / #{horse.tokenId}</p><a href={objktTokenUrl(horse.contract, horse.tokenId)} target="_blank" rel="noopener noreferrer">View token on Objkt ↗</a><Action data-horf-profile-view-horse type="button" onClick={() => setSelectedProfileHorse(horse)}>View horse card</Action>{isApproved && <p data-horf-profile-approved>✦ Marshal approved</p>}{profileMarshalQuery.data?.active && !isApproved && <Action data-horf-profile-approve-horse type="button" disabled={profileApprovalBusy} onClick={() => void approveProfileHorse(horse)}>Approve this horse</Action>}</div>
                     </ProfileHorseCard>;
                   })}</ProfileHorseGrid> : <LedgerPanel><h3>No qualifying horses on the scanned pages</h3><p>{profileHorsesQuery.hasNextPage ? "This wallet has more editions to check. Load the next page to keep looking." : "There are no current balances that pass the horse test for this wallet."}</p></LedgerPanel>}
                   {profileHorsesQuery.hasNextPage && <Action type="button" onClick={() => void profileHorsesQuery.fetchNextPage()} disabled={profileHorsesQuery.isFetchingNextPage}>{profileHorsesQuery.isFetchingNextPage ? "Rounding up more horses…" : "Load more horses"}</Action>}
                 </>}
               </>}
             </div>
+            <ProfileHorseDetail ref={profileHorseDialogRef} data-horf-profile-horse-detail aria-label="Horse card" onClose={() => setSelectedProfileHorse(null)} onClick={(event) => { if (event.target === event.currentTarget) setSelectedProfileHorse(null); }}>
+              {selectedProfileHorse && selectedProfileContract && <>
+                <div className="detail-head"><div><small>🐎 Horf horse card · {validProfileAddress}</small><h2>{selectedProfileName}</h2></div><Action type="button" onClick={() => setSelectedProfileHorse(null)}>Close horse card</Action></div>
+                <div className="detail-grid"><div className="detail-art"><ProfileArt key={`${selectedProfileContract}/${selectedProfileHorse.tokenId}`} media={selectedProfileHorse} name={selectedProfileName} /></div><div className="detail-copy">
+                  <p><strong>Token:</strong> {selectedProfileContract} / #{selectedProfileHorse.tokenId}</p>
+                  {"balance" in selectedProfileHorse && <p><strong>Trader holds:</strong> {selectedProfileHorse.balance} {selectedProfileHorse.balance === "1" ? "edition" : "editions"}</p>}
+                  {"amount" in selectedProfileHorse && <p><strong>For trade:</strong> {selectedProfileHorse.amount} {selectedProfileHorse.amount === "1" ? "edition" : "editions"} · {selectedProfileHorse.acceptedTokenPolicy === "marshal_only" ? "Marshal-approved horse wanted" : "Any qualifying horse welcome"}</p>}
+                  {"mintedAt" in selectedProfileHorse && selectedProfileHorse.mintedAt && <p><strong>Minted:</strong> {new Date(selectedProfileHorse.mintedAt).toLocaleDateString()}</p>}
+                  {"creatorAddress" in selectedProfileHorse && selectedProfileHorse.creatorAddress && <p><strong>Creator:</strong> {selectedProfileHorse.creatorAddress}</p>}
+                  {"description" in selectedProfileHorse && selectedProfileHorse.description && <p>{selectedProfileHorse.description}</p>}
+                  {"contract" in selectedProfileHorse && (selectedProfileHorse.approvedForMarshalsMarket || profileApprovalResults[`${selectedProfileHorse.contract}/${selectedProfileHorse.tokenId}`]?.status === "approved") && <p>✦ Marshal approved</p>}
+                  <p><a href={objktTokenUrl(selectedProfileContract, selectedProfileHorse.tokenId)} target="_blank" rel="noopener noreferrer">View exact token on Objkt ↗</a></p>
+                  {"contract" in selectedProfileHorse && profileMarshalQuery.data?.active && !selectedProfileHorse.approvedForMarshalsMarket && profileApprovalResults[`${selectedProfileHorse.contract}/${selectedProfileHorse.tokenId}`]?.status !== "approved" && <Action data-horf-profile-detail-approve type="button" disabled={profileApprovalBusy} onClick={() => void approveProfileHorse(selectedProfileHorse)}>Approve this horse</Action>}
+                </div></div>
+              </>}
+            </ProfileHorseDetail>
           </> : <LedgerPanel><h3>That rider’s address is off trail</h3><p>Choose a Tezos wallet from the trader directory to see its horse profile.</p><Link href={`/horf/traders?season=${encodeURIComponent(selectedSeasonKey)}`}>Return to other traders</Link></LedgerPanel>}
         </Section>}
 

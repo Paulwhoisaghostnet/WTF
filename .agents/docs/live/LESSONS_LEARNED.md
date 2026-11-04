@@ -14089,6 +14089,36 @@ When shop and board are visible together, contextual help must prioritize a sele
 
 ---
 
+## 2026-11-03 - Show the exact token artifact before a Marshal approves a horse
+
+**What happened**: Marshal patrol reused Objkt thumbnails that can represent an entire collection. Distinct tokens appeared to show the same horse, and their tiny previews made individual inspection impractical. The only approval path also forced a full evidence screen and manual reason, even when a Marshal wanted to approve a known horse directly.
+
+**Why it mattered**: Human approval depends on seeing the token being approved. A collection thumbnail could mislead a Marshal about token identity, while the review-only UI blocked the requested trust-based workflow.
+
+**Rule**: Resolve each horse by contract and token ID to its own artifact URI through the shared wtfOS preview route, show image or video at inspection size, and keep an explicit token key beside it. A direct-approval button may skip the evidence screen, but it must reuse the server’s Marshal role, fresh horse eligibility, FA2 identity, and durable decision checks; batch approval must scan every holdings page and report individual failures.
+
+---
+
+## 2026-11-03 - Face race horses toward their finish line
+
+**What happened**: Horf positioned race runners farther right for more trades and drew the finish line on the right, but the running-horse emoji faced left, making leaders appear to run backward.
+
+**Why it mattered**: The visual cue contradicted the leaderboard’s direction and made the race harder to read at a glance.
+
+**Rule**: When using an emoji or illustration as a moving runner, check its rendered orientation against the direction of progress and finish line at desktop and narrow widths.
+
+---
+
+## 2026-11-03 - Open profile horse cards by exact token identity
+
+**What happened**: Horse artwork and titles on trader profiles and the connected Stable looked like selectable cards, but did not open a Horf horse detail. The only direct link went to Objkt, and a current-season Open Range page might not contain an older or later-page horse.
+
+**Why it mattered**: Riders could see a horse in a profile but could not inspect that same horse within Horf.
+
+**Rule**: Make profile artwork, title, and a visible View horse card control open a local detail by contract and token ID; show its original media and token key, and verify a later-page horse opens the right card.
+
+---
+
 ## 2026-11-03 - Gate Reggie's desktop entry points by contestant membership
 
 **What happened**: Reggie mounted for every signed-in account, queried quest state, and exposed a summon command even when the account had no contestant role. The shared `canParticipate` helper also includes noncontestant roles, so it could not express the requested visibility rule.
@@ -14156,3 +14186,13 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: Choosing either branch's generated docs would erase valid records or leave the board and environment inventory stale against the merged source tree.
 
 **Rule**: Merge the canonical bounty records by identity and field, assign a fresh ID to a genuine collision, recompute every rank, and regenerate derived board and environment inventories from the merged tree. Preserve each branch's appended lessons.
+
+---
+
+## 2026-11-04 - Reserve fresh bounty IDs when release branches integrate new main records
+
+**What happened**: After the first starter and Reggie documentation merge, a newer main assigned bounty ID 779 to the Horf race while the starter branch already used 779 for its welcome flow. Main also replaced an older archived Horf 780 with a distinct Marshal defect and moved the archive to 785.
+
+**Why it mattered**: A text merge of the generated board could silently overwrite one issue or leave stale ranks, and the environment inventory header could describe the prior source tree.
+
+**Rule**: Merge canonical bounty data by ID and field against the common base, preserve distinct issues under unused IDs, recompute ranks, then regenerate and check the board and environment inventory from the final merged tree. Audit auto-merged lessons by complete section content before staging.

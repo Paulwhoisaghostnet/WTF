@@ -7,7 +7,7 @@ import { normalizeIpfsUri } from "@shared/ipfs-gateways";
 
 export const HORF_OPEN_RANGE_QUERY = `query HorfOpenRange($where: token_bool_exp!, $cursor: bigint!, $pageSize: Int!) {
   token(where: { _and: [$where, { pk: { _gt: $cursor } }] }, order_by: { pk: asc }, limit: $pageSize) {
-    pk fa_contract token_id timestamp name description decimals thumbnail_uri display_uri
+    pk fa_contract token_id timestamp name description decimals thumbnail_uri display_uri artifact_uri mime
     tags { tag { name token_count } }
   }
 }`;
@@ -16,7 +16,7 @@ export const HORF_OPEN_RANGE_QUERY = `query HorfOpenRange($where: token_bool_exp
 // Timestamp-first ordering uses its date index and keeps historical pages fast.
 export const HORF_OPEN_RANGE_TIME_QUERY = `query HorfOpenRangeByTime($where: token_bool_exp!, $pageSize: Int!) {
   token(where: $where, order_by: [{ timestamp: asc }, { pk: asc }], limit: $pageSize) {
-    pk fa_contract token_id timestamp name description decimals thumbnail_uri display_uri
+    pk fa_contract token_id timestamp name description decimals thumbnail_uri display_uri artifact_uri mime
     tags { tag { name token_count } }
   }
 }`;
@@ -32,6 +32,8 @@ export interface OpenRangeItem {
   name: string;
   description: string | null;
   image: string | null;
+  artifactUri: string | null;
+  mime: string | null;
   mintedAt: string | null;
   creatorAddress: null;
 }
@@ -143,10 +145,12 @@ export async function fetchOpenRangeMintPage(
       name: String(row.name || `Token #${row.token_id}`).trim() || `Token #${row.token_id}`,
       description: typeof row.description === "string" ? row.description : null,
       image: safeImage(row.thumbnail_uri || row.display_uri),
+      artifactUri: safeImage(row.artifact_uri),
+      mime: typeof row.mime === "string" ? row.mime.trim().toLowerCase() || null : null,
       mintedAt: time === null || !Number.isFinite(time) ? null : new Date(time).toISOString(),
       creatorAddress: null });
   }
   return { items, nextCursor: rows.length ? (byTime ? `${lastTime}|${after}` : after.toString()) : null,
     hasMore: rows.length === OBJKT_PAGE_SIZE, asOf: new Date().toISOString(),
-    sourceRows: rows.length };
+    sourceRows: rows.length, mediaVersion: 1 as const };
 }

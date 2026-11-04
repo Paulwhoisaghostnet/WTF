@@ -28,6 +28,44 @@ async function mockSeasons(page) {
 }
 
 test.describe("Horf Open Range", () => {
+  test("lets a Marshal approve a horse from its card without opening evidence", async ({ page, request }) => {
+    expect((await request.post("/__test/state", { data: { userRole: "admin" } })).ok()).toBeTruthy();
+    await mockSeasons(page);
+    let approved = false;
+    const prepared = [];
+    const decisions = [];
+    await page.route("**/api/horf/inspectors/status", (route) => route.fulfill({
+      status: 200, contentType: "application/json", body: JSON.stringify({ active: true, role: "horf_marshal" }),
+    }));
+    await page.route("**/api/horf/open-range?*", (route) => route.fulfill({
+      status: 200, contentType: "application/json", body: JSON.stringify({
+        season: current, items: [horse("77", { approvedForMarshalsMarket: approved })],
+        nextCursor: null, hasMore: false, asOf: now,
+      }),
+    }));
+    await page.route("**/api/horf/inspections/marshal", (route) => {
+      prepared.push(route.request().postDataJSON());
+      return route.fulfill({ status: 201, contentType: "application/json", body: JSON.stringify({ id: 77 }) });
+    });
+    await page.route("**/api/horf/inspections/77/decision", (route) => {
+      decisions.push(route.request().postDataJSON());
+      approved = true;
+      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ id: 77, status: "approved" }) });
+    });
+
+    await page.goto("/horf/open-range");
+    const card = page.locator("[data-horf-open-range-horse]");
+    await expect(card.locator("[data-horf-open-range-approve]")).toBeVisible();
+    await card.locator("[data-horf-open-range-approve]").click();
+    await expect(card).toHaveAttribute("data-horf-frame-approved", "true");
+    await expect(card.locator("[data-horf-open-range-approve]")).toHaveCount(0);
+    await expect(page.locator("[data-horf-open-range-detail]")).not.toBeVisible();
+    expect(prepared).toEqual([{ tokenContract: contract, tokenId: "77" }]);
+    expect(decisions).toHaveLength(1);
+    expect(decisions[0]).toMatchObject({ decision: "approve" });
+    expect(decisions[0].reason).toMatch(/direct approval without detailed evidence review/i);
+  });
+
   test("restores a submitted Objkt intent and retries season proof after reload", async ({ page, request }) => {
     expect((await request.post("/__test/state", { data: { userRole: "admin" } })).ok()).toBeTruthy();
     const pending = { intentId: "intent-7", opHash: "oo-submitted-7", buyerAddress: owner, tokenContract: contract, tokenId: "77" };
@@ -150,6 +188,7 @@ test.describe("Horf Open Range", () => {
     await expect(first.locator('[data-horf-open-range-status="traded"]')).toHaveText("No Horf trade yet");
     await expect(first.locator('[data-horf-open-range-status="offered"]')).toHaveText("No active Horf offer");
     await expect(first.locator('[data-horf-open-range-status="approved"]')).toHaveText("Not Marshal approved");
+    await expect(first.locator("[data-horf-open-range-approve]")).toHaveCount(0);
     await expect(first.locator("[data-horf-open-range-trade-owned]")).toHaveCount(0);
     await expect(first).toHaveAttribute("data-horf-frame-traded", "false");
     await expect(first).toHaveAttribute("data-horf-frame-offered", "false");

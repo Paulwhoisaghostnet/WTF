@@ -283,8 +283,15 @@ test.describe("Horf Stable and trader profile", () => {
     await expect(cards.filter({ hasText: "Between Seasons" }).locator("[data-horf-mint-badge]")).toHaveCount(0);
     await expect(stable).toContainText("Mystery Foal");
     await expect(stable).toContainText("Between Seasons");
+    await cards.filter({ hasText: "Mystery Foal" }).locator("[data-horf-stable-view-horse]").click();
+    const horseCard = stable.locator("[data-horf-stable-horse-detail]");
+    await expect(horseCard).toBeVisible();
+    await expect(horseCard).toContainText("Mystery Foal");
+    await expect(horseCard).toContainText(`${contract} / #9`);
+    await horseCard.getByRole("button", { name: "Close horse card" }).click();
+    await expect(horseCard).toBeHidden();
     await page.locator("[data-horf-primary]").evaluate((node) => { node.scrollTop = 0; });
-    await expect(cards.first().locator(".art > img")).toBeInViewport();
+    await expect(cards.first().locator(".art img")).toBeInViewport();
     await page.screenshot({ path: "/tmp/horf-stable-all-horses-entry-desktop.png" });
     await page.setViewportSize({ width: 390, height: 844 });
     await page.locator("[data-horf-primary]").evaluate((node) => { node.scrollTop = 0; });

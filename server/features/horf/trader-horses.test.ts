@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { horseContractAddress } from "./horse-config";
-import { qualifyingTraderHorses } from "./trader-horses";
+import { HORF_TRADER_TOKEN_QUERY, qualifyingTraderHorses } from "./trader-horses";
 
 const contract = "KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton";
 
@@ -15,8 +15,10 @@ test("trader holdings use the Horf mint test and current positive balances", () 
     { contract: horseContractAddress()!, tokenId: "0", balance: "100" },
   ];
   const indexed = [
-    { fa_contract: contract, token_id: "1", name: "Horse Art 2026", timestamp: "2026-11-02T10:00:00Z", decimals: 0 },
+    { fa_contract: contract, token_id: "1", name: "Horse Art 2026", timestamp: "2026-11-02T10:00:00Z", decimals: 0,
+      thumbnail_uri: "ipfs://QmCollectionThumbnail", artifact_uri: "ipfs://QmFirstHorse", mime: "image/png" },
     { fa_contract: contract, token_id: "2", name: "Untitled", decimals: 0,
+      thumbnail_uri: "ipfs://QmCollectionThumbnail", artifact_uri: "ipfs://QmSecondHorse", mime: "image/jpeg",
       tags: [{ tag: { name: "pony", token_count: 6 } }] },
     { fa_contract: contract, token_id: "3", name: "Untitled", decimals: 0,
       tags: [{ tag: { name: "pony", token_count: 5 } }] },
@@ -30,4 +32,8 @@ test("trader holdings use the Horf mint test and current positive balances", () 
   assert.deepEqual(qualifyingTraderHorses(owned, indexed).map((horse) => horse.mintedAt), [
     "2026-11-02T10:00:00.000Z", null,
   ]);
+  assert.match(HORF_TRADER_TOKEN_QUERY, /artifact_uri mime/);
+  const horses = qualifyingTraderHorses(owned, indexed);
+  assert.equal(horses[0].image, horses[1].image);
+  assert.notEqual(horses[0].artifactUri, horses[1].artifactUri);
 });

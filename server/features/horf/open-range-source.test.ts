@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { fetchOpenRangeMintPage, openRangeWhere, validOpenRangeCursor, type OpenRangeMint } from "./open-range-source";
+import { fetchOpenRangeMintPage, HORF_OPEN_RANGE_QUERY, HORF_OPEN_RANGE_TIME_QUERY, openRangeWhere, validOpenRangeCursor, type OpenRangeMint } from "./open-range-source";
 
 const contract = "KT1XaCf6gkjFnKg3QmPfn6gep53moMvjkj1E";
 
@@ -52,4 +52,19 @@ test("Open Range keeps explicit tiny tags, null-date all-horse mints, and source
   const current = await fetchOpenRangeMintPage("current-2026", "0", async () => rows);
   assert.deepEqual(current.items.map((row) => row.tokenId), ["6"]);
   assert.equal(current.nextCursor, "3");
+});
+
+test("Open Range retains each token artifact and MIME when Objkt shares a thumbnail", async () => {
+  assert.match(HORF_OPEN_RANGE_QUERY, /artifact_uri mime/);
+  assert.match(HORF_OPEN_RANGE_TIME_QUERY, /artifact_uri mime/);
+  const sharedThumbnail = "ipfs://QmCollectionThumbnail";
+  const result = await fetchOpenRangeMintPage("all-horse-search", "0", async () => [
+    { pk: "1", fa_contract: contract, token_id: "12694", name: "Unicorn Horse", timestamp: null,
+      thumbnail_uri: sharedThumbnail, artifact_uri: "ipfs://QmDistinctImage", mime: "image/png" },
+    { pk: "2", fa_contract: contract, token_id: "181", name: "Horse in Motion", timestamp: null,
+      thumbnail_uri: sharedThumbnail, artifact_uri: "ipfs://QmDistinctVideo", mime: "video/mp4" },
+  ]);
+  assert.equal(result.items[0].image, result.items[1].image);
+  assert.notEqual(result.items[0].artifactUri, result.items[1].artifactUri);
+  assert.deepEqual(result.items.map((item) => item.mime), ["image/png", "video/mp4"]);
 });

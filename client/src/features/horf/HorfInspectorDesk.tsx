@@ -2,9 +2,11 @@ import { useContext, useEffect, useMemo, useRef, useState, type FormEvent } from
 import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import styled from "styled-components";
 import { api } from "../../lib/api";
-import { advanceResolvedMediaFallback, resolveTokenThumbnail } from "../../lib/media-resolve";
+import { advanceResolvedMediaFallback } from "../../lib/media-resolve";
 import { logClientSystemEvent } from "../../lib/system-log";
 import { useWindowManager, WindowPathContext } from "../../lib/window-context";
+import { resolveHorfHorseArt, resolveHorfHorseVideo } from "./horse-media";
+import { approveHorseDirectly } from "./marshal-approval";
 import { objktTokenUrl, parseObjktToken } from "./token-input";
 
 type Inspection = {
@@ -19,6 +21,8 @@ type Inspection = {
     name: string | null;
     description: string | null;
     image: string | null;
+    artifactUri?: string | null;
+    mime?: string | null;
     decimals: number | null;
     tags: Array<{ name: string | null; tokenCount: number | null }>;
   };
@@ -43,6 +47,8 @@ type OpenRangeCandidate = {
   name: string;
   description: string | null;
   image: string | null;
+  artifactUri?: string | null;
+  mime?: string | null;
   mintedAt: string | null;
   creatorAddress: string | null;
   approvedForMarshalsMarket: boolean;
@@ -139,9 +145,11 @@ const CandidateList = styled.ul`
   list-style: none;
   margin: 0;
   padding: 0;
-  li { display: grid; grid-template-columns: 54px minmax(0, 1fr); gap: 11px; align-items: start; padding: 12px 0; border-top: 1px solid var(--horf-line, #3d5148); }
+  li { display: grid; grid-template-columns: 1fr; gap: 12px; align-items: start; padding: 16px 0; border-top: 1px solid var(--horf-line, #3d5148); }
   li:first-child { border-top: 0; }
-  img { width: 54px; height: 54px; object-fit: cover; border: 1px solid var(--horf-line, #3d5148); border-radius: 9px; background: var(--horf-field, #24332d); }
+  .candidate-media { display: grid; place-items: center; width: 100%; min-height: 190px; overflow: hidden; border: 1px solid var(--horf-line, #3d5148); border-radius: 10px; background: var(--horf-canvas, #101816); }
+  .candidate-media img, .candidate-media video { display: block; width: 100%; max-height: 360px; object-fit: contain; }
+  .candidate-media span { padding: 14px; color: var(--horf-muted, #b7b5a7); font-size: 12px; text-align: center; }
   strong, small { display: block; overflow-wrap: anywhere; }
   strong { font: 700 17px/1.2 var(--horf-display, Georgia, serif); }
   small { margin-top: 4px; color: var(--horf-muted, #b7b5a7); font-size: 11px; line-height: 1.35; }
@@ -183,9 +191,19 @@ const Evidence = styled.dl`
 
 const HorseArt = styled.img`
   display: block;
-  width: min(100%, 260px);
-  aspect-ratio: 1;
+  width: min(100%, 560px);
+  max-height: 65vh;
   object-fit: contain;
+  margin: 10px 0;
+  border: 1px solid var(--horf-line, #3d5148);
+  border-radius: 12px;
+  background: var(--horf-canvas, #101816);
+`;
+
+const HorseVideo = styled.video`
+  display: block;
+  width: min(100%, 560px);
+  max-height: 65vh;
   margin: 10px 0;
   border: 1px solid var(--horf-line, #3d5148);
   border-radius: 12px;
@@ -222,11 +240,19 @@ function formatWhen(value: string | null): string {
 }
 
 function CandidateThumbnail({ horse }: { horse: OpenRangeCandidate }) {
-  const art = horse.image ? resolveTokenThumbnail({ thumbnail: horse.image }) : null;
-  return <img src={art?.src || "/horf-art/horse-gallop-photo.jpg"} alt={`${horse.name || `Horse token #${horse.tokenId}`} artwork`} onError={(event) => {
-    if (art && advanceResolvedMediaFallback(event.currentTarget, art)) return;
-    if (!event.currentTarget.src.endsWith("/horf-art/horse-gallop-photo.jpg")) event.currentTarget.src = "/horf-art/horse-gallop-photo.jpg";
-  }} />;
+  const [videoFailed, setVideoFailed] = useState(false);
+  const [imageFailed, setImageFailed] = useState(false);
+  useEffect(() => { setVideoFailed(false); setImageFailed(false); }, [horse.contract, horse.tokenId, horse.image, horse.artifactUri]);
+  const video = resolveHorfHorseVideo(horse);
+  const art = resolveHorfHorseArt(horse);
+  const name = horse.name || `Horse token #${horse.tokenId}`;
+  return <div className="candidate-media" data-horf-marshal-token-preview={`${horse.contract}/${horse.tokenId}`}>
+    {video && !videoFailed ? <video src={video.src} controls playsInline preload="metadata" aria-label={`${name} video artwork`} onError={(event) => {
+      if (!advanceResolvedMediaFallback(event.currentTarget, video)) setVideoFailed(true);
+    }} /> : art && !imageFailed ? <img src={art.src} alt={`${name} artwork`} loading="lazy" onError={(event) => {
+      if (!advanceResolvedMediaFallback(event.currentTarget, art)) setImageFailed(true);
+    }} /> : <span>Token preview unavailable. Open its Objkt page.</span>}
+  </div>;
 }
 
 function inspectionOrigin(item: Inspection): string {
@@ -308,7 +334,16 @@ export function HorfInspectorDesk({ isGuest, isAdmin }: {
     refetchOnWindowFocus: true,
   });
   const detail = detailQuery.data?.id === selectedId ? detailQuery.data : null;
-  const detailArt = detail?.objktMetadata.image ? resolveTokenThumbnail({ thumbnail: detail.objktMetadata.image }) : null;
+  const legacyMediaQuery = useQuery({
+    queryKey: ["horf", "inspection-token-media", detail?.token.contract, detail?.token.tokenId],
+    queryFn: () => api.get<{ token: { image: string | null; artifactUri: string | null; mime: string | null } }>(
+      `/api/horf/token-eligibility?contract=${encodeURIComponent(detail!.token.contract)}&tokenId=${encodeURIComponent(detail!.token.tokenId)}`),
+    enabled: Boolean(detail && !Object.prototype.hasOwnProperty.call(detail.objktMetadata, "artifactUri")),
+    staleTime: 60_000,
+  });
+  const detailMedia = legacyMediaQuery.data?.token || detail?.objktMetadata;
+  const detailArt = detailMedia ? resolveHorfHorseArt(detailMedia) : null;
+  const detailVideo = detailMedia ? resolveHorfHorseVideo(detailMedia) : null;
 
   useEffect(() => {
     if (!detail) return;
@@ -333,6 +368,25 @@ export function HorfInspectorDesk({ isGuest, isAdmin }: {
       setSuccess(`Fresh evidence is ready for ${candidate.name || `token #${candidate.tokenId}`}. Record a separate approval or rejection below.`);
       logClientSystemEvent({ eventType: "horf.inspection.marshal_review_started", message: "Marshal opened an Open Range horse review", metadata: { inspectionId: inspection.id, tokenContract: candidate.contract, tokenId: candidate.tokenId } });
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Could not prepare this Open Range horse for inspection."); }
+    finally { setBusy(false); }
+  }
+
+  async function approveNow(token: { contract: string; tokenId: string }, pendingId?: number) {
+    if (!deputized || busy) return;
+    setError(null); setSuccess(null);
+    try {
+      setBusy(true);
+      const inspectionId = await approveHorseDirectly(token, pendingId);
+      setSelectedId(null);
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["horf", "inspection-queue"] }),
+        qc.invalidateQueries({ queryKey: ["horf", "marshal-open-range"] }),
+        qc.invalidateQueries({ queryKey: ["horf", "open-range"] }),
+        qc.invalidateQueries({ queryKey: ["horf", "inspection-status", token.contract, token.tokenId] }),
+      ]);
+      setSuccess(`Marshal approved horse #${token.tokenId}.`);
+      logClientSystemEvent({ eventType: "horf.inspection.decided", message: "Horf Marshal approved a horse directly", metadata: { inspectionId, decision: "approve", mode: "direct", tokenContract: token.contract, tokenId: token.tokenId } });
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "Could not approve this horse."); }
     finally { setBusy(false); }
   }
 
@@ -373,15 +427,15 @@ export function HorfInspectorDesk({ isGuest, isAdmin }: {
   }
 
   return <Shell id="horf-inspector-desk" data-horf-region="inspector-desk" aria-label="Horf inspector desk">
-    <Header><div><small>Marshal’s badge · human review</small><h2>Inspector’s desk</h2><p>Patrol Open Range or review stable submissions. Check each horse’s evidence, then approve or reject it with a reason. FA2 history cannot guarantee custody.</p></div><Action type="button" onClick={() => { refreshHorseCache.current = true; void Promise.all([inspectorQuery.refetch(), queueQuery.refetch(), openRangeQuery.refetch()]).finally(() => { refreshHorseCache.current = false; }); }} disabled={inspectorQuery.isFetching || queueQuery.isFetching || openRangeQuery.isFetching}>Refresh desk</Action></Header>
+    <Header><div><small>Marshal’s badge · human review</small><h2>Inspector’s desk</h2><p>Approve a horse directly or open its evidence first. Horf rechecks eligibility and FA2 identity either way; custody still depends on trust.</p></div><Action type="button" onClick={() => { refreshHorseCache.current = true; void Promise.all([inspectorQuery.refetch(), queueQuery.refetch(), openRangeQuery.refetch()]).finally(() => { refreshHorseCache.current = false; }); }} disabled={inspectorQuery.isFetching || queueQuery.isFetching || openRangeQuery.isFetching}>Refresh desk</Action></Header>
     {inspectorQuery.isPending && <Note role="status">Checking your WTF OS marshal badge…</Note>}
     {inspectorQuery.isError && <Note $error role="alert">The inspector role could not be checked. Refresh to try again.</Note>}
     {inspectorQuery.data && !deputized && <Note>{isGuest ? "Inspector decisions require WTF OS sign-in and the HORF MARSHAL role. A guest wallet can still save and submit its own horses for inspection." : "Your WTF OS account does not have the HORF MARSHAL role. Admins can assign it through standard role administration."}</Note>}
     {deputized && <Columns>
       <QueueStack>
-      <Panel data-horf-inspection-open-range><h3>Open Range patrol</h3><p>All known horse mints. Open evidence before deciding.</p>
+      <Panel data-horf-inspection-open-range><h3>Open Range patrol</h3><p>All known horse mints. Approve now or read the full papers.</p>
         {handoff && handoffCandidate && <Handoff data-horf-marshal-handoff><strong>Horse brought from the Open Range: {handoffCandidate.name}</strong><small>{handoff.contract} / #{handoff.tokenId}</small>
-          {handoffStatusQuery.isPending ? <span role="status">Checking this horse’s papers…</span> : handoffStatusQuery.isError ? <span role="alert">Approval status is unavailable. Refresh the desk to try again.</span> : handoffStatusQuery.data?.status === "approved" ? <span className="approved">✓ Already Marshal approved</span> : <Action data-horf-marshal-handoff-review type="button" disabled={busy} onClick={() => void startMarshalReview(handoffCandidate)}>{pendingByToken.has(`${handoff.contract}/${handoff.tokenId}`) ? "Continue inspection" : "Open this horse’s evidence"}</Action>}
+          {handoffStatusQuery.isPending ? <span role="status">Checking this horse’s papers…</span> : handoffStatusQuery.isError ? <span role="alert">Approval status is unavailable. Refresh the desk to try again.</span> : handoffStatusQuery.data?.status === "approved" ? <span className="approved">✓ Already Marshal approved</span> : <><Action data-horf-marshal-handoff-approve type="button" disabled={busy} onClick={() => void approveNow(handoffCandidate, pendingByToken.get(`${handoff.contract}/${handoff.tokenId}`)?.id)}>Approve horse now</Action><Action data-horf-marshal-handoff-review type="button" disabled={busy} onClick={() => void startMarshalReview(handoffCandidate)}>{pendingByToken.has(`${handoff.contract}/${handoff.tokenId}`) ? "Continue inspection" : "Open this horse’s evidence"}</Action></>}
           <p><a href={objktTokenUrl(handoff.contract, handoff.tokenId)} target="_blank" rel="noopener noreferrer">See this horse on Objkt</a></p>
         </Handoff>}
         {openRangeQuery.isPending && <p role="status">Reading the Open Range horse trail…</p>}
@@ -391,7 +445,7 @@ export function HorfInspectorDesk({ isGuest, isAdmin }: {
           return <li key={`${candidate.contract}/${candidate.tokenId}`} data-horf-marshal-candidate>
             <CandidateThumbnail horse={candidate} />
             <div><strong>{candidate.name || `Horse token #${candidate.tokenId}`}</strong><small>#{candidate.tokenId} · {shortAddress(candidate.contract)}{candidate.mintedAt ? ` · minted ${formatWhen(candidate.mintedAt)}` : ""}</small><small>{candidate.creatorAddress ? `Creator ${shortAddress(candidate.creatorAddress)}` : "Creator unknown"}</small>
-              <div className="candidate-actions">{candidate.approvedForMarshalsMarket ? <span className="approved">✓ Marshal approved</span> : <Action data-horf-marshal-candidate-review type="button" disabled={busy} onClick={() => void startMarshalReview(candidate)}>{pending ? "Continue inspection" : "Open evidence"}</Action>}<a href={objktTokenUrl(candidate.contract, candidate.tokenId)} target="_blank" rel="noopener noreferrer">See horse on Objkt</a></div>
+              <div className="candidate-actions">{candidate.approvedForMarshalsMarket ? <span className="approved">✓ Marshal approved</span> : <><Action data-horf-marshal-candidate-approve type="button" disabled={busy} onClick={() => void approveNow(candidate, pending?.id)}>Approve horse now</Action><Action data-horf-marshal-candidate-review type="button" disabled={busy} onClick={() => void startMarshalReview(candidate)}>{pending ? "Continue inspection" : "Open evidence"}</Action></>}<a href={objktTokenUrl(candidate.contract, candidate.tokenId)} target="_blank" rel="noopener noreferrer">See horse on Objkt</a></div>
             </div>
           </li>;
         })}</CandidateList>}
@@ -401,7 +455,7 @@ export function HorfInspectorDesk({ isGuest, isAdmin }: {
       <Panel data-horf-inspection-queue><h3>Horses at the gate</h3><p>Pending Marshal and trader reviews.</p>
         {queueQuery.isPending && <p>Reading the inspection queue…</p>}
         {queueQuery.isError && <Note $error role="alert">The queue is unavailable. Refresh the desk to try again.</Note>}
-        {queue.length ? <Queue>{queue.map((item) => <li key={item.id} data-horf-inspection-queue-row><strong>{item.objktMetadata?.name || `Horse token #${item.token.tokenId}`}</strong><span>#{item.id} · {inspectionOrigin(item)} · {formatWhen(item.submittedAt)}</span><Action data-horf-inspection-open type="button" onClick={() => setSelectedId(item.id)}>Review evidence</Action></li>)}</Queue> : !queueQuery.isPending && !queueQuery.isError && <p>The corral gate is quiet. No inspections await review.</p>}
+        {queue.length ? <Queue>{queue.map((item) => <li key={item.id} data-horf-inspection-queue-row><strong>{item.objktMetadata?.name || `Horse token #${item.token.tokenId}`}</strong><span>#{item.id} · {inspectionOrigin(item)} · {formatWhen(item.submittedAt)}</span><Action data-horf-inspection-approve-now type="button" disabled={busy} onClick={() => void approveNow(item.token, item.id)}>Approve now</Action><Action data-horf-inspection-open type="button" onClick={() => setSelectedId(item.id)}>Review evidence</Action></li>)}</Queue> : !queueQuery.isPending && !queueQuery.isError && <p>The corral gate is quiet. No inspections await review.</p>}
       </Panel>
       </QueueStack>
       <Panel ref={detailPanelRef} tabIndex={-1} data-horf-inspection-detail><h3>Evidence saddlebag</h3>
@@ -410,7 +464,7 @@ export function HorfInspectorDesk({ isGuest, isAdmin }: {
         {selectedId && detailQuery.isError && <Note $error role="alert">This inspection could not be loaded. Choose another row or refresh the desk.</Note>}
         {detail && <>
           <p><strong><a href={objktTokenUrl(detail.token.contract, detail.token.tokenId)} target="_blank" rel="noopener noreferrer">{detail.objktMetadata.name || `Token #${detail.token.tokenId}`}</a></strong> · inspection #{detail.id}</p>
-          {detailArt && <HorseArt src={detailArt.src} alt={`${detail.objktMetadata.name || `Horse token #${detail.token.tokenId}`} artwork`} onError={(event) => { if (!advanceResolvedMediaFallback(event.currentTarget, detailArt)) event.currentTarget.style.display = "none"; }} />}
+          {detailVideo ? <HorseVideo key={`${detail.id}:${detailVideo.src}`} src={detailVideo.src} controls playsInline preload="metadata" aria-label={`${detail.objktMetadata.name || `Horse token #${detail.token.tokenId}`} video artwork`} onError={(event) => { if (!advanceResolvedMediaFallback(event.currentTarget, detailVideo)) event.currentTarget.style.display = "none"; }} /> : detailArt ? <HorseArt key={`${detail.id}:${detailArt.src}`} src={detailArt.src} alt={`${detail.objktMetadata.name || `Horse token #${detail.token.tokenId}`} artwork`} onError={(event) => { if (!advanceResolvedMediaFallback(event.currentTarget, detailArt)) event.currentTarget.style.display = "none"; }} /> : <Note>Token preview unavailable. Check the Objkt link above before approving.</Note>}
           {detail.objktMetadata.description && <p>{detail.objktMetadata.description}</p>}
           <Evidence>
             <dt>Token identity</dt><dd>{detail.token.contract} / #{detail.token.tokenId}</dd>

@@ -39,6 +39,7 @@ export function mergeOpenRangeMintPages(
     hasMore: keepPriorCursor || fresh.hasMore,
     asOf: fresh.asOf,
     sourceRows: fresh.sourceRows,
+    mediaVersion: fresh.mediaVersion,
   };
 }
 
@@ -125,7 +126,10 @@ export function createOpenRangePageCache(
     options: { refresh?: boolean } = {},
   ): Promise<CachedOpenRangeMintPage> {
     const stored = await store.read(mode, cursor);
-    if (stored && !options.refresh) {
+    // Older cache snapshots only contain Objkt's collection thumbnail. A page
+    // version avoids repeatedly refreshing historical rows retained by merge.
+    const lacksTokenMedia = stored && stored.page.mediaVersion !== 1;
+    if (stored && !options.refresh && !lacksTokenMedia) {
       const key = pageKey(mode, cursor);
       const lastAttempt = lastBackgroundAttempt.get(key) ?? 0;
       if (activeSource(mode) && now() - stored.fetchedAt >= HORF_MAINNET_BLOCK_MS &&
