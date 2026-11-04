@@ -14350,3 +14350,13 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: A release gate stayed red for a presentation-only test mismatch and obscured the actual Horf deploy blocker.
 
 **Rule**: For batch failure rows, assert the exact token identity and stable server detail separately; let the shared API error wrapper render its own status title. Run the focused browser story and the replacement main full suite after changing error presentation or expectations.
+
+---
+
+## 2026-11-04 - Keep a visual fallback for duplicate Horf thumbnails
+
+**What happened**: A Stable token shared its Objkt thumbnail with another token and had no exact artifact URI. The duplicate-aware preview resolver correctly refused the ambiguous thumbnail, but the card rendered text in place of its image.
+
+**Why it mattered**: The horse grid lost its visual preview and the inventory browser story that expects a visible card image failed.
+
+**Rule**: When a shared thumbnail cannot be trusted and exact art is unavailable, render a clearly labeled generic horse placeholder image. Never display the ambiguous thumbnail as that token's art.
