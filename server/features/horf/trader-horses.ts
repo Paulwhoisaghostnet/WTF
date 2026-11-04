@@ -6,7 +6,7 @@ import { approvedHorseTags, tokenQualifies, type ObjktToken } from "./model";
 
 export const HORF_TRADER_TOKEN_QUERY = `query HorfTraderTokens($where: token_bool_exp!) {
   token(where: $where) {
-    fa_contract token_id timestamp name description decimals thumbnail_uri display_uri
+    fa_contract token_id timestamp name description decimals thumbnail_uri display_uri artifact_uri mime
     tags { tag { name token_count } }
   }
 }`;
@@ -19,6 +19,8 @@ export interface HorfTraderHorse {
   name: string;
   description: string | null;
   image: string | null;
+  artifactUri: string | null;
+  mime: string | null;
   creatorAddress: string | null;
 }
 
@@ -34,6 +36,14 @@ function safeImage(value: string | null | undefined): string | null {
     const url = new URL(normalizeIpfsUri(value));
     return url.protocol === "https:" ? url.toString() : null;
   } catch { return null; }
+}
+
+export function traderTokenMedia(token: ObjktToken) {
+  return {
+    image: safeImage(token.thumbnail_uri || token.display_uri),
+    artifactUri: safeImage(token.artifact_uri),
+    mime: typeof token.mime === "string" ? token.mime.trim().toLowerCase() || null : null,
+  };
 }
 
 /** One Objkt query hydrates the current TzKT balance page with authoritative tags. */
@@ -77,11 +87,10 @@ export function qualifyingTraderHorses(owned: OwnedFa2Token[], indexed: ObjktTok
         ? new Date(token.timestamp).toISOString() : null,
       name: String(token.name || balance.name || `Token #${balance.tokenId}`).trim() || `Token #${balance.tokenId}`,
       description: typeof token.description === "string" ? token.description : null,
-      image: safeImage(token.thumbnail_uri || token.display_uri),
+      ...traderTokenMedia(token),
       creatorAddress: balance.creatorAddress || null,
     }];
   });
 }
 
 export function traderTokenKey(value: TokenKey): string { return key(value); }
-export function traderTokenImage(value: ObjktToken): string | null { return safeImage(value.thumbnail_uri || value.display_uri); }

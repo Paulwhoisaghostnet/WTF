@@ -86,6 +86,46 @@ async function mockLinkedWallet(page) {
 }
 
 test.describe("Horf Stables", () => {
+  test("Marshal previews keep distinct token artwork when Objkt thumbnails match", async ({ page, request }) => {
+    await seedTrader(request);
+    await mockSeason(page);
+    const shared = "https://ipfs.fileship.xyz/QmSharedCollectionThumbnail";
+    await page.route("**/api/horf/inspectors/status", (route) => route.fulfill({
+      status: 200, contentType: "application/json", body: JSON.stringify({ active: true, role: "horf_marshal" }),
+    }));
+    await page.route("**/api/horf/inspections/pending", (route) => route.fulfill({
+      status: 200, contentType: "application/json", body: JSON.stringify({ inspections: [] }),
+    }));
+    await page.route("**/api/horf/open-range?*", (route) => route.fulfill({
+      status: 200, contentType: "application/json", body: JSON.stringify({
+        items: ["1", "2"].map((tokenId) => ({ contract: tokenContract, tokenId,
+          name: `Horse artwork ${tokenId}`, description: null, image: shared,
+          artifactUri: `https://ipfs.fileship.xyz/QmDistinctHorse${tokenId}`, mime: "image/png",
+          mintedAt: "2026-11-03T12:00:00Z", creatorAddress: null,
+          approvedForMarshalsMarket: false })),
+        nextCursor: null, hasMore: false,
+      }),
+    }));
+    await page.route("**/api/cache/artifact?*", (route) => {
+      const source = new URL(route.request().url()).searchParams.get("url") || "";
+      const first = source.endsWith("QmDistinctHorse1");
+      return route.fulfill({ status: 200, contentType: "image/svg+xml",
+        body: `<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180"><rect width="180" height="180" fill="${first ? "#d8764b" : "#4b80b0"}"/></svg>` });
+    });
+
+    await page.goto("/horf/marshals-market");
+    const previews = page.locator("[data-horf-marshal-token-preview]");
+    await expect(previews).toHaveCount(2);
+    const images = previews.locator("img");
+    await expect(images).toHaveCount(2);
+    await expect(images.nth(0)).toHaveAttribute("src", /\/api\/cache\/artifact\?.*QmDistinctHorse1/);
+    await expect(images.nth(1)).toHaveAttribute("src", /\/api\/cache\/artifact\?.*QmDistinctHorse2/);
+    await expect(images.nth(0)).toHaveJSProperty("naturalWidth", 180);
+    await images.nth(1).scrollIntoViewIfNeeded();
+    await expect(images.nth(1)).toHaveJSProperty("naturalWidth", 180);
+    if (process.env.HORF_VISUAL_CAPTURE === "1") await page.locator("[data-horf-inspection-open-range]").screenshot({ path: "/tmp/horf-marshal-distinct-artifacts.png" });
+  });
+
   test("shows three modes and an honest no-contract state before deployment", async ({ page, request }) => {
     await seedTrader(request);
     await mockSeason(page);
@@ -399,6 +439,61 @@ test.describe("Horf Stables", () => {
     await desk.locator("[data-horf-inspection-decide]").click();
     expect(decisions).toEqual([{ decision: "approve", reason: "Horse tags, code and transfers reviewed" }]);
     await expect(desk.locator("[data-horf-marshal-candidate]")).toContainText("Marshal approved");
+  });
+
+  test("lets a Marshal approve a queued horse without opening the evidence panel", async ({ page, request }) => {
+    await seedTrader(request);
+    await mockSeason(page);
+    const candidate = {
+      contract: tokenContract, tokenId: "8", name: "Neighvember Eight",
+      description: "A horse at the gate", image: null, mintedAt: "2026-11-03T12:00:00.000Z",
+      creatorAddress: traderWallet, approvedForMarshalsMarket: false,
+    };
+    const inspection = {
+      id: 88, source: "owner_submission", submitterAddress: traderWallet,
+      token: { contract: tokenContract, tokenId: "8" }, status: "pending",
+      objktMetadata: { name: candidate.name }, submittedAt: "2026-11-03T12:00:00.000Z",
+    };
+    let approved = false;
+    let pending = [inspection];
+    const prepared = [];
+    const decisions = [];
+    await page.route("**/api/horf/inspectors/status", (route) => route.fulfill({
+      status: 200, contentType: "application/json", body: JSON.stringify({ active: true, role: "horf_marshal" }),
+    }));
+    await page.route("**/api/horf/open-range?*", (route) => route.fulfill({
+      status: 200, contentType: "application/json", body: JSON.stringify({
+        season, items: [{ ...candidate, approvedForMarshalsMarket: approved }],
+        nextCursor: null, hasMore: false, asOf: "2026-11-03T12:00:00.000Z",
+      }),
+    }));
+    await page.route("**/api/horf/inspections/pending", (route) => route.fulfill({
+      status: 200, contentType: "application/json", body: JSON.stringify({ inspections: pending }),
+    }));
+    await page.route("**/api/horf/inspections/marshal", (route) => {
+      prepared.push(route.request().postDataJSON());
+      return route.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ error: "Existing queue must be reused" }) });
+    });
+    await page.route("**/api/horf/inspections/88/decision", (route) => {
+      decisions.push(route.request().postDataJSON());
+      approved = true;
+      pending = [];
+      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ...inspection, status: "approved" }) });
+    });
+
+    await page.goto("/horf/marshals-market");
+    const desk = page.locator('[data-horf-region="inspector-desk"]');
+    const card = desk.locator("[data-horf-marshal-candidate]");
+    await expect(card).toHaveCount(1);
+    await expect(card.locator("[data-horf-marshal-candidate-approve]")).toBeVisible();
+    await card.locator("[data-horf-marshal-candidate-approve]").click();
+    await expect(card).toContainText("Marshal approved");
+    await expect(desk.locator("[data-horf-inspection-queue-row]")).toHaveCount(0);
+    await expect(desk.locator("[data-horf-inspection-detail]")).toContainText("Choose a horse to review its papers");
+    expect(prepared).toEqual([]);
+    expect(decisions).toHaveLength(1);
+    expect(decisions[0]).toMatchObject({ decision: "approve" });
+    expect(decisions[0].reason).toMatch(/direct approval without detailed evidence review/i);
   });
 
   test("prepares owned and Objkt deposits, then shows credit, claim, and cancel rules", async ({ page, request }) => {

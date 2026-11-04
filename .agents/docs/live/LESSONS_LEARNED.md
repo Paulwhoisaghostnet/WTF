@@ -14036,3 +14036,33 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: Shared route discovery and access checks did not represent all public Horf pages, and a green production deploy still had a red independent quality signal.
 
 **Rule**: When adding a browser route, mirror its pattern, authentication gate, and title in `BROWSER_ROUTE_META` in the same change. Run the route sync and access tests before pushing the release candidate.
+
+---
+
+## 2026-11-03 - Show the exact token artifact before a Marshal approves a horse
+
+**What happened**: Marshal patrol reused Objkt thumbnails that can represent an entire collection. Distinct tokens appeared to show the same horse, and their tiny previews made individual inspection impractical. The only approval path also forced a full evidence screen and manual reason, even when a Marshal wanted to approve a known horse directly.
+
+**Why it mattered**: Human approval depends on seeing the token being approved. A collection thumbnail could mislead a Marshal about token identity, while the review-only UI blocked the requested trust-based workflow.
+
+**Rule**: Resolve each horse by contract and token ID to its own artifact URI through the shared wtfOS preview route, show image or video at inspection size, and keep an explicit token key beside it. A direct-approval button may skip the evidence screen, but it must reuse the server’s Marshal role, fresh horse eligibility, FA2 identity, and durable decision checks; batch approval must scan every holdings page and report individual failures.
+
+---
+
+## 2026-11-03 - Face race horses toward their finish line
+
+**What happened**: Horf positioned race runners farther right for more trades and drew the finish line on the right, but the running-horse emoji faced left, making leaders appear to run backward.
+
+**Why it mattered**: The visual cue contradicted the leaderboard’s direction and made the race harder to read at a glance.
+
+**Rule**: When using an emoji or illustration as a moving runner, check its rendered orientation against the direction of progress and finish line at desktop and narrow widths.
+
+---
+
+## 2026-11-03 - Open profile horse cards by exact token identity
+
+**What happened**: Horse artwork and titles on trader profiles and the connected Stable looked like selectable cards, but did not open a Horf horse detail. The only direct link went to Objkt, and a current-season Open Range page might not contain an older or later-page horse.
+
+**Why it mattered**: Riders could see a horse in a profile but could not inspect that same horse within Horf.
+
+**Rule**: Make profile artwork, title, and a visible View horse card control open a local detail by contract and token ID; show its original media and token key, and verify a later-page horse opens the right card.

@@ -1,9 +1,9 @@
 import { Router } from "express";
 import { createHash } from "node:crypto";
 import multer from "multer";
-import { asc, and, eq } from "drizzle-orm";
+import { asc, and, eq, or } from "drizzle-orm";
 import { db } from "../db";
-import { horfOpenRangeOffers, horfTraderProfiles, horfTraderSeasonProfiles } from "@shared/schema";
+import { horfInspectionApprovals, horfOpenRangeOffers, horfTraderProfiles, horfTraderSeasonProfiles } from "@shared/schema";
 import { getOwnedFa2TokensPage } from "../tzkt";
 import { HORF_HORSE_CHAIN_ID } from "../features/horf/horse-config";
 import { horfMainnetIndex, HORF_MAINNET_TZKT_BASE } from "../features/horf/mainnet-index";
@@ -13,7 +13,7 @@ import { requireHorfCsrf, requireHorfWallet } from "../features/horf/wallet-scop
 import { sanitizeProfilePfpImageUrl } from "../features/profile/pfp-policy";
 import { loadHorfTraderNames } from "../features/horf/trader-names";
 import {
-  loadTraderObjktTokens, qualifyingTraderHorses, traderTokenImage, traderTokenKey,
+  loadTraderObjktTokens, qualifyingTraderHorses, traderTokenMedia, traderTokenKey,
 } from "../features/horf/trader-horses";
 import { editionKey, getTraderEditionCounts } from "../features/horf/trader-editions";
 
@@ -206,6 +206,17 @@ router.get("/api/horf/traders/:address/horses", async (req, res) => {
       { sourceBase: HORF_MAINNET_TZKT_BASE, forceFresh: refresh });
     const indexed = await loadTraderObjktTokens(page.items);
     const horses = qualifyingTraderHorses(page.items, indexed);
+    const approvalRows = horses.length ? await db.select({
+      contract: horfInspectionApprovals.tokenContract,
+      tokenId: horfInspectionApprovals.tokenId,
+    }).from(horfInspectionApprovals).where(and(
+      eq(horfInspectionApprovals.active, true),
+      or(...horses.map((horse) => and(
+        eq(horfInspectionApprovals.tokenContract, horse.contract),
+        eq(horfInspectionApprovals.tokenId, horse.tokenId),
+      ))),
+    )) : [];
+    const approved = new Set(approvalRows.map((row) => traderTokenKey(row)));
     let viewerBalances: Map<string, string> | null = null;
     if (typeof viewer === "string") {
       try { viewerBalances = viewer === address
@@ -218,6 +229,7 @@ router.get("/api/horf/traders/:address/horses", async (req, res) => {
       balanceStatus: viewer && !viewerBalances ? "unavailable" : "ready",
       items: horses.map((horse) => ({ ...horse,
         viewerBalance: typeof viewer === "string" ? viewerBalances?.get(editionKey(horse)) ?? null : null,
+        approvedForMarshalsMarket: approved.has(traderTokenKey(horse)),
       })),
       pagination: { hasMore: page.hasMore, nextOffset: page.nextOffset },
     });
@@ -280,7 +292,7 @@ router.get("/api/horf/traders/:address/offers", async (req, res) => {
           createdAt: row.createdAt.toISOString(),
           updatedAt: row.updatedAt.toISOString(),
           name: String(token?.name || `Token #${row.tokenId}`).trim() || `Token #${row.tokenId}`,
-          image: token ? traderTokenImage(token) : null,
+          ...(token ? traderTokenMedia(token) : { image: null, artifactUri: null, mime: null }),
         };
       }),
     });
