@@ -191,7 +191,7 @@ test.describe("Horf Stables", () => {
     await expect(stables.locator("[data-horf-stable-deposit]")).toContainText("No horse deposit required to claim");
     await stables.locator('[data-horf-stable-mode="group"]').click();
     await expect(stables.locator('[data-horf-stable-mode="group"]')).toHaveAttribute("aria-pressed", "true");
-    await expect(stables.locator("[data-horf-stable-deposit]")).toContainText("Each deposited edition earns 30 claims");
+    await expect(stables.locator("[data-horf-stable-deposit]")).toContainText("Each distinct FA2 horse token earns 30 claims, however many editions you deposit");
     await expect(stables.locator("[data-horf-stable-submit]")).toBeDisabled();
     await stables.scrollIntoViewIfNeeded();
     await page.screenshot({ path: "test-results/horf-stables-unconfigured-desktop.png", fullPage: true });
@@ -739,6 +739,16 @@ test.describe("Horf Stables", () => {
     await expect(stables.locator('[data-horf-stable-listing-id="5"]')).toContainText("Already claimed this token ID");
     await expect(stables.locator('[data-horf-stable-listing-id="6"] [data-horf-stable-claim]')).toBeEnabled();
     await expect(stables.locator('[data-horf-stable-listing-id="7"] [data-horf-stable-cancel]')).toBeEnabled();
+    await stables.locator("[data-horf-owned-select]").selectOption(`${tokenContract}:7`);
+    await stables.getByRole("button", { name: "Add owned horse" }).click();
+    await stables.getByRole("textbox", { name: "Editions of Neighvember Seven" }).fill("2");
+    await stables.locator("[data-horf-stable-submit]").click();
+    const groupReview = stables.locator("[data-horf-stable-review]");
+    await expect(groupReview).toContainText("Neighvember Seven · 2 editions");
+    await expect(groupReview.locator("[data-horf-group-credit-rule]")).toContainText("Each distinct FA2 token earns 30 claims, regardless of editions");
+    await expect(groupReview.locator("[data-horf-group-credit-rule]")).toContainText("More editions of a token already credited in Group Stable add no claims");
+    await expect(groupReview).not.toContainText("60 claims");
+    await stables.locator("[data-horf-stable-review-back]").click();
     await stables.scrollIntoViewIfNeeded();
     await page.screenshot({ path: "test-results/horf-stables-ready-desktop.png", fullPage: true });
     await page.setViewportSize({ width: 390, height: 844 });

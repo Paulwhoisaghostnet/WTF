@@ -2,7 +2,7 @@
   "network": "tezos-mainnet",
   "chainId": "NetXdQprcVkpaWU",
   "rpc": "https://tezos-mainnet.octez.io/",
-  "contractJsonSha256": "a2d01668d99b6e74b34610059027e602876d32aaeb7bb52a8a78a6121e523907",
+  "contractJsonSha256": "14984be438759a107dd29ee0cc2748a0ccb8ee00a6740b019a727bbd08828894",
   "admin": "tz1cVRngZw42KZ42VQF2ZCy2CJSPNG3H7Cgt",
   "oraclePublicKey": "edpkvZL5ek6Njb9RWQVtnUMkV2HJQtNFsycFdrgDjTnshrsXmzEzVy",
   "source": "artifacts/contract.json",
@@ -31,9 +31,7 @@
                       {
                         "prim": "Pair",
                         "args": [
-                          {
-                            "int": "0"
-                          },
+                          [],
                           {
                             "prim": "Pair",
                             "args": [
@@ -44,13 +42,21 @@
                                 "prim": "Pair",
                                 "args": [
                                   {
-                                    "string": "edpkvZL5ek6Njb9RWQVtnUMkV2HJQtNFsycFdrgDjTnshrsXmzEzVy"
+                                    "int": "0"
                                   },
                                   {
                                     "prim": "Pair",
                                     "args": [
-                                      [],
-                                      []
+                                      {
+                                        "string": "edpkvZL5ek6Njb9RWQVtnUMkV2HJQtNFsycFdrgDjTnshrsXmzEzVy"
+                                      },
+                                      {
+                                        "prim": "Pair",
+                                        "args": [
+                                          [],
+                                          []
+                                        ]
+                                      }
                                     ]
                                   }
                                 ]

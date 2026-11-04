@@ -21,12 +21,18 @@
                     {
                       "prim": "Pair",
                       "args": [
-                        { "int": "0" },
+                        [],
                         {
                           "prim": "Pair",
                           "args": [
                             { "int": "0" },
-                            { "prim": "Pair", "args": [ { "string": "edpkuctj5zryodkgfm9zW7UmYtienSRaM6xRihnHoUkrooVwesQWSW" }, { "prim": "Pair", "args": [ [], [] ] } ] }
+                            {
+                              "prim": "Pair",
+                              "args": [
+                                { "int": "0" },
+                                { "prim": "Pair", "args": [ { "string": "edpkuctj5zryodkgfm9zW7UmYtienSRaM6xRihnHoUkrooVwesQWSW" }, { "prim": "Pair", "args": [ [], [] ] } ] }
+                              ]
+                            }
                           ]
                         }
                       ]

@@ -43,6 +43,17 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (url: string) => url.replace(/^\/horf-mainnet-rpc/, ""),
       },
+      "^/horf-production-api/api/horf/stables$": {
+        target: "https://wtfos.app/",
+        changeOrigin: true,
+        rewrite: (url: string) => url.replace(/^\/horf-production-api/, ""),
+        configure: (proxy) => {
+          proxy.on("proxyReq", (request) => {
+            request.removeHeader("cookie");
+            request.removeHeader("authorization");
+          });
+        },
+      },
     },
   },
   build: {

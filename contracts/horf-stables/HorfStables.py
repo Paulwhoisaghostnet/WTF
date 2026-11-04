@@ -17,6 +17,12 @@ def main():
     GroupClaimKey: type = sp.record(
         claimant=sp.address, token_contract=sp.address, token_id=sp.nat
     ).layout(("claimant", ("token_contract", "token_id")))
+    GroupContributionKey: type = sp.record(
+        owner=sp.address, token_contract=sp.address, token_id=sp.nat
+    ).layout(("owner", ("token_contract", "token_id")))
+    GroupContribution: type = sp.record(
+        active=sp.nat, ever_claimed=sp.bool
+    ).layout(("active", "ever_claimed"))
     Listing: type = sp.record(
         owner=sp.address,
         mode=sp.nat,
@@ -96,6 +102,9 @@ def main():
             )
             self.data.group_claimed = sp.cast(
                 sp.big_map(), sp.big_map[GroupClaimKey, sp.unit]
+            )
+            self.data.group_contributions = sp.cast(
+                sp.big_map(), sp.big_map[GroupContributionKey, GroupContribution]
             )
             self.data.blacklisted = sp.cast(
                 sp.big_map(), sp.big_map[sp.address, sp.bool]
@@ -207,10 +216,22 @@ def main():
                     + params.amount
                 )
             if params.mode == 2:
-                self.data.group_credits[sp.sender] = (
-                    self.data.group_credits.get(sp.sender, default=sp.nat(0))
-                    + params.amount * 30
+                contribution_key = sp.record(
+                    owner=sp.sender,
+                    token_contract=params.token_contract,
+                    token_id=params.token_id,
                 )
+                if contribution_key in self.data.group_contributions:
+                    contribution = self.data.group_contributions[contribution_key]
+                    contribution.active += params.amount
+                    self.data.group_contributions[contribution_key] = contribution
+                else:
+                    self.data.group_contributions[contribution_key] = sp.record(
+                        active=params.amount, ever_claimed=False
+                    )
+                    self.data.group_credits[sp.sender] = (
+                        self.data.group_credits.get(sp.sender, default=sp.nat(0)) + 30
+                    )
             self.transfer_fa2(
                 sp.record(
                     token_contract=params.token_contract,
@@ -258,6 +279,16 @@ def main():
                 assert not claim_key in self.data.group_claimed, "GROUP_TOKEN_ALREADY_CLAIMED"
                 self.data.group_claimed[claim_key] = ()
                 self.data.group_credits[sp.sender] = sp.as_nat(credit - 1)
+                contribution_key = sp.record(
+                    owner=listing.owner,
+                    token_contract=listing.token_contract,
+                    token_id=listing.token_id,
+                )
+                contribution = self.data.group_contributions[contribution_key]
+                assert contribution.active > 0, "GROUP_CONTRIBUTION_EMPTY"
+                contribution.active = sp.as_nat(contribution.active - 1)
+                contribution.ever_claimed = True
+                self.data.group_contributions[contribution_key] = contribution
             listing.remaining = sp.as_nat(listing.remaining - 1)
             self.data.listings[listing_id] = listing
             self.transfer_fa2(
@@ -299,10 +330,21 @@ def main():
                     credit - params.amount
                 )
             if listing.mode == 2:
-                credit = self.data.group_credits.get(sp.sender, default=sp.nat(0))
-                debt = params.amount * 30
-                assert credit >= debt, "CREDITS_ALREADY_SPENT"
-                self.data.group_credits[sp.sender] = sp.as_nat(credit - debt)
+                contribution_key = sp.record(
+                    owner=sp.sender,
+                    token_contract=listing.token_contract,
+                    token_id=listing.token_id,
+                )
+                contribution = self.data.group_contributions[contribution_key]
+                assert contribution.active >= params.amount, "GROUP_CONTRIBUTION_EMPTY"
+                contribution.active = sp.as_nat(contribution.active - params.amount)
+                if contribution.active == 0 and not contribution.ever_claimed:
+                    credit = self.data.group_credits.get(sp.sender, default=sp.nat(0))
+                    assert credit >= 30, "CREDITS_ALREADY_SPENT"
+                    self.data.group_credits[sp.sender] = sp.as_nat(credit - 30)
+                    del self.data.group_contributions[contribution_key]
+                else:
+                    self.data.group_contributions[contribution_key] = contribution
             listing.remaining = sp.as_nat(listing.remaining - params.amount)
             self.data.listings[params.listing_id] = listing
             self.transfer_fa2(

@@ -78,8 +78,8 @@ const STABLES = [
     key: "group",
     name: "Group Stable",
     marker: "03 / COMMUNITY",
-    rule: "Each deposited edition earns 30 claims. Each wallet may claim a given FA2 token ID only once.",
-    credit: "30 claims per deposited edition",
+    rule: "Each distinct FA2 horse token earns 30 claims, however many editions you deposit. More of the same token adds horses, not credits. Claim each other token once.",
+    credit: "30 claims per distinct token",
   },
 ];
 
@@ -663,6 +663,7 @@ export function HorfStables({
                   </li>
                 ))}
               </ReviewList>
+              {depositReview.mode === 2 && <p data-horf-group-credit-rule>Each distinct FA2 token earns 30 claims, regardless of editions. More editions of a token already credited in Group Stable add no claims.</p>}
               <p>Escrow contract: {depositReview.contract.contractAddress}</p>
               <SmallButton data-horf-stable-review-confirm type="button" $strong onClick={() => void deposit()} disabled={busy || !depositReady || !allRowsApproved}>
                 {busy && pending?.action === "deposit" ? "Deposit in progress…" : "Confirm and open wallet"}

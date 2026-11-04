@@ -3,9 +3,9 @@
   "network": "mainnet",
   "protocol": "tallinn",
   "smartpy": "0.24.1",
-  "sourceSha256": "6c916d066690be3674fd85afa4c7e126d88849e3141834a5b129ef014d74ac8b",
-  "contractJsonSha256": "a2d01668d99b6e74b34610059027e602876d32aaeb7bb52a8a78a6121e523907",
-  "contractTzSha256": "ca023e398decf90894b743ad77c34cf840618dd4b7f3b83ea91471a4f7f28f06",
-  "storageFixtureSha256": "d889f35f946f425ff0a6dba54a8fc0f67caaaea3c7dca40a00051f32fe3d762c",
+  "sourceSha256": "8cd3e3ee9f73a9202430e2e02d58ba33536d02aa07798df731fa281e5e5f868c",
+  "contractJsonSha256": "14984be438759a107dd29ee0cc2748a0ccb8ee00a6740b019a727bbd08828894",
+  "contractTzSha256": "978ee4502c03b3bf54e756dcaf318364228f241906aa77a7c20b4f0b3bfabce0",
+  "storageFixtureSha256": "07d7b511ccb93fb6fb8e3867bc786322cf2869e47fdf8a89dddef3016eaa3320",
   "storage": "storage.fixture.json contains public test-account identifiers and must be replaced by prepare-origination.mjs before origination."
 }

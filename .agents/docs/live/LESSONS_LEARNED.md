@@ -14400,3 +14400,23 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: A dialog called a quick send still required scrolling at the moment the rider needed to verify and sign the exact token, quantity, and recipient.
 
 **Rule**: In narrow transaction dialogs, replace the composition controls with a concise exact-terms review and an Edit action. Require an explicit edition quantity, then verify the Confirm action fits without scrolling at phone width.
+
+---
+
+## 2026-11-04 - Group Stable credit copy must follow the deployed contract
+
+**What happened**: Group Stable described and granted 30 claims per edition, so depositing several editions of one horse multiplied a trader's credits. Updating the review copy also left a browser assertion looking for the edit-stage button while the review stage hid it.
+
+**Why it mattered**: Horse traders wanted 30 claims per distinct token regardless of edition count. A UI-only wording change would misstate the active Mainnet contract, and the staged browser test would fail for a valid review state.
+
+**Rule**: Change Group credit accounting in a replacement contract and switch its configuration with the UI copy. Assert the exact token and edition count alongside the fixed credit rule in the review stage, then return to editing before testing edit-stage controls.
+
+---
+
+## 2026-11-04 - Group Stable credits must follow token identity
+
+**What happened**: The first Horf Stables contract granted thirty Group claims for every deposited edition. A horse token with multiple editions, or the same token submitted in separate deposits, therefore multiplied a single token's entitlement.
+
+**Why it mattered**: The Group Stable promise is thirty claims per qualifying FA2 contract and token ID contributed by a trader, independent of edition count. The immutable Mainnet contract cannot be corrected by changing UI copy or the permit service alone.
+
+**Rule**: Track Group contributions on-chain by owner, FA2 contract, and token ID. Award thirty credits once, keep top-up editions credit-neutral, and revoke that grant only when every contributed edition is returned before any outside claim. Compile and test a replacement contract, then originate and rotate runtime configuration only after verifying the old contract has no listings or credits.

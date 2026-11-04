@@ -8,13 +8,18 @@ contract as an operator for each token ID before calling `deposit`.
 | --- | --- | --- | --- |
 | `0` reciprocal | One claim credit per deposited edition | Spend one credit to claim one edition from another owner's listing | Return unclaimed editions only while the owner has at least one unspent reciprocal credit per returned edition |
 | `1` honor | No credits | Anyone except the donor may claim one edition without depositing | Donor may recover unclaimed editions |
-| `2` group | Thirty claim credits per deposited edition | Spend one credit to claim one edition from another owner's listing; each wallet may claim a given `(FA2 contract, token ID)` only once across this contract | Return unclaimed editions only while the owner has at least thirty unspent group credits per returned edition |
+| `2` group | Thirty claim credits once per depositor and `(FA2 contract, token ID)`, regardless of deposited edition count or split deposits | Spend one credit to claim one edition from another owner's listing; each wallet may claim a given `(FA2 contract, token ID)` only once across this contract | Partial returns keep the grant; returning every edition before any outside claim burns thirty unspent credits and clears the contribution for later resubmission |
 
 All three modes accept a positive number of editions per deposit. Listings
 record `submitted` and `remaining` units. A claim transfers exactly one unit to
 the caller and cannot target the caller's own listing. Group's per-token claim
 marker is permanent for this contract, including across different listings and
 trading seasons. Credits are separate between reciprocal and group modes.
+For group deposits, the contract records each depositor's token identity,
+current unclaimed editions across listings, and whether anyone has claimed an
+edition. Extra editions of the same token identity add no credits. Once another
+trader has claimed an edition, that depositor's thirty-credit grant remains
+one-time even if they later add more editions.
 
 ## Eligibility permits
 
@@ -78,7 +83,8 @@ secret; browsers receive a signature, never that secret.
 Views: `get_listing(nat)`, `get_credits(address)`,
 `has_claimed_group({claimant, token_contract, token_id})`, and
 `is_blacklisted(address)`. Indexed storage fields
-are `listings`, `reciprocal_credits`, `group_credits`, `group_claimed`, `blacklisted`,
+are `listings`, `reciprocal_credits`, `group_credits`, `group_claimed`,
+`group_contributions`, `blacklisted`,
 `next_listing_id`, `oracle_key`, `oracle_epoch`, and `used_permits`. Events are
 `horse_deposited`, `horse_claimed`, and `horse_cancelled`, each with explicit
 field annotations in the compiled Michelson. A claim event represents one
@@ -98,11 +104,11 @@ Use `smartpy-tezos==0.24.1` from `requirements.txt`. Run:
 node contracts/horf-stables/build.mjs
 ```
 
-This runs six Tallinn SmartPy scenario suites, checks the repo's
+This runs seven Tallinn SmartPy scenario suites, checks the repo's
 [signed-origination size policy](../../scripts/pasta-protocol/check-smartpy-origination-size.mjs),
 and regenerates `artifacts/contract.json`, `contract.tz`,
 `storage.fixture.json`, and `build-manifest.json`. The local checker currently
-reports 5,597 signed-origination bytes using its configured codec. A current
+reports 6,383 signed-origination bytes using its configured codec. A current
 mainnet RPC simulation remains necessary before live origination. The fixture
 storage contains public test-account identifiers and is **not** deployable
 configuration.
@@ -132,17 +138,32 @@ stays outside the repository and browser. Kukai displays the current fee and
 storage burn before signature.
 
 Originating requires an authorized Tezos signer and a current-chain simulation.
-The Stables contract was originated on Mainnet by `wtf.tez` at
+The **per-token V2** Stables contract was originated on Mainnet at
+[`KT1Rg7ippRJGrFgKBDCGUyiFG7jKdcU7Dmsg`](https://tzkt.io/KT1Rg7ippRJGrFgKBDCGUyiFG7jKdcU7Dmsg)
+in applied operation
+[`ooxwCr7EMzuBer3wvBdpD6LoQjuRJeM9vSsCsfdibm7BwhmDCiV`](https://tzkt.io/ooxwCr7EMzuBer3wvBdpD6LoQjuRJeM9vSsCsfdibm7BwhmDCiV)
+at 2026-11-04 19:00:37 UTC. The current source and artifacts implement this
+per-token rule. Origination alone does not switch Horf's server configuration,
+permit signer, or browser to V2.
+
+The earlier **per-edition V1** Stables contract was originated on Mainnet by `wtf.tez` at
 [`KT1DBXe1QqiHrc5J5SMm7N9kz1hLPGQucn7m`](https://tzkt.io/KT1DBXe1QqiHrc5J5SMm7N9kz1hLPGQucn7m)
 in applied operation
 [`opQFVP9LJUfR8tTn3ziBuJtPtNtYap3es4Ay1puSNJZH5FV4hk3`](https://tzkt.io/opQFVP9LJUfR8tTn3ziBuJtPtNtYap3es4Ay1puSNJZH5FV4hk3).
-Mainnet RPC verification matched every deployed script section to the built
-artifact exactly, including all four views. TzKT storage confirmed admin
+At its original deployment, Mainnet RPC verification matched every deployed
+script section to that version's built artifact, including all four views. The
+current source and artifacts implement the **per-token** replacement and do
+not match that earlier immutable KT1. On 2026-11-04, TzKT reported
+`next_listing_id = 0` and no active listings or reciprocal/group credit keys
+on the earlier KT1, so there is no existing escrow balance or claim credit to
+migrate. TzKT storage confirmed the earlier contract's admin
 `tz1cVRngZw42KZ42VQF2ZCy2CJSPNG3H7Cgt`, oracle public key
 `edpkvZL5ek6Njb9RWQVtnUMkV2HJQtNFsycFdrgDjTnshrsXmzEzVy`, epoch `0`,
-and no listings. The server runtime has the contract address and matching
-oracle signer. The client reads the verified KT1 from the Stable API and has no
-separate contract-address configuration.
+and no listings at the original launch check. At V2 origination, the server
+runtime still pointed to V1; a configuration rotation and live API check must
+establish when Horf actually starts using V2.
+The client reads the verified KT1 from the Stable API and has no separate
+contract-address configuration.
 
 For network staging, keep Tezos Shadownet separate from mainnet. The project
 RPC defaults are `https://tezos-shadownet.octez.io/` and

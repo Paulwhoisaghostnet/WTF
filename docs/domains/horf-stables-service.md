@@ -6,9 +6,9 @@ Horf's three stables are one Tezos **mainnet** FA2 custody contract. The contrac
 | --- | --- | --- |
 | Reciprocal (`0`) | One claim per deposited edition | Claim one edition from another trader's live listing. |
 | Honor (`1`) | None required | Anyone except the donor can claim a live edition for free. |
-| Group (`2`) | Thirty claims per deposited edition | Claim one edition from another trader's live listing; the contract permits at most one edition of each FA2 contract/token ID per claimant. |
+| Group (`2`) | Thirty claims per distinct deposited FA2 contract/token ID, regardless of edition count | Claim one edition from another trader's live listing; the contract permits at most one edition of each FA2 contract/token ID per claimant. |
 
-The contract prevents depositors from cancelling editions after spending the reciprocal or group credits that those editions created. Honor donors may cancel unclaimed editions. Claims are on-chain horse receipts for the race and recent log, but they do not create a personal return obligation: the pool rules settle the exchange.
+The contract prevents depositors from cancelling reciprocal editions after spending the credits those editions created. In Group Stable, extra editions of an already credited token add no credits. Partial cancellation of unclaimed editions leaves the 30 credits intact. Returning the final unclaimed edition burns those credits only if no edition of that token was claimed; a spent credit blocks that final return. Once another trader has claimed an edition, the token's contribution remains credited and later deposits of the same token by that owner add no credits. Honor donors may cancel unclaimed editions. Claims are on-chain horse receipts for the race and recent log, but they do not create a personal return obligation: the pool rules settle the exchange.
 
 ## Eligibility proof
 
@@ -40,11 +40,15 @@ FA2 scenario reproduced this credit-forgery path. [Tezos operations](https://doc
 and [FA2 interface](https://docs.tezos.com/architecture/tokens/FA2) document
 the execution and callback semantics.
 
-The Marshal's Market deposit-permit service now requires an active HORF MARSHAL inspection
+The Marshal's Market deposit-permit service requires an active HORF MARSHAL inspection
 approval for the exact FA2 contract and token ID in **all three Stables**.
-**No token has been approved yet.** The Mainnet Stable was originated at
-[`KT1DBXe1QqiHrc5J5SMm7N9kz1hLPGQucn7m`](https://tzkt.io/KT1DBXe1QqiHrc5J5SMm7N9kz1hLPGQucn7m),
-and its deployed code, admin, and oracle key match the reviewed build.
+The per-token V2 Mainnet contract was originated at
+[`KT1Rg7ippRJGrFgKBDCGUyiFG7jKdcU7Dmsg`](https://tzkt.io/KT1Rg7ippRJGrFgKBDCGUyiFG7jKdcU7Dmsg)
+in applied operation
+[`ooxwCr7EMzuBer3wvBdpD6LoQjuRJeM9vSsCsfdibm7BwhmDCiV`](https://tzkt.io/ooxwCr7EMzuBer3wvBdpD6LoQjuRJeM9vSsCsfdibm7BwhmDCiV)
+at 2026-11-04 19:00:37 UTC. The earlier per-edition contract
+[`KT1DBXe1QqiHrc5J5SMm7N9kz1hLPGQucn7m`](https://tzkt.io/KT1DBXe1QqiHrc5J5SMm7N9kz1hLPGQucn7m)
+is historical. Origination does not by itself switch the app or its permit service to V2.
 Marshal approval is a trust decision rather than a guarantee of
 safe escrow. This review uses dated
 Objkt metadata, Mainnet ownership, transfer samples, contract creator, TzKT
@@ -97,8 +101,8 @@ deposit that token after a fresh owner/eligibility check. Permit issuance
 requires the approved creator, TzKT code hash, and full Micheline SHA-256 to
 match the current Mainnet contract. A revoked approval blocks new permits;
 an already signed one-use permit remains usable until the on-chain admin
-bumps `oracle_epoch`. The verified Mainnet Stable is live, with no approved
-tokens or listings at this handoff.
+bumps `oracle_epoch`. Production must read V2's KT1 from its Stable API after
+the runtime configuration switch before describing the per-token rule as live.
 
 ## API
 
@@ -164,11 +168,14 @@ The read source is [TzKT's contract storage, bigmap, and event API](https://api.
 
 ## Configuration
 
-The production environment uses `TEZOS_NETWORK=mainnet`,
-`HORF_STABLES_CONTRACT_ADDRESS=KT1DBXe1QqiHrc5J5SMm7N9kz1hLPGQucn7m`, and
+The V2 production configuration requires `TEZOS_NETWORK=mainnet`,
+`HORF_STABLES_CONTRACT_ADDRESS=KT1Rg7ippRJGrFgKBDCGUyiFG7jKdcU7Dmsg`, and
 `HORF_STABLES_ORACLE_SECRET_KEY=<private key whose public key is stored in the
-contract>`. The browser takes the configured KT1 from the read API. No
-oracle private key is checked into the repository. Horf
+V2 contract>`. The earlier `KT1DBXe1QqiHrc5J5SMm7N9kz1hLPGQucn7m` setting
+targets historical V1 and must not be paired with V2 credit copy. The browser
+takes the configured KT1 from the read API. This document does not assert that
+the production runtime switch has completed. No oracle private key is checked
+into the repository. Horf
 uses an explicit Mainnet index, `HORF_MAINNET_TZKT_URL` when configured and
 `https://api.tzkt.io/v1` otherwise, independent of the generic WTF OS
 `TZKT_API_URL` that may target Shadownet locally. Contract identity checks
@@ -177,13 +184,12 @@ use `HORF_MAINNET_RPC_URL` when configured; otherwise they use generic
 primary `https://tezos-mainnet.octez.io/` and fallback
 `https://tcinfra.net/rpc/tezos/mainnet`. The RPC chain ID is checked.
 
-The artifact, on-chain origination, exact deployed code, admin, and oracle key
-have been verified. Local contract tests and actor-backed app tests cover
-deposit, claim, moderation, and indexing paths. No live user horse has been
-deposited or claimed yet; a first Mainnet deposit and claim remains the final
-end-to-end wallet smoke. Permit requests remain closed until a token receives
-active marshal approval.
+The current artifacts describe the per-token V2 contract, which was originated
+on Mainnet in the applied operation above. Local contract tests and actor-backed
+app tests cover deposit, claim, moderation, and indexing paths. The runtime
+contract address and matching oracle key must be checked after configuration
+rotation; a first Mainnet deposit and claim remains a separate wallet smoke.
 
 ## Minimal source probes
 
-On 2026-11-03, one read-only Objkt GraphQL token lookup for the public Horse of July token `KT1U4p17VUNcinntAzUULBhzpPK7f2a4Ht4P/23` returned its exact FA2 identity, metadata, `decimals: 0`, and tag counts. A TzKT `/head` read returned mainnet chain ID `NetXdQprcVkpaWU`. Two TzKT bigmap-key reads with `limit=2` confirmed cursor semantics: IDs `1,2`, then `offset.cr=2` returned `3,4`. After origination, TzKT showed epoch `0`, zero listings, the intended admin and oracle key, and an applied operation from wtf.tez. Each deployed Michelson section matched the built artifact. No user horse deposit or claim was attempted.
+On 2026-11-03, one read-only Objkt GraphQL token lookup for the public Horse of July token `KT1U4p17VUNcinntAzUULBhzpPK7f2a4Ht4P/23` returned its exact FA2 identity, metadata, `decimals: 0`, and tag counts. A TzKT `/head` read returned mainnet chain ID `NetXdQprcVkpaWU`. Two TzKT bigmap-key reads with `limit=2` confirmed cursor semantics: IDs `1,2`, then `offset.cr=2` returned `3,4`. After the original V1 origination, TzKT showed epoch `0`, zero listings, the intended admin and oracle key, and an applied operation from wtf.tez. Each V1 deployed Michelson section matched its original built artifact. No user horse deposit or claim was attempted in that probe.

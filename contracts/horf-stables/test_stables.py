@@ -265,7 +265,7 @@ def admin_blacklist_blocks_new_deposits_and_claims_but_preserves_cancel():
 
 
 @sp.add_test()
-def group_stable_grants_thirty_per_edition_and_one_of_each_token():
+def group_stable_grants_thirty_per_token_and_one_of_each_claimed_token():
     scenario = sp.test_scenario("horf_group_stable", [horf.main, mock_fa2])
     scenario.add_flag("protocol", "tallinn")
     admin = sp.test_account("Admin")
@@ -290,17 +290,17 @@ def group_stable_grants_thirty_per_edition_and_one_of_each_token():
     deposit(stable, oracle, carol, 2, token, 31, 2, 6)
     deposit(stable, oracle, bob, 2, token, 32, 1, 7)
     deposit(stable, oracle, dave, 2, token, 33, 1, 8)
-    scenario.verify(stable.data.group_credits[alice.address] == 60)
+    scenario.verify(stable.data.group_credits[alice.address] == 30)
     stable.claim(1, _sender=alice)
-    scenario.verify(stable.data.group_credits[alice.address] == 59)
+    scenario.verify(stable.data.group_credits[alice.address] == 29)
     stable.claim(2, _sender=alice, _valid=False, _exception="GROUP_TOKEN_ALREADY_CLAIMED")
     stable.claim(3, _sender=alice)
-    scenario.verify(stable.data.group_credits[alice.address] == 58)
+    scenario.verify(stable.data.group_credits[alice.address] == 28)
     scenario.verify(balance(token, alice, 31) == 1)
     scenario.verify(balance(token, alice, 32) == 1)
     stable.claim(0, _sender=alice, _valid=False, _exception="OWN_LISTING")
     stable.claim(0, _sender=bob)
-    scenario.verify(stable.data.group_credits[bob.address] == 89)
+    scenario.verify(stable.data.group_credits[bob.address] == 59)
     stable.cancel(listing_id=1, amount=1, _sender=bob)
     scenario.verify(stable.data.group_credits[bob.address] == 59)
     stable.claim(2, _sender=dave)
@@ -308,6 +308,54 @@ def group_stable_grants_thirty_per_edition_and_one_of_each_token():
     stable.cancel(listing_id=4, amount=1, _sender=dave, _valid=False, _exception="CREDITS_ALREADY_SPENT")
     stable.cancel(listing_id=0, amount=1, _sender=alice)
     scenario.verify(stable.data.group_credits[alice.address] == 28)
+
+
+@sp.add_test()
+def group_stable_counts_token_once_across_split_deposits_and_cancellations():
+    scenario = sp.test_scenario("horf_group_token_contribution", [horf.main, mock_fa2])
+    scenario.add_flag("protocol", "tallinn")
+    admin = sp.test_account("Admin")
+    oracle = sp.test_account("Oracle")
+    alice = sp.test_account("Alice")
+    bob = sp.test_account("Bob")
+    token = mock_fa2.MockFA2()
+    stable = horf.main.HorfStables(admin.address, oracle.public_key)
+    scenario += token
+    scenario += stable
+    token.mint(owner=alice.address, token_id=40, amount=7)
+    token.mint(owner=alice.address, token_id=41, amount=1)
+    token.mint(owner=bob.address, token_id=42, amount=1)
+    for owner, token_id in [(alice, 40), (alice, 41), (bob, 42)]:
+        token.set_operator(owner=owner.address, operator=stable.address, token_id=token_id, enabled=True, _sender=owner)
+
+    deposit(stable, oracle, alice, 2, token, 40, 3, 31)
+    deposit(stable, oracle, alice, 2, token, 40, 2, 32)
+    contribution_key = sp.record(owner=alice.address, token_contract=token.address, token_id=40)
+    scenario.verify(stable.data.group_credits[alice.address] == 30)
+    scenario.verify(stable.data.group_contributions[contribution_key].active == 5)
+    deposit(stable, oracle, alice, 2, token, 41, 1, 33)
+    scenario.verify(stable.data.group_credits[alice.address] == 60)
+
+    stable.cancel(listing_id=0, amount=2, _sender=alice)
+    stable.cancel(listing_id=1, amount=2, _sender=alice)
+    scenario.verify(stable.data.group_credits[alice.address] == 60)
+    scenario.verify(stable.data.group_contributions[contribution_key].active == 1)
+    stable.cancel(listing_id=0, amount=1, _sender=alice)
+    scenario.verify(stable.data.group_credits[alice.address] == 30)
+    scenario.verify(~stable.data.group_contributions.contains(contribution_key))
+
+    deposit(stable, oracle, alice, 2, token, 40, 1, 34)
+    scenario.verify(stable.data.group_credits[alice.address] == 60)
+    deposit(stable, oracle, bob, 2, token, 42, 1, 35)
+    stable.claim(3, _sender=bob)
+    scenario.verify(stable.data.group_contributions[contribution_key].active == 0)
+    scenario.verify(stable.data.group_contributions[contribution_key].ever_claimed)
+    deposit(stable, oracle, alice, 2, token, 40, 1, 36)
+    scenario.verify(stable.data.group_credits[alice.address] == 60)
+    scenario.verify(stable.data.group_contributions[contribution_key].active == 1)
+    stable.cancel(listing_id=5, amount=1, _sender=alice)
+    scenario.verify(stable.data.group_credits[alice.address] == 60)
+    scenario.verify(stable.data.group_contributions.contains(contribution_key))
 
 
 @sp.add_test()
