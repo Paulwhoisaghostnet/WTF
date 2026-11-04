@@ -14500,3 +14500,13 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: Riders and Marshals reasonably read these clicks as broken, and the path to a buy or a nonhorse removal was obscured.
 
 **Rule**: When a card action selects a target, reveal and focus the exact next control, including when the first card is already selected. Put a direct Marshal Hide action on each actionable token row, with immediate exact-token removal and rollback on failure; retain full evidence review as an optional path. Keep buyer wallet and Marshal role checks at their transaction boundaries.
+
+---
+
+## 2026-11-04 - New source files require environment inventory regeneration
+
+**What happened**: The HORF picker release added source files and passed local TypeScript, build, and focused browser checks, but the Quality Gates stopped at `env:inventory:check` because the generated source-file count in `docs/reference/environment-variables.md` was stale.
+
+**Why it mattered**: The production deploy can succeed independently while the release quality job remains red, hiding later checks.
+
+**Rule**: After adding or removing tracked source files, run `npm run env:inventory`, then `npm run env:inventory:check` in the same commit before pushing `main`.
