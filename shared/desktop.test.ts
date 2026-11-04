@@ -95,6 +95,13 @@ test("normalizes desktop appearance while forcing platform font selections", () 
   });
 });
 
+test("starter icon mode survives settings normalization while legacy accounts stay classic", () => {
+  assert.equal(DEFAULT_DESKTOP_APPEARANCE.desktopIconMode, "classic");
+  assert.equal(normalizeDesktopAppearance({}).desktopIconMode, "classic");
+  assert.equal(normalizeDesktopAppearance({ desktopIconMode: "starter" }).desktopIconMode, "starter");
+  assert.equal(normalizeDesktopAppearance({ desktopIconMode: "invalid" }).desktopIconMode, "classic");
+});
+
 test("falls back to safe desktop appearance defaults for bad input", () => {
   const normalized = normalizeDesktopAppearance({
     appearanceStyleKey: "vista-but-not-really",

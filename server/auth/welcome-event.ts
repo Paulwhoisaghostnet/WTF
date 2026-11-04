@@ -39,8 +39,17 @@ export async function emitWelcomeEventIfNeeded(
   user: WelcomeUser | null | undefined,
   sourceModule: string
 ) {
+  if (!user?.id) return;
+  // The inbox welcome retries on login even after the modal is complete.
+  // Delivery is idempotent and applies only to accounts created in starter mode.
+  try {
+    const { ensureStarterWelcomeDm } = await import("./welcome-dm");
+    await ensureStarterWelcomeDm(user.id);
+  } catch (err) {
+    console.warn("[auth] failed to deliver starter welcome DM:", err);
+  }
+
   if (!shouldRunWelcomeEvent(user)) return;
-  if (!user) return;
   try {
     const { ingestSystemEvent } = await import("../challenges/events/ingest");
     await ingestSystemEvent(buildWelcomeEventInput(user, sourceModule));

@@ -65,7 +65,8 @@ test.describe("interaction inventory - admin broad and acute control suite", () 
     await page.mouse.move(480, 650);
     await page.waitForTimeout(100);
     const rendered = PNG.sync.read(await page.screenshot());
-    for (const [x, y] of [[100, 100], [1100, 100]]) {
+    // The 30-day account counter occupies the upper-right desktop; sample clear wallpaper below it.
+    for (const [x, y] of [[100, 100], [1100, 200]]) {
       const index = (rendered.width * y + x) << 2;
       const brightness = rendered.data[index] + rendered.data[index + 1] + rendered.data[index + 2];
       expect(brightness, `custom cursor compositor tile at ${x},${y}`).toBeGreaterThan(100);

@@ -5,6 +5,7 @@ export const ROUTE_FIXTURES = [
   { pattern: "/command-palette", path: "/command-palette", title: "Command Palette", domain: "desktop-os", subdomain: "Command palette", auth: true },
   { pattern: "/recovery-mode", path: "/recovery-mode", title: "Recovery Mode", domain: "desktop-os", subdomain: "Recovery Mode", auth: true },
   { pattern: "/file-manager", path: "/file-manager", title: "File Manager", domain: "desktop-os", subdomain: "File Manager", auth: true },
+  { pattern: "/wastebasket", path: "/wastebasket", title: "Wastebasket", domain: "desktop-os", subdomain: "Wastebasket", auth: true },
   { pattern: "/settings", path: "/settings", title: "Settings", domain: "desktop-os", subdomain: "System Settings", auth: true },
   { pattern: "/browser-boundaries", path: "/browser-boundaries", title: "Browser Boundaries", domain: "desktop-os", subdomain: "Browser Boundaries", auth: true },
   { pattern: "/applications", path: "/applications", title: "Applications", domain: "desktop-os", subdomain: "Remote applications", auth: true },

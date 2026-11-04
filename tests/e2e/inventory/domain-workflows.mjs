@@ -20,7 +20,7 @@ export const DOMAIN_WORKFLOWS = [
   {
     name: "entry auth identity loop",
     domain: "Entry, Authentication, and Account Identity",
-    routes: ["/", "/login", "/register", "/profile", "/faq", "/user/wtf-admin"],
+    routes: ["/", "/login", "/register", "/profile", "/faq", "/user/wtf-admin", "/mail", "/messages"],
     eventHandles: [
       "public.route.viewed",
       "auth.login.succeeded",
@@ -45,6 +45,7 @@ export const DOMAIN_WORKFLOWS = [
     ],
     behaviorAssertionIds: [
       "auth.classic-first-run-task-wayfinder",
+      "auth.starter-welcome-dm",
       "auth.stale-session-welcome-recovery",
       "auth.faq-registration-tutorials",
       "auth.watched-video-history-and-boot",
@@ -56,6 +57,8 @@ export const DOMAIN_WORKFLOWS = [
     ],
     apiProbes: [
       { method: "GET", path: "/api/auth/user" },
+      { method: "GET", path: "/api/messages/dms" },
+      { method: "GET", path: "/api/comms/unread-count" },
       { method: "GET", path: "/api/auth/social/config" },
       { method: "GET", path: "/api/profile/account" },
       { method: "GET", path: "/api/profile/watched-videos" },
@@ -71,7 +74,7 @@ export const DOMAIN_WORKFLOWS = [
   {
     name: "desktop os app shell loop",
     domain: "Desktop OS, Navigation, and Personal Environment",
-    routes: ["/dashboard", "/desktop-settings", "/map-lab", "/applications", "/applications/e2e-app/play", "/agent", "/wtfiam", "/arcade"],
+    routes: ["/dashboard", "/wastebasket", "/desktop-settings", "/map-lab", "/applications", "/applications/e2e-app/play", "/agent", "/wtfiam", "/arcade"],
     eventHandles: [
       "desktop.window.opened",
       "desktop.start_menu.opened",
@@ -82,7 +85,10 @@ export const DOMAIN_WORKFLOWS = [
       "desktop.shortcut.created",
       "desktop.shortcut.opened",
       "desktop.shortcut.moved",
+      "desktop.shortcut.trashed",
+      "desktop.shortcut.restored",
       "desktop.shortcut.deleted",
+      "desktop.wastebasket.emptied",
       "desktop.settings.viewed",
       "desktop.font_pack.updated",
       "desktop.chat_typography.updated",
@@ -144,6 +150,11 @@ export const DOMAIN_WORKFLOWS = [
       "reggie.hint.shown",
       "reggie.message.sent",
       "reggie.progress.checked",
+    ],
+    behaviorAssertionIds: [
+      "desktop.starter-app-set",
+      "desktop.wastebasket-shortcut-lifecycle",
+      "desktop.login-accounts-30d-worksite-sign",
     ],
     apiProbes: [
       { method: "GET", path: "/api/apps/desktop" },

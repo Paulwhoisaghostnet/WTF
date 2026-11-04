@@ -14019,6 +14019,56 @@ When shop and board are visible together, contextual help must prioritize a sele
 
 ---
 
+## 2026-11-03 - Keep first-login guidance unread until it is opened
+
+**What happened**: The desktop offered every native app to a new account, while its Recycle Bin could not open and shortcuts disappeared permanently when removed. Adding an admin welcome DM exposed another issue: Inbox fetched the first conversation's history as soon as it mounted, and the history endpoint marked that DM read before the new user opened it.
+
+**Why it mattered**: The first desktop was hard to scan, shortcut removal was irreversible, and the welcome indicator could vanish while a user merely previewed Inbox.
+
+**Rule**: Persist a starter icon mode when creating the account, keep app discovery in Stuffs, move shortcuts into a per-account Wastebasket with restore and confirmed emptying, and fetch DM history only after its conversation is opened. Browser tests must prove the welcome remains unread in the Inbox preview and becomes read after opening.
+
+---
+
+## 2026-11-03 - Keep inventory handles limited to canonical events
+
+**What happened**: The first starter welcome-DM inventory row put its metadata source marker in backticks inside the Primary handles cell. The inventory parser treated that marker as an event handle and failed coverage.
+
+**Why it mattered**: A prose marker looked like an unregistered interaction, blocking the required inventory gate without identifying a real missing event.
+
+**Rule**: List only canonical event handles in the Primary handles cell. Describe metadata markers in plain text outside handle syntax and rerun inventory coverage after editing the row.
+
+---
+
+## 2026-11-03 - Verify admin authority before sending automated DMs
+
+**What happened**: The starter welcome sender lookup selected `wtf-admin` by username alone. Registration did not reserve that name, so an ordinary account could have claimed it before the platform admin was provisioned.
+
+**Why it mattered**: The welcome would appear to come from a trusted platform account even though its sender lacked administrative authority.
+
+**Rule**: Check the sender's assigned admin role as well as its canonical username before emitting an automated admin DM. If the account is absent or untrusted, skip delivery and retry later; cover the spoofed-name case in a database test.
+
+---
+
+## 2026-11-03 - Distinguish exact admin from staff access helpers
+
+**What happened**: The first sender-authority fix called the shared `isAdmin` helper. That helper intentionally treats host and cohost as admin-panel roles, so it would have allowed a host named `wtf-admin` to author the automated platform welcome.
+
+**Why it mattered**: Access to an admin screen is broader than authority to impersonate the platform's canonical admin sender.
+
+**Rule**: For system-authored messages that claim the platform admin identity, require the exact `admin` role in the role set. Test witness and host name claims against the database before allowing delivery.
+
+---
+
+## 2026-11-03 - Run the starter welcome hook on every account login path
+
+**What happened**: The standalone Skywire ATProto login created an account through the shared `createUser` path but completed its session through a separate helper. That helper emitted an auth event without calling the starter welcome hook, so this new account received the sparse desktop without the admin welcome message.
+
+**Why it mattered**: A first-login flow omitted the only visible first-step guidance and Inbox unread indicator promised by the starter desktop.
+
+**Rule**: When adding onboarding work to auth, enumerate every successful session-login path, including standalone app logins. Call the same idempotent welcome hook after session success, and keep login available if nonessential welcome delivery fails. When moving fixed desktop overlays, update compositor screenshot probes to sample clear wallpaper outside the new overlay.
+
+---
+
 ## 2026-11-03 - Regenerate the environment inventory after integrating Horf source files
 
 **What happened**: The Horf release added 51 scanned source files and references to two new environment variables, but the checked-in environment inventory still described the earlier tree. Production deployed, while main Quality Gates stopped at `env:inventory:check` before TypeScript, build, and browser inventory.
@@ -14129,6 +14179,26 @@ When shop and board are visible together, contextual help must prioritize a sele
 
 ---
 
+## 2026-11-03 - Reconcile canonical bounty IDs before regenerating merged docs
+
+**What happened**: The starter Wastebasket and Horf route corrections independently claimed bounty ID 778. Their branches also generated different board ranks and environment inventory counts, while each appended distinct lessons.
+
+**Why it mattered**: Choosing either branch's generated docs would erase valid records or leave the board and environment inventory stale against the merged source tree.
+
+**Rule**: Merge the canonical bounty records by identity and field, assign a fresh ID to a genuine collision, recompute every rank, and regenerate derived board and environment inventories from the merged tree. Preserve each branch's appended lessons.
+
+---
+
+## 2026-11-04 - Reserve fresh bounty IDs when release branches integrate new main records
+
+**What happened**: After the first starter and Reggie documentation merge, a newer main assigned bounty ID 779 to the Horf race while the starter branch already used 779 for its welcome flow. Main also replaced an older archived Horf 780 with a distinct Marshal defect and moved the archive to 785.
+
+**Why it mattered**: A text merge of the generated board could silently overwrite one issue or leave stale ranks, and the environment inventory header could describe the prior source tree.
+
+**Rule**: Merge canonical bounty data by ID and field against the common base, preserve distinct issues under unused IDs, recompute ranks, then regenerate and check the board and environment inventory from the final merged tree. Audit auto-merged lessons by complete section content before staging.
+
+---
+
 ## 2026-11-04 - Make escrow quantities deliberate before wallet signing
 
 **What happened**: Stable deposit rows and HORSE Market listings began at one edition. Submitting the form immediately requested a permit and proceeded toward wallet signing, so the trader never had a separate look at the exact token and count.
@@ -14148,3 +14218,23 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: A routine source refresh made funded rewards appear unavailable to senders. Wallets with no outbound qualifying horses also needed a clearer zero-claim explanation.
 
 **Rule**: Gate Claim on the verified vault, completed source snapshot, positive claimable amount, and `claimReady`; a newer scan status alone must not override that completed claim decision. Keep zero-claim copy tied to the sender-only reward rule.
+
+---
+
+## 2026-11-04 - Recheck bounty IDs against main at the final release merge
+
+**What happened**: Main added Horf escrow and reward-claim bounties 786 and 787 while the starter release branch already used 786 for its welcome flow. The source changes also appended two Horf lessons after the branch had diverged.
+
+**Why it mattered**: A text merge could overwrite one issue or lose the new operational lessons, and stale generated ranks would fail the release gate.
+
+**Rule**: At the final main integration, compare canonical record identities against the merge base, assign a fresh ID to a distinct collision, preserve all lesson sections, and regenerate the board and environment inventory from the exact merged tree.
+
+---
+
+## 2026-11-04 - Recheck policy ownership after moving desktop interactions
+
+**What happened**: The starter desktop grew `Desktop.tsx` past its enforced modularity boundary, while permanent shortcut deletion moved into the Wastebasket page but a client-event policy still searched only the old desktop shell. PR #64 Quality Gates failed both policies on the release head.
+
+**Why it mattered**: The oversized shell was a real architecture regression, and the stale source assertion reported a missing event even though the new owner emitted it. Both stopped the release before the rest of the quality path could finish.
+
+**Rule**: Keep desktop behavior in its feature owner when adding interactions, then update source-inspection policies to follow that ownership. Run the focused modularity and event-parity policies on the exact candidate tree before pushing a release head.

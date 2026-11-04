@@ -190,6 +190,19 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "The focused harness expires the session on `/api/auth/welcome/complete`, verifies the client emits `auth.session.invalidated`, and confirms the welcome modal is removed after the protected 401.",
   },
   {
+    id: "auth.starter-welcome-dm",
+    domain: "Entry, Authentication, and Account Identity",
+    platformOwner: "auth-session",
+    ownerSpec:
+      "server/auth/storage.ts; server/auth/welcome-event.ts; server/auth/welcome-dm.ts; server/auth/welcome-dm.test.ts; server/auth/welcome-dm.integration.test.ts; server/features/atproto/standalone-login-event.ts; server/features/atproto/standalone-login-event.test.ts; client/src/features/desktop/DesktopIcons.tsx; tests/playwright/inventory/starter-welcome-dm.spec.mjs",
+    verificationCommand:
+      "npx tsx --test server/auth/welcome-dm.test.ts server/auth/welcome-dm.integration.test.ts server/features/atproto/standalone-login-event.test.ts && npm run build && npx playwright test tests/playwright/inventory/starter-welcome-dm.spec.mjs && npm run test:e2e:inventory:coverage",
+    userVisibleAssertion:
+      "A newly registered starter-desktop account sees an unread Inbox badge and one wtf-admin direct message with steps for Profile, identity proof, verified EXP actions, and the Green Room contestant milestone. The message explains where Stuffs and Paul are; EXP tier changes alone do not promise a role.",
+    durableSideEffectAssertion:
+      "Registration stores starter desktop mode; the auth welcome hook retries an idempotent, admin-authored DM after local, wallet, social, or standalone Skywire ATProto login, leaving the recipient unread and publishing a comms item linked to the conversation. Legacy classic accounts and a missing or non-admin canonical sender are skipped. Policy and isolated PostgreSQL integration tests cover delivery, sender authority, concurrent idempotency, unread/read transition, and legacy-account skip; the standalone login test covers its welcome hook after successful session login. Browser checks cover Inbox and WIM presentation. Production account delivery is still to be verified after rollout.",
+  },
+  {
     id: "auth.classic-first-run-task-wayfinder",
     domain: "Entry, Authentication, and Account Identity",
     platformOwner: "auth-session",
@@ -1776,6 +1789,45 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
       "The click uses the existing desktop.object.clicked event with objectId paulwhoisaclippy; the inventory harness records the accepted event while no pet-care, reward, or account state changes.",
   },
   {
+    id: "desktop.starter-app-set",
+    domain: "Desktop OS, Navigation, and Personal Environment",
+    platformOwner: "desktop-shell",
+    ownerSpec:
+      "server/auth/storage.ts; client/src/components/layout/Desktop.tsx; tests/playwright/inventory/starter-desktop-wastebasket.spec.mjs",
+    verificationCommand:
+      "npm run build && npx playwright test tests/playwright/inventory/starter-desktop-wastebasket.spec.mjs && npm run test:e2e:inventory:coverage",
+    userVisibleAssertion:
+      "A new starter account lands on a sparse classic desktop with only the Inbox and Wastebasket native icons, paulwhoisaclippy, the custom cursor, the upper-right account sign, and the bottom bar with Stuffs. Other eligible apps remain reachable from Stuffs and may be pinned as shortcuts; existing classic accounts retain their selected desktop mode.",
+    durableSideEffectAssertion:
+      "Account creation persists desktopIconMode=starter in that user's desktop settings; the desktop reads that setting to filter native icons while preserving the normal app and route gates. The browser fixture proves the starter icon set and a Stuffs path to Mission Control.",
+  },
+  {
+    id: "desktop.wastebasket-shortcut-lifecycle",
+    domain: "Desktop OS, Navigation, and Personal Environment",
+    platformOwner: "desktop-shell",
+    ownerSpec:
+      "client/src/features/desktop/wastebasket.ts; client/src/features/desktop/wastebasket.test.ts; client/src/pages/Wastebasket.tsx; tests/playwright/inventory/starter-desktop-wastebasket.spec.mjs",
+    verificationCommand:
+      "npx tsx --test client/src/features/desktop/wastebasket.test.ts && npm run build && npx playwright test tests/playwright/inventory/starter-desktop-wastebasket.spec.mjs && npm run test:e2e:inventory:coverage",
+    userVisibleAssertion:
+      "A user moves a created desktop shortcut to Wastebasket from its context menu or by dropping it on the bin, opens the bin, restores the shortcut, or confirms permanent emptying. Native app icons are not removable; a full desktop explains why restore cannot proceed while keeping the shortcut recoverable.",
+    durableSideEffectAssertion:
+      "Account-scoped browser storage retains trashed shortcuts across reloads, removes a restored shortcut from the basket, and empties only that account's basket after confirmation. The browser test covers move, restore, drag drop, empty, and reload; the domain test covers malformed entries and account separation. Normalized desktop events record trash, restore, and empty actions.",
+  },
+  {
+    id: "desktop.login-accounts-30d-worksite-sign",
+    domain: "Desktop OS, Navigation, and Personal Environment",
+    platformOwner: "desktop-shell",
+    ownerSpec:
+      "server/lib/desktop-login-accounts.test.ts; client/src/features/desktop/DesktopLoginAccounts.tsx; tests/playwright/inventory/desktop-launch-gesture.spec.mjs",
+    verificationCommand:
+      "npx tsx --test server/lib/desktop-login-accounts.test.ts && npm run build && npx playwright test tests/playwright/inventory/desktop-launch-gesture.spec.mjs && npm run test:e2e:inventory:coverage",
+    userVisibleAssertion:
+      "The upper-right desktop sign reads Unique users served (30 days): and presents the distinct account count in a worksite tally style without covering native icons at desktop or narrow widths. Loading and unavailable states remain readable and announced accessibly.",
+    durableSideEffectAssertion:
+      "The existing authenticated endpoint counts distinct account IDs with a qualifying login or first signed-in registration in the rolling 30-day window; the UI reads the server result without mutating account or reward state. The focused server and browser checks cover count semantics, position, label, and unavailable presentation.",
+  },
+  {
     id: "desktop.app-store-ranked-unlocks",
     domain: "Desktop OS",
     ownerSurfaceIds: ["wtfiam", "command-palette", "desktop-icons"],
@@ -1784,7 +1836,7 @@ export const CORE_BEHAVIOR_ASSERTIONS = [
     verificationCommand:
       "npx tsx --test shared/wtfos-app-catalog.test.ts client/src/features/desktop/DesktopIcons.test.tsx client/src/components/layout/start-menu-app-gates.test.ts client/src/features/wtfiam/wtfiam-presentation-policy.test.ts server/routes/in-app-market-app-store-policy.test.ts && npm run test:e2e:inventory:coverage",
     userVisibleAssertion:
-      "The default desktop and first Start Apps rail show only ranked core apps; optional and role-gated wtfOS apps appear in WTFIAM's Apps category, locked cards show the missing role/pass/prerequisite on hover or focus, and unlocked apps can be pinned with the existing Start Menu desktop shortcut action.",
+      "A new starter desktop shows only Inbox and Wastebasket native icons; the full classic desktop and first Start Apps rail show ranked core apps. Optional and role-gated wtfOS apps appear in WTFIAM's Apps category, locked cards show the missing role/pass/prerequisite on hover or focus, and unlocked apps can be pinned with the existing Start Menu desktop shortcut action.",
     durableSideEffectAssertion:
       "The shared app catalog covers every DesktopAppKey, `/api/in-app-market?category=apps` serializes app-unlock SKUs from that catalog, checkout intents reject missing prerequisites before payment, and `/api/apps/desktop` personalizes app availability from owned app-unlock inventory.",
   },

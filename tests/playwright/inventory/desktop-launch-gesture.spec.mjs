@@ -15,8 +15,25 @@ test.describe("interaction inventory - desktop launch gestures", () => {
     await page.goto("/", { waitUntil: "domcontentloaded" });
     const panel = page.locator('[aria-label="Distinct accounts signed in to wtfOS in the last 30 days"]');
     await expect(panel).toBeVisible();
+    await expect(panel).toContainText("Unique users served (30 days):");
     await expect(panel.getByTestId("desktop-login-account-count")).toHaveText("42");
-    await expect(panel).toContainText("Last 30 days");
+
+    const desktop = await page.locator('[data-wtf-desktop-content="true"]').boundingBox();
+    const sign = await panel.boundingBox();
+    expect(desktop).not.toBeNull();
+    expect(sign).not.toBeNull();
+    expect(sign.y + sign.height).toBeLessThan(desktop.y + desktop.height / 2);
+    expect(sign.x + sign.width / 2).toBeGreaterThan(desktop.x + desktop.width / 2);
+
+    await page.setViewportSize({ width: 320, height: 640 });
+    const narrowSign = await panel.boundingBox();
+    const wastebasket = await page.locator('[data-desktop-icon-key="recycle-bin"]').boundingBox();
+    const nextIconRow = await page.locator('[data-desktop-icon-key="wtfiam"]').boundingBox();
+    expect(narrowSign).not.toBeNull();
+    expect(wastebasket).not.toBeNull();
+    expect(nextIconRow).not.toBeNull();
+    expect(narrowSign.x).toBeGreaterThanOrEqual(wastebasket.x + wastebasket.width);
+    expect(narrowSign.y + narrowSign.height).toBeLessThan(nextIconRow.y);
   });
 
   test("desktop reports unavailable when the login count request fails", async ({ page, request }) => {
@@ -29,6 +46,7 @@ test.describe("interaction inventory - desktop launch gestures", () => {
     await page.goto("/", { waitUntil: "domcontentloaded" });
     const panel = page.locator('[aria-label="Distinct accounts signed in to wtfOS in the last 30 days"]');
     await expect(panel).toBeVisible();
+    await expect(panel).toContainText("Unique users served (30 days):");
     await expect(panel.getByTestId("desktop-login-account-count")).toHaveText("—");
     await expect(panel).toContainText("Unavailable");
   });

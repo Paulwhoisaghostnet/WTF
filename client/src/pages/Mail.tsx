@@ -807,7 +807,9 @@ export function Mail() {
   });
   const conversationMessagesQuery = useQuery({
     queryKey: ["messages", "dms", activeConversationId],
-    enabled: Boolean(activeConversationId),
+    // Loading message history marks the conversation read on the server.
+    // Keep the inbox preview and desktop badge unread until the user opens it.
+    enabled: view === "conversations" && Boolean(activeConversationId),
     queryFn: () =>
       api.get<DmMessage[]>(`/api/messages/dms/${activeConversationId}/messages?limit=160`),
   });

@@ -38,10 +38,13 @@ import {
   buildDesktopIconDefs,
   clampIconPosition,
   DraggableIcon,
+  BlangDesktopIcon,
   ICON_H,
   ICON_W,
+  ShortcutGlyph,
   type DesktopIconDef,
 } from "../../features/desktop/DesktopIcons";
+import { reconcileVisibleIconLayout } from "../../features/desktop/desktop-icon-layout";
 import { SundayGrass } from "../../features/desktop/SundayGrass";
 import { PaulWhoIsAClippy } from "../../features/desktop/PaulWhoIsAClippy";
 import { useDesktopIconPhysics } from "../../features/desktop/useDesktopPhysics";
@@ -61,6 +64,7 @@ import {
   defaultShortcutPosition,
   desktopShortcutStorageKey,
   DESKTOP_SHORTCUT_EVENT,
+  DESKTOP_SHORTCUT_LIMIT,
   normalizeDesktopShortcuts,
   parseShortcutPayload,
   shortcutIconKey,
@@ -69,6 +73,10 @@ import {
   type DesktopShortcut,
   type StartMenuShortcutPayload,
 } from "../../features/desktop/desktop-shortcuts";
+import {
+  DESKTOP_SHORTCUTS_CHANGED_EVENT,
+  trashShortcut,
+} from "../../features/desktop/wastebasket";
 import {
   canOpenAppsForRole,
   DESKTOP_APPS,
@@ -108,64 +116,6 @@ const DISABLED_DESKTOP_APPS = Object.fromEntries(
 ) as Record<DesktopAppKey, boolean>;
 
 const DESKTOP_SETTINGS_QUERY_KEY = ["desktop", "settings"] as const;
-
-const ShortcutGlyph = styled.span`
-  width: 30px;
-  height: 30px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid #101010;
-  background:
-    linear-gradient(135deg, transparent 0 68%, #ffffff 68% 76%, #000080 76% 100%),
-    #d7d7d7;
-  color: #101010;
-  font-family: "MS Sans Serif", "Segoe UI", Tahoma, sans-serif;
-  font-size: 14px;
-  font-weight: 700;
-  line-height: 1;
-  box-shadow: inset 1px 1px 0 #ffffff, inset -1px -1px 0 #808080;
-`;
-
-const BlangDesktopIcon = styled.img`
-  width: 36px;
-  height: 36px;
-  object-fit: contain;
-  display: block;
-  margin-bottom: 0;
-  filter: drop-shadow(1px 1px 0 rgba(0, 0, 0, 0.45));
-`;
-
-function reconcileVisibleIconLayout(
-  current: DesktopIconLayout,
-  visibleIcons: DesktopIconDef[],
-  savedLayout: DesktopIconLayout | undefined,
-  surfaceSize: { width: number; height: number },
-  preferSaved: boolean
-): DesktopIconLayout {
-  const next: DesktopIconLayout = {};
-  const hiddenKeys = new Set(Object.keys(current));
-  let changed = false;
-
-  for (const def of visibleIcons) {
-    hiddenKeys.delete(def.key);
-    const defaultPosition = { x: def.defaultX, y: def.defaultY };
-    const source = preferSaved
-      ? savedLayout
-        ? savedLayout[def.key] ?? defaultPosition
-        : current[def.key] ?? defaultPosition
-      : current[def.key] ?? savedLayout?.[def.key] ?? defaultPosition;
-    const position = clampIconPosition(source, surfaceSize);
-    next[def.key] = position;
-    const previous = current[def.key];
-    if (!previous || previous.x !== position.x || previous.y !== position.y) {
-      changed = true;
-    }
-  }
-
-  if (hiddenKeys.size > 0) changed = true;
-  return changed ? next : current;
-}
 
 const DesktopContainer = styled.div<{
   $appearance: DesktopAppearance;
@@ -329,6 +279,19 @@ const RouteLayer = styled.div`
   }
 `;
 
+const ShortcutNotice = styled.div`
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  z-index: 3;
+  max-width: min(360px, calc(100% - 24px));
+  padding: 8px;
+  border: 2px solid #8b1717;
+  background: #fff4ed;
+  color: #471010;
+  font: 13px/1.4 var(--wtf-shell-font, "MS Sans Serif", "Segoe UI", Tahoma, sans-serif);
+`;
+
 export function Desktop({
   children,
   showTaskbar = true,
@@ -358,6 +321,7 @@ export function Desktop({
   const [splitAssemblyKeyDown, setSplitAssemblyKeyDown] = useState(false);
   const [surfaceMeasured, setSurfaceMeasured] = useState(false);
   const [desktopShortcuts, setDesktopShortcuts] = useState<DesktopShortcut[]>([]);
+  const [shortcutError, setShortcutError] = useState<string | null>(null);
   const [contextMenu, setContextMenu] = useState<{
     x: number;
     y: number;
@@ -367,6 +331,10 @@ export function Desktop({
   const hasLocalIconEditsRef = useRef(false);
   const iconSaveRevisionRef = useRef(0);
   const shortcutsLoadedRef = useRef<string | null>(null);
+  const settingsQueryKey = useMemo(
+    () => [...DESKTOP_SETTINGS_QUERY_KEY, user?.id] as const,
+    [user?.id]
+  );
 
   const { data } = useQuery({
     queryKey: ["desktop", "apps"],
@@ -375,7 +343,7 @@ export function Desktop({
   });
 
   const settingsQuery = useQuery({
-    queryKey: DESKTOP_SETTINGS_QUERY_KEY,
+    queryKey: settingsQueryKey,
     queryFn: () => api.get<DesktopSettingsResponse>("/api/desktop/settings"),
     enabled: !!user,
     staleTime: 30_000,
@@ -386,9 +354,9 @@ export function Desktop({
       api.put<DesktopSettingsResponse>("/api/desktop/settings", payload),
     onMutate: async (payload) => {
       const revision = ++iconSaveRevisionRef.current;
-      await qc.cancelQueries({ queryKey: DESKTOP_SETTINGS_QUERY_KEY });
-      const previous = qc.getQueryData<DesktopSettingsResponse>(DESKTOP_SETTINGS_QUERY_KEY);
-      qc.setQueryData<DesktopSettingsResponse>(DESKTOP_SETTINGS_QUERY_KEY, (current) => ({
+      await qc.cancelQueries({ queryKey: settingsQueryKey });
+      const previous = qc.getQueryData<DesktopSettingsResponse>(settingsQueryKey);
+      qc.setQueryData<DesktopSettingsResponse>(settingsQueryKey, (current) => ({
         appearance:
           payload.appearance ??
           current?.appearance ??
@@ -406,18 +374,19 @@ export function Desktop({
     },
     onError: (_error, _payload, context) => {
       if (context?.previous) {
-        qc.setQueryData(DESKTOP_SETTINGS_QUERY_KEY, context.previous);
+        qc.setQueryData(settingsQueryKey, context.previous);
       }
     },
     onSuccess: (result, _payload, context) => {
       if (context?.revision === iconSaveRevisionRef.current) {
         hasLocalIconEditsRef.current = false;
       }
-      qc.setQueryData(DESKTOP_SETTINGS_QUERY_KEY, result);
+      qc.setQueryData(settingsQueryKey, result);
     },
   });
 
   const appearance = settingsQuery.data?.appearance ?? DEFAULT_DESKTOP_APPEARANCE;
+  const starterDesktop = Boolean(user) && (!settingsQuery.data || appearance.desktopIconMode === "starter");
   const activeCurses = useMemo(() => normalizeWtfCurseStatuses(user?.curses), [user?.curses]);
   const blangsCursed = hasWtfCurse(activeCurses, "blangs");
   const invertedMouseCursed = hasWtfCurse(activeCurses, "inverted_click_mouse");
@@ -464,6 +433,30 @@ export function Desktop({
       shortcutsLoadedRef.current = shortcutStorageKey;
     }
   }, [shortcutStorageKey, surfaceMeasured]);
+
+  useEffect(() => {
+    if (!surfaceMeasured || !user) return;
+    const reload = () => {
+      try {
+        const raw = window.localStorage.getItem(shortcutStorageKey);
+        setDesktopShortcuts(normalizeDesktopShortcuts(raw ? JSON.parse(raw) : [], surfaceSize));
+      } catch {
+        setShortcutError("Desktop shortcuts could not be reloaded. Try refreshing the desktop.");
+      }
+    };
+    const onChanged = (event: Event) => {
+      if ((event as CustomEvent<{ userId: number }>).detail?.userId === user.id) reload();
+    };
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === shortcutStorageKey) reload();
+    };
+    window.addEventListener(DESKTOP_SHORTCUTS_CHANGED_EVENT, onChanged);
+    window.addEventListener("storage", onStorage);
+    return () => {
+      window.removeEventListener(DESKTOP_SHORTCUTS_CHANGED_EVENT, onChanged);
+      window.removeEventListener("storage", onStorage);
+    };
+  }, [shortcutStorageKey, surfaceMeasured, surfaceSize, user]);
 
   useEffect(() => {
     if (!surfaceMeasured || shortcutsLoadedRef.current !== shortcutStorageKey) return;
@@ -567,7 +560,10 @@ export function Desktop({
     ]
   );
 
-  const visibleIcons = useMemo(() => iconDefs.filter((icon) => icon.enabled), [iconDefs]);
+  const visibleIcons = useMemo(
+    () => iconDefs.filter((icon) => icon.enabled && (!starterDesktop || icon.key === "recycle-bin" || icon.key === "mail")),
+    [iconDefs, starterDesktop]
+  );
   const renderedVisibleIcons = useMemo<DesktopIconDef[]>(
     () =>
       visibleIcons.map((icon) => {
@@ -658,9 +654,22 @@ export function Desktop({
       }),
     [desktopArtifactNow, desktopArtifacts.items, surfaceSize]
   );
+  const accountCounterObstacle = useMemo<DesktopObstacle | null>(() => {
+    if (!user) return null;
+    const narrow = surfaceSize.width <= 600;
+    const width = Math.min(narrow ? 240 : 260, Math.max(0, surfaceSize.width - 100));
+    const inset = narrow ? 10 : 16;
+    return {
+      id: "account-count-sign",
+      x: Math.max(0, surfaceSize.width - width - inset),
+      y: inset,
+      width,
+      height: narrow ? 84 : 94,
+    };
+  }, [surfaceSize.width, user]);
   const desktopPetObstacles = useMemo(
-    () => [...desktopObstacles, ...shortcutObstacles, ...desktopItemObstacles],
-    [desktopItemObstacles, desktopObstacles, shortcutObstacles]
+    () => [...desktopObstacles, ...shortcutObstacles, ...desktopItemObstacles, ...(accountCounterObstacle ? [accountCounterObstacle] : [])],
+    [accountCounterObstacle, desktopItemObstacles, desktopObstacles, shortcutObstacles]
   );
   const trashRect = useMemo(
     () => desktopObstacles.find((obstacle) => obstacle.id === "recycle-bin") ?? null,
@@ -878,7 +887,7 @@ export function Desktop({
           position ?? defaultShortcutPosition(current.length, surfaceSize),
           surfaceSize
         );
-        return [...current, shortcut].slice(-48);
+        return [...current, shortcut].slice(-DESKTOP_SHORTCUT_LIMIT);
       });
       reportDesktopEvent({
         eventType: "desktop.shortcut.created",
@@ -904,6 +913,29 @@ export function Desktop({
     window.addEventListener(DESKTOP_SHORTCUT_EVENT, handleShortcutRequest);
     return () => window.removeEventListener(DESKTOP_SHORTCUT_EVENT, handleShortcutRequest);
   }, [addDesktopShortcut]);
+
+  const moveShortcutToWastebasket = useCallback(
+    (shortcut: DesktopShortcut, source: "context-menu" | "drag") => {
+      if (!user) return false;
+      try {
+        trashShortcut(user.id, shortcut);
+        setDesktopShortcuts((current) => current.filter((item) => item.id !== shortcut.id));
+        setShortcutError(null);
+        reportDesktopEvent({
+          eventType: "desktop.shortcut.trashed",
+          objectId: shortcut.id,
+          objectKind: "shortcut",
+          action: "trash",
+          metadata: { label: shortcut.label, path: shortcut.path, source },
+        });
+        return true;
+      } catch {
+        setShortcutError("Wastebasket could not save this shortcut. It remains on your desktop.");
+        return false;
+      }
+    },
+    [reportDesktopEvent, user]
+  );
 
   const closeContextMenu = useCallback(() => setContextMenu(null), []);
 
@@ -1001,17 +1033,8 @@ export function Desktop({
           },
           { kind: "separator" },
           {
-            label: t("desktop.context.deleteShortcut"),
-            onSelect: () => {
-              setDesktopShortcuts((current) => current.filter((item) => item.id !== shortcut.id));
-              reportDesktopEvent({
-                eventType: "desktop.shortcut.deleted",
-                objectId: shortcut.id,
-                objectKind: "shortcut",
-                action: "delete",
-                metadata: { label: shortcut.label, path: shortcut.path },
-              });
-            },
+            label: t("desktop.context.moveToWastebasket"),
+            onSelect: () => { moveShortcutToWastebasket(shortcut, "context-menu"); },
           },
           {
             label: t("desktop.context.properties"),
@@ -1028,7 +1051,7 @@ export function Desktop({
         metadata: { label: shortcut.label, path: shortcut.path },
       });
     },
-    [appAccessBlocked, reportDesktopEvent, t, wm]
+    [appAccessBlocked, moveShortcutToWastebasket, reportDesktopEvent, t, wm]
   );
 
   const openDesktopItemContextMenu = useCallback(
@@ -1099,6 +1122,19 @@ export function Desktop({
       const id = shortcutIdFromIconKey(key);
       if (!id) return;
       const nextPosition = clampIconPosition(position, surfaceSize);
+      const centerX = nextPosition.x + ICON_W / 2;
+      const centerY = nextPosition.y + ICON_H / 2;
+      if (
+        trashRect &&
+        centerX >= trashRect.x && centerX <= trashRect.x + trashRect.width &&
+        centerY >= trashRect.y && centerY <= trashRect.y + trashRect.height
+      ) {
+        const shortcut = desktopShortcuts.find((item) => item.id === id);
+        if (shortcut) {
+          moveShortcutToWastebasket(shortcut, "drag");
+          return;
+        }
+      }
       setDesktopShortcuts((current) =>
         current.map((shortcut) =>
           shortcut.id === id ? { ...shortcut, ...nextPosition } : shortcut
@@ -1116,7 +1152,7 @@ export function Desktop({
         },
       });
     },
-    [reportDesktopEvent, surfaceSize]
+    [desktopShortcuts, moveShortcutToWastebasket, reportDesktopEvent, surfaceSize, trashRect]
   );
 
   const handleShortcutOpen = useCallback(
@@ -1190,7 +1226,7 @@ export function Desktop({
             label: t("desktop.context.refresh"),
             onSelect: () => {
               void qc.invalidateQueries({ queryKey: ["desktop", "apps"] });
-              void qc.invalidateQueries({ queryKey: DESKTOP_SETTINGS_QUERY_KEY });
+              void qc.invalidateQueries({ queryKey: settingsQueryKey });
             },
           },
           {
@@ -1226,7 +1262,7 @@ export function Desktop({
         metadata: { source: "surface" },
       });
     },
-    [appAccessBlocked, canSeeReggie, qc, reportDesktopEvent, resetNativeIconLayout, targetOwnsDesktopInteraction, t, wm]
+    [appAccessBlocked, canSeeReggie, qc, reportDesktopEvent, resetNativeIconLayout, settingsQueryKey, targetOwnsDesktopInteraction, t, user, wm]
   );
 
   const handleDesktopPointerDown = useCallback(
@@ -1404,6 +1440,11 @@ export function Desktop({
             <DesktopWeatherCloud bounds={surfaceSize} rule={desktopWeatherRule} />
             <SundayGrass userId={user?.id ?? null} bounds={surfaceSize} />
           </>
+        ) : null}
+        {shortcutError ? (
+          <ShortcutNotice role="alert">
+            {shortcutError} <button type="button" onClick={() => setShortcutError(null)}>Dismiss</button>
+          </ShortcutNotice>
         ) : null}
         <RouteLayer data-route-layer="true">{children}</RouteLayer>
         <DesktopPet

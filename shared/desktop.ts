@@ -514,6 +514,7 @@ export function getDesktopChatTypographyPreset(key: unknown): DesktopChatTypogra
 }
 
 export interface DesktopAppearance {
+  desktopIconMode: "classic" | "starter";
   appearanceStyleKey: DesktopAppearanceStyleKey;
   colorSchemeKey: DesktopColorSchemeKey;
   fontPackKey: DesktopFontPackKey;
@@ -541,6 +542,7 @@ const DEFAULT_SCHEME = DESKTOP_COLOR_SCHEMES[0];
 const DEFAULT_APPEARANCE_STYLE = DESKTOP_APPEARANCE_STYLES[0];
 
 export const DEFAULT_DESKTOP_APPEARANCE: DesktopAppearance = {
+  desktopIconMode: "classic",
   appearanceStyleKey: DEFAULT_APPEARANCE_STYLE.key,
   colorSchemeKey: DEFAULT_SCHEME.key,
   fontPackKey: DEFAULT_DESKTOP_FONT_PACK_KEY,
@@ -893,6 +895,7 @@ export function normalizeDesktopAppearance(input: unknown): DesktopAppearance {
   const fontPackKey = normalizeDesktopFontPackKey(input.fontPackKey);
 
   return {
+    desktopIconMode: input.desktopIconMode === "starter" ? "starter" : "classic",
     appearanceStyleKey: appearanceStyle.key,
     colorSchemeKey: scheme.key,
     fontPackKey,

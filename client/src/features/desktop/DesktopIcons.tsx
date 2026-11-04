@@ -14,6 +14,33 @@ export const ICON_H = 76;
 const DESKTOP_APP_KEY_SET = new Set<string>(DESKTOP_APPS);
 const EXPERIMENTAL_DESKTOP_APP_SET = new Set<string>(EXPERIMENTAL_DESKTOP_APPS);
 
+export const ShortcutGlyph = styled.span`
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #101010;
+  background:
+    linear-gradient(135deg, transparent 0 68%, #ffffff 68% 76%, #000080 76% 100%),
+    #d7d7d7;
+  color: #101010;
+  font-family: "MS Sans Serif", "Segoe UI", Tahoma, sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+  box-shadow: inset 1px 1px 0 #ffffff, inset -1px -1px 0 #808080;
+`;
+
+export const BlangDesktopIcon = styled.img`
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+  display: block;
+  margin-bottom: 0;
+  filter: drop-shadow(1px 1px 0 rgba(0, 0, 0, 0.45));
+`;
+
 function desktopAppKeyForIconKey(key: string): DesktopAppKey | null {
   const appKey = key === "my-gallery" ? "gallery" : key;
   return DESKTOP_APP_KEY_SET.has(appKey) ? (appKey as DesktopAppKey) : null;
@@ -761,11 +788,12 @@ export function buildDesktopIconDefs(
   const defs: DesktopIconDef[] = [
     {
       key: "recycle-bin",
-      label: "Recycle Bin",
+      label: "Wastebasket",
       icon: "🗑️",
       defaultX: 12,
       defaultY: 12,
       enabled: true,
+      openPath: "/wastebasket",
     },
     {
       key: "mission-control",

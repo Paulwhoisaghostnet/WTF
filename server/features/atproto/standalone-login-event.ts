@@ -1,10 +1,18 @@
 import type { NormalizedSystemEventInput } from "../../challenges/events/types";
+import { emitWelcomeEventIfNeeded } from "../../auth/welcome-event";
+
+type StandaloneUser = {
+  id: number;
+  username?: string | null;
+  welcomedToWtfOs?: boolean | null;
+};
 
 export async function loginRequestUser(
   req: any,
-  user: { id: number; username?: string | null },
+  user: StandaloneUser,
   created: boolean,
-  emitAuthEvent: (event: NormalizedSystemEventInput) => Promise<unknown>
+  emitAuthEvent: (event: NormalizedSystemEventInput) => Promise<unknown>,
+  emitWelcomeEvent: (user: StandaloneUser, sourceModule: string) => Promise<unknown> = emitWelcomeEventIfNeeded
 ): Promise<boolean> {
   if (typeof req.login !== "function") return false;
 
@@ -27,6 +35,12 @@ export async function loginRequestUser(
     });
   } catch (err) {
     console.warn("[skywire] failed to emit standalone auth SystemEvent:", err);
+  }
+
+  try {
+    await emitWelcomeEvent(user, "skywire-atproto-login");
+  } catch (err) {
+    console.warn("[skywire] failed to deliver standalone welcome:", err);
   }
 
   return true;

@@ -12,6 +12,7 @@ export const BROWSER_ROUTE_META: readonly BrowserRouteMeta[] = [
   { pattern: "/command-palette", auth: true, title: "Command Palette" },
   { pattern: "/recovery-mode", auth: true, title: "Recovery Mode" },
   { pattern: "/file-manager", auth: true, title: "File Manager" },
+  { pattern: "/wastebasket", auth: true, title: "Wastebasket" },
   { pattern: "/settings", auth: true, title: "Settings" },
   { pattern: "/browser-boundaries", auth: true, title: "Browser Boundaries" },
   { pattern: "/applications/:appId/play", auth: true, title: "Remote Application" },
