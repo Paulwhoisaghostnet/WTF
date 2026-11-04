@@ -9992,7 +9992,7 @@
       "category": "SDK / domain boundaries",
       "priority": "P3",
       "points": 5,
-      "rank": 757,
+      "rank": 758,
       "complexity": 1,
       "functionalityDanger": 2,
       "securityDanger": 0,
@@ -10008,7 +10008,7 @@
       "category": "Game Studio / domain boundaries",
       "priority": "P3",
       "points": 5,
-      "rank": 757,
+      "rank": 758,
       "complexity": 1,
       "functionalityDanger": 2,
       "securityDanger": 0,
@@ -10223,7 +10223,7 @@
       "category": "Profile / IPFS preview reliability",
       "priority": "P3",
       "points": 5,
-      "rank": 757,
+      "rank": 758,
       "complexity": 1,
       "functionalityDanger": 2,
       "securityDanger": 0,
@@ -10556,7 +10556,7 @@
       "functionalityDanger": 1,
       "securityDanger": 0,
       "points": 5,
-      "rank": 757,
+      "rank": 758,
       "title": "Macaroni live verifier incorrectly requires a product field absent from the established direct manifest",
       "body": "- Evidence: Production c21e4aa7 serves correct alpha.2 installer URLs/hashes; all27 public asset probes and allnine anonymous401 checks pass. Macaroni alone fails its live verifier because product is absent. Git history establishes the direct API has omitted that optional identity since June14 commit23127881d; the June30 verifier accepted it, while August8 commit8b096897 introduced the stricter assertion without changing the API. Studio consumes existing installer fields and does not require product.\n- Correction direction: Preserve the established API. Update the verifier to accept absent product while rejecting an explicitly incorrect product; retain version, URL, checksum and authorization checks. Prove behavior with executable validator tests and the real authenticated response.\n- Initial response-change hypothesis rejected after examining history: adding a new production field is unnecessary to satisfy the established contract.\n- Score: Existing board P2(3)+C1+F1+S0 formula; a false release-verification failure, not a production security exploit.\n- Verification: The executable validator test reproduces4pass/1fail before correction and5/5 afterward. Legacy absent identity and explicit macaroni pass; wrong product, stale version, wrong URL and wrong checksum remain rejected. Real authenticated Macaroni verification now passes against unchanged production c21e4aa7; the combined nine-product receipt confirms allnine manifests, allnine anonymous401s and all27 public range downloads. The other eight passing checks were preserved rather than rerun. Inventory version wording now describes alpha.2; no route/handle/API semantics changed. See evidence/desktop-macaroni-verifier-compatibility.json and desktop-live-installer-checks.json."
     },
@@ -10946,7 +10946,7 @@
       "functionalityDanger": 1,
       "securityDanger": 1,
       "points": 5,
-      "rank": 757,
+      "rank": 758,
       "title": "New qs and desktop fast-uri advisory matches have compatible leaf patches",
       "body": "- Evidence: Root qs 6.16.0 is newly indexed by GHSA-6pq8-jhm2-2vcw, producing three moderate propagated audit entries. The vulnerable comma-array stringify API was not found; inspected Express/body-parser use parse. Each of nine desktop locks has one moderate dev-only fast-uri 3.1.8 entry; production audits remain zero. Prior roarr/sprintf-js chain remains removed.\n- Correction direction: refresh root qs to 6.16.1 and desktop fast-uri to 3.1.9, preserving every newer production/packager fix and avoiding forced audit downgrades.\n- Verification idea: focused query parsing/schema packaging checks, clean install/audit and exact lock comparison for regressions. Do not describe these as confirmed public exploit paths.\n- Score: existing P3(2)+C1/F1/S1=5; narrow compatible leaf maintenance, limited compatibility and conditional/build exposure.\n- Review: `docs/research/security-review-2026-10-28/report.md`, audited source/live commit 0b7b02b25ce74bcb6a3e3cad891c0d9a778504a4. Read-only review; no correction or deployment performed.\n\n- Remediation claimed 2026-10-28: user authorized all five findings, mail and Electron first, no downgrades, migration/installer tests, actual runtime verification and full production deployment. Baseline origin/main remains 0b7b02b2; newer dependency fixes must be retained.\n\n- Verified 2026-10-28: Deployed main qs 6.16.1 and all nine desktop fast-uri 3.1.9 versions are verified. Root/signer production audits and all 18 desktop full/production audits return zero findings. Express HTTP form/prototype handling and the qs advisory conversion fixture pass. No package was downgraded; newer production fixes and electron-builder 26.15.3 / global-agent 4.1.3 are retained, and roarr/sprintf-js remain absent. Evidence: docs/research/security-review-2026-10-28/evidence/dependency-remediation-independent-review.json and main-live-runtime.json.\n"
     },
@@ -11078,7 +11078,7 @@
       "category": "E2E / Gamma IPFS Pinning route coverage",
       "priority": "P3",
       "points": 5,
-      "rank": 757,
+      "rank": 758,
       "complexity": 1,
       "functionalityDanger": 2,
       "securityDanger": 0,
@@ -12059,6 +12059,21 @@
       "rank": 572,
       "title": "Edited applied Horf migration blocks Hetzner deployment",
       "body": "- Evidence (2026-11-04): Deploy run 41751540286 built commit 846bc788 but stopped before switching the app because production recorded migration 0155 checksum 3f45bf89 while the release file had checksum 531787cc. The edit added IF NOT EXISTS only to make local puppet preparation repeatable.\\n- Correction: Restore the original 0155 SQL byte for byte. Make the local-only puppet bootstrap skip that atomic migration when its nonhorse decision table already exists. A policy test now checks both the immutable SQL and local skip.\\n- Verification idea: Confirm migration SHA-256 matches the production ledger, run local puppet DB preparation twice, pass the focused policy test, and require the replacement Hetzner deployment to complete with the new commit ready.\\n- Local verification (2026-11-04): SHA-256 is 3f45bf894a0de73918af01d7b9effe16e48fb085fd1819a1b2bb282546aa6ba4, local preparation succeeds twice, and the policy test passes 5/5. Production redeploy remains pending."
+    },
+    {
+      "id": "WTF-BB-797",
+      "status": "Verified",
+      "owner": "Codex Horf browser release gate correction",
+      "lastTouched": "2026-11-04",
+      "category": "E2E / Horf Marshal approval assertion",
+      "priority": "P2",
+      "complexity": 1,
+      "functionalityDanger": 2,
+      "securityDanger": 0,
+      "points": 6,
+      "rank": 742,
+      "title": "Horf batch approval browser test expects obsolete contiguous 422 error copy",
+      "body": "- Evidence (2026-11-04): Main Quality Gates run 41748714191 passed 953 browser checks but failed `horf-traders.spec.mjs:90`. The batch operation completed with the expected counts; the UI rendered the standard branded 422 prefix before the server detail `FA2 identity changed`, so an old contiguous string assertion failed.\n- Correction: Assert the exact failed token identity and the stable server failure detail separately in the same failure row, allowing the shared API error presentation to remain user friendly.\n- Verification idea: Run the focused Horf trader browser spec in an isolated harness and require the replacement main Quality Gates full suite.\n- Local verification (2026-11-04): `HARNESS_PORT=4197` with output outside the repository passed all 5 `horf-traders.spec.mjs` browser tests, including the Marshal batch approval story."
     }
   ]
 }

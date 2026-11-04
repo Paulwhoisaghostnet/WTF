@@ -14340,3 +14340,13 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: The code and image build passed, but the release could not go live. Local test convenience had changed immutable production history.
 
 **Rule**: Restore an applied migration byte for byte when its checksum is recorded. Make repeatable test setup skip an already applied atomic migration using a local schema check, or add a new migration for a real schema change. Check the deployed migration checksum before retrying the release.
+
+---
+
+## 2026-11-04 - Assert Horf failure identity separately from shared API copy
+
+**What happened**: The Horf batch approval browser test expected the token identity immediately followed by the server's FA2 identity detail. The shared API wrapper added its standard user-facing 422 title between them, so main Quality Gates failed one browser check even though the approval flow and counts succeeded.
+
+**Why it mattered**: A release gate stayed red for a presentation-only test mismatch and obscured the actual Horf deploy blocker.
+
+**Rule**: For batch failure rows, assert the exact token identity and stable server detail separately; let the shared API error wrapper render its own status title. Run the focused browser story and the replacement main full suite after changing error presentation or expectations.

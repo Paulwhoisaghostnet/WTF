@@ -87,7 +87,9 @@ test.describe("Horf trader discovery and horse test", () => {
     await expect(first.locator('[data-horf-profile-approved]')).toBeVisible();
     await profile.locator('[data-horf-profile-approve-all]').click();
     await expect(profile.locator('[data-horf-profile-approval-progress]')).toContainText("Checked all 4 held horses: 1 approved, 2 already approved, 1 failed.");
-    await expect(profile.locator('[data-horf-profile-approval-failure]')).toContainText(`${contract}/93: FA2 identity changed`);
+    const approvalFailure = profile.locator('[data-horf-profile-approval-failure]');
+    await expect(approvalFailure).toContainText(`${contract}/93:`);
+    await expect(approvalFailure).toContainText("FA2 identity changed");
     expect(reads).toEqual(expect.arrayContaining([{ offset: 0, refresh: "1" }, { offset: 2, refresh: "1" }]));
     expect(prepared.map((item) => item.tokenId)).toEqual(["7", "92", "93"]);
     expect(decisions.map((item) => item.id)).toEqual([7, 92, 93]);

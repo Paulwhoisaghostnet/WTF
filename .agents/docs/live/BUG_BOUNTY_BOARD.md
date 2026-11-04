@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **762** · Open: **9** · Claimed: **42** · In Progress: **16** · Blocked: **4** · Fixed: **147** · Verified: **539** · Archived: **5**
+Total: **763** · Open: **9** · Claimed: **42** · In Progress: **16** · Blocked: **4** · Fixed: **147** · Verified: **540** · Archived: **5**
 
 ## Canonical Board
 
@@ -765,6 +765,7 @@ Total: **762** · Open: **9** · Claimed: **42** · In Progress: **16** · Block
 | WTF-BB-121 | Verified | Codex release-readiness pass | 2026-05-08 | Deploy / DB migrations | P2 | 7 | 707 | 1 | 3 | 0 | Arcade migrations reused existing migration numbers |
 | WTF-BB-118 | Verified | Codex arcade/console split pass | 2026-05-08 | Console catalog / dedupe | P2 | 7 | 707 | 1 | 3 | 0 | DB-backed stock rows duplicated installed Console cartridges |
 | WTF-BB-114 | Verified | Codex arcade/console split pass | 2026-05-08 | Console catalog / manifest parity | P2 | 7 | 707 | 1 | 3 | 0 | Console stock classifier and installed manifest drifted |
+| WTF-BB-797 | Verified | Codex Horf browser release gate correction | 2026-11-04 | E2E / Horf Marshal approval assertion | P2 | 6 | 742 | 1 | 2 | 0 | Horf batch approval browser test expects obsolete contiguous 422 error copy |
 | WTF-BB-783 | Verified | Codex Reggie contestant visibility pass | 2026-11-03 | Desktop OS / Reggie role visibility | P2 | 6 | 742 | 1 | 2 | 0 | Reggie appears and offers challenge guidance to accounts without the contestant role |
 | WTF-BB-779 | Verified | Codex Horf race direction correction | 2026-11-03 | Horf / race presentation | P2 | 6 | 742 | 1 | 2 | 0 | Horse icons run away from the finish line on the Horf race board |
 | WTF-BB-768 | Verified | Codex Horf Neighvember poster pass | 2026-11-03 | Horf / season identity and welcome design | P2 | 6 | 742 | 1 | 2 | 0 | Generic season ticket obscures Neighvember and implies a sale |
@@ -776,15 +777,15 @@ Total: **762** · Open: **9** · Claimed: **42** · In Progress: **16** · Block
 | WTF-BB-385 | Verified | Codex full-send cleanup pass | 2026-07-15 | E2E / Gamma Colander selector ownership | P2 | 6 | 742 | 1 | 2 | 0 | Gamma presentation proof targets the canonical contract-address test id while retaining the control-panel and placeholder assertions; the focused Gamma Pasta/Colander story passes |
 | WTF-BB-382 | Verified | Codex full-send cleanup pass | 2026-07-15 | Developer experience / generated configuration docs | P2 | 6 | 742 | 1 | 2 | 0 | The release unit gate caught a stale checked-in environment inventory after final env-reading edits; deterministic regeneration and the inventory check now agree on 1,076 variables across 2,149 source files |
 | WTF-BB-301 | Verified | Codex live user-story gap loop | 2026-06-22 | Public site / SEO and installability | P2 | 6 | 742 | 1 | 2 | 0 | SEO/PWA static discovery paths fell through to SPA HTML; fixed in `6fb5351` with explicit typed robots, sitemap, and web manifest handlers plus inventory-owned regression coverage, then verified live on `https://wtfos.app` |
-| WTF-BB-695 | Verified | Codex October desktop security activation | 2026-10-22 | Desktop release verification / legacy manifest compatibility | P2 | 5 | 757 | 1 | 1 | 0 | Macaroni live verifier incorrectly requires a product field absent from the established direct manifest |
+| WTF-BB-695 | Verified | Codex October desktop security activation | 2026-10-22 | Desktop release verification / legacy manifest compatibility | P2 | 5 | 758 | 1 | 1 | 0 | Macaroni live verifier incorrectly requires a product field absent from the established direct manifest |
 | WTF-BB-511 | Verified | Codex wtfOS contract release | - | Rewards / in-app market reconciliation | P3 | 11 | 399 | 3 | 3 | 3 | Numeric TzKT transaction ids were queried as operation hashes |
 | WTF-BB-317 | Verified | Codex challenge automation harness parity verification | 2026-09-02 | E2E / Playwright harness parity | P3 | 7 | 707 | 2 | 3 | 0 | Local Playwright harness returns `/api/admin/challenge-automation/registry` with legacy `actions` instead of production-shaped `rewardActions`, so direct Automation tab proofs need local route stubs or can crash the admin UI under harness data despite the real server route returning `rewardActions`; likely correction is to align `tests/playwright/harness.mjs` with `server/challenges/routes/admin.ts` and add a focused harness contract assertion |
 | WTF-BB-230 | Verified | Codex WTF LIVE chat toolbox pass | 2026-06-09 | WTF LIVE / room chat style controls | P3 | 6 | 742 | 2 | 2 | 0 | WTF LIVE chat now has a compact one-row style toolbox with bounded font, color, 8-14 size, bold/italic, and reset controls, plus sanitized realtime style relay |
-| WTF-BB-735 | Verified | Codex Pasta alpha remaining release gates | 2026-10-27 | E2E / Gamma IPFS Pinning route coverage | P3 | 5 | 757 | 1 | 2 | 0 | Gamma media infrastructure inventory story waits for a retired Own-node setup button |
-| WTF-BB-721 | Verified | Codex October 28 security full send | 2026-10-28 | Dependencies / conditional and build-only leaf advisories | P3 | 5 | 757 | 1 | 1 | 1 | New qs and desktop fast-uri advisory matches have compatible leaf patches |
-| WTF-BB-672 | Verified | Codex profile picture preview repair | 2026-09-03 | Profile / IPFS preview reliability | P3 | 5 | 757 | 1 | 2 | 0 | Profile picture picker bypassed FileShip and had no alternate gateway recovery |
-| WTF-BB-120 | Verified | Codex arcade/console boundary pass | 2026-05-08 | SDK / domain boundaries | P3 | 5 | 757 | 1 | 2 | 0 | Regular Console SDK exposed source compatibility alias |
-| WTF-BB-117 | Verified | Codex arcade/console split pass | 2026-05-08 | Game Studio / domain boundaries | P3 | 5 | 757 | 1 | 2 | 0 | Studio publish handoff leaked Console ownership after Arcade split |
+| WTF-BB-735 | Verified | Codex Pasta alpha remaining release gates | 2026-10-27 | E2E / Gamma IPFS Pinning route coverage | P3 | 5 | 758 | 1 | 2 | 0 | Gamma media infrastructure inventory story waits for a retired Own-node setup button |
+| WTF-BB-721 | Verified | Codex October 28 security full send | 2026-10-28 | Dependencies / conditional and build-only leaf advisories | P3 | 5 | 758 | 1 | 1 | 1 | New qs and desktop fast-uri advisory matches have compatible leaf patches |
+| WTF-BB-672 | Verified | Codex profile picture preview repair | 2026-09-03 | Profile / IPFS preview reliability | P3 | 5 | 758 | 1 | 2 | 0 | Profile picture picker bypassed FileShip and had no alternate gateway recovery |
+| WTF-BB-120 | Verified | Codex arcade/console boundary pass | 2026-05-08 | SDK / domain boundaries | P3 | 5 | 758 | 1 | 2 | 0 | Regular Console SDK exposed source compatibility alias |
+| WTF-BB-117 | Verified | Codex arcade/console split pass | 2026-05-08 | Game Studio / domain boundaries | P3 | 5 | 758 | 1 | 2 | 0 | Studio publish handoff leaked Console ownership after Arcade split |
 | WTF-BB-513 | Verified | Codex wtfOS contract release | - | Club Dues / contract authority | P4 | 13 | 191 | 4 | 4 | 4 | Club Dues V1 had immutable legacy authority and payable admin traps |
 | WTF-BB-154 | Archived | Codex dirty-worktree duplicate reconciliation | 2026-09-01 | Build / dirty worktree isolation | P1 | 12 | 284 | 3 | 4 | 1 | Unrelated dirty Mastodon/Subdomains work can block scoped W verification |
 | WTF-BB-386 | Archived | Codex full-send cleanup pass | 2026-07-15 | Pasta Suite Desktop / native Colander | P1 | 11 | 399 | 3 | 4 | 0 | A failure captured while the same generated source was still changing could not reproduce on the settled tree; fresh asset preparation proves native project persistence, contract detection, sale configuration, and attachment, with runtime-error monitoring added |
@@ -16479,6 +16480,19 @@ Copy this when adding a new issue:
 - Local fix note: Added `inverse-snake` and `backwards-pong` to the installed manifest and fallback demo cartridge list, then added a manifest parity test.
 - Verification: `node --import tsx --test server/features/console/manifest.test.ts server/features/console/surfaces.test.ts server/features/arcade/source-import.test.ts server/features/arcade/payment.test.ts shared/types.test.ts server/lib/wtf-mcp.test.ts` and `npm run check -- --pretty false` passed locally.
 - Verification idea: Keep manifest parity tests in the standard Console/Arcade focused suite whenever stock slugs or installed cartridge files change.
+
+### WTF-BB-797 - Horf batch approval browser test expects obsolete contiguous 422 error copy
+
+- Category: E2E / Horf Marshal approval assertion
+- Priority: P2
+- Status: Verified
+- Owner/Session: Codex Horf browser release gate correction
+- Last touched: 2026-11-04
+- Score: C1 + F2 + S0 + P2(3) = 6
+- Evidence (2026-11-04): Main Quality Gates run 41748714191 passed 953 browser checks but failed `horf-traders.spec.mjs:90`. The batch operation completed with the expected counts; the UI rendered the standard branded 422 prefix before the server detail `FA2 identity changed`, so an old contiguous string assertion failed.
+- Correction: Assert the exact failed token identity and the stable server failure detail separately in the same failure row, allowing the shared API error presentation to remain user friendly.
+- Verification idea: Run the focused Horf trader browser spec in an isolated harness and require the replacement main Quality Gates full suite.
+- Local verification (2026-11-04): `HARNESS_PORT=4197` with output outside the repository passed all 5 `horf-traders.spec.mjs` browser tests, including the Marshal batch approval story.
 
 ### WTF-BB-783 - Reggie appears and offers challenge guidance to accounts without the contestant role
 
