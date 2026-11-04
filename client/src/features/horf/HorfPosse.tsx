@@ -56,6 +56,7 @@ export function HorfPosse({ address, connectWallet, isConnecting }: {
   });
   const traderChoices = useHorfTraderChoices(address);
   const partners = Array.isArray(posseQuery.data?.partners) ? posseQuery.data.partners : [];
+  const posseNameByAddress = new Map(traderChoices.posse.map((rider) => [rider.address, rider.name]));
   const scopeDenied = isApiRequestError(posseQuery.error) && posseQuery.error.status === 403;
 
   async function addPartner(event: FormEvent) {
@@ -106,9 +107,11 @@ export function HorfPosse({ address, connectWallet, isConnecting }: {
     {posseQuery.isPending && address && <div className="status" role="status">Rounding up your posse…</div>}
     {scopeDenied ? <div className="status error" role="alert">Your Horf wallet proof is missing or this wallet is restricted. Reconnect and verify before viewing your posse. <button type="button" onClick={() => void connectWallet()} disabled={isConnecting}>{isConnecting ? "Connecting…" : "Reconnect wallet"}</button></div>
       : posseQuery.isError && <div className="status error" role="alert">The posse list is unavailable. Refresh to try again.</div>}
-    {partners.length > 0 ? <ul className="list">{partners.map((partner) => <li className="member" key={partner.id} data-horf-posse-member>
-      <div className="member-head"><div><a className="member-name" href={`/horf/traders/${encodeURIComponent(partner.address)}`}>{partner.nickname || shortAddress(partner.address)}</a><small>{partner.address}</small></div><button className="secondary" data-horf-posse-remove type="button" onClick={() => void removePartner(partner.id, partner.address)} disabled={busy} aria-label={`Remove ${partner.nickname || shortAddress(partner.address)} from posse`}>Remove</button></div>
+    {partners.length > 0 ? <ul className="list">{partners.map((partner) => {
+      const name = posseNameByAddress.get(partner.address) || shortAddress(partner.address);
+      return <li className="member" key={partner.id} data-horf-posse-member>
+      <div className="member-head"><div><a className="member-name" href={`/horf/traders/${encodeURIComponent(partner.address)}`}>{name}</a><small>{partner.address}</small></div><button className="secondary" data-horf-posse-remove type="button" onClick={() => void removePartner(partner.id, partner.address)} disabled={busy} aria-label={`Remove ${name} from posse`}>Remove</button></div>
       <HorfTradeHorseCarousel address={partner.address} />
-    </li>)}</ul> : address && !posseQuery.isPending && !posseQuery.isError && <div className="status">No riders saved yet. Add a wallet above to start your posse.</div>}
+    </li>; })}</ul> : address && !posseQuery.isPending && !posseQuery.isError && <div className="status">No riders saved yet. Add a wallet above to start your posse.</div>}
   </Shell>;
 }

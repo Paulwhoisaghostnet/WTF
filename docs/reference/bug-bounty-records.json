@@ -12149,6 +12149,21 @@
       "rank": 762,
       "title": "HORSE Market video card loads but remains paused",
       "body": "- Evidence (2026-11-04): On live commit 890294c1, the All Stirred Up card video was visible with a playable source and readyState 3, but its paused property remained true. The source is assigned only after IntersectionObserver sees the card, so the autoplay attribute alone did not start playback.\n- Correction direction: Explicitly call play() after the source is assigned, retaining the poster when the browser blocks autoplay.\n- Verification idea: In browser coverage, wait for the video source to become playable and assert that a visible muted card video is not paused. Verify the production card after deployment.\n- Local verification (2026-11-04): The HORSE Market focused browser suite passes 12/12, including an active playback assertion."
+    },
+    {
+      "id": "WTF-BB-803",
+      "status": "Fixed",
+      "owner": "Codex HORF Posse name repair",
+      "lastTouched": "2026-11-04",
+      "category": "HORF / Posse identity display",
+      "priority": "P3",
+      "complexity": 1,
+      "functionalityDanger": 2,
+      "securityDanger": 0,
+      "points": 5,
+      "rank": 762,
+      "title": "Known trader loses display name after joining Posse",
+      "body": "- Evidence (2026-11-04): A known trader appears as PixelSushiRobot in the Posse dropdown, but after adding with no nickname the saved card shows only a shortened Tezos address. The picker sends the address and the card only read the optional saved nickname.\n- Correction direction: Resolve each saved Posse card against the same known-trader names already loaded for the picker, with a personal nickname taking precedence and the address as fallback. Include existing saved members without requiring resave.\n- Verification idea: Select a named known trader, add with a blank nickname, check the saved card and remove label, reload, and confirm the name remains. Check a manually entered nickname still wins.\n- Local verification (2026-11-04): The new dropdown-to-saved-card browser regression passes 1/1; the existing named nickname story remains in the Horf social suite. Production verification follows deployment."
     }
   ]
 }

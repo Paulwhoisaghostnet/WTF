@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **768** · Open: **9** · Claimed: **42** · In Progress: **16** · Blocked: **4** · Fixed: **151** · Verified: **541** · Archived: **5**
+Total: **769** · Open: **9** · Claimed: **42** · In Progress: **16** · Blocked: **4** · Fixed: **152** · Verified: **541** · Archived: **5**
 
 ## Canonical Board
 
@@ -250,6 +250,7 @@ Total: **768** · Open: **9** · Claimed: **42** · In Progress: **16** · Block
 | WTF-BB-755 | Fixed | Codex release integration | 2026-11-02 | AT Protocol / Profile OAuth CI test precondition | P2 | 6 | 745 | 1 | 2 | 0 | Profile AT OAuth client metadata tests reject a clean CI local origin before assertions |
 | WTF-BB-747 | Fixed | Codex Pasta mainnet alpha integration | 2026-10-29 | Pasta Protocol / IPFS Pinning inventory test | P2 | 6 | 745 | 1 | 2 | 0 | Gamma pinning inventory waits for obsolete Connect Porcupin button |
 | WTF-BB-011 | Fixed | Codex warning cleanup pass | 2026-05-06 | Frontend bundle | P3 | 9 | 573 | 4 | 2 | 1 | Wallet/Tezos bundle chunks are huge and pull Node core externals |
+| WTF-BB-803 | Fixed | Codex HORF Posse name repair | 2026-11-04 | HORF / Posse identity display | P3 | 5 | 762 | 1 | 2 | 0 | Known trader loses display name after joining Posse |
 | WTF-BB-802 | Fixed | Codex Horf Market media playback | 2026-11-04 | HORF / token media playback | P3 | 5 | 762 | 1 | 2 | 0 | HORSE Market video card loads but remains paused |
 | WTF-BB-508 | Verified | Codex wtfOS contract deployment pass | - | Tezos / WTF reward claims and contract ownership | P0 | 19 | 3 | 5 | 5 | 4 | Reward escrow is tested but absent from the live reward path |
 | WTF-BB-218 | Verified | Codex Marketplace V2 production cutover | 2026-07-24 | Tezos / WTF marketplace contract | P0 | 19 | 3 | 4 | 5 | 5 | Marketplace V2 is Shadownet-proven, separately administered, live on mainnet, and active on wtfOS; legacy V1 remains unmodified with its abandoned offer for later human recovery |
@@ -5317,6 +5318,19 @@ Total: **768** · Open: **9** · Claimed: **42** · In Progress: **16** · Block
 - Verification idea: Main route loads without wallet mega-chunks; wallet flows still work after lazy import.
 - 2026-05-06 fix note: Added browser-safe aliases for `fs`/`crypto` side-effect imports from wallet UI packages, split wallet dependencies into `vendor-taquito`, `vendor-octez`, `vendor-beacon`, and `vendor-crypto`, and set an explicit 2 MB Vite chunk budget for those lazy wallet chunks.
 - Verification: `npm run build` completed without browser-externalized Node core warnings or the generic Vite chunk-size warning.
+
+### WTF-BB-803 - Known trader loses display name after joining Posse
+
+- Category: HORF / Posse identity display
+- Priority: P3
+- Status: Fixed
+- Owner/Session: Codex HORF Posse name repair
+- Last touched: 2026-11-04
+- Score: C1 + F2 + S0 + P3(2) = 5
+- Evidence (2026-11-04): A known trader appears as PixelSushiRobot in the Posse dropdown, but after adding with no nickname the saved card shows only a shortened Tezos address. The picker sends the address and the card only read the optional saved nickname.
+- Correction direction: Resolve each saved Posse card against the same known-trader names already loaded for the picker, with a personal nickname taking precedence and the address as fallback. Include existing saved members without requiring resave.
+- Verification idea: Select a named known trader, add with a blank nickname, check the saved card and remove label, reload, and confirm the name remains. Check a manually entered nickname still wins.
+- Local verification (2026-11-04): The new dropdown-to-saved-card browser regression passes 1/1; the existing named nickname story remains in the Horf social suite. Production verification follows deployment.
 
 ### WTF-BB-802 - HORSE Market video card loads but remains paused
 

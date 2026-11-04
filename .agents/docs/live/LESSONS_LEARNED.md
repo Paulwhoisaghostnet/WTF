@@ -14540,3 +14540,13 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: The new card still looked like a static image even though the full-screen viewer could play its video.
 
 **Rule**: When an observer assigns a video source after mount, request playback once that source is active and retain the poster if autoplay is blocked. Assert actual playback state in browser coverage, not just the presence of video attributes.
+
+---
+
+## 2026-11-04 - Saved contacts need the same identity fallback as their picker
+
+**What happened**: The HORF Posse picker showed a known trader's name, but adding that trader without a personal nickname stored only the wallet address. The saved Posse card checked the nickname and then jumped straight to a shortened address.
+
+**Why it mattered**: A rider could recognize the trader while selecting them, then lose that identity in the address book immediately after saving.
+
+**Rule**: Resolve saved Posse cards through the same known-trader name source as the picker before falling back to an address. Preserve an explicit personal nickname and cover selection, save, and reload in one browser story.

@@ -133,6 +133,26 @@ async function mockOfficialCrpPrefill(page, nomineeAddress) {
 }
 
 test.describe("Horf HORSE, posse, and horse gifts", () => {
+  test("shows a selected known trader's name on the saved posse card after reload", async ({ page, request }) => {
+    await seedTrader(request);
+    await mockHorf(page, { seasonRiders: [
+      { address: leadWallet, name: "PixelSushiRobot 💫", trades: 4, received: 3, sent: 4 },
+    ] });
+    await page.goto("/horf/posse?season=current-2026");
+    const posse = page.locator("[data-horf-posse]");
+    const picker = posse.locator("[data-horf-posse-trader-picker]");
+    await expect(picker.locator(`option[value="${leadWallet}"]`)).toContainText("PixelSushiRobot 💫");
+    await picker.selectOption(leadWallet);
+    await expect(posse.locator("[data-horf-posse-address]")).toHaveValue(leadWallet);
+    await expect(posse.getByRole("textbox", { name: "Nickname (optional)" })).toHaveValue("");
+    await posse.locator("[data-horf-posse-add]").click();
+    const member = posse.locator("[data-horf-posse-member]");
+    await expect(member.locator(".member-name")).toHaveText("PixelSushiRobot 💫");
+    await expect(member.locator(".member-head small")).toHaveText(leadWallet);
+    await page.reload();
+    await expect(page.locator("[data-horf-posse-member] .member-name")).toHaveText("PixelSushiRobot 💫");
+  });
+
   test("adds a directory rider to posse and removes them from their profile", async ({ page, request }) => {
     await seedTrader(request);
     await mockHorf(page, { seasonRiders: [
