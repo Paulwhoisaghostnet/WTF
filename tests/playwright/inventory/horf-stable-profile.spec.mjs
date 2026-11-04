@@ -86,6 +86,47 @@ test.describe("Horf Stable and trader profile", () => {
     await expect(page.locator('[data-horf-region="race"]')).toBeVisible();
   });
 
+  test("disconnects a signed-in rider from the header and starts reconnecting from the same chip", async ({ page, request }) => {
+    expect((await request.post("/__test/state", { data: { userRole: "admin" } })).ok()).toBeTruthy();
+    await mockConnectedWallet(page);
+    await mockSeason(page);
+    await page.goto("/horf/stable?season=current-2026");
+    const chip = page.locator("[data-horf-header-wallet]");
+    await expect(chip).toHaveAttribute("data-horf-header-wallet-disconnect", "true");
+    await expect(chip).toHaveAccessibleName(`Disconnect Tezos Mainnet wallet ${wallet}`);
+    await expect(chip).toContainText("Disconnect");
+    await chip.click();
+    await expect(chip).toHaveAttribute("data-horf-header-wallet-connect", "true");
+    await expect(chip).toHaveText("Reconnect & sync wallet");
+    await expect.poll(() => page.evaluate(() => localStorage.getItem("wtf:wallet-session"))).toBeNull();
+    await expect(page.locator("[data-horf-profile-connect]")).toBeVisible();
+    await chip.click();
+    await expect(chip).toHaveText("Connecting…");
+  });
+
+  test("disconnects a verified guest from the header and offers reconnect", async ({ page, request }) => {
+    expect((await request.post("/__test/state", { data: { userRole: "anonymous" } })).ok()).toBeTruthy();
+    await mockConnectedWallet(page);
+    await mockSeason(page);
+    let verified = true;
+    let disconnects = 0;
+    await page.route("**/api/horf/wallet/session", (route) => json(route, {
+      walletAddress: verified ? wallet : null, verified,
+    }));
+    await page.route("**/api/horf/wallet/disconnect", (route) => {
+      verified = false;
+      disconnects += 1;
+      return json(route, { ok: true });
+    });
+    await page.goto("/horf/stable?season=current-2026");
+    const chip = page.locator("[data-horf-header-wallet]");
+    await expect(chip).toHaveAttribute("data-horf-header-wallet-disconnect", "true");
+    await chip.click();
+    await expect(chip).toHaveText("Reconnect & sync wallet");
+    expect(disconnects).toBe(1);
+    await expect.poll(() => page.evaluate(() => localStorage.getItem("wtf:wallet-session"))).toBeNull();
+  });
+
   test("lands a connected rider in their Stable and publishes their seasonal picture and note", async ({ page, request }) => {
     const state = await request.post("/__test/state", { data: { userRole: "admin" } });
     expect(state.ok()).toBeTruthy();

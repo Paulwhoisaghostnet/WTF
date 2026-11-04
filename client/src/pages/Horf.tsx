@@ -1237,7 +1237,7 @@ export function Horf() {
   }
 
   return (
-    <HorfFrame title={`${routeTitle} · ${seasonDisplayName}`} walletAddress={address} onConnectWallet={connectWallet} walletConnecting={isConnecting} marshalActive={profileMarshalQuery.data?.active === true} aside={<AsideRail>
+    <HorfFrame title={`${routeTitle} · ${seasonDisplayName}`} walletAddress={address} onConnectWallet={connectWallet} onDisconnectWallet={disconnectWallet} walletConnecting={isConnecting} marshalActive={profileMarshalQuery.data?.active === true} aside={<AsideRail>
       {walletError && <div className="rail-section" role="alert"><span className="eyebrow">Wallet alert</span><p>{walletError}</p></div>}
       {personal?.blacklisted === true && <div className="rail-section" role="alert"><span className="eyebrow">Trader standing</span><p>This wallet is restricted from private Horf actions. Review the public standing before trading.</p></div>}
       <div className="rail-section"><span className="eyebrow">🐎 Live trail</span><strong>{seasonDisplayName}</strong><p>{countsProvisional ? "The race is still scanning Mainnet." : hasError ? "Season totals need a refresh." : "Season ledger ready for the next ride."}</p></div>

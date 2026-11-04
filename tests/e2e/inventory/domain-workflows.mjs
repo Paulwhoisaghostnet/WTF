@@ -916,7 +916,7 @@ export const DOMAIN_WORKFLOWS = [
     ],
   },
   {
-    name: "horf guest wallet proof and ownership",
+    name: "horf wallet connect, disconnect, resync, and ownership",
     domain: "Market, Exchange, Inventory, and Commerce",
     routes: ["/horf", "/horf/stable", "/horf/send-horse", "/horf/gifts", "/horf/posse"],
     eventHandles: ["horf.wallet.verified", "horf.wallet.selected"],
@@ -926,6 +926,7 @@ export const DOMAIN_WORKFLOWS = [
       { method: "POST", path: "/api/horf/wallet/verify", body: {}, expectedStatuses: [400, 403] },
       { method: "POST", path: "/api/horf/wallet/disconnect", body: {}, expectedStatuses: [200, 204, 403] },
       { method: "GET", path: "/api/horf/wallet/tokens?address=tz1VSUr8wwNhLAzempoch5d6hLRiTh8Cjcjb&offset=0", expectedStatuses: [200, 503] },
+      { method: "GET", path: "/api/horf/wallet/tokens?address=tz1VSUr8wwNhLAzempoch5d6hLRiTh8Cjcjb&offset=0&refresh=1", expectedStatuses: [200, 503] },
     ],
   },
   {

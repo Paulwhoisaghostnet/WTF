@@ -10,6 +10,7 @@ type HorfFrameProps = {
   aside?: ReactNode;
   walletAddress?: string | null;
   onConnectWallet?: () => Promise<void>;
+  onDisconnectWallet?: () => Promise<void>;
   walletConnecting?: boolean;
   marshalActive?: boolean;
 };
@@ -164,6 +165,10 @@ const Topline = styled.header`
   .wallet-state { display: inline-flex; align-items: center; gap: 7px; min-width: 0; padding: 6px 10px; border: 1px solid var(--horf-line); border-radius: 999px; background: var(--horf-surface); color: var(--horf-ink); font: 750 12px/1.25 var(--horf-font); white-space: nowrap; }
   .wallet-state::before { content: ""; width: 7px; height: 7px; flex: 0 0 7px; border-radius: 50%; background: var(--horf-teal); }
   .wallet-state.offline::before { background: var(--horf-coral); }
+  button.wallet-state:hover { border-color: var(--horf-teal); background: var(--horf-elevated); }
+  button.wallet-state.connected:hover { border-color: var(--horf-coral); }
+  button.wallet-state:disabled { opacity: .65; cursor: wait; }
+  .wallet-action { color: var(--horf-muted); font-size: 11px; }
   button { display: inline-flex; align-items: center; gap: 7px; min-height: 36px; padding: 6px 10px; border: 1px solid var(--horf-line); border-radius: 999px; background: var(--horf-surface); color: var(--horf-ink); font-weight: 700; cursor: pointer; }
   .trail-updates { display: none; }
   @media (max-width: 1199px) { .trail-updates { display: inline-flex; } }
@@ -242,11 +247,12 @@ const links = [
   { path: "/horf/info", label: "Is It a Horse?", icon: "?", section: "info" },
 ];
 
-export function HorfFrame({ title, children, aside, walletAddress, onConnectWallet, walletConnecting = false, marshalActive = false }: HorfFrameProps) {
+export function HorfFrame({ title, children, aside, walletAddress, onConnectWallet, onDisconnectWallet, walletConnecting = false, marshalActive = false }: HorfFrameProps) {
   const [location, navigate] = useLocation();
   const wm = useWindowManager();
   const pagePath = useContext(WindowPathContext);
   const [asideOpen, setAsideOpen] = useState(false);
+  const [walletSeen, setWalletSeen] = useState(Boolean(walletAddress));
   const primaryRef = useRef<HTMLDivElement>(null);
   const updatesButtonRef = useRef<HTMLButtonElement>(null);
   const asideCloseRef = useRef<HTMLButtonElement>(null);
@@ -260,6 +266,8 @@ export function HorfFrame({ title, children, aside, walletAddress, onConnectWall
     document.title = `${title} · Horf`;
     if (pagePath) wm.setTitle(pagePath, title);
   }, [pagePath, title]);
+
+  useEffect(() => { if (walletAddress) setWalletSeen(true); }, [walletAddress]);
 
   useEffect(() => { primaryRef.current?.scrollTo({ top: 0, behavior: "auto" }); }, [location]);
 
@@ -317,8 +325,9 @@ export function HorfFrame({ title, children, aside, walletAddress, onConnectWall
     </Rail>
     <Primary data-horf-primary ref={primaryRef} inert={asideOpen}>
       <Topline><div><span className="micro">Tezos horse trading</span><h1>{title}</h1></div><div className="top-actions">
-        {walletAddress ? <span data-horf-header-wallet className="wallet-state" title={walletAddress} aria-label={"Connected Tezos wallet " + walletAddress}>Wallet · {walletAddress.slice(0, 8)}…{walletAddress.slice(-6)}</span>
-          : onConnectWallet ? <button data-horf-header-wallet className="wallet-state offline" type="button" onClick={() => void onConnectWallet()} disabled={walletConnecting}>{walletConnecting ? "Connecting…" : "Connect wallet"}</button>
+        {walletAddress && onDisconnectWallet ? <button data-horf-header-wallet data-horf-header-wallet-disconnect className="wallet-state connected" type="button" title={`Connected Tezos Mainnet wallet ${walletAddress} — click to disconnect`} aria-label={`Disconnect Tezos Mainnet wallet ${walletAddress}`} onClick={() => void onDisconnectWallet()} disabled={walletConnecting}>Wallet · {walletAddress.slice(0, 8)}…{walletAddress.slice(-6)} <span className="wallet-action">{walletConnecting ? "Working…" : "Disconnect"}</span></button>
+          : walletAddress ? <span data-horf-header-wallet className="wallet-state" title={walletAddress} aria-label={"Connected Tezos wallet " + walletAddress}>Wallet · {walletAddress.slice(0, 8)}…{walletAddress.slice(-6)}</span>
+          : onConnectWallet ? <button data-horf-header-wallet data-horf-header-wallet-connect className="wallet-state offline" type="button" onClick={() => void onConnectWallet()} disabled={walletConnecting}>{walletConnecting ? "Connecting…" : walletSeen ? "Reconnect & sync wallet" : "Connect wallet"}</button>
           : <span data-horf-header-wallet className="wallet-state offline">Wallet disconnected</span>}
         <button className="trail-updates" ref={updatesButtonRef} type="button" aria-controls="horf-context-rail" aria-expanded={asideOpen} onClick={() => { setAsideOpen(true); logClientSystemEvent({ eventType: "horf.context_rail.opened", message: "Horf trail updates opened" }); }}><span aria-hidden="true">✦</span>Trail updates</button>
       </div></Topline>

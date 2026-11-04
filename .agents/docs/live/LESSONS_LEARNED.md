@@ -14440,3 +14440,13 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: A valid rider could review a horse trade yet lose the wallet session before signing. Retrying the network read through the configured fallback should not require a second wallet permission, and a persisted address cannot authorize a transaction.
 
 **Rule**: Key Octez adapters and connection coalescing by named wallet network, including the RPC URL only for custom networks. Keep Taquito toolkits RPC-specific, rebind a retained adapter to each rebuilt toolkit, and start active-signer/expected-address preflight at the Confirm click before slower data reads. Keep balance, eligibility, and chain checks before operation submission.
+
+---
+
+## 2026-11-04 - Put HORF wallet recovery on the visible wallet chip
+
+**What happened**: The HORF header displayed the selected Tezos address as a noninteractive label. A rider whose saved address had no usable Octez signer had to find a separate reconnect action elsewhere in the app, and signed-in riders had no header disconnect action.
+
+**Why it mattered**: The visible address could look ready for a horse send while the signing session was stale. Riders needed a direct way to clear that local session and choose the wallet again without unlinking their WTF OS account.
+
+**Rule**: Make the connected header wallet chip a one-click local disconnect control with the full address and action in its accessible name. Turn that same chip into a reconnect control after disconnect; an explicit reconnect must reopen wallet permissions, sync a linked WTF wallet, refresh the first Mainnet horse holdings page, and invalidate HORF client queries without blocking the chip on indexer reads.

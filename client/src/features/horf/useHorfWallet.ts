@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { api } from "../../lib/api";
 import { useAuth } from "../../lib/auth-context";
 import { logClientSystemEvent } from "../../lib/system-log";
@@ -11,6 +12,7 @@ const HORF_WALLET_SESSION_EVENT = "horf:wallet-session-changed";
 export function useHorfWallet() {
   const { user, isLoading: authLoading } = useAuth();
   const wallet = useWallet();
+  const qc = useQueryClient();
   const [guestSession, setGuestSession] = useState<HorfGuestSession>(EMPTY_SESSION);
   const [guestSessionLoading, setGuestSessionLoading] = useState(true);
   const [proofBusy, setProofBusy] = useState(false);
@@ -75,6 +77,10 @@ export function useHorfWallet() {
         window.dispatchEvent(new Event(HORF_WALLET_SESSION_EVENT));
         logClientSystemEvent({ eventType: "horf.wallet.verified", message: "Horf guest wallet proof verified", metadata: { address: connected.address } });
       }
+      const freshTokens = new URLSearchParams({ address: connected.address, offset: "0", refresh: "1" });
+      void api.get<unknown>(`/api/horf/wallet/tokens?${freshTokens}`)
+        .catch((error) => console.warn("[horf] wallet reconnected; fresh horse scan unavailable:", error))
+        .finally(() => { void qc.invalidateQueries({ queryKey: ["horf"] }); });
       logClientSystemEvent({ eventType: "horf.wallet.selected", message: "Horf wallet selected", metadata: { address: connected.address } });
     } catch (error) {
       setWalletError(error instanceof Error ? error.message : "Could not verify this wallet for Horf. Try again.");
