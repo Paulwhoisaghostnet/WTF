@@ -1053,6 +1053,7 @@ export const DOMAIN_WORKFLOWS = [
     domain: "Market, Exchange, Inventory, and Commerce",
     routes: ["/horf/horse-market", "/horf/open-range"],
     eventHandles: [
+      "horf.horse_market.listing_inspected",
       "horf.horse_market.listed",
       "horf.horse_market.bought",
       "horf.horse_market.cancelled",

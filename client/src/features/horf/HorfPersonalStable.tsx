@@ -317,6 +317,7 @@ export function HorfPersonalStable({ address, connectWallet, isConnecting, seaso
   const [mintSeasonKey, setMintSeasonKey] = useState("all");
   const [detailHorse, setDetailHorse] = useState<HeldHorse | null>(null);
   const detailRef = useRef<HTMLDialogElement>(null);
+  const inspectionSelectionRef = useRef<HTMLDivElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -476,6 +477,16 @@ export function HorfPersonalStable({ address, connectWallet, isConnecting, seaso
     setSelectedKey("");
   }
 
+  function selectFromGallery(horse: HeldHorse) {
+    setSelectedKey(`${horse.contract}:${horse.tokenId}`);
+    window.requestAnimationFrame(() => {
+      const selection = inspectionSelectionRef.current;
+      if (!selection) return;
+      selection.focus({ preventScroll: true });
+      selection.scrollIntoView({ behavior: "auto", block: "center" });
+    });
+  }
+
   async function withFreshHoldings(operation: () => Promise<unknown>) {
     refreshHoldings.current = true;
     try { await operation(); } finally { refreshHoldings.current = false; }
@@ -528,7 +539,7 @@ export function HorfPersonalStable({ address, connectWallet, isConnecting, seaso
           <div className="copy"><h4><button className="title-open" type="button" onClick={() => setDetailHorse(horse)}>{name}</button></h4>{mintedSeason && <MintBadge data-horf-mint-badge><img src="/horf-art/horseshoe.svg" alt="" aria-hidden="true" />{mintedSeason.label}</MintBadge>}<p data-horf-edition-holdings>You own {horse.balance} {horse.balance === "1" ? "edition" : "editions"} · {shortAddress(horse.contract)} / #{horse.tokenId}</p>
             <a href={objktTokenUrl(horse.contract, horse.tokenId)} target="_blank" rel="noopener noreferrer">View horse on Objkt ↗</a>
             <button data-horf-stable-view-horse type="button" onClick={() => setDetailHorse(horse)}>View horse card</button>
-            <button type="button" onClick={() => setSelectedKey(`${horse.contract}:${horse.tokenId}`)}>Select for inspection</button>
+            <button data-horf-stable-select-inspection type="button" aria-pressed={selectedKey === `${horse.contract}:${horse.tokenId}`} onClick={() => selectFromGallery(horse)}>{selectedKey === `${horse.contract}:${horse.tokenId}` ? "Selected for inspection ✓" : "Select for inspection"}</button>
           </div>
         </article>;
       })}</HorseGallery>}
@@ -551,7 +562,7 @@ export function HorfPersonalStable({ address, connectWallet, isConnecting, seaso
         </select>
         {ownedQuery.hasNextPage && <Action type="button" onClick={() => void ownedQuery.fetchNextPage()} disabled={ownedQuery.isFetchingNextPage}>{ownedQuery.isFetchingNextPage ? "Loading…" : "More wallet tokens"}</Action>}
         {ownedQuery.isError && <Note $error role="alert">The extra token picker is unavailable. Horses found above can still be selected for inspection. <Action type="button" onClick={() => void withFreshHoldings(() => ownedQuery.refetch())}>Retry token picker</Action></Note>}
-        {selected && <div data-horf-personal-selection>
+        {selected && <div data-horf-personal-selection ref={inspectionSelectionRef} role="region" aria-label="Selected horse for inspection" tabIndex={-1}>
           <Note><a href={objktTokenUrl(selected.contract, selected.tokenId)} target="_blank" rel="noopener noreferrer">{selected.name || `Token #${selected.tokenId}`}</a> · #{selected.tokenId} · {shortAddress(selected.contract)} · {selected.balance} editions indexed</Note>
           {selectedArt && <HorseArt src={selectedArt.src} alt={`${selected.name || `Horse token #${selected.tokenId}`} artwork`} onError={(event) => { if (!advanceResolvedMediaFallback(event.currentTarget, selectedArt)) event.currentTarget.style.display = "none"; }} />}
           <p>{eligibilityQuery.isPending ? "Checking horse mint keywords and Objkt tag groups…" : eligibilityQuery.isError ? `Horse eligibility: ${eligibilityQuery.error instanceof Error ? eligibilityQuery.error.message : "unavailable"}` : "Horse eligibility: qualifying metadata found."}</p>

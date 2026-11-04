@@ -14490,3 +14490,13 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: Riders had to copy wallet addresses across pages, offer-only traders were missing from some pickers, and a nonhorse could appear selectable until a later eligibility check rejected it.
 
 **Rule**: Expose posse actions at the trader card and profile, reuse all-time race riders plus active offer owners and the viewer's posse for address choices, and source wallet horse choices from the qualifying held-horse endpoint. Keep typed addresses and exact Objkt links as fallbacks, and retain fresh eligibility and balance checks before a wallet operation.
+
+---
+
+## 2026-11-04 - A selected token must reveal the next control
+
+**What happened**: My Stable marked a horse for inspection but left the inspection form below the gallery. HORSE Market auto-selected its first listing, so its Inspect button often changed no visible state while the purchase controls sat below the viewport. The Inspector Desk required an evidence-panel detour even though a single role-checked direct Hide route already existed.
+
+**Why it mattered**: Riders and Marshals reasonably read these clicks as broken, and the path to a buy or a nonhorse removal was obscured.
+
+**Rule**: When a card action selects a target, reveal and focus the exact next control, including when the first card is already selected. Put a direct Marshal Hide action on each actionable token row, with immediate exact-token removal and rollback on failure; retain full evidence review as an optional path. Keep buyer wallet and Marshal role checks at their transaction boundaries.

@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 
 const horse = "KT1L7PSeJpnj79MEaybcEiDtbHM43g5DZe12";
 const seller = "tz1Qi77tcJn9foeHHP1QHj6UX1m1vLVLMbuY";
+const buyer = "tz1VSUr8wwNhLAzempoch5d6hLRiTh8Cjcjb";
 const market = "KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton";
 const currency = "KT1E9s2ncE5vXjofmzqwE6gEg9JPruTRBdrM";
 const season = { key: "current-2026", startsAt: "2026-11-01T00:00:00.000Z", endsAt: null, label: "Neighvember 2026", inferred: false };
@@ -56,6 +57,45 @@ test.describe("HORSE market", () => {
     await expect(detail).toContainText("Objkt’s contract");
     await page.setViewportSize({ width: 390, height: 844 });
     await expect(detail).toBeVisible();
+  });
+
+  test("opens the first horse's payment choices where the rider can see them", async ({ page, request }) => {
+    expect((await request.post("/__test/state", { data: { userRole: "anonymous" } })).ok()).toBeTruthy();
+    await mockMarket(page, true);
+    await page.setViewportSize({ width: 390, height: 600 });
+    await page.goto("/horf/horse-market");
+    const card = page.locator("[data-horf-horse-market-listing]");
+    const detail = page.locator("[data-horf-horse-market-details]");
+    await expect(card).toHaveCount(1);
+    await card.getByRole("button", { name: /Inspect Neighvember Chestnut listing/ }).click();
+    await expect(detail).toBeInViewport({ ratio: 0.4 });
+    await expect(detail).toBeFocused();
+    await expect(detail).toContainText("1.23 HORSE per edition");
+    await expect(detail.getByRole("button", { name: "Connect wallet for HORSE" })).toBeVisible();
+  });
+
+  test("lets a connected buyer reach the exact HORSE purchase control and validates quantity", async ({ page, request }) => {
+    expect((await request.post("/__test/state", { data: { userRole: "anonymous" } })).ok()).toBeTruthy();
+    await page.addInitScript(({ address }) => {
+      window.localStorage.setItem("wtf:wallet-session", JSON.stringify({ address, providerName: "octez.connect" }));
+    }, { address: buyer });
+    await mockMarket(page, true);
+    await page.route("**/api/horf/wallet/session", (route) => json(route, { walletAddress: buyer, verified: true }));
+    await page.goto("/horf/horse-market");
+    await page.locator("[data-horf-horse-market-listing]").getByRole("button", { name: /Inspect Neighvember Chestnut listing/ }).click();
+    const detail = page.locator("[data-horf-horse-market-details]");
+    await expect(detail).toContainText("Neighvember Chestnut");
+    await expect(detail).toContainText("Token #7");
+    await expect(detail).toContainText("1.23 HORSE per edition");
+    const buy = detail.getByRole("button", { name: "Buy with HORSE" });
+    await expect(buy).toBeEnabled();
+    await detail.locator("[data-horf-horse-market-buy-quantity]").fill("4");
+    await buy.click();
+    await expect(page.locator('[data-horf-region="horse-market"]').getByRole("alert")).toContainText("Choose an available edition quantity");
+    await detail.locator("[data-horf-horse-market-buy-quantity]").fill("2");
+    await buy.click();
+    await expect(page.getByText("Checking your wallet and Tezos Mainnet…")).toBeVisible();
+    await expect(buy).toBeDisabled();
   });
 
   test("starts at zero editions and reviews an exact listing before requesting a permit", async ({ page, request }) => {

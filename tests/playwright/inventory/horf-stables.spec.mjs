@@ -228,6 +228,7 @@ test.describe("Horf Stables", () => {
     await seedTrader(request);
     await mockSeason(page);
     await mockLinkedWallet(page);
+    await page.setViewportSize({ width: 900, height: 600 });
     let selections = [];
     let inspectionStatus = "none";
     const selection = {
@@ -244,6 +245,14 @@ test.describe("Horf Stables", () => {
       status: 200, contentType: "application/json",
       body: JSON.stringify({
         items: [{ contract: tokenContract, tokenId: "7", name: "Neighvember Seven", balance: "2", walletAddress: traderWallet }],
+        pagination: { hasMore: false, nextOffset: 1 },
+      }),
+    }));
+    await page.route(/\/api\/horf\/traders\/[^/]+\/horses(?:\?.*)?$/, (route) => route.fulfill({
+      status: 200, contentType: "application/json",
+      body: JSON.stringify({
+        address: traderWallet,
+        items: [{ contract: tokenContract, tokenId: "7", name: "Neighvember Seven", balance: "2", image: null, artifactUri: null, mime: "image/png", mintedAt: "2026-11-03T12:00:00.000Z" }],
         pagination: { hasMore: false, nextOffset: 1 },
       }),
     }));
@@ -282,7 +291,9 @@ test.describe("Horf Stables", () => {
     await page.goto("/horf/stable");
     const personal = page.locator('[data-horf-region="personal-stable"]');
     await expect(personal.locator("[data-horf-personal-token] option")).toHaveCount(2);
-    await personal.locator("[data-horf-personal-token]").selectOption(`${tokenContract}:7`);
+    await personal.getByRole("button", { name: "Select for inspection" }).click();
+    await expect(personal.locator("[data-horf-personal-token]")).toHaveValue(`${tokenContract}:7`);
+    await expect(personal.locator("[data-horf-personal-selection]")).toBeInViewport();
     await expect(personal.locator("[data-horf-personal-selection]")).toContainText("Neighvember Seven");
     await expect(personal.locator("[data-horf-personal-selection]")).toContainText("qualifying metadata found");
     await personal.locator("[data-horf-personal-add]").click();
@@ -472,6 +483,118 @@ test.describe("Horf Stables", () => {
     await expect(desk).toContainText("loaded Open Range pages");
     await desk.locator('[data-horf-marshal-filter="awaiting"]').click();
     await expect(desk.locator("[data-horf-marshal-candidate]")).toContainText("Horse #12");
+  });
+
+  test("a Marshal hides a candidate and a rider report from their cards without opening evidence", async ({ page, request }) => {
+    await seedTrader(request);
+    await mockSeason(page);
+    const now = "2026-11-03T12:00:00.000Z";
+    const hidden = new Set();
+    let reports = [{
+      id: 93, source: "community_report", submitterAddress: null,
+      token: { contract: tokenContract, tokenId: "14" }, status: "pending",
+      objktMetadata: { source: "Objkt", checkedAt: now, name: "Horse #14",
+        description: null, image: null, artifactUri: null, mime: "image/png", decimals: 0,
+        tags: [{ name: "horse", tokenCount: 12 }] },
+      chainEvidence: { source: "not_fetched", checkedAt: null, ownerAddress: null,
+        ownerBalance: null, identity: null, recentTransfers: [], note: "Rider report",
+        communityReport: { source: "rider", reportedAt: now, resolution: "pending" } },
+      submittedAt: now, reviewedByWalletAddress: null, reviewedAt: null, reviewReason: null,
+    }];
+    reports.push({ ...reports[0], id: 94, source: "owner_submission",
+      token: { contract: tokenContract, tokenId: "15" },
+      objktMetadata: { ...reports[0].objktMetadata, name: "Horse #15" },
+      chainEvidence: { ...reports[0].chainEvidence, communityReport: undefined } });
+    const directHides = [];
+    let detailReads = 0;
+    await page.route("**/api/horf/inspectors/status", (route) => route.fulfill({
+      status: 200, contentType: "application/json", body: JSON.stringify({ active: true, role: "horf_marshal" }),
+    }));
+    await page.route("**/api/horf/inspections/pending", (route) => route.fulfill({
+      status: 200, contentType: "application/json", body: JSON.stringify({ inspections: reports }),
+    }));
+    await page.route("**/api/horf/inspections/93", (route) => {
+      detailReads++;
+      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(reports[0]) });
+    });
+    await page.route("**/api/horf/open-range?*", (route) => route.fulfill({
+      status: 200, contentType: "application/json", body: JSON.stringify({ season,
+        items: ["12", "14"].filter((id) => !hidden.has(id)).map((tokenId) => ({
+          contract: tokenContract, tokenId, name: `Horse #${tokenId}`, description: null,
+          image: null, artifactUri: null, mime: "image/png", mintedAt: now,
+          creatorAddress: traderWallet, approvedForMarshalsMarket: false, offers: [],
+        })), nextCursor: null, hasMore: false, asOf: now }),
+    }));
+    await page.route("**/api/horf/reports/not-a-horse/direct", (route) => {
+      const body = route.request().postDataJSON();
+      directHides.push(body);
+      hidden.add(body.tokenId);
+      reports = reports.filter((item) => item.token.tokenId !== body.tokenId);
+      return route.fulfill({ status: 200, contentType: "application/json",
+        body: JSON.stringify({ status: "hidden", inspectionId: 93,
+          tokenContract: body.tokenContract, tokenId: body.tokenId }) });
+    });
+
+    await page.goto("/horf/inspection-desk");
+    const desk = page.locator('[data-horf-region="inspector-desk"]');
+    await expect(desk.locator("[data-horf-marshal-candidate]")).toContainText("Horse #12");
+    await desk.locator("[data-horf-marshal-candidate-hide]").click();
+    await expect(desk.locator("[data-horf-marshal-candidate]")).toHaveCount(0);
+    await expect(desk).toContainText("Horse #12 is hidden from Horf horse displays");
+    await expect(desk.locator("[data-horf-inspection-queue-row]")).toContainText("Horse #15");
+    await desk.locator("[data-horf-inspection-hide-now]").click();
+    await expect(desk.locator("[data-horf-inspection-queue-row]")).toHaveCount(0);
+    await expect(desk).toContainText("Horse #15 is hidden from Horf horse displays");
+    await desk.locator('[data-horf-marshal-filter="reports"]').click();
+    await expect(desk.locator("[data-horf-inspection-queue-row]")).toContainText("Horse #14");
+    await desk.locator("[data-horf-inspection-hide-now]").click();
+    await expect(desk.locator("[data-horf-inspection-queue-row]")).toHaveCount(0);
+    await expect(desk).toContainText("Horse #14 is hidden from Horf horse displays");
+    expect(directHides).toEqual([
+      { tokenContract, tokenId: "12" },
+      { tokenContract, tokenId: "15" },
+      { tokenContract, tokenId: "14" },
+    ]);
+    expect(detailReads).toBe(0);
+  });
+
+  test("restores an exact horse card when direct Marshal Hide fails", async ({ page, request }) => {
+    await seedTrader(request);
+    await mockSeason(page);
+    const now = "2026-11-03T12:00:00.000Z";
+    let releaseHide;
+    let hideRequest = null;
+    const holdHide = new Promise((resolve) => { releaseHide = resolve; });
+    await page.route("**/api/horf/inspectors/status", (route) => route.fulfill({
+      status: 200, contentType: "application/json", body: JSON.stringify({ active: true, role: "horf_marshal" }),
+    }));
+    await page.route("**/api/horf/inspections/pending", (route) => route.fulfill({
+      status: 200, contentType: "application/json", body: JSON.stringify({ inspections: [] }),
+    }));
+    await page.route("**/api/horf/open-range?*", (route) => route.fulfill({
+      status: 200, contentType: "application/json", body: JSON.stringify({ season,
+        items: [{ contract: tokenContract, tokenId: "16", name: "Horse #16", description: null,
+          image: null, artifactUri: null, mime: "image/png", mintedAt: now,
+          creatorAddress: traderWallet, approvedForMarshalsMarket: false, offers: [] }],
+        nextCursor: null, hasMore: false, asOf: now }),
+    }));
+    await page.route("**/api/horf/reports/not-a-horse/direct", async (route) => {
+      hideRequest = route.request().postDataJSON();
+      await holdHide;
+      return route.fulfill({ status: 503, contentType: "application/json",
+        body: JSON.stringify({ error: "Marshal decision unavailable" }) });
+    });
+
+    await page.goto("/horf/inspection-desk");
+    const desk = page.locator('[data-horf-region="inspector-desk"]');
+    await expect(desk.locator("[data-horf-marshal-candidate]")).toContainText("Horse #16");
+    await desk.locator("[data-horf-marshal-candidate-hide]").click();
+    try {
+      await expect.poll(() => hideRequest).toEqual({ tokenContract, tokenId: "16" });
+      await expect(desk.locator("[data-horf-marshal-candidate]")).toHaveCount(0);
+    } finally { releaseHide(); }
+    await expect(desk.locator("[data-horf-marshal-candidate]")).toContainText("Horse #16");
+    await expect(desk.getByRole("alert")).toContainText("Marshal decision unavailable");
   });
 
   test("a Marshal patrols every Open Range page and approves one horse after reviewing evidence", async ({ page, request }) => {

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import styled from "styled-components";
 import { api } from "../../lib/api";
@@ -124,6 +124,7 @@ const Card = styled.article<{ $selected: boolean }>`
 const Panel = styled.aside`
   min-width: 0; padding: 21px; border: 1px solid var(--horf-line, #3d5148); border-radius: 18px;
   background: var(--horf-surface, #1b2723); box-shadow: 0 6px 22px #00000026;
+  &:focus { outline: 3px solid var(--horf-teal, #71b7a0); outline-offset: 3px; }
   h3 { margin-bottom: 5px; font: 700 24px/1.1 var(--horf-display); }
   h4 { margin: 22px 0 6px; font: 700 17px/1.15 var(--horf-display); }
   p { margin-bottom: 12px; color: var(--horf-muted); font-size: 13px; line-height: 1.5; }
@@ -154,6 +155,7 @@ export function HorfHorseMarket({ address, connectWallet, isConnecting }: {
   address: string | null; connectWallet: () => Promise<void>; isConnecting: boolean;
 }) {
   const qc = useQueryClient();
+  const detailsRef = useRef<HTMLElement>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedOwnedKey, setSelectedOwnedKey] = useState("");
   const [ownedSearchDraft, setOwnedSearchDraft] = useState("");
@@ -201,6 +203,26 @@ export function HorfHorseMarket({ address, connectWallet, isConnecting }: {
     price.trim() === review.priceInput && inspectionQuery.data?.status === "approved");
   useEffect(() => { setReview(null); }, [address]);
   const busy = pending !== null;
+
+  function inspectListing(listing: HorfHorseMarketListing) {
+    setSelectedId(listing.id);
+    setBuyQuantity("1");
+    setError(null);
+    logClientSystemEvent({
+      eventType: "horf.horse_market.listing_inspected",
+      message: "HORF Market horse listing opened for payment choices",
+      metadata: { listingId: listing.id, tokenContract: listing.tokenContract, tokenId: listing.tokenId },
+    });
+    window.requestAnimationFrame(() => {
+      const panel = detailsRef.current;
+      if (!panel) return;
+      panel.scrollIntoView({
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+        block: "start",
+      });
+      panel.focus({ preventScroll: true });
+    });
+  }
 
   function stage(action: Pending["action"]) {
     return {
@@ -315,17 +337,18 @@ export function HorfHorseMarket({ address, connectWallet, isConnecting }: {
           const art = listing.token?.image ? resolveTokenThumbnail({ thumbnail: listing.token.image }) : null;
           return <Card key={listing.id} $selected={selected?.id === listing.id} data-horf-horse-market-listing>
             <div className="art">{art ? <img src={art.src} alt={`${name} token artwork`} loading={index === 0 ? "eager" : "lazy"} decoding="async" fetchPriority={index === 0 ? "high" : "auto"} onError={(event) => { if (!advanceResolvedMediaFallback(event.currentTarget, art)) { event.currentTarget.src = "/horf-art/horse-portrait-photo.jpg"; event.currentTarget.classList.add("photo"); event.currentTarget.alt = "Horse photograph placeholder"; } }} /> : <img className="photo" src="/horf-art/horse-portrait-photo.jpg" alt="Horse photograph placeholder" loading="lazy" decoding="async" />}<span className="tag">✦ Marshal approved</span></div>
-            <div className="body"><h4>{name}</h4><p>{listing.remaining} {listing.remaining === "1" ? "edition" : "editions"} · {shortAddress(listing.sellerAddress)}</p><div className="price"><div><span>Per edition</span><br /><strong>{formatHorseRaw(listing.unitPriceHorseRaw)}</strong> <span>HORSE</span></div><span>100% to seller</span></div><Action type="button" $strong={selected?.id === listing.id} onClick={() => setSelectedId(listing.id)} aria-label={`Inspect ${name} listing and payment options`}>Inspect this horse →</Action></div>
+            <div className="body"><h4>{name}</h4><p>{listing.remaining} {listing.remaining === "1" ? "edition" : "editions"} · {shortAddress(listing.sellerAddress)}</p><div className="price"><div><span>Per edition</span><br /><strong>{formatHorseRaw(listing.unitPriceHorseRaw)}</strong> <span>HORSE</span></div><span>100% to seller</span></div><Action type="button" $strong={selected?.id === listing.id} onClick={() => inspectListing(listing)} aria-label={`Inspect ${name} listing and payment options`}>Inspect this horse →</Action></div>
           </Card>;
         })}</Grid>
       </div>
       <div>
-        <Panel data-horf-horse-market-details>
+        <Panel ref={detailsRef} tabIndex={-1} aria-label="Horse listing and payment choices" data-horf-horse-market-details>
           <h3>At the hitching post 🪢</h3>
           {!selected && <p>Select a horse from the corral to see its payment choices.</p>}
           {selected && <>
             <p><Stamp>✦ Inspected horse</Stamp></p>
             <p className="meta"><a href={objktTokenUrl(selected.tokenContract, selected.tokenId)} target="_blank" rel="noopener noreferrer">{selected.token?.name || `Horse token #${selected.tokenId}`}</a><br />Token #{selected.tokenId} · seller {shortAddress(selected.sellerAddress)}</p>
+            {!address && <Notice>Connect a Tezos wallet to buy this horse with HORSE. <Action type="button" onClick={() => void connectWallet()} disabled={isConnecting}>{isConnecting ? "Connecting…" : "Connect wallet for HORSE"}</Action></Notice>}
             <label htmlFor="horf-market-buy-quantity">Editions to buy with HORSE</label>
             <input id="horf-market-buy-quantity" data-horf-horse-market-buy-quantity type="number" min="1" step="1" max={selected.remaining} value={buyQuantity} onChange={(event) => setBuyQuantity(event.target.value)} disabled={busy || !configured} />
             <p className="small">{formatHorseRaw(selected.unitPriceHorseRaw)} HORSE per edition. Your wallet signs the swap and pays XTZ gas.</p>
