@@ -17,7 +17,7 @@ async function seedTrader(request) {
   expect(response.ok()).toBeTruthy();
 }
 
-async function mockHorf(page, { readyHorse = false, initialPosse = [], initialGifts = [] } = {}) {
+async function mockHorf(page, { readyHorse = false, initialPosse = [], initialGifts = [], ownedBalance = "2", seasonRiders = [] } = {}) {
   let partners = [...initialPosse];
   let gifts = [...initialGifts];
   const marks = [];
@@ -26,7 +26,7 @@ async function mockHorf(page, { readyHorse = false, initialPosse = [], initialGi
   }, { address: traderWallet });
   await page.route("**/api/horf/season*", (route) => json(route, {
     season, seasons: [season], asOf: "2026-11-03T12:00:00.000Z", error: null,
-    nextRefreshAt: null, status: "ready", leaderboard: [], currentUser: null,
+    nextRefreshAt: null, status: "ready", leaderboard: seasonRiders, currentUser: null,
   }));
   await page.route(/\/api\/horf\/stables(?:\?.*)?$/, (route) => json(route, {
     network: "mainnet", chainId, contractAddress: null, status: "unconfigured",
@@ -58,7 +58,7 @@ async function mockHorf(page, { readyHorse = false, initialPosse = [], initialGi
   await page.route("**/api/wallets", (route) => json(route, [{ walletAddress: traderWallet }]));
   await page.route(`**/api/wallets/${traderWallet}/sync`, (route) => json(route, { ok: true }));
   await page.route("**/api/horf/wallet/tokens?*", (route) => json(route, {
-    items: [{ contract: horseToken, tokenId: "7", name: "Neighvember Seven", balance: "2", walletAddress: traderWallet }],
+    items: [{ contract: horseToken, tokenId: "7", name: "Neighvember Seven", balance: ownedBalance, walletAddress: traderWallet }],
     pagination: { limit: 48, offset: 0, total: 1, hasMore: false, nextOffset: 1 },
   }));
   await page.route(/\/api\/horf\/posse(?:\?.*)?$/, (route) => {
@@ -317,14 +317,16 @@ test.describe("Horf HORSE, posse, and horse gifts", () => {
     await gifts.locator("[data-horf-gift-owned]").selectOption(`${horseToken}:7`);
     await expect(gifts.locator('[data-horf-art-send-kind] input[value="gift"]')).toBeChecked();
     await gifts.locator('[data-horf-art-send-kind] input[value="trade"]').check();
-    await expect(gifts.locator("[data-horf-gift-submit]")).toHaveText("Trade this horse");
-    await expect(gifts).toContainText("Direct trades count when the season ledger scans the transfer");
+    await expect(gifts.locator("[data-horf-gift-submit]")).toHaveText("Review horse send");
+    await expect(gifts).toContainText("Direct trades count when the season ledger scans each transfer");
     await gifts.locator('[data-horf-art-send-kind] input[value="gift"]').check();
-    await expect(gifts.locator("[data-horf-gift-submit]")).toHaveText("Gift this horse");
+    await expect(gifts.locator("[data-horf-gift-submit]")).toHaveText("Review horse send");
     await gifts.getByRole("combobox", { name: "Choose gift recipient from posse" }).selectOption(leadWallet);
     await expect(gifts.locator("[data-horf-gift-recipient]")).toHaveValue(leadWallet);
     await expect(gifts.locator("[data-horf-gift-submit]")).toBeEnabled();
     await gifts.locator("[data-horf-gift-submit]").click();
+    await expect(gifts.locator("[data-horf-gift-review]")).toContainText(leadWallet);
+    await gifts.locator("[data-horf-gift-confirm]").click();
     await expect(gifts.getByRole("alert")).toContainText("not qualifying horse art");
 
     await gifts.locator("[data-horf-gift-row] [data-horf-gift-returned]").click();
@@ -340,13 +342,68 @@ test.describe("Horf HORSE, posse, and horse gifts", () => {
     await page.screenshot({ path: "test-results/horf-gifts-narrow.png", fullPage: true });
   });
 
+  test("reviews a multi-rider horse trade with explicit editions from posse and known traders", async ({ page, request }) => {
+    await seedTrader(request);
+    await mockHorf(page, {
+      ownedBalance: "30",
+      initialPosse: [{ id: 4, address: leadWallet, nickname: "Sir Canter", createdAt: "2026-11-03T12:00:00.000Z" }],
+      seasonRiders: [
+        { address: leadWallet, name: "Sir Canter", trades: 18, received: 18, sent: 18 },
+        { address: thirdWallet, name: "Steady Rider", trades: 12, received: 12, sent: 12 },
+      ],
+    });
+    let eligibilityCalls = 0;
+    await page.route("**/api/horf/token-eligibility?*", (route) => {
+      eligibilityCalls += 1;
+      return json(route, { eligible: false, error: "This token is not qualifying horse art." }, 422);
+    });
+    await page.goto("/horf/gifts");
+    const gifts = page.locator('[data-horf-region="gifts"]');
+    await gifts.locator("[data-horf-gift-owned]").selectOption(`${horseToken}:7`);
+    await gifts.locator('[data-horf-art-send-kind] input[value="trade"]').check();
+    await expect(gifts.locator("[data-horf-gift-recipient-row]")).toHaveCount(1);
+    await gifts.locator("[data-horf-gift-recipient-row]").first().locator("[data-horf-gift-posse-picker]").selectOption(leadWallet);
+    await expect(gifts.locator("[data-horf-gift-recipient-row]").first().locator("[data-horf-gift-recipient]")).toHaveValue(leadWallet);
+
+    await gifts.locator("[data-horf-gift-add-recipient]").click();
+    const rows = gifts.locator("[data-horf-gift-recipient-row]");
+    await expect(rows).toHaveCount(2);
+    await rows.nth(1).locator("[data-horf-gift-trader-picker]").selectOption(thirdWallet);
+    await expect(rows.nth(1).locator("[data-horf-gift-recipient]")).toHaveValue(thirdWallet);
+    await rows.first().locator("[data-horf-gift-amount]").fill("2");
+    await rows.nth(1).locator("[data-horf-gift-amount]").fill("29");
+    await gifts.locator("[data-horf-gift-submit]").click();
+    await expect(gifts.getByRole("alert")).toContainText("30");
+    await expect(gifts.locator("[data-horf-gift-review]")).toHaveCount(0);
+
+    await rows.first().locator("[data-horf-gift-amount]").fill("1");
+    await gifts.locator("[data-horf-gift-submit]").click();
+    const review = gifts.locator("[data-horf-gift-review]");
+    await expect(review).toContainText(leadWallet);
+    await expect(review).toContainText(thirdWallet);
+    await expect(review).toContainText("30 of 30 owned editions");
+    await expect(review.locator("[data-horf-gift-confirm]")).toBeEnabled();
+    expect(eligibilityCalls).toBe(0);
+
+    await rows.nth(1).locator("[data-horf-gift-amount]").fill("28");
+    await expect(review).toHaveCount(0);
+    await gifts.locator("[data-horf-gift-submit]").click();
+    await expect(review).toContainText("29 of 30 owned editions");
+    await review.locator("[data-horf-gift-confirm]").click();
+    await expect(gifts.getByRole("alert")).toContainText("not qualifying horse art");
+    expect(eligibilityCalls).toBe(1);
+  });
+
   test("retains a pending gift after reload and retries its hash without another wallet send", async ({ page, request }) => {
     await seedTrader(request);
     await mockHorf(page);
     const opHash = `o${"C".repeat(50)}`;
     const pending = {
       address: traderWallet, opHash,
-      gifts: [{ recipient: leadWallet, tokenContract: horseToken, tokenId: "7", amount: "1" }],
+      gifts: [
+        { recipient: leadWallet, tokenContract: horseToken, tokenId: "7", amount: "1" },
+        { recipient: thirdWallet, tokenContract: horseToken, tokenId: "7", amount: "2" },
+      ],
     };
     await page.addInitScript(({ address, value }) => {
       window.localStorage.setItem(`horf:pending-gift-confirmation:${address}`, JSON.stringify([value]));
@@ -375,7 +432,10 @@ test.describe("Horf HORSE, posse, and horse gifts", () => {
     const opHash = `o${"D".repeat(50)}`;
     const pending = {
       address: traderWallet, opHash,
-      trades: [{ recipient: leadWallet, tokenContract: horseToken, tokenId: "7", amount: "1" }],
+      trades: [
+        { recipient: leadWallet, tokenContract: horseToken, tokenId: "7", amount: "1" },
+        { recipient: thirdWallet, tokenContract: horseToken, tokenId: "7", amount: "2" },
+      ],
     };
     await page.addInitScript(({ address, value }) => {
       window.localStorage.setItem(`horf:pending-trade-confirmation:${address}`, JSON.stringify([value]));
@@ -384,7 +444,7 @@ test.describe("Horf HORSE, posse, and horse gifts", () => {
     await page.route("**/api/horf/trades/confirm", (route) => {
       confirmations.push(route.request().postDataJSON());
       return json(route, confirmations.length === 1 ? { status: "pending", opHash }
-        : { trades: [{ id: 61, opHash, ...pending.trades[0] }] }, confirmations.length === 1 ? 202 : 200);
+        : { trades: pending.trades.map((trade, index) => ({ id: 61 + index, opHash, ...trade })) }, confirmations.length === 1 ? 202 : 200);
     });
 
     await page.goto("/horf/gifts");
@@ -398,7 +458,7 @@ test.describe("Horf HORSE, posse, and horse gifts", () => {
     await expect(gifts).not.toContainText("Direct horse trade verified in Horf");
     await expect(gifts.locator("[data-horf-trade-retry]")).toHaveCount(1);
     await gifts.locator("[data-horf-trade-retry]").click();
-    await expect(gifts).toContainText("Direct horse trade verified in Horf");
+    await expect(gifts).toContainText("2 direct horse trades verified in Horf");
     await expect(gifts.locator("[data-horf-trade-retry]")).toHaveCount(0);
     expect(confirmations).toEqual([pending, pending]);
     expect(await page.evaluate((address) => window.localStorage.getItem(`horf:pending-trade-confirmation:${address}`), traderWallet)).toBeNull();

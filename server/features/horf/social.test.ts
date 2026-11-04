@@ -7,6 +7,7 @@ import { matchGiftTransfers, parseGiftConfirmation, parsePossePartner } from "./
 
 const sender = "tz1Qi77tcJn9foeHHP1QHj6UX1m1vLVLMbuY";
 const recipient = "tz1VSUr8wwNhLAzempoch5d6hLRiTh8Cjcjb";
+const secondRecipient = "tz1UakcrmXD82EinyTmZ4qLYE9ZGQwcXPt79";
 const contract = "KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton";
 const horse = "KT1U4p17VUNcinntAzUULBhzpPK7f2a4Ht4P";
 const opHash = `o${"A".repeat(50)}`;
@@ -29,19 +30,20 @@ test("gift proof consumes a distinct applied Mainnet transfer for each recipient
   const confirmation = parseGiftConfirmation({
     address: sender, opHash, gifts: [
       { recipient, tokenContract: contract, tokenId: "7", amount: "1" },
-      { recipient, tokenContract: contract, tokenId: "7", amount: "1" },
+      { recipient: secondRecipient, tokenContract: contract, tokenId: "7", amount: "1" },
     ],
   })!;
   const operations = [{ id: 31, hash: opHash, status: "applied", sender: { address: sender } }];
-  const transfer = (id: number) => ({
+  const transfer = (id: number, to = recipient) => ({
     id, transactionId: 31, timestamp: "2026-11-03T10:00:00Z",
     token: { contract: { address: contract }, tokenId: "7" },
-    from: { address: sender }, to: { address: recipient }, amount: "1",
+    from: { address: sender }, to: { address: to }, amount: "1",
   });
-  assert.deepEqual(matchGiftTransfers(confirmation, operations, [transfer(100), transfer(101)])?.map((row) => row.id), [100, 101]);
+  assert.deepEqual(matchGiftTransfers(confirmation, operations, [transfer(100), transfer(101, secondRecipient)])?.map((row) => row.id), [100, 101]);
   assert.equal(matchGiftTransfers(confirmation, operations, [transfer(100)]), null);
-  assert.equal(matchGiftTransfers(confirmation, [{ ...operations[0], status: "failed" }], [transfer(100), transfer(101)]), null);
-  assert.equal(matchGiftTransfers(confirmation, operations, [{ ...transfer(100), to: { address: sender } }, transfer(101)]), null);
+  assert.equal(matchGiftTransfers(confirmation, operations, [transfer(100), transfer(101)]), null);
+  assert.equal(matchGiftTransfers(confirmation, [{ ...operations[0], status: "failed" }], [transfer(100), transfer(101, secondRecipient)]), null);
+  assert.equal(matchGiftTransfers(confirmation, operations, [{ ...transfer(100), to: { address: sender } }, transfer(101, secondRecipient)]), null);
 });
 
 test("verified gift operation hashes settle exactly one direct receipt", () => {

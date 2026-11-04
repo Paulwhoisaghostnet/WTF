@@ -1072,6 +1072,7 @@ export const DOMAIN_WORKFLOWS = [
     ],
     apiProbes: [
       { method: "GET", path: "/api/horf/token-eligibility?contract=invalid&tokenId=0", expectedStatuses: [400] },
+      { method: "GET", path: "/api/horf/season?season=all-time", expectedStatuses: [200, 503] },
       { method: "GET", path: "/api/horf/gifts?address=tz1VSUr8wwNhLAzempoch5d6hLRiTh8Cjcjb", expectedStatuses: [200, 403, 503] },
       { method: "POST", path: "/api/horf/gifts/confirm", body: {}, expectedStatuses: [400, 403] },
       { method: "POST", path: "/api/horf/trades/confirm", body: {}, expectedStatuses: [400, 403] },

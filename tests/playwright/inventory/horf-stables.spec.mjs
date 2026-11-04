@@ -311,7 +311,7 @@ test.describe("Horf Stables", () => {
     await directTrade.locator("[data-horf-gift-owned]").selectOption(`${tokenContract}:7`);
     await directTrade.locator('[data-horf-art-send-kind] input[value="trade"]').check();
     await directTrade.locator("[data-horf-gift-recipient]").fill(otherTrader);
-    await expect(directTrade.locator("[data-horf-gift-submit]")).toHaveText("Trade this horse");
+    await expect(directTrade.locator("[data-horf-gift-submit]")).toHaveText("Review horse send");
     await expect(directTrade.locator("[data-horf-gift-submit]")).toBeEnabled();
     await expect(directTrade).toContainText("Direct trades count when the season ledger scans the transfer");
     await page.goto("/horf/stable");

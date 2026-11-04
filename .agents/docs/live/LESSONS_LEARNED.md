@@ -14370,3 +14370,13 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: A rider with a Marshal-approved horse and a ready escrow contract could not reach the explicit edition quantity step. The public snapshot worked, which hid the failure until a wallet address was supplied.
 
 **Rule**: For optional TzKT big-map keys, use the filtered collection endpoint and validate that any returned key matches the requested wallet. Treat its empty `200 []` result as zero credits or no blacklist. Test the wallet-scoped empty-key path and verify a real affected wallet before deployment.
+
+---
+
+## 2026-11-04 - Batch horse sends need per-rider review and operation-specific status
+
+**What happened**: Horf's FA2 sender and social confirmation route already accepted multiple recipients, but the horse-art page exposed only one recipient while the separate $HORSE currency page had batching. The new horse-art review also revealed that retrying an earlier Trade could display a Gift indexing label because progress copy read the currently selected form mode.
+
+**Why it mattered**: A trader with many editions had to repeat a wallet operation for each rider, and a mismatched retry label could obscure which submitted operation was being verified.
+
+**Rule**: For a batch horse-art send, show each destination and positive edition quantity, reject duplicate/self addresses and totals above owned balance, recheck the exact token balance before signing, and preserve every recipient in the pending confirmation record. Tie progress labels to the submitted operation kind, not the current form selection.
