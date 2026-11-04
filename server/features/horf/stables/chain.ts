@@ -1,4 +1,3 @@
-import { UpstreamError } from "../../../lib/upstream";
 import { horfMainnetIndex } from "../mainnet-index";
 import { InMemorySigner } from "@taquito/signer";
 import {
@@ -130,15 +129,28 @@ export async function readHorfStablesStorage(
   return value as unknown as HorfStablesContractStorage;
 }
 
+async function readWalletKey(
+  contractAddress: string,
+  mapName: "blacklisted" | "reciprocal_credits" | "group_credits",
+  address: string,
+  reader: ChainReader,
+): Promise<TzktKey | null> {
+  // TzKT returns 204 with no JSON body for an absent singleton key. Its
+  // filtered collection returns JSON [] and still identifies an exact key.
+  const keys = await reader.getJson<TzktKey[]>(
+    `/contracts/${contractAddress}/bigmaps/${mapName}/keys`,
+    { key: address, limit: 2 },
+  );
+  if (!Array.isArray(keys) || keys.length > 1 || (keys[0] && keys[0].key !== address)) {
+    throw new Error(`Horf stable ${mapName} index did not filter the wallet`);
+  }
+  return keys[0] ?? null;
+}
+
 async function readOnChainBlacklist(contractAddress: string, address: string | null, reader: ChainReader): Promise<boolean | null> {
   if (!address) return null;
-  try {
-    const key = await reader.getJson<TzktKey>(`/contracts/${contractAddress}/bigmaps/blacklisted/keys/${address}`);
-    return key.active !== false && key.value === true;
-  } catch (error) {
-    if (error instanceof UpstreamError && error.status === 404) return false;
-    throw error;
-  }
+  const key = await readWalletKey(contractAddress, "blacklisted", address, reader);
+  return key?.active !== false && key?.value === true;
 }
 
 async function readCredit(
@@ -148,15 +160,8 @@ async function readCredit(
   reader: ChainReader,
 ): Promise<string> {
   if (!address) return "0";
-  try {
-    const key = await reader.getJson<TzktKey>(
-      `/contracts/${contractAddress}/bigmaps/${mapName}/keys/${address}`,
-    );
-    return key.active === false ? "0" : nat(key.value, `${mapName} balance`);
-  } catch (error) {
-    if (error instanceof UpstreamError && error.status === 404) return "0";
-    throw error;
-  }
+  const key = await readWalletKey(contractAddress, mapName, address, reader);
+  return !key || key.active === false ? "0" : nat(key.value, `${mapName} balance`);
 }
 
 async function readListings(contractAddress: string, reader: ChainReader): Promise<HorfStableListing[]> {

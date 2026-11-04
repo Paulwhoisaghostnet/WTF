@@ -142,7 +142,10 @@ test("stable inventory reads on-chain credits, listings, and group claim marks",
     paths.push(path);
     if (path === "/head") return { chainId: "NetXdQprcVkpaWU", timestamp: "2026-11-03T17:00:00Z" } as never;
     if (path.endsWith("/storage")) return { admin: wallet, oracle_key: "edpk-oracle", oracle_epoch: "0", next_listing_id: "3" } as never;
-    if (path.endsWith(`/bigmaps/blacklisted/keys/${wallet}`)) return { active: true, value: false } as never;
+    if (path.endsWith("/bigmaps/blacklisted/keys")) {
+      assert.deepEqual(params, { key: wallet, limit: 2 });
+      return [{ key: wallet, active: true, value: false }] as never;
+    }
     if (path.endsWith("/bigmaps/listings/keys")) {
       assert.equal(params?.["offset.cr"], 0);
       return [
@@ -150,8 +153,14 @@ test("stable inventory reads on-chain credits, listings, and group claim marks",
         { id: 13, key: "2", active: true, value: { owner: wallet, mode: 0, token_contract: stable, token_id: "9", submitted: "1", remaining: "1" } },
       ] as never;
     }
-    if (path.endsWith(`/bigmaps/reciprocal_credits/keys/${wallet}`)) return { active: true, value: "1" } as never;
-    if (path.endsWith(`/bigmaps/group_credits/keys/${wallet}`)) return { active: true, value: "29" } as never;
+    if (path.endsWith("/bigmaps/reciprocal_credits/keys")) {
+      assert.deepEqual(params, { key: wallet, limit: 2 });
+      return [{ key: wallet, active: true, value: "1" }] as never;
+    }
+    if (path.endsWith("/bigmaps/group_credits/keys")) {
+      assert.deepEqual(params, { key: wallet, limit: 2 });
+      return [{ key: wallet, active: true, value: "29" }] as never;
+    }
     if (path.endsWith("/bigmaps/group_claimed/keys")) {
       assert.equal(params?.["key.claimant"], wallet);
       return [{ id: 15, active: true, key: { claimant: wallet, token_contract: tokenContract, token_id: tokenId }, value: true }] as never;
@@ -171,6 +180,27 @@ test("stable inventory reads on-chain credits, listings, and group claim marks",
   assert.equal(snapshot.listings[1]?.claimedByWallet, true);
   assert.equal(paths.length, 7);
   assert.equal((await getHorfStablesSnapshot(wallet, reader, {})).status, "unconfigured");
+});
+
+test("stable inventory treats absent wallet big-map keys as zero credits and no blacklist", async () => {
+  const reader: ChainReader = { getJson: async (path, params) => {
+    if (path === "/head") return { chainId: "NetXdQprcVkpaWU", timestamp: "2026-11-04T07:00:00Z" } as never;
+    if (path.endsWith("/storage")) return { admin: wallet, oracle_key: "edpk-oracle", oracle_epoch: "0", next_listing_id: "0" } as never;
+    if (path.endsWith("/bigmaps/listings/keys") || path.endsWith("/bigmaps/group_claimed/keys")) return [] as never;
+    if (path.endsWith("/bigmaps/blacklisted/keys") || path.endsWith("/bigmaps/reciprocal_credits/keys") ||
+        path.endsWith("/bigmaps/group_credits/keys")) {
+      assert.deepEqual(params, { key: wallet, limit: 2 });
+      return [] as never;
+    }
+    throw new Error(`Unexpected singleton or unhandled TzKT path: ${path}`);
+  } };
+  const snapshot = await getHorfStablesSnapshot(wallet, reader, {
+    TEZOS_NETWORK: "mainnet", HORF_STABLES_CONTRACT_ADDRESS: stable,
+  });
+  assert.equal(snapshot.status, "ready");
+  assert.equal(snapshot.onChainBlacklisted, false);
+  assert.equal(snapshot.reciprocalCredits, "0");
+  assert.equal(snapshot.groupCredits, "0");
 });
 
 test("horse claim events are sourced by contract and season without cursor gaps", async () => {

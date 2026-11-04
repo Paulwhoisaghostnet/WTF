@@ -14360,3 +14360,13 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: The horse grid lost its visual preview and the inventory browser story that expects a visible card image failed.
 
 **Rule**: When a shared thumbnail cannot be trusted and exact art is unavailable, render a clearly labeled generic horse placeholder image. Never display the ambiguous thumbnail as that token's art.
+
+---
+
+## 2026-11-04 - Read absent TzKT big-map keys through filtered collections
+
+**What happened**: Horf Stables read the connected wallet's blacklist and credit keys through TzKT singleton endpoints. For a wallet with no entries, TzKT returned `204 No Content`; the shared JSON reader threw on the empty body, so the wallet-scoped Stable snapshot returned 503 and disabled the Add owned horse button.
+
+**Why it mattered**: A rider with a Marshal-approved horse and a ready escrow contract could not reach the explicit edition quantity step. The public snapshot worked, which hid the failure until a wallet address was supplied.
+
+**Rule**: For optional TzKT big-map keys, use the filtered collection endpoint and validate that any returned key matches the requested wallet. Treat its empty `200 []` result as zero credits or no blacklist. Test the wallet-scoped empty-key path and verify a real affected wallet before deployment.
