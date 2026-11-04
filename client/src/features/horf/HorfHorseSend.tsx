@@ -248,7 +248,7 @@ export function HorfHorseSend({
     activity.token?.contract === config?.token?.contract;
   const partners = Array.isArray(posseQuery.data?.partners) ? posseQuery.data.partners : [];
   const reward = rewardsQuery.data;
-  const canClaimReward = Boolean(address && reward?.status === "ready" && reward.asOf && reward.sourceComplete && reward.claimReady &&
+  const canClaimReward = Boolean(address && reward && reward.status !== "error" && reward.asOf && reward.sourceComplete && reward.claimReady &&
     reward.vaultAddress && /^KT1[1-9A-HJ-NP-Za-km-z]{33}$/.test(reward.vaultAddress) &&
     /^\d+$/.test(reward.claimableRaw) && BigInt(reward.claimableRaw) > 0n);
   const busy = stage !== null;
@@ -393,7 +393,7 @@ export function HorfHorseSend({
         <strong>Current-season reward ledger</strong> · {reward.rateHorse} HORSE per qualifying horse sent · {reward.countedUnits} rewardable outbound horse trades · {formatHorseAmount(reward.accruedRaw, 8)} HORSE accrued · {formatHorseAmount(reward.claimableRaw, 8)} HORSE claimable · {formatHorseAmount(reward.claimedRaw, 8)} HORSE claimed on-chain.
         {reward.status !== "ready" && <> {reward.status === "syncing" ? "Counts are provisional while Horf scans Mainnet." : "The ledger needs a refresh; shown figures are the last available snapshot."}</>}
         <> Indexed through {new Date(reward.asOf).toLocaleString()}.</>
-        {!reward.claimReady && (/^0+$/.test(reward.claimableRaw) ? <> There is no HORSE to claim from this snapshot.</> : <> Vault claiming is paused until the season scan, Mainnet vault signer, and HORSE reserve are ready.</>)}
+        {!reward.claimReady && (/^0+$/.test(reward.claimableRaw) ? <> No HORSE to claim yet. This wallet earns 10 HORSE for each qualifying horse it sends.</> : <> Vault claiming is paused until the season scan, Mainnet vault signer, and HORSE reserve are ready.</>)}
         {reward.claimReady && reward.vaultAddress && <> Vault: <a href={`https://tzkt.io/${reward.vaultAddress}`} target="_blank" rel="noopener noreferrer">{shortAddress(reward.vaultAddress)}</a>.</>}
         <div style={{ marginTop: 8 }}><Action data-horf-horse-claim type="button" onClick={() => void claimReward()} disabled={!canClaimReward || claimStage !== null || busy}>{claimStage ? "Claim in progress…" : "Claim HORSE · pay XTZ gas"}</Action></div>
       </Note>}

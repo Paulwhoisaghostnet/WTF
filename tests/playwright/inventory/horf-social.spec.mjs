@@ -232,6 +232,24 @@ test.describe("Horf HORSE, posse, and horse gifts", () => {
     expect(resolvedQueries).toContain(leadWallet);
   });
 
+  test("keeps a completed HORSE claim available while the next Mainnet scan starts", async ({ page, request }) => {
+    await seedTrader(request);
+    await mockHorf(page, { readyHorse: true });
+    await page.route(/\/api\/horf\/horse\/rewards(?:\?.*)?$/, (route) => json(route, {
+      season: "current-2026", rateHorse: "10", rateRaw: "1000000000",
+      countedUnits: "3", accruedRaw: "3000000000", totalRaw: "3000000000",
+      claimableRaw: "2000000000", claimedRaw: "1000000000",
+      asOf: "2026-11-03T12:00:00.000Z", status: "syncing", sourceComplete: true,
+      claimReady: true, vaultAddress: "KT1KH1xShHGtNpfqwK8SsdfMxGZTPYs8aDpT",
+      sourceDiscrepancies: "0",
+    }));
+    await page.goto("/horf/send-horse");
+    const rewards = page.locator("[data-horf-horse-rewards]");
+    await expect(rewards).toContainText("20 HORSE claimable");
+    await expect(rewards).toContainText("Counts are provisional while Horf scans Mainnet");
+    await expect(rewards.locator("[data-horf-horse-claim]")).toBeEnabled();
+  });
+
   test("opens the official Influencer Award with the selected trader prefilled", async ({ page, request }) => {
     await seedTrader(request);
     await mockHorf(page);

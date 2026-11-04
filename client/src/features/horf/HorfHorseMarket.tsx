@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import styled from "styled-components";
 import { api } from "../../lib/api";
@@ -6,6 +6,7 @@ import { advanceResolvedMediaFallback, resolveTokenThumbnail } from "../../lib/m
 import { logClientSystemEvent } from "../../lib/system-log";
 import {
   HORF_MARKET_CHAIN_ID,
+  assertHorseMarketPermitMatchesReview,
   buyHorseWithHorse,
   cancelHorseMarketListing,
   formatHorseRaw,
@@ -31,6 +32,8 @@ type MarketSnapshot = {
 type MarketListings = { listings: HorfHorseMarketListing[] };
 type Inspection = { status: "none" | "pending" | "approved" | "rejected" | "revoked"; reason: string | null };
 type Pending = { action: "list" | "buy" | "cancel"; stage: "eligibility" | "preflight" | "preparing" | "wallet" | "confirming"; opHash: string | null };
+type ListingReview = { address: string; tokenContract: string; tokenId: string; tokenName: string;
+  quantity: string; ownedBalance: string; unitPriceHorseRaw: string; priceInput: string };
 
 const Page = styled.section`
   width: min(100%, 1400px);
@@ -84,6 +87,16 @@ const Notice = styled.div<{ $error?: boolean }>`
   border-radius: 12px; background: ${(p) => p.$error ? '#3b2723' : '#1d3932'};
   font-size: 13px; line-height: 1.5; overflow-wrap: anywhere;
   a { color: var(--horf-teal, #71b7a0); }
+`;
+const ListingReviewCard = styled.div`
+  margin: 16px 0; padding: 16px; border: 1px solid var(--horf-gold, #d8a34a);
+  border-radius: 13px; background: #352d20;
+  h4 { margin: 0 0 8px; color: var(--horf-ink); font: 700 18px/1.2 var(--horf-display); }
+  dl { display: grid; grid-template-columns: 115px minmax(0, 1fr); gap: 7px 10px; margin: 11px 0; font-size: 13px; }
+  dt { color: var(--horf-muted); } dd { margin: 0; overflow-wrap: anywhere; }
+  p { margin: 10px 0; }
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+  @container (max-width: 420px) { dl { grid-template-columns: 1fr; } }
 `;
 const Layout = styled.div`
   display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(300px, .75fr); gap: 20px; align-items: start;
@@ -145,8 +158,9 @@ export function HorfHorseMarket({ address, connectWallet, isConnecting }: {
   const [selectedOwnedKey, setSelectedOwnedKey] = useState("");
   const [ownedSearchDraft, setOwnedSearchDraft] = useState("");
   const [ownedSearch, setOwnedSearch] = useState("");
-  const [quantity, setQuantity] = useState("1");
+  const [quantity, setQuantity] = useState("0");
   const [price, setPrice] = useState("");
+  const [review, setReview] = useState<ListingReview | null>(null);
   const [buyQuantity, setBuyQuantity] = useState("1");
   const [pending, setPending] = useState<Pending | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -181,6 +195,11 @@ export function HorfHorseMarket({ address, connectWallet, isConnecting }: {
     queryFn: () => api.get<Inspection>(`/api/horf/inspections/status?contract=${encodeURIComponent(selectedOwned!.contract)}&tokenId=${encodeURIComponent(selectedOwned!.tokenId)}`),
     enabled: Boolean(selectedOwned), refetchOnWindowFocus: true,
   });
+  const reviewCurrent = Boolean(review && selectedOwned && address === review.address &&
+    selectedOwned.contract === review.tokenContract && selectedOwned.tokenId === review.tokenId &&
+    selectedOwned.balance === review.ownedBalance && quantity === review.quantity &&
+    price.trim() === review.priceInput && inspectionQuery.data?.status === "approved");
+  useEffect(() => { setReview(null); }, [address]);
   const busy = pending !== null;
 
   function stage(action: Pending["action"]) {
@@ -189,27 +208,45 @@ export function HorfHorseMarket({ address, connectWallet, isConnecting }: {
       onSubmitted: (hash: string) => setPending((current) => ({ action, stage: "confirming", opHash: hash })),
     };
   }
-  async function list(event: FormEvent) {
+  function reviewListing(event: FormEvent) {
     event.preventDefault();
     if (!address || !contract || !selectedOwned || busy) return;
     setError(null); setSuccess(null);
-    let submitted: string | null = null;
     try {
       const units = toNatString(quantity);
       if (units === "0" || BigInt(units) > BigInt(selectedOwned.balance)) throw new Error("Choose an edition quantity held by this wallet.");
       const rawPrice = horseAmountToRaw(price);
       if (inspectionQuery.data?.status !== "approved") throw new Error("A Horf Marshal must approve this token before it can enter the HORSE Market.");
+      const priceInput = price.trim();
+      setQuantity(units); setPrice(priceInput);
+      setReview({ address, tokenContract: selectedOwned.contract, tokenId: selectedOwned.tokenId,
+        tokenName: selectedOwned.name || `Token #${selectedOwned.tokenId}`, quantity: units,
+        ownedBalance: selectedOwned.balance, unitPriceHorseRaw: rawPrice, priceInput });
+    } catch (cause) {
+      setReview(null);
+      setError(cause instanceof Error ? cause.message : "Could not review this horse listing.");
+    }
+  }
+  async function list() {
+    if (!address || !contract || !selectedOwned || !review || !reviewCurrent || busy) return;
+    setError(null); setSuccess(null);
+    let submitted: string | null = null;
+    try {
+      const units = review.quantity;
+      const rawPrice = review.unitPriceHorseRaw;
+      if (inspectionQuery.data?.status !== "approved") throw new Error("A Horf Marshal must approve this token before it can enter the HORSE Market.");
       setPending({ action: "list", stage: "eligibility", opHash: null });
       const permit = await api.post<HorfHorseMarketPermit>("/api/horf/horse-market/permit", {
-        address, tokenContract: selectedOwned.contract, tokenId: selectedOwned.tokenId, quantity: units, unitPriceHorseRaw: rawPrice,
+        address, tokenContract: review.tokenContract, tokenId: review.tokenId, quantity: units, unitPriceHorseRaw: rawPrice,
       });
+      assertHorseMarketPermitMatchesReview(permit, review);
       const handlers = stage("list");
       const opHash = await listHorseForHorse(address, contract, permit, {
         ...handlers, onSubmitted: (hash) => { submitted = hash; handlers.onSubmitted(hash); },
       });
       setSuccess({ text: "Horse listed for HORSE. Your editions are now held by the Market contract until sold or cancelled.", opHash });
       logClientSystemEvent({ eventType: "horf.horse_market.listed", message: "Marshal-approved horse listed for HORSE", metadata: { tokenContract: selectedOwned.contract, tokenId: selectedOwned.tokenId, quantity: units, unitPriceHorseRaw: rawPrice, opHash } });
-      setSelectedOwnedKey(""); setQuantity("1"); setPrice("");
+      setSelectedOwnedKey(""); setQuantity("0"); setPrice(""); setReview(null);
       await Promise.all([listingQuery.refetch(), qc.invalidateQueries({ queryKey: ["horf", "owned-tokens", address] })]);
     } catch (cause) {
       setError(`${cause instanceof Error ? cause.message : "Could not list this horse."}${submitted ? " The transaction was submitted; check its explorer status before retrying." : ""}`);
@@ -300,11 +337,11 @@ export function HorfHorseMarket({ address, connectWallet, isConnecting }: {
           <h3>Hang a HORSE price 🤠</h3>
           <p>Marshal approval required. Signing deposits your editions into the Market.</p>
           {!address && <Action type="button" onClick={() => void connectWallet()} disabled={isConnecting}>{isConnecting ? "Connecting…" : "Connect to list"}</Action>}
-          {address && <form onSubmit={list}>
+          {address && <form onSubmit={reviewListing}>
             <label htmlFor="horf-market-search">Find a horse in your wallet</label>
-            <div style={{ display: "flex", gap: 7 }}><input id="horf-market-search" value={ownedSearchDraft} onChange={(event) => setOwnedSearchDraft(event.target.value)} placeholder="Name, contract or ID" /><Action type="button" onClick={() => { setOwnedSearch(ownedSearchDraft.trim()); setSelectedOwnedKey(""); }}>Find</Action></div>
+            <div style={{ display: "flex", gap: 7 }}><input id="horf-market-search" value={ownedSearchDraft} onChange={(event) => setOwnedSearchDraft(event.target.value)} placeholder="Name, contract or ID" /><Action type="button" onClick={() => { setOwnedSearch(ownedSearchDraft.trim()); setSelectedOwnedKey(""); setQuantity("0"); setReview(null); }}>Find</Action></div>
             <label htmlFor="horf-market-owned">Choose a horse token</label>
-            <select id="horf-market-owned" data-horf-horse-market-owned value={selectedOwnedKey} onChange={(event) => setSelectedOwnedKey(event.target.value)} disabled={busy}>
+            <select id="horf-market-owned" data-horf-horse-market-owned value={selectedOwnedKey} onChange={(event) => { setSelectedOwnedKey(event.target.value); setQuantity("0"); setReview(null); }} disabled={busy}>
               <option value="">{ownedQuery.isPending ? "Loading horses…" : "Select a horse"}</option>
               {owned.map((token) => <option key={`${token.contract}:${token.tokenId}`} value={`${token.contract}:${token.tokenId}`}>{token.name || `Token #${token.tokenId}`} · {token.balance} owned</option>)}
             </select>
@@ -312,11 +349,17 @@ export function HorfHorseMarket({ address, connectWallet, isConnecting }: {
             {ownedQuery.isError && <p role="alert">Wallet tokens are unavailable. Search again to retry.</p>}
             {selectedOwned && <p role="status">Inspection: <strong>{inspectionQuery.isPending ? "checking…" : inspectionQuery.isError ? "unavailable" : inspectionQuery.data?.status}</strong>{inspectionQuery.data?.status !== "approved" && <><br />Take this horse to <a href="/horf/stable">your personal stable</a> and ask a Marshal to inspect it.</>}</p>}
             <label htmlFor="horf-market-quantity">Editions to list</label>
-            <input id="horf-market-quantity" type="number" inputMode="numeric" min="1" max={selectedOwned?.balance} step="1" value={quantity} onChange={(event) => setQuantity(event.target.value)} disabled={busy} />
+            <input id="horf-market-quantity" data-horf-horse-market-quantity type="number" inputMode="numeric" min="0" max={selectedOwned?.balance} step="1" value={quantity} onChange={(event) => { setQuantity(event.target.value); setReview(null); }} disabled={busy} />
             <label htmlFor="horf-market-price">HORSE per edition</label>
-            <input id="horf-market-price" data-horf-horse-market-price inputMode="decimal" value={price} onChange={(event) => setPrice(event.target.value)} placeholder="e.g. 25 or 2.5" disabled={busy} />
+            <input id="horf-market-price" data-horf-horse-market-price inputMode="decimal" value={price} onChange={(event) => { setPrice(event.target.value); setReview(null); }} placeholder="e.g. 25 or 2.5" disabled={busy} />
             <p className="small">Set any positive HORSE amount, up to eight decimal places. The full price goes to you when a horse sells. Tezos gas applies to listing and buying.</p>
-            <Action type="submit" $strong disabled={!configured || snapshot?.permitReady !== true || !selectedOwned || inspectionQuery.data?.status !== "approved" || busy}>List horse for HORSE</Action>
+            {!reviewCurrent && <Action type="submit" $strong disabled={!configured || snapshot?.permitReady !== true || !selectedOwned || inspectionQuery.data?.status !== "approved" || !isPositive(quantity) || (selectedOwned && BigInt(quantity) > BigInt(selectedOwned.balance)) || busy}>Review listing</Action>}
+            {reviewCurrent && review && <ListingReviewCard data-horf-horse-market-list-review role="group" aria-label="Review HORSE Market listing">
+              <h4>Check this horse before signing</h4>
+              <dl><dt>Horse</dt><dd>{review.tokenName}</dd><dt>Token</dt><dd>{review.tokenContract} #{review.tokenId}</dd><dt>Wallet</dt><dd>{review.address}</dd><dt>Owned</dt><dd>{review.ownedBalance} editions</dd><dt>To escrow</dt><dd><strong>{review.quantity} {review.quantity === "1" ? "edition" : "editions"}</strong></dd><dt>Asking price</dt><dd>{formatHorseRaw(review.unitPriceHorseRaw)} HORSE per edition</dd></dl>
+              <p className="small">Your wallet will deposit exactly {review.quantity} {review.quantity === "1" ? "edition" : "editions"} of this token into the HORSE Market. Review the wallet transaction before signing.</p>
+              <div className="actions"><Action type="button" $strong data-horf-horse-market-list-confirm onClick={() => void list()} disabled={busy || !configured || snapshot?.permitReady !== true}>Continue to wallet</Action><Action type="button" onClick={() => setReview(null)} disabled={busy}>Change listing</Action></div>
+            </ListingReviewCard>}
             {configured && snapshot?.permitReady !== true && <p role="status">Marshal listing permits are temporarily unavailable.</p>}
           </form>}
         </Panel>

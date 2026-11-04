@@ -14196,3 +14196,35 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: A text merge of the generated board could silently overwrite one issue or leave stale ranks, and the environment inventory header could describe the prior source tree.
 
 **Rule**: Merge canonical bounty data by ID and field against the common base, preserve distinct issues under unused IDs, recompute ranks, then regenerate and check the board and environment inventory from the final merged tree. Audit auto-merged lessons by complete section content before staging.
+
+---
+
+## 2026-11-04 - Make escrow quantities deliberate before wallet signing
+
+**What happened**: Stable deposit rows and HORSE Market listings began at one edition. Submitting the form immediately requested a permit and proceeded toward wallet signing, so the trader never had a separate look at the exact token and count.
+
+**Why it mattered**: A default value could escrow an edition the trader had not deliberately counted, even though the contracts correctly reject zero and sign the exact positive quantity.
+
+**Rule**: Start listing quantities at zero, require the trader to enter a positive amount, show the full token identity and edition count in a separate review, and invalidate that review after any edit. Keep the on-chain one-credit-per-edition reciprocal ratio while allowing explicitly chosen multi-edition listings.
+
+---
+
+---
+
+## 2026-11-04 - Let a completed HORSE claim survive the next source scan
+
+**What happened**: The live reward API reported a completed claim-ready snapshot with positive HORSE while its status said `syncing` for the next Mainnet scan. The client required `status=ready` and disabled Claim despite `sourceComplete=true` and `claimReady=true`.
+
+**Why it mattered**: A routine source refresh made funded rewards appear unavailable to senders. Wallets with no outbound qualifying horses also needed a clearer zero-claim explanation.
+
+**Rule**: Gate Claim on the verified vault, completed source snapshot, positive claimable amount, and `claimReady`; a newer scan status alone must not override that completed claim decision. Keep zero-claim copy tied to the sender-only reward rule.
+
+---
+
+## 2026-11-04 - Recheck bounty IDs against main at the final release merge
+
+**What happened**: Main added Horf escrow and reward-claim bounties 786 and 787 while the starter release branch already used 786 for its welcome flow. The source changes also appended two Horf lessons after the branch had diverged.
+
+**Why it mattered**: A text merge could overwrite one issue or lose the new operational lessons, and stale generated ranks would fail the release gate.
+
+**Rule**: At the final main integration, compare canonical record identities against the merge base, assign a fresh ID to a distinct collision, preserve all lesson sections, and regenerate the board and environment inventory from the exact merged tree.

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { assertObjktPurchaseMatches, formatHorseRaw, horseAmountToRaw, type HorfObjktPurchase } from "./horf-horse-market";
+import { assertHorseMarketPermitMatchesReview, assertObjktPurchaseMatches, formatHorseRaw, horseAmountToRaw, type HorfHorseMarketPermit, type HorfObjktPurchase } from "./horf-horse-market";
 
 const ask: HorfObjktPurchase = {
   listingId: "8669074",
@@ -22,6 +22,20 @@ test("HORSE price parsing preserves all eight decimal places and large integers"
   for (const invalid of ["0", "0.00000000", "1.000000001", "1e3", "-1", "1.2.3"]) {
     assert.throws(() => horseAmountToRaw(invalid));
   }
+});
+
+test("a HORSE listing permit must match the reviewed token, edition count, and price", () => {
+  const permit: HorfHorseMarketPermit = {
+    contractAddress: "KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton", chainId: "NetXdQprcVkpaWU",
+    address: "tz1Qi77tcJn9foeHHP1QHj6UX1m1vLVLMbuY", tokenContract: "KT1L7PSeJpnj79MEaybcEiDtbHM43g5DZe12",
+    tokenId: "7", quantity: "3", unitPriceHorseRaw: "2500000000", nonce: "0x" + "a".repeat(64),
+    signature: "sig", oracleEpoch: "1",
+  };
+  assert.doesNotThrow(() => assertHorseMarketPermitMatchesReview(permit, permit));
+  for (const change of [
+    { tokenContract: "KT1Other" }, { tokenId: "8" }, { quantity: "2" },
+    { unitPriceHorseRaw: "2600000000" }, { address: "tz1Other" },
+  ]) assert.throws(() => assertHorseMarketPermitMatchesReview({ ...permit, ...change }, permit));
 });
 
 test("an Objkt buy requires the same live ask, seller, price and token on Mainnet", () => {
