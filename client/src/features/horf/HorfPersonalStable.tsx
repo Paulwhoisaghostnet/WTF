@@ -8,6 +8,7 @@ import { logClientSystemEvent } from "../../lib/system-log";
 import { resolveHorfHorseArt, resolveHorfHorseCardArt, resolveHorfHorseVideo, uniqueHorfThumbnailIdentities } from "./horse-media";
 import { parseHorfOwnedTokenPage } from "./owned-tokens";
 import { HorfProfileEditor } from "./HorfTraderProfile";
+import { HorfStableShare, type HorfShareStats } from "./HorfStableShare";
 import { findHorfMintSeason, type HorfMintSeason } from "./mint-season";
 import { objktTokenUrl } from "./token-input";
 
@@ -88,6 +89,13 @@ const Header = styled.div`
   gap: 14px 20px;
   small { color: var(--horf-teal, #71b7a0); font: 800 12px var(--horf-font, "Avenir Next", sans-serif); letter-spacing: .12em; text-transform: uppercase; }
   > div { max-width: 65ch; }
+`;
+
+const HeaderActions = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
 `;
 
 const Columns = styled.div`
@@ -290,13 +298,16 @@ function shortAddress(value: string): string {
   return value.length > 18 ? `${value.slice(0, 8)}…${value.slice(-6)}` : value;
 }
 
-export function HorfPersonalStable({ address, connectWallet, isConnecting, seasonKey, seasonLabel, seasons }: {
+export function HorfPersonalStable({ address, connectWallet, isConnecting, seasonKey, seasonLabel, seasons, shareSeasonKey, shareSeasonLabel, shareStats }: {
   address: string | null;
   connectWallet: () => Promise<void>;
   isConnecting: boolean;
   seasonKey: string;
   seasonLabel: string;
   seasons: HorfMintSeason[];
+  shareSeasonKey: string;
+  shareSeasonLabel: string;
+  shareStats: HorfShareStats | null;
 }) {
   const qc = useQueryClient();
   const { user } = useAuth();
@@ -490,7 +501,7 @@ export function HorfPersonalStable({ address, connectWallet, isConnecting, seaso
     {address && <HorfProfileEditor address={address} seasonKey={seasonKey} seasonLabel={seasonLabel} />}
     <Header>
       <div><small>Your paddock · 🪢</small><h2>{address ? "Wallet horses" : "Your stable & profile"} <span aria-hidden="true">🐎</span></h2><p>{address ? "Current holdings that pass Horf’s horse test." : "Connect a wallet above to open your stable."}</p></div>
-      <Action data-horf-stable-refresh type="button" onClick={refreshStable} disabled={!address || ownedQuery.isFetching || qualifyingQuery.isFetching || selectionsQuery.isFetching}>Refresh stable</Action>
+      <HeaderActions><HorfStableShare address={address} seasonKey={shareSeasonKey} seasonLabel={shareSeasonLabel} stats={shareStats} /><Action data-horf-stable-refresh type="button" onClick={refreshStable} disabled={!address || ownedQuery.isFetching || qualifyingQuery.isFetching || selectionsQuery.isFetching}>Refresh stable</Action></HeaderActions>
     </Header>
     {address && <Panel data-horf-qualifying-horses>
       <MintFilter data-horf-mint-season-filter>

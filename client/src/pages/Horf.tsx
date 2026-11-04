@@ -13,6 +13,7 @@ import { HorfTradeHorseCarousel } from "../features/horf/HorfTradeHorseCarousel"
 import { HorfSeasonArt } from "../features/horf/HorfSeasonArt";
 import { HorfTraderStatus } from "../features/horf/HorfTraderStatus";
 import { HorfPersonalStable } from "../features/horf/HorfPersonalStable";
+import type { HorfShareStats } from "../features/horf/HorfStableShare";
 import { HorfPublicTraderProfile, parseProfile } from "../features/horf/HorfTraderProfile";
 import { findHorfMintSeason } from "../features/horf/mint-season";
 import { approveHorseDirectly } from "../features/horf/marshal-approval";
@@ -55,7 +56,7 @@ type HorfReceipt = {
     image?: string | null;
   };
   amount: number;
-  settlement?: "stable" | "gift";
+  settlement?: "stable" | "gift" | "market" | "objkt";
   stableMode?: 0 | 1 | 2;
 };
 
@@ -177,6 +178,20 @@ function readSeasonKeyFromUrl(): string {
   if (!isHorfLocation()) return CURRENT_SEASON_KEY;
   const season = new URLSearchParams(window.location.search).get("season")?.trim();
   return season === "all-horse-search" || season === "all-seasons" ? "all-time" : season || CURRENT_SEASON_KEY;
+}
+
+function readProfileTabFromUrl(): "for-trade" | "all-horses" | "received" {
+  if (typeof window === "undefined") return "for-trade";
+  const tab = new URLSearchParams(window.location.search).get("tab");
+  return tab === "received" || tab === "all-horses" ? tab : "for-trade";
+}
+
+function writeProfileTabToUrl(tab: "for-trade" | "all-horses" | "received"): void {
+  if (typeof window === "undefined") return;
+  const url = new URL(window.location.href);
+  if (tab === "for-trade") url.searchParams.delete("tab");
+  else url.searchParams.set("tab", tab);
+  window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
 }
 
 function writeSeasonKeyToUrl(key: string): void {
@@ -932,8 +947,8 @@ export function Horf() {
   const profileSeasonKey = selectedSeasonKey === "all-time" || selectedSeasonKey === "all-seasons" || selectedSeasonKey === "all-horse-search" ? CURRENT_SEASON_KEY : selectedSeasonKey;
   const [seasonManifest, setSeasonManifest] = useState<HorfSeason[]>([]);
   const [statusAddress, setStatusAddress] = useState<string | null>(null);
-  const [profileTab, setProfileTab] = useState<"for-trade" | "all-horses">("for-trade");
-  const [selectedProfileHorse, setSelectedProfileHorse] = useState<PublicHeldHorse | PublicOffer | null>(null);
+  const [profileTab, setProfileTab] = useState<"for-trade" | "all-horses" | "received">(readProfileTabFromUrl);
+  const [selectedProfileHorse, setSelectedProfileHorse] = useState<PublicHeldHorse | PublicOffer | HorfReceipt["token"] | null>(null);
   const profileHorseDialogRef = useRef<HTMLDialogElement>(null);
   const [quickSendRider, setQuickSendRider] = useState<{ address: string; name: string | null } | null>(null);
   const [quickSendBusy, setQuickSendBusy] = useState(false);
@@ -942,11 +957,12 @@ export function Horf() {
   const [profileApprovalBusy, setProfileApprovalBusy] = useState(false);
   const [profileApprovalStatus, setProfileApprovalStatus] = useState<string | null>(null);
   const [profileApprovalResults, setProfileApprovalResults] = useState<Record<string, { status: "approved" | "failed"; message: string }>>({});
+  const ledgerAddress = routeSection === "profile" && validProfileAddress ? validProfileAddress : address;
   const query = useQuery({
-    queryKey: ["horf", "season", selectedSeasonKey, address],
+    queryKey: ["horf", "season", selectedSeasonKey, ledgerAddress],
     queryFn: async () => {
       const params = new URLSearchParams({ season: selectedSeasonKey });
-      if (address) params.set("address", address);
+      if (ledgerAddress) params.set("address", ledgerAddress);
       const response = parseSeasonResponse(await api.get<unknown>(`/api/horf/season?${params}`));
       if (response.season.key !== selectedSeasonKey) {
         throw new Error("Horf received a different season than the one selected. Refresh to try again.");
@@ -1007,6 +1023,7 @@ export function Horf() {
   const availableSeasons = data?.seasons ?? seasonManifest;
   const selectedSeason = data?.season ?? availableSeasons.find((season) => season.key === selectedSeasonKey);
   const seasonDisplayName = selectedSeasonKey === CURRENT_SEASON_KEY ? "Neighvember 2026" : selectedSeason?.label ?? "Horf archive";
+  const receivedScope = selectedSeasonKey === "all-time" ? "across all tracked seasons" : `in ${seasonDisplayName}`;
   const profileSeasonLabel = profileSeasonKey === CURRENT_SEASON_KEY ? "Neighvember 2026" : selectedSeason?.label ?? profileSeasonKey;
   const leaderboard = useMemo(
     () => [...(data?.leaderboard ?? [])].sort((a, b) => b.trades - a.trades || a.address.localeCompare(b.address)),
@@ -1035,6 +1052,24 @@ export function Horf() {
   const personal = address && data?.currentUser?.address === address
     ? data.currentUser
     : null;
+  const profileReceived = data?.currentUser?.address === validProfileAddress
+    ? data.currentUser.recent.filter((receipt) => receipt.direction === "in") : [];
+  const shareStats: HorfShareStats | null = personal ? (() => {
+    const inbound = personal.recent.filter((receipt) => receipt.direction === "in");
+    const directReceived = inbound.filter((receipt) => !receipt.settlement)
+      .reduce((sum, receipt) => sum + receipt.amount, 0);
+    const position = leaderboard.findIndex((rider) => rider.address === address);
+    return {
+      trades: personal.trades,
+      received: personal.received,
+      sent: personal.sent,
+      rank: position >= 0 ? position + 1 : null,
+      uniqueReceived: new Set(inbound.map((receipt) => `${receipt.token.contract}/${receipt.token.tokenId}`)).size,
+      sendingRiders: new Set(inbound.map((receipt) => receipt.counterparty)).size,
+      directReceived,
+      waiting: personal.owedTo.reduce((sum, row) => sum + row.count, 0),
+    };
+  })() : null;
   const waitingHorses = personal?.waitingHorses ?? [];
   const countsProvisional = data?.status === "syncing" || (data?.status === "ready" && !data.asOf);
   const hasError = query.isError || data?.status === "error";
@@ -1111,7 +1146,7 @@ export function Horf() {
   }, [address, data, personal, routeSection]);
 
   useEffect(() => {
-    setProfileTab("for-trade");
+    setProfileTab(readProfileTabFromUrl());
     setSelectedProfileHorse(null);
     setProfileApprovalStatus(null);
     setProfileApprovalResults({});
@@ -1147,9 +1182,10 @@ export function Horf() {
     navigate(`/horf/outlaw-corral?season=${encodeURIComponent(selectedSeasonKey === "all-time" ? CURRENT_SEASON_KEY : selectedSeasonKey)}&trader=${encodeURIComponent(traderAddress)}`);
   }
 
-  function selectProfileTab(tab: "for-trade" | "all-horses") {
+  function selectProfileTab(tab: "for-trade" | "all-horses" | "received") {
     if (tab === profileTab) return;
     setProfileTab(tab);
+    writeProfileTabToUrl(tab);
     logClientSystemEvent({ eventType: "horf.trader_profile.tab_selected", message: "Horf trader horses tab selected", metadata: { address: profileAddress, tab } });
   }
 
@@ -1373,8 +1409,9 @@ export function Horf() {
             <ProfileTabs role="tablist" aria-label="Trader horse collections">
               <button type="button" role="tab" id="horf-profile-tab-for-trade" data-horf-profile-tab="for-trade" aria-selected={profileTab === "for-trade"} aria-controls="horf-profile-panel" onClick={() => selectProfileTab("for-trade")}>For trade on Horf</button>
               <button type="button" role="tab" id="horf-profile-tab-all-horses" data-horf-profile-tab="all-horses" aria-selected={profileTab === "all-horses"} aria-controls="horf-profile-panel" onClick={() => selectProfileTab("all-horses")}>All horses held</button>
+              <button type="button" role="tab" id="horf-profile-tab-received" data-horf-profile-tab="received" aria-selected={profileTab === "received"} aria-controls="horf-profile-panel" onClick={() => selectProfileTab("received")}>Received horses</button>
             </ProfileTabs>
-            <div id="horf-profile-panel" role="tabpanel" aria-labelledby={profileTab === "for-trade" ? "horf-profile-tab-for-trade" : "horf-profile-tab-all-horses"}>
+            <div id="horf-profile-panel" role="tabpanel" aria-labelledby={profileTab === "for-trade" ? "horf-profile-tab-for-trade" : profileTab === "received" ? "horf-profile-tab-received" : "horf-profile-tab-all-horses"}>
               {profileTab === "for-trade" ? <>
                 <p>These horses have active direct-trade signs on Horf. A sign expresses a trader’s preference; the horse stays in their wallet until a transfer.</p>
                 {profileOffersQuery.isPending ? <p>Reading this rider’s trade signs…</p> : profileOffersQuery.isError ? <Warning role="alert">Trade signs could not be loaded. Try again shortly.</Warning> : profileOffersQuery.data?.offers.length ? <ProfileHorseGrid>
@@ -1386,6 +1423,17 @@ export function Horf() {
                     </ProfileHorseCard>;
                   })}
                 </ProfileHorseGrid> : <LedgerPanel><h3>No trade signs up</h3><p>This rider has no horses offered for direct trade on Horf right now.</p></LedgerPanel>}
+              </> : profileTab === "received" ? <>
+                <p data-horf-profile-received-summary>{data?.currentUser?.address === validProfileAddress ? `${data.currentUser.received} horse ${data.currentUser.received === 1 ? "edition" : "editions"} received ${receivedScope}.` : `Received horses ${receivedScope}.`} This is the recognized receipt history, including horses this rider has since sent on.</p>
+                {query.isPending ? <p role="status">Reading the received herd…</p> : hasError ? <Warning role="alert">The horse receipt ledger is unavailable. Try again shortly.</Warning> : profileReceived.length ? <ProfileHorseGrid data-horf-profile-received-gallery>
+                  {profileReceived.map((receipt) => {
+                    const name = receipt.token.name || `Horse token #${receipt.token.tokenId}`;
+                    return <ProfileHorseCard key={`${receipt.id}:${receipt.timestamp}:${receipt.counterparty}`} data-horf-profile-received-horse>
+                      <div className="art"><button className="art-open" type="button" aria-label={`View ${name} received horse card`} onClick={() => setSelectedProfileHorse(receipt.token)}><ProfileArt media={receipt.token} name={name} card /></button></div>
+                      <div className="copy"><h3><button type="button" onClick={() => setSelectedProfileHorse(receipt.token)}>{name}</button></h3><p>{receipt.amount} {receipt.amount === 1 ? "edition" : "editions"} received · {formatDate(receipt.timestamp)}</p><p>From <TraderLink address={receipt.counterparty} /></p><a href={objktTokenUrl(receipt.token.contract, receipt.token.tokenId)} target="_blank" rel="noopener noreferrer">View token on Objkt ↗</a><Action data-horf-profile-view-horse type="button" onClick={() => setSelectedProfileHorse(receipt.token)}>View horse card</Action></div>
+                    </ProfileHorseCard>;
+                  })}
+                </ProfileHorseGrid> : <LedgerPanel><h3>No received horses yet</h3><p>This rider has no recognized receipts {receivedScope}.</p></LedgerPanel>}
               </> : <>
                 <p>Every currently held token that passes Horf’s <Link href="/horf/info">Is It a Horse? Test</Link>, across mint dates. Balances come from Tezos Mainnet.</p>
                 {profileMarshalQuery.data?.active && <Action data-horf-profile-approve-all type="button" disabled={profileApprovalBusy} onClick={() => void approveAllProfileHorses()}>{profileApprovalBusy ? "Checking the herd…" : "Approve all held horses"}</Action>}
@@ -1416,9 +1464,9 @@ export function Horf() {
                   {"mintedAt" in selectedProfileHorse && selectedProfileHorse.mintedAt && <p><strong>Minted:</strong> {new Date(selectedProfileHorse.mintedAt).toLocaleDateString()}</p>}
                   {"creatorAddress" in selectedProfileHorse && selectedProfileHorse.creatorAddress && <p><strong>Creator:</strong> {selectedProfileHorse.creatorAddress}</p>}
                   {"description" in selectedProfileHorse && selectedProfileHorse.description && <p>{selectedProfileHorse.description}</p>}
-                  {"contract" in selectedProfileHorse && (selectedProfileHorse.approvedForMarshalsMarket || profileApprovalResults[`${selectedProfileHorse.contract}/${selectedProfileHorse.tokenId}`]?.status === "approved") && <p>✦ Marshal approved</p>}
+                  {"balance" in selectedProfileHorse && (selectedProfileHorse.approvedForMarshalsMarket || profileApprovalResults[`${selectedProfileHorse.contract}/${selectedProfileHorse.tokenId}`]?.status === "approved") && <p>✦ Marshal approved</p>}
                   <p><a href={objktTokenUrl(selectedProfileContract, selectedProfileHorse.tokenId)} target="_blank" rel="noopener noreferrer">View exact token on Objkt ↗</a></p>
-                  {"contract" in selectedProfileHorse && profileMarshalQuery.data?.active && !selectedProfileHorse.approvedForMarshalsMarket && profileApprovalResults[`${selectedProfileHorse.contract}/${selectedProfileHorse.tokenId}`]?.status !== "approved" && <Action data-horf-profile-detail-approve type="button" disabled={profileApprovalBusy} onClick={() => void approveProfileHorse(selectedProfileHorse)}>Approve this horse</Action>}
+                  {"balance" in selectedProfileHorse && profileMarshalQuery.data?.active && !selectedProfileHorse.approvedForMarshalsMarket && profileApprovalResults[`${selectedProfileHorse.contract}/${selectedProfileHorse.tokenId}`]?.status !== "approved" && <Action data-horf-profile-detail-approve type="button" disabled={profileApprovalBusy} onClick={() => void approveProfileHorse(selectedProfileHorse)}>Approve this horse</Action>}
                 </div></div>
               </>}
             </ProfileHorseDetail>
@@ -1474,7 +1522,7 @@ export function Horf() {
           </RaceFrame>
         </Section>}
 
-        {routeSection === "stable" && <HorfPersonalStable address={address} connectWallet={connectWallet} isConnecting={isConnecting} seasonKey={profileSeasonKey} seasonLabel={profileSeasonLabel} seasons={availableSeasons} />}
+        {routeSection === "stable" && <HorfPersonalStable address={address} connectWallet={connectWallet} isConnecting={isConnecting} seasonKey={profileSeasonKey} seasonLabel={profileSeasonLabel} seasons={availableSeasons} shareSeasonKey={selectedSeasonKey} shareSeasonLabel={selectedSeasonKey === "all-time" ? "All tracked seasons" : seasonDisplayName} shareStats={shareStats} />}
         {routeSection === "marshal" && <TradingZone id="horf-marshals-market" data-horf-region="marshals-market">
           <small>Marshal-approved horses · escrow route</small>
           <h2>Marshal’s Market</h2>

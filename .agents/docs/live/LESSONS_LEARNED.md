@@ -14470,3 +14470,13 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: A rider could see exactly who was owed a horse yet could not act on that row. Navigating away also hid the receipt that explained the return ride.
 
 **Rule**: Keep the compact horse-send dialog at the Horf page level so directory and Stable ledger actions share the same exact-recipient, explicit-edition review. Put a return action on each waiting receipt and owed-to trader row, preserve the current route, and restore focus to the trigger or ledger when the dialog closes.
+
+---
+
+## 2026-11-04 - Link shared horse stories to receipt history
+
+**What happened**: Horf's public rider page showed current wallet holdings and active offers, while a Stable share story needed to show horses the rider had received, including horses later sent away.
+
+**Why it mattered**: A link to current holdings could look empty or incomplete after a successful trade, contradicting the drafted social post.
+
+**Rule**: Share a public rider URL with an explicit Received horses tab and selected season. Read the public season ledger for the rider address and render every recognized inbound receipt; keep current holdings labeled separately. When adding receipt tokens to a shared horse-card dialog, narrow Marshal-only controls by the required held-balance field rather than by contract address, which receipt tokens also have.

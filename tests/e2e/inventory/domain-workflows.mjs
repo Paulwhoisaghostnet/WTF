@@ -959,6 +959,15 @@ export const DOMAIN_WORKFLOWS = [
     ],
   },
   {
+    name: "horf received horse story sharing loop",
+    domain: "Market, Exchange, Inventory, and Commerce",
+    routes: ["/horf/stable", "/horf/traders/:address"],
+    eventHandles: ["horf.stable_share.opened", "horf.stable_share.story_selected", "horf.stable_share.platform_opened", "horf.trader_profile.tab_selected"],
+    apiProbes: [
+      { method: "GET", path: "/api/horf/season?season=all-time&address=tz1VSUr8wwNhLAzempoch5d6hLRiTh8Cjcjb", expectedStatuses: [200, 503] },
+    ],
+  },
+  {
     name: "horf marshal evidence and direct approval loop",
     domain: "Market, Exchange, Inventory, and Commerce",
     routes: ["/horf/open-range", "/horf/inspection-desk", "/admin"],
