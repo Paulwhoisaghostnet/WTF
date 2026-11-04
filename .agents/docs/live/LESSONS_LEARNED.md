@@ -14450,3 +14450,23 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: The visible address could look ready for a horse send while the signing session was stale. Riders needed a direct way to clear that local session and choose the wallet again without unlinking their WTF OS account.
 
 **Rule**: Make the connected header wallet chip a one-click local disconnect control with the full address and action in its accessible name. Turn that same chip into a reconnect control after disconnect; an explicit reconnect must reopen wallet permissions, sync a linked WTF wallet, refresh the first Mainnet horse holdings page, and invalidate HORF client queries without blocking the chip on indexer reads.
+
+---
+
+## 2026-11-04 - Browser horse sends must model the active signer separately from the saved address
+
+**What happened**: Two Horf gift browser stories stored a wallet address in localStorage but did not provide an active Octez account. After the safer signer-first send change, Confirm stopped at wallet preflight and showed Reconnect wallet, while the stories still expected a token-eligibility request. A wallet picker could also cover later page controls.
+
+**Why it mattered**: The full interaction inventory failed after the live wallet correction even though the app correctly refused to send without a signer.
+
+**Rule**: In browser fixtures, a saved address is not an active signer. Verify the reconnect action and absence of token-eligibility calls in that state. Complete independent page interactions before an unresolved wallet prompt, and size the test timeout to the configured wallet-prompt wait.
+
+---
+
+## 2026-11-04 - Let a return ride start where its debt is shown
+
+**What happened**: The Stable ledger showed unmatched received horses and riders awaiting a return, but its Send a horse dialog was mounted only on Find Other Traders. Returning a horse required leaving the ledger and finding the rider again.
+
+**Why it mattered**: A rider could see exactly who was owed a horse yet could not act on that row. Navigating away also hid the receipt that explained the return ride.
+
+**Rule**: Keep the compact horse-send dialog at the Horf page level so directory and Stable ledger actions share the same exact-recipient, explicit-edition review. Put a return action on each waiting receipt and owed-to trader row, preserve the current route, and restore focus to the trigger or ledger when the dialog closes.

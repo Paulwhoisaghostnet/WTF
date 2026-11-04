@@ -9992,7 +9992,7 @@
       "category": "SDK / domain boundaries",
       "priority": "P3",
       "points": 5,
-      "rank": 760,
+      "rank": 761,
       "complexity": 1,
       "functionalityDanger": 2,
       "securityDanger": 0,
@@ -10008,7 +10008,7 @@
       "category": "Game Studio / domain boundaries",
       "priority": "P3",
       "points": 5,
-      "rank": 760,
+      "rank": 761,
       "complexity": 1,
       "functionalityDanger": 2,
       "securityDanger": 0,
@@ -10223,7 +10223,7 @@
       "category": "Profile / IPFS preview reliability",
       "priority": "P3",
       "points": 5,
-      "rank": 760,
+      "rank": 761,
       "complexity": 1,
       "functionalityDanger": 2,
       "securityDanger": 0,
@@ -10556,7 +10556,7 @@
       "functionalityDanger": 1,
       "securityDanger": 0,
       "points": 5,
-      "rank": 760,
+      "rank": 761,
       "title": "Macaroni live verifier incorrectly requires a product field absent from the established direct manifest",
       "body": "- Evidence: Production c21e4aa7 serves correct alpha.2 installer URLs/hashes; all27 public asset probes and allnine anonymous401 checks pass. Macaroni alone fails its live verifier because product is absent. Git history establishes the direct API has omitted that optional identity since June14 commit23127881d; the June30 verifier accepted it, while August8 commit8b096897 introduced the stricter assertion without changing the API. Studio consumes existing installer fields and does not require product.\n- Correction direction: Preserve the established API. Update the verifier to accept absent product while rejecting an explicitly incorrect product; retain version, URL, checksum and authorization checks. Prove behavior with executable validator tests and the real authenticated response.\n- Initial response-change hypothesis rejected after examining history: adding a new production field is unnecessary to satisfy the established contract.\n- Score: Existing board P2(3)+C1+F1+S0 formula; a false release-verification failure, not a production security exploit.\n- Verification: The executable validator test reproduces4pass/1fail before correction and5/5 afterward. Legacy absent identity and explicit macaroni pass; wrong product, stale version, wrong URL and wrong checksum remain rejected. Real authenticated Macaroni verification now passes against unchanged production c21e4aa7; the combined nine-product receipt confirms allnine manifests, allnine anonymous401s and all27 public range downloads. The other eight passing checks were preserved rather than rerun. Inventory version wording now describes alpha.2; no route/handle/API semantics changed. See evidence/desktop-macaroni-verifier-compatibility.json and desktop-live-installer-checks.json."
     },
@@ -10946,7 +10946,7 @@
       "functionalityDanger": 1,
       "securityDanger": 1,
       "points": 5,
-      "rank": 760,
+      "rank": 761,
       "title": "New qs and desktop fast-uri advisory matches have compatible leaf patches",
       "body": "- Evidence: Root qs 6.16.0 is newly indexed by GHSA-6pq8-jhm2-2vcw, producing three moderate propagated audit entries. The vulnerable comma-array stringify API was not found; inspected Express/body-parser use parse. Each of nine desktop locks has one moderate dev-only fast-uri 3.1.8 entry; production audits remain zero. Prior roarr/sprintf-js chain remains removed.\n- Correction direction: refresh root qs to 6.16.1 and desktop fast-uri to 3.1.9, preserving every newer production/packager fix and avoiding forced audit downgrades.\n- Verification idea: focused query parsing/schema packaging checks, clean install/audit and exact lock comparison for regressions. Do not describe these as confirmed public exploit paths.\n- Score: existing P3(2)+C1/F1/S1=5; narrow compatible leaf maintenance, limited compatibility and conditional/build exposure.\n- Review: `docs/research/security-review-2026-10-28/report.md`, audited source/live commit 0b7b02b25ce74bcb6a3e3cad891c0d9a778504a4. Read-only review; no correction or deployment performed.\n\n- Remediation claimed 2026-10-28: user authorized all five findings, mail and Electron first, no downgrades, migration/installer tests, actual runtime verification and full production deployment. Baseline origin/main remains 0b7b02b2; newer dependency fixes must be retained.\n\n- Verified 2026-10-28: Deployed main qs 6.16.1 and all nine desktop fast-uri 3.1.9 versions are verified. Root/signer production audits and all 18 desktop full/production audits return zero findings. Express HTTP form/prototype handling and the qs advisory conversion fixture pass. No package was downgraded; newer production fixes and electron-builder 26.15.3 / global-agent 4.1.3 are retained, and roarr/sprintf-js remain absent. Evidence: docs/research/security-review-2026-10-28/evidence/dependency-remediation-independent-review.json and main-live-runtime.json.\n"
     },
@@ -11078,7 +11078,7 @@
       "category": "E2E / Gamma IPFS Pinning route coverage",
       "priority": "P3",
       "points": 5,
-      "rank": 760,
+      "rank": 761,
       "complexity": 1,
       "functionalityDanger": 2,
       "securityDanger": 0,
@@ -12104,6 +12104,21 @@
       "rank": 498,
       "title": "HORF quick horse trade loses Octez signing session during RPC fallback",
       "body": "- Evidence (2026-11-04): A rider clicking Confirm Trade in Wallet sees “octez.connect could not prepare a signing session” and a wallet-prompt timeout. The Mainnet primary RPC intermittently returned 503, and the fallback changed the dapp RPC URL. Wallet adapter cache identity includes the RPC URL even though Octez’s named Mainnet identity does not, so fallback recreates the DAppClient and can discard active permission. The quick-trade Confirm handler also waits for balance, account proof, and token eligibility before requesting a signer; a persisted WTF OS wallet address is not proof of an active signing session.\n- Correction direction: Keep the Octez adapter across RPC fallback for a named network, retain RPC-specific Taquito toolkits, rebind the existing adapter to a rebuilt toolkit, and request an active Mainnet signer at Confirm before asynchronous reads. Preserve expected-address and chain checks before any transfer.\n- Verification idea: A focused policy test should cover Mainnet primary/fallback identity, custom-network RPC changes, toolkit RPC identity, and signer preflight order. Run the HORF quick-trade browser fixture and inventory coverage; verify live wallet prompt after deployment.\n- Local verification (2026-11-04): The focused wallet policy test passes 4/4, including named Mainnet fallback, custom-network RPC identity, adapter rebind, connection coalescing, active-account and permission paths, and signer-first HORF Confirm ordering. Vite production build passes. Focused Horf trader browser suite passes 8/8, including Confirm with a saved address but no active signer: it shows Reconnect wallet before any token-eligibility call; inventory coverage passes. The browser fixture does not submit a wallet transaction. `npm run check` hit Node’s default 4 GB heap limit; `NODE_OPTIONS=--max-old-space-size=8192 npm run check` passes. Production wallet-prompt verification remains pending deployment."
+    },
+    {
+      "id": "WTF-BB-800",
+      "status": "Fixed",
+      "owner": "Codex Horf return-ride browser correction",
+      "lastTouched": "2026-11-04",
+      "category": "E2E / Horf horse-send signer preflight",
+      "priority": "P2",
+      "complexity": 1,
+      "functionalityDanger": 2,
+      "securityDanger": 0,
+      "points": 6,
+      "rank": 744,
+      "title": "Horf gift browser stories expect eligibility after a send without an active signer",
+      "body": "- Evidence (2026-11-04): The full inventory reached 413 passing cases but failed two Horf social stories after the Octez signer-first send correction. Both fixtures seed only `wtf:wallet-session`, with no active Octez account, then expect token eligibility to run after Confirm. The corrected app instead blocks at signer preflight and offers Reconnect wallet before any eligibility read.\n- Correction direction: Keep the production signer-first order and update the owning browser stories to prove review terms, the reconnect recovery control, and zero eligibility calls when no signer is active. Retain separate token-eligibility server coverage.\n- Verification idea: Run the two affected Horf social stories, the Horf social suite, and inventory coverage against the corrected fixture.\n- Local verification (2026-11-04): The two corrected no-signer gift stories pass with Reconnect wallet before token eligibility. The complete Horf social and ledger browser suites pass 22/22, including the new in-place return-ride popup, exact recipient and quantity review, focus return, route preservation, and narrow layout. Inventory coverage passes 284/284 rows, 1059 handles, 138 routes, and 29 workflows. No wallet transaction was submitted; production verification follows deployment."
     }
   ]
 }

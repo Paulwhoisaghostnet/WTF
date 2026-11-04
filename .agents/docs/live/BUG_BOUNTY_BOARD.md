@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **765** · Open: **9** · Claimed: **42** · In Progress: **16** · Blocked: **4** · Fixed: **148** · Verified: **541** · Archived: **5**
+Total: **766** · Open: **9** · Claimed: **42** · In Progress: **16** · Blocked: **4** · Fixed: **149** · Verified: **541** · Archived: **5**
 
 ## Canonical Board
 
@@ -245,6 +245,7 @@ Total: **765** · Open: **9** · Claimed: **42** · In Progress: **16** · Block
 | WTF-BB-170 | Fixed | Codex Skywire profile disconnect pass | 2026-05-24 | Profile / Identity bridge UX | P2 | 8 | 652 | 1 | 4 | 0 | Profile shows linked Skywire identity but lacks a manual disconnect action |
 | WTF-BB-157 | Fixed | Codex Skywire full-send gate repair | 2026-05-24 | Build / shared DTO typing | P2 | 8 | 652 | 1 | 4 | 0 | Communication route resolver leaks nullable browser policy reason into non-null DTO |
 | WTF-BB-773 | Fixed | Codex coLILseum escrow completion | 2026-11-03 | coLILseum / prepaid payout clarity | P2 | 7 | 709 | 1 | 2 | 1 | Prepaid tie receipt says XTZ paid when the guest receives credit |
+| WTF-BB-800 | Fixed | Codex Horf return-ride browser correction | 2026-11-04 | E2E / Horf horse-send signer preflight | P2 | 6 | 744 | 1 | 2 | 0 | Horf gift browser stories expect eligibility after a send without an active signer |
 | WTF-BB-755 | Fixed | Codex release integration | 2026-11-02 | AT Protocol / Profile OAuth CI test precondition | P2 | 6 | 744 | 1 | 2 | 0 | Profile AT OAuth client metadata tests reject a clean CI local origin before assertions |
 | WTF-BB-747 | Fixed | Codex Pasta mainnet alpha integration | 2026-10-29 | Pasta Protocol / IPFS Pinning inventory test | P2 | 6 | 744 | 1 | 2 | 0 | Gamma pinning inventory waits for obsolete Connect Porcupin button |
 | WTF-BB-011 | Fixed | Codex warning cleanup pass | 2026-05-06 | Frontend bundle | P3 | 9 | 573 | 4 | 2 | 1 | Wallet/Tezos bundle chunks are huge and pull Node core externals |
@@ -779,15 +780,15 @@ Total: **765** · Open: **9** · Claimed: **42** · In Progress: **16** · Block
 | WTF-BB-385 | Verified | Codex full-send cleanup pass | 2026-07-15 | E2E / Gamma Colander selector ownership | P2 | 6 | 744 | 1 | 2 | 0 | Gamma presentation proof targets the canonical contract-address test id while retaining the control-panel and placeholder assertions; the focused Gamma Pasta/Colander story passes |
 | WTF-BB-382 | Verified | Codex full-send cleanup pass | 2026-07-15 | Developer experience / generated configuration docs | P2 | 6 | 744 | 1 | 2 | 0 | The release unit gate caught a stale checked-in environment inventory after final env-reading edits; deterministic regeneration and the inventory check now agree on 1,076 variables across 2,149 source files |
 | WTF-BB-301 | Verified | Codex live user-story gap loop | 2026-06-22 | Public site / SEO and installability | P2 | 6 | 744 | 1 | 2 | 0 | SEO/PWA static discovery paths fell through to SPA HTML; fixed in `6fb5351` with explicit typed robots, sitemap, and web manifest handlers plus inventory-owned regression coverage, then verified live on `https://wtfos.app` |
-| WTF-BB-695 | Verified | Codex October desktop security activation | 2026-10-22 | Desktop release verification / legacy manifest compatibility | P2 | 5 | 760 | 1 | 1 | 0 | Macaroni live verifier incorrectly requires a product field absent from the established direct manifest |
+| WTF-BB-695 | Verified | Codex October desktop security activation | 2026-10-22 | Desktop release verification / legacy manifest compatibility | P2 | 5 | 761 | 1 | 1 | 0 | Macaroni live verifier incorrectly requires a product field absent from the established direct manifest |
 | WTF-BB-511 | Verified | Codex wtfOS contract release | - | Rewards / in-app market reconciliation | P3 | 11 | 399 | 3 | 3 | 3 | Numeric TzKT transaction ids were queried as operation hashes |
 | WTF-BB-317 | Verified | Codex challenge automation harness parity verification | 2026-09-02 | E2E / Playwright harness parity | P3 | 7 | 709 | 2 | 3 | 0 | Local Playwright harness returns `/api/admin/challenge-automation/registry` with legacy `actions` instead of production-shaped `rewardActions`, so direct Automation tab proofs need local route stubs or can crash the admin UI under harness data despite the real server route returning `rewardActions`; likely correction is to align `tests/playwright/harness.mjs` with `server/challenges/routes/admin.ts` and add a focused harness contract assertion |
 | WTF-BB-230 | Verified | Codex WTF LIVE chat toolbox pass | 2026-06-09 | WTF LIVE / room chat style controls | P3 | 6 | 744 | 2 | 2 | 0 | WTF LIVE chat now has a compact one-row style toolbox with bounded font, color, 8-14 size, bold/italic, and reset controls, plus sanitized realtime style relay |
-| WTF-BB-735 | Verified | Codex Pasta alpha remaining release gates | 2026-10-27 | E2E / Gamma IPFS Pinning route coverage | P3 | 5 | 760 | 1 | 2 | 0 | Gamma media infrastructure inventory story waits for a retired Own-node setup button |
-| WTF-BB-721 | Verified | Codex October 28 security full send | 2026-10-28 | Dependencies / conditional and build-only leaf advisories | P3 | 5 | 760 | 1 | 1 | 1 | New qs and desktop fast-uri advisory matches have compatible leaf patches |
-| WTF-BB-672 | Verified | Codex profile picture preview repair | 2026-09-03 | Profile / IPFS preview reliability | P3 | 5 | 760 | 1 | 2 | 0 | Profile picture picker bypassed FileShip and had no alternate gateway recovery |
-| WTF-BB-120 | Verified | Codex arcade/console boundary pass | 2026-05-08 | SDK / domain boundaries | P3 | 5 | 760 | 1 | 2 | 0 | Regular Console SDK exposed source compatibility alias |
-| WTF-BB-117 | Verified | Codex arcade/console split pass | 2026-05-08 | Game Studio / domain boundaries | P3 | 5 | 760 | 1 | 2 | 0 | Studio publish handoff leaked Console ownership after Arcade split |
+| WTF-BB-735 | Verified | Codex Pasta alpha remaining release gates | 2026-10-27 | E2E / Gamma IPFS Pinning route coverage | P3 | 5 | 761 | 1 | 2 | 0 | Gamma media infrastructure inventory story waits for a retired Own-node setup button |
+| WTF-BB-721 | Verified | Codex October 28 security full send | 2026-10-28 | Dependencies / conditional and build-only leaf advisories | P3 | 5 | 761 | 1 | 1 | 1 | New qs and desktop fast-uri advisory matches have compatible leaf patches |
+| WTF-BB-672 | Verified | Codex profile picture preview repair | 2026-09-03 | Profile / IPFS preview reliability | P3 | 5 | 761 | 1 | 2 | 0 | Profile picture picker bypassed FileShip and had no alternate gateway recovery |
+| WTF-BB-120 | Verified | Codex arcade/console boundary pass | 2026-05-08 | SDK / domain boundaries | P3 | 5 | 761 | 1 | 2 | 0 | Regular Console SDK exposed source compatibility alias |
+| WTF-BB-117 | Verified | Codex arcade/console split pass | 2026-05-08 | Game Studio / domain boundaries | P3 | 5 | 761 | 1 | 2 | 0 | Studio publish handoff leaked Console ownership after Arcade split |
 | WTF-BB-513 | Verified | Codex wtfOS contract release | - | Club Dues / contract authority | P4 | 13 | 191 | 4 | 4 | 4 | Club Dues V1 had immutable legacy authority and payable admin traps |
 | WTF-BB-154 | Archived | Codex dirty-worktree duplicate reconciliation | 2026-09-01 | Build / dirty worktree isolation | P1 | 12 | 284 | 3 | 4 | 1 | Unrelated dirty Mastodon/Subdomains work can block scoped W verification |
 | WTF-BB-386 | Archived | Codex full-send cleanup pass | 2026-07-15 | Pasta Suite Desktop / native Colander | P1 | 11 | 399 | 3 | 4 | 0 | A failure captured while the same generated source was still changing could not reproduce on the settled tree; fresh asset preparation proves native project persistence, contract detection, sale configuration, and attachment, with runtime-error monitoring added |
@@ -5238,6 +5239,19 @@ Total: **765** · Open: **9** · Claimed: **42** · In Progress: **16** · Block
 - Evidence (2026-11-03): A prepaid Duel tie restored the guest entry as credit, while the room panel called the total XTZ paid.
 - Correction: Label the total pot as distributed and show the guest refund medium as prepaid credit from verified seat and settlement state.
 - Verification: Funding browser tests compare ordinary win, prepaid win, and prepaid tie receipts against the contract behavior. A live tie receipt remains to be observed.
+
+### WTF-BB-800 - Horf gift browser stories expect eligibility after a send without an active signer
+
+- Category: E2E / Horf horse-send signer preflight
+- Priority: P2
+- Status: Fixed
+- Owner/Session: Codex Horf return-ride browser correction
+- Last touched: 2026-11-04
+- Score: C1 + F2 + S0 + P2(3) = 6
+- Evidence (2026-11-04): The full inventory reached 413 passing cases but failed two Horf social stories after the Octez signer-first send correction. Both fixtures seed only `wtf:wallet-session`, with no active Octez account, then expect token eligibility to run after Confirm. The corrected app instead blocks at signer preflight and offers Reconnect wallet before any eligibility read.
+- Correction direction: Keep the production signer-first order and update the owning browser stories to prove review terms, the reconnect recovery control, and zero eligibility calls when no signer is active. Retain separate token-eligibility server coverage.
+- Verification idea: Run the two affected Horf social stories, the Horf social suite, and inventory coverage against the corrected fixture.
+- Local verification (2026-11-04): The two corrected no-signer gift stories pass with Reconnect wallet before token eligibility. The complete Horf social and ledger browser suites pass 22/22, including the new in-place return-ride popup, exact recipient and quantity review, focus return, route preservation, and narrow layout. Inventory coverage passes 284/284 rows, 1059 handles, 138 routes, and 29 workflows. No wallet transaction was submitted; production verification follows deployment.
 
 ### WTF-BB-755 - Profile AT OAuth client metadata tests reject a clean CI local origin before assertions
 

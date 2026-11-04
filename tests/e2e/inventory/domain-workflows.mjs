@@ -903,9 +903,9 @@ export const DOMAIN_WORKFLOWS = [
     ],
   },
   {
-    name: "horf trader directory, profile, and horse criteria loop",
+    name: "horf trader directory, return-ride ledger, profile, and horse criteria loop",
     domain: "Market, Exchange, Inventory, and Commerce",
-    routes: ["/horf/traders", "/horf/traders/tz1VSUr8wwNhLAzempoch5d6hLRiTh8Cjcjb", "/horf/info"],
+    routes: ["/horf/traders", "/horf/stable", "/horf/traders/tz1VSUr8wwNhLAzempoch5d6hLRiTh8Cjcjb", "/horf/info"],
     eventHandles: ["horf.traders.viewed", "horf.trader.quick_send_opened", "horf.trader_profile.viewed", "horf.trader_profile.tab_selected", "horf.trader_profile.address_copied", "horf.trader_offer.selected", "horf.info.viewed"],
     apiProbes: [
       { method: "GET", path: "/api/horf/traders/tz1VSUr8wwNhLAzempoch5d6hLRiTh8Cjcjb/profile?season=current-2026", expectedStatuses: [200, 503] },

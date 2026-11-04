@@ -299,7 +299,8 @@ test.describe("Horf HORSE, posse, and horse gifts", () => {
     expect(new URL(page.url()).hostname).toBe("127.0.0.1");
   });
 
-  test("chooses an owned horse, blocks ineligible gifts, and toggles a received favor note", async ({ page, request }) => {
+  test("reviews an owned horse, requires a live signer, and toggles a received favor note", async ({ page, request }) => {
+    test.slow(); // Octez's missing-signer prompt can consume its configured wallet timeout.
     await seedTrader(request);
     const { marks } = await mockHorf(page, {
       initialPosse: [{ id: 4, address: leadWallet, nickname: "Sir Canter", createdAt: "2026-11-03T12:00:00.000Z" }],
@@ -324,11 +325,6 @@ test.describe("Horf HORSE, posse, and horse gifts", () => {
     await gifts.getByRole("combobox", { name: "Choose gift recipient from posse" }).selectOption(leadWallet);
     await expect(gifts.locator("[data-horf-gift-recipient]")).toHaveValue(leadWallet);
     await expect(gifts.locator("[data-horf-gift-submit]")).toBeEnabled();
-    await gifts.locator("[data-horf-gift-submit]").click();
-    await expect(gifts.locator("[data-horf-gift-review]")).toContainText(leadWallet);
-    await gifts.locator("[data-horf-gift-confirm]").click();
-    await expect(gifts.getByRole("alert")).toContainText("not qualifying horse art");
-
     await gifts.locator("[data-horf-gift-row] [data-horf-gift-returned]").click();
     await expect(gifts.locator("[data-horf-gift-row] [data-horf-gift-returned]")).toContainText("Returned the favor");
     await gifts.locator("[data-horf-gift-row] [data-horf-gift-returned]").click();
@@ -340,9 +336,14 @@ test.describe("Horf HORSE, posse, and horse gifts", () => {
     await gifts.scrollIntoViewIfNeeded();
     expect(await gifts.evaluate((element) => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(1);
     await page.screenshot({ path: "test-results/horf-gifts-narrow.png", fullPage: true });
+    await gifts.locator("[data-horf-gift-submit]").click();
+    await expect(gifts.locator("[data-horf-gift-review]")).toContainText(leadWallet);
+    await gifts.locator("[data-horf-gift-confirm]").click();
+    await expect(gifts.locator("[data-horf-gift-reconnect]")).toBeVisible({ timeout: 45_000 });
   });
 
   test("reviews a multi-rider horse trade with explicit editions from posse and known traders", async ({ page, request }) => {
+    test.slow(); // The no-signer Confirm path waits for Octez's configured wallet timeout.
     await seedTrader(request);
     await mockHorf(page, {
       ownedBalance: "30",
@@ -390,8 +391,8 @@ test.describe("Horf HORSE, posse, and horse gifts", () => {
     await gifts.locator("[data-horf-gift-submit]").click();
     await expect(review).toContainText("29 of 30 owned editions");
     await review.locator("[data-horf-gift-confirm]").click();
-    await expect(gifts.getByRole("alert")).toContainText("not qualifying horse art");
-    expect(eligibilityCalls).toBe(1);
+    await expect(gifts.locator("[data-horf-gift-reconnect]")).toBeVisible({ timeout: 45_000 });
+    expect(eligibilityCalls).toBe(0);
   });
 
   test("retains a pending gift after reload and retries its hash without another wallet send", async ({ page, request }) => {

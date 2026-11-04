@@ -618,6 +618,8 @@ const TraderList = styled.ul`
   margin: 0;
   li {
     display: flex;
+    flex-wrap: wrap;
+    align-items: center;
     justify-content: space-between;
     gap: 8px;
     padding: 11px 0;
@@ -625,6 +627,8 @@ const TraderList = styled.ul`
     font-size: 13px;
   }
   strong { white-space: nowrap; }
+  .trader-row-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
+  .return-send-action { min-height: 32px; padding: 6px 10px; }
 `;
 
 const DirectoryGrid = styled.div`
@@ -753,6 +757,7 @@ const ReceiptList = styled.ol`
     font-size: 13px;
   }
   small { display: block; margin-top: 3px; color: var(--horf-muted); font: 12px/1.4 ui-sans-serif, system-ui, sans-serif; }
+  .return-send-action { min-height: 32px; margin-top: 8px; padding: 6px 10px; }
   @container (max-width: 540px) { li { grid-template-columns: 60px minmax(0, 1fr); } }
 `;
 
@@ -858,12 +863,14 @@ function ProfileArt({ media, name, uniqueThumbnails, card = false }: { media: Ho
   return <span className="missing-preview">Token preview unavailable</span>;
 }
 
-function TraderListPanel({ title, description, rows, empty, region }: {
+function TraderListPanel({ title, description, rows, empty, region, onSend, currentWallet }: {
   title: string;
   description: string;
   rows: TraderCount[];
   empty: string;
   region: "owed-to" | "owed-by";
+  onSend?: (rider: { address: string; name: string | null }, trigger: HTMLButtonElement) => void;
+  currentWallet?: string | null;
 }) {
   return (
     <LedgerPanel data-horf-region={region}>
@@ -872,9 +879,11 @@ function TraderListPanel({ title, description, rows, empty, region }: {
       {rows.length ? (
         <TraderList>
           {rows.map((row) => (
-            <li key={row.address}>
+            <li key={row.address} data-horf-owed-to-row={region === "owed-to" ? "" : undefined}>
               <TraderLink address={row.address} name={row.name} />
-              <strong>{row.count} {row.count === 1 ? "horse" : "horses"}</strong>
+              <span className="trader-row-actions"><strong>{row.count} {row.count === 1 ? "horse" : "horses"}</strong>
+                {onSend && row.address !== currentWallet && <Action data-horf-owed-to-send className="return-send-action" type="button" aria-label={`Send a return horse to ${traderName(row.name, row.address)}`} onClick={(event) => onSend(row, event.currentTarget)}>Send a horse 🐎</Action>}
+              </span>
             </li>
           ))}
         </TraderList>
@@ -1056,7 +1065,10 @@ export function Horf() {
   function closeQuickSend() {
     setQuickSendRider(null);
     setQuickSendBusy(false);
-    window.requestAnimationFrame(() => quickSendTriggerRef.current?.focus());
+    window.requestAnimationFrame(() => {
+      if (quickSendTriggerRef.current?.isConnected) quickSendTriggerRef.current.focus();
+      else document.querySelector<HTMLElement>('[data-horf-region="trader-ledger"], [data-horf-region="trader-directory"]')?.focus();
+    });
   }
 
   useEffect(() => {
@@ -1335,7 +1347,7 @@ export function Horf() {
         {hasError && <Warning role="alert">Horf could not finish reading the season. Retry the ledger; any figures shown below are the last available snapshot.</Warning>}</>}
         {personal?.blacklisted === true && <Warning data-horf-wallet-restricted role="alert">This wallet is blacklisted from Horf private API features. Its historical trade totals remain visible. Direct Stable claims need a separate admin-signed contract restriction; Horf cannot reverse Tezos transfers.</Warning>}
 
-        {routeSection === "traders" && <Section data-horf-region="trader-directory" aria-label="Find other Horf traders">
+        {routeSection === "traders" && <Section data-horf-region="trader-directory" aria-label="Find other Horf traders" tabIndex={-1}>
           <SectionLabel>🤠 The horse trader directory</SectionLabel>
           <h2>Find Other Traders</h2>
           <p>Meet riders from {seasonDisplayName} and wallets with horses currently offered on Horf. Open a trader’s profile to see their trade signs and qualifying horses.</p>
@@ -1349,10 +1361,6 @@ export function Horf() {
               {rider.address !== address && <Action data-horf-trader-quick-send type="button" $primary aria-label={`Send a horse to ${traderName(rider.name, rider.address)}`} onClick={(event) => openQuickSend(rider, event.currentTarget)}>Send a horse 🐎</Action>}
             </DirectoryCard>)}
           </DirectoryGrid> : <LedgerPanel><h3>{query.isPending || directoryOffersQuery.isPending ? "Gathering the riders…" : "No riders at the rail yet"}</h3><p>Try another season or check the Open Range for new horse trade signs.</p></LedgerPanel>}
-          {quickSendRider && <QuickSendDialog ref={quickSendDialogRef} data-horf-quick-send-dialog aria-labelledby="horf-quick-send-title" onCancel={(event) => { if (quickSendBusy) event.preventDefault(); }} onClose={closeQuickSend} onClick={(event) => { if (event.target === event.currentTarget && !quickSendBusy) event.currentTarget.close(); }}>
-            <div className="quick-head"><div><small>🐎 Quick trade</small><h2 id="horf-quick-send-title">Send a horse to {traderName(quickSendRider.name, quickSendRider.address)}</h2></div><button data-horf-quick-send-close type="button" aria-label="Close horse send" disabled={quickSendBusy} onClick={() => quickSendDialogRef.current?.close()}>×</button></div>
-            <div className="quick-body"><HorfGifts key={quickSendRider.address} address={address} isGuest={isGuest} connectWallet={connectWallet} isConnecting={isConnecting} quickRecipient={quickSendRider} onQuickBusyChange={setQuickSendBusy} /></div>
-          </QuickSendDialog>}
         </Section>}
 
         {routeSection === "profile" && <Section data-horf-region="trader-profile" aria-label="Horf trader profile">
@@ -1492,7 +1500,7 @@ export function Horf() {
         {routeSection === "gifts" && <HorfGifts address={address} isGuest={isGuest} connectWallet={connectWallet} isConnecting={isConnecting} />}
         {routeSection === "posse" && <HorfPosse address={address} connectWallet={connectWallet} isConnecting={isConnecting} />}
 
-        {routeSection === "stable" && <Section data-horf-region="trader-ledger" aria-label="Your horse trader ledger">
+        {routeSection === "stable" && <Section data-horf-region="trader-ledger" aria-label="Your horse trader ledger" tabIndex={-1}>
           <SectionLabel>Your stable</SectionLabel>
           <h2>Your horse trading ledger</h2>
           {!address ? (
@@ -1522,11 +1530,12 @@ export function Horf() {
                     {waitingHorses.length ? (
                       <ReceiptList>
                         {waitingHorses.map((horse) => (
-                          <li key={horse.id}>
+                          <li key={horse.id} data-horf-waiting-horse>
                             <ReceiptDirection $in>Waiting</ReceiptDirection>
                             <div>
                               <a href={tokenUrl(horse.token)} target="_blank" rel="noopener noreferrer">{horse.token.name || `Token #${horse.token.tokenId}`}</a>
                               <small>From <TraderLink address={horse.from} /> · {formatDate(horse.timestamp)}</small>
+                              {horse.from !== address && <Action data-horf-return-send className="return-send-action" type="button" aria-label={`Send a return horse to ${traderName(personal.owedTo.find((row) => row.address === horse.from)?.name ?? null, horse.from)}`} onClick={(event) => openQuickSend({ address: horse.from, name: personal.owedTo.find((row) => row.address === horse.from)?.name ?? null }, event.currentTarget)}>Send a return horse 🐎</Action>}
                             </div>
                             <strong>{horse.amount} {horse.amount === 1 ? "horse" : "horses"}</strong>
                           </li>
@@ -1535,7 +1544,7 @@ export function Horf() {
                     ) : <p>{countsProvisional ? "The scan is still checking which received horses need a return." : "Every received horse has a matching return ride, or no horses have arrived yet."}</p>}
                   </Section>
                   <Ledger>
-                    <TraderListPanel region="owed-to" title="Return rides you owe" description="Traders who sent you horses and are waiting for one back." rows={personal.owedTo} empty="No return rides are waiting on you." />
+                    <TraderListPanel region="owed-to" title="Return rides you owe" description="Traders who sent you horses and are waiting for one back." rows={personal.owedTo} empty="No return rides are waiting on you." onSend={openQuickSend} currentWallet={address} />
                     <TraderListPanel region="owed-by" title="Return rides owed to you" description="Traders you sent horses to who have not sent one back." rows={personal.owedBy} empty="No return rides are owed to you." />
                   </Ledger>
                   <Section data-horf-region="recent">
@@ -1566,6 +1575,10 @@ export function Horf() {
             </>
           )}
         </Section>}
+        {quickSendRider && <QuickSendDialog ref={quickSendDialogRef} data-horf-quick-send-dialog aria-labelledby="horf-quick-send-title" onCancel={(event) => { if (quickSendBusy) event.preventDefault(); }} onClose={closeQuickSend} onClick={(event) => { if (event.target === event.currentTarget && !quickSendBusy) event.currentTarget.close(); }}>
+          <div className="quick-head"><div><small>🐎 Quick trade</small><h2 id="horf-quick-send-title">Send a horse to {traderName(quickSendRider.name, quickSendRider.address)}</h2></div><button data-horf-quick-send-close type="button" aria-label="Close horse send" disabled={quickSendBusy} onClick={() => quickSendDialogRef.current?.close()}>×</button></div>
+          <div className="quick-body"><HorfGifts key={quickSendRider.address} address={address} isGuest={isGuest} connectWallet={connectWallet} isConnecting={isConnecting} quickRecipient={quickSendRider} onQuickBusyChange={setQuickSendBusy} /></div>
+        </QuickSendDialog>}
       </Shell>
     </HorfFrame>
   );

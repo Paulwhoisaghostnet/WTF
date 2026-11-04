@@ -597,4 +597,70 @@ test.describe("Horf horse trading", () => {
     expect(observedAddresses.at(-1)).toBe(traderWallet);
     expect(observedSeasons).toContain("current-2026");
   });
+
+  test("sends a return horse from the ledger without leaving the Stable", async ({ page, request }) => {
+    await seedTrader(request);
+    await page.addInitScript(({ address }) => {
+      window.localStorage.setItem("wtf:wallet-session", JSON.stringify({ address, providerName: "octez.connect" }));
+    }, { address: traderWallet });
+    await mockSeason(page, []);
+    await page.route("**/api/wallets", (route) => route.fulfill({
+      status: 200, contentType: "application/json", body: JSON.stringify([{ walletAddress: traderWallet }]),
+    }));
+    await page.route(/\/api\/horf\/traders\/[^/]+\/horses(?:\?.*)?$/, (route) => {
+      const owner = decodeURIComponent(new URL(route.request().url()).pathname.split("/").at(-2));
+      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({
+        address: owner,
+        items: owner === traderWallet ? [{
+          contract, tokenId: "7", name: "Neighvember 2026 #7", balance: "3",
+          mintedAt: "2026-11-02T12:00:00.000Z", image: "/horf-art/horse-gallop-photo.jpg", creatorAddress: traderWallet,
+        }] : [],
+        pagination: { hasMore: false, nextOffset: owner === traderWallet ? 1 : 0 },
+      }) });
+    });
+    await page.route("**/api/horf/wallet/tokens?*", (route) => route.fulfill({
+      status: 200, contentType: "application/json", body: JSON.stringify({
+        items: [{ contract, tokenId: "7", name: "Neighvember 2026 #7", balance: "3", walletAddress: traderWallet }],
+        pagination: { hasMore: false, nextOffset: 1 },
+      }),
+    }));
+
+    await page.goto("/horf/stable?season=current-2026");
+    const stableUrl = page.url();
+    const waiting = page.locator('[data-horf-region="waiting-horses"]');
+    const returnButton = waiting.locator('[data-horf-waiting-horse] [data-horf-return-send]');
+    await expect(returnButton).toHaveCount(1);
+    await expect(returnButton).toHaveAccessibleName("Send a return horse to Sir Canter");
+    await returnButton.click();
+    const dialog = page.locator("[data-horf-quick-send-dialog]");
+    await expect(dialog).toBeVisible();
+    await expect(dialog).toContainText("Send a horse to Sir Canter");
+    await expect(dialog).toContainText(leadWallet);
+    await expect(page).toHaveURL(stableUrl);
+
+    await dialog.locator("[data-horf-gift-owned]").selectOption(`${contract}:7`);
+    await dialog.locator("[data-horf-gift-amount]").fill("1");
+    await dialog.locator("[data-horf-gift-submit]").click();
+    await expect(dialog.locator("[data-horf-gift-review]")).toContainText(leadWallet);
+    await expect(dialog.locator("[data-horf-gift-review]")).toContainText("1 of 3 owned editions");
+    await dialog.locator("[data-horf-quick-send-close]").click();
+    await expect(dialog).not.toBeVisible();
+    await expect(returnButton).toBeFocused();
+    await expect(page).toHaveURL(stableUrl);
+
+    const owedTo = page.locator('[data-horf-region="owed-to"]');
+    const owedToButton = owedTo.locator('[data-horf-owed-to-row] [data-horf-owed-to-send]');
+    await expect(owedToButton).toHaveCount(1);
+    await owedToButton.click();
+    await expect(dialog).toBeVisible();
+    await expect(dialog).toContainText(leadWallet);
+    await dialog.locator("[data-horf-quick-send-close]").click();
+    await expect(owedToButton).toBeFocused();
+    await expect(page).toHaveURL(stableUrl);
+    await expect(page.locator('[data-horf-region="owed-by"] [data-horf-owed-to-send]')).toHaveCount(0);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await returnButton.scrollIntoViewIfNeeded();
+    await expect(returnButton).toBeVisible();
+    expect(await page.locator("[data-horf-app]").evaluate((node) => node.scrollWidth - node.clientWidth)).toBeLessThanOrEqual(1);
+  });
 });
