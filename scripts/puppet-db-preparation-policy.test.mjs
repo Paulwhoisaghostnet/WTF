@@ -23,6 +23,16 @@ test("local puppet DB preparation includes the persistent TzKT response cache", 
   );
 });
 
+test("local puppet DB preparation includes durable Horf discovery and nonhorse decisions", async () => {
+  for (const migration of ["0154_horf_open_range_page_cache.sql", "0155_horf_nonhorse_reports.sql"]) {
+    assert.match(preparationSource, new RegExp(`"drizzle/${migration.replaceAll(".", "\\.")}"`));
+  }
+  const reportsMigration = await readFile(
+    new URL("../drizzle/0155_horf_nonhorse_reports.sql", import.meta.url), "utf8"
+  );
+  assert.match(reportsMigration, /CREATE TABLE IF NOT EXISTS public\.horf_token_nonhorse_decisions/);
+});
+
 test("local puppet DB preparation includes current WTF LIVE room schemas", () => {
   for (const migration of [
     "0097_wtf_live_rooms.sql",

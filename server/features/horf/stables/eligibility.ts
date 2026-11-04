@@ -44,6 +44,10 @@ export const loadObjktToken: TokenLoader = async (contract, tokenId) => {
 };
 
 const publicEligibilityCache = new Map<string, { expiresAt: number; value: Promise<Awaited<ReturnType<typeof inspectHorseToken>>> }>();
+/** A Marshal's exact-token decision must not wait for the Mainnet-block preview TTL. */
+export function invalidateHorseTokenEligibilityCache(contract: string, tokenId: string): void {
+  publicEligibilityCache.delete(`${contract}/${tokenId}`);
+}
 /** Repeated public previews share Objkt work for one Mainnet block interval. */
 export function inspectHorseTokenCached(contract: string, tokenId: string) {
   const now = Date.now();

@@ -1,4 +1,7 @@
 import { Router } from "express";
+import { eq } from "drizzle-orm";
+import { horfInspectionApprovals, horfTokenNonhorseDecisions } from "@shared/schema";
+import { db } from "../../../db";
 import { isTezosWallet } from "../model";
 import { requireHorfCsrf, requireHorfWallet } from "../wallet-scope";
 import { getHorfStablesSnapshot } from "./chain";
@@ -6,6 +9,7 @@ import { HorseTokenIneligibleError, HorseTokenNotFoundError } from "./eligibilit
 import { HorfStablesNetworkError, HorfStablesUnconfiguredError } from "./config";
 import { issueHorfDepositPermit, type HorfPermitRequest } from "./permit";
 import { HorfCustodyUntrustedError } from "./custody";
+import { marshalMarketListings } from "./market-visibility";
 
 const router = Router();
 
@@ -37,12 +41,29 @@ export function parseHorfPermitRequest(value: unknown): HorfPermitRequest | null
 
 router.get("/api/horf/stables", async (req, res) => {
   const address = req.query.address;
+  const marketOnly = req.query.market === "1";
   if (address != null && !isTezosWallet(address)) {
     return res.status(400).json({ error: "A valid Tezos wallet address is required" });
   }
+  if (req.query.market != null && !marketOnly) {
+    return res.status(400).json({ error: "Invalid Marshal's Market filter" });
+  }
   try {
-    res.json({ ...(await getHorfStablesSnapshot(address || null)), custodyReady: true,
-      depositBlockReason: null });
+    const snapshot = await getHorfStablesSnapshot(address || null);
+    if (!marketOnly || snapshot.listings.length === 0) {
+      return res.json({ ...snapshot, custodyReady: true, depositBlockReason: null });
+    }
+    const [approvalRows, excludedRows] = await Promise.all([
+      db.select({ contract: horfInspectionApprovals.tokenContract, tokenId: horfInspectionApprovals.tokenId })
+        .from(horfInspectionApprovals).where(eq(horfInspectionApprovals.active, true)),
+      db.select({ contract: horfTokenNonhorseDecisions.tokenContract, tokenId: horfTokenNonhorseDecisions.tokenId })
+        .from(horfTokenNonhorseDecisions).where(eq(horfTokenNonhorseDecisions.active, true)),
+    ]);
+    const approved = new Set(approvalRows.map((row) => `${row.contract}/${row.tokenId}`));
+    const excluded = new Set(excludedRows.map((row) => `${row.contract}/${row.tokenId}`));
+    return res.json({ ...snapshot,
+      listings: marshalMarketListings(snapshot.listings, approved, excluded),
+      custodyReady: true, depositBlockReason: null });
   } catch (error) {
     console.error("[horf] stable chain read failed:", error);
     res.status(503).json({ error: "The horse stables are temporarily unavailable" });

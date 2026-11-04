@@ -657,7 +657,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
     domain: "Commerce",
     subdomain: "Seasonal Tezos horse trading",
     kind: "app",
-    routePatterns: ["/horf", "/horf/race", "/horf/open-range", "/horf/marshals-market", "/horf/outlaw-corral", "/horf/stable", "/horf/send-horse", "/horf/horse-market", "/horf/gifts", "/horf/posse", "/horf/haha-crp", "/horf/traders", "/horf/traders/:address", "/horf/info"],
+    routePatterns: ["/horf", "/horf/race", "/horf/open-range", "/horf/marshals-market", "/horf/inspection-desk", "/horf/outlaw-corral", "/horf/stable", "/horf/send-horse", "/horf/horse-market", "/horf/gifts", "/horf/posse", "/horf/haha-crp", "/horf/traders", "/horf/traders/:address", "/horf/info"],
     desktopAppKey: "horf",
     adminPanelTabs: ["System Logs", "Automation"],
     nativeSettings: ["season transfer scan status", "horse token qualification", "trader race standings"],

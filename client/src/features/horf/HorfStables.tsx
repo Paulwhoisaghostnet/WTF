@@ -180,9 +180,9 @@ const CreditStrip = styled.div`
   span { padding: 8px 12px; border: 1px solid var(--horf-line, #3d5148); border-radius: 999px; background: var(--horf-surface, #1b2723); font: 700 13px/1.25 var(--horf-font, "Avenir Next", sans-serif); }
 `;
 
-const Inside = styled.div`
+const Inside = styled.div<{ $single: boolean }>`
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: ${(props) => props.$single ? "minmax(0, 1fr)" : "minmax(0, 1fr) minmax(0, 1fr)"};
   gap: 18px;
   margin-top: 20px;
   @container (max-width: 760px) { grid-template-columns: 1fr; }
@@ -333,13 +333,20 @@ export function HorfStables({
   const [success, setSuccess] = useState<{ action: string; opHash: string } | null>(null);
   const [pending, setPending] = useState<PendingAction | null>(null);
   const [depositReview, setDepositReview] = useState<DepositReview | null>(null);
+  const [showManagement, setShowManagement] = useState(false);
 
   const snapshotQuery = useQuery({
-    queryKey: ["horf", "stables", address],
-    queryFn: () => api.get<StableSnapshot>(`/api/horf/stables${address ? `?address=${encodeURIComponent(address)}` : ""}`),
+    queryKey: ["horf", "stables-market", address],
+    queryFn: () => api.get<StableSnapshot>(`/api/horf/stables?market=1${address ? `&address=${encodeURIComponent(address)}` : ""}`),
     refetchOnWindowFocus: true,
   });
   const snapshot = snapshotQuery.data;
+  const managementQuery = useQuery({
+    queryKey: ["horf", "stables-management", address],
+    queryFn: () => api.get<StableSnapshot>(`/api/horf/stables?address=${encodeURIComponent(address!)}`),
+    enabled: Boolean(address && showManagement),
+    refetchOnWindowFocus: true,
+  });
   const configured = !snapshotQuery.isError && snapshot?.status === "ready" && snapshot.network === "mainnet" &&
     snapshot.chainId === HORF_STABLES_CHAIN_ID &&
     Boolean(snapshot.contractAddress && /^KT1[1-9A-HJ-NP-Za-km-z]{33}$/.test(snapshot.contractAddress));
@@ -354,7 +361,7 @@ export function HorfStables({
     },
     initialPageParam: 0,
     getNextPageParam: (lastPage) => lastPage.pagination.hasMore ? lastPage.pagination.nextOffset : undefined,
-    enabled: Boolean(address),
+    enabled: Boolean(address && showManagement),
   });
   const ownedTokens = useMemo(
     () => (ownedQuery.data?.pages.flatMap((page) => page.items) ?? []).filter((token) => token.walletAddress === address && isPositive(token.balance)),
@@ -369,6 +376,8 @@ export function HorfStables({
   })) });
   const allRowsApproved = rows[mode].length > 0 && inspectionQueries.every((query) => query.data?.status === "approved");
   const activeListings = (snapshot?.listings ?? []).filter((listing) => listing.mode === mode && isPositive(listing.remaining));
+  const ownListings = (managementQuery.data?.listings ?? []).filter((listing) =>
+    listing.mode === mode && listing.owner === address && isPositive(listing.remaining));
   const busy = pending !== null;
 
   function addRow(contractAddress: string, tokenId: string, name: string) {
@@ -478,6 +487,7 @@ export function HorfStables({
       setSuccess({ action: `${STABLES[review.mode].name} deposit confirmed`, opHash });
       logClientSystemEvent({ eventType: "horf.stable.deposited", message: "Horse editions deposited in Horf Stable", metadata: { mode: STABLES[review.mode].key, tokenRows: review.rows.length, opHash } });
       void snapshotQuery.refetch();
+      if (showManagement) void managementQuery.refetch();
     } catch (error) {
       if (isApiRequestError(error) && error.status === 403) {
         setPermitScopeDenied(/restricted|blacklist/i.test(error.message) ? "restricted" : "unverified");
@@ -504,6 +514,7 @@ export function HorfStables({
       setSuccess({ action: "Horse claim confirmed", opHash });
       logClientSystemEvent({ eventType: "horf.stable.claimed", message: "Horse claimed from Horf Stable", metadata: { mode: activeStable.key, listingId: listing.id, opHash } });
       void snapshotQuery.refetch();
+      if (showManagement) void managementQuery.refetch();
       void qc.invalidateQueries({ queryKey: ["horf", "horse-rewards"] });
     } catch (error) {
       setActionError(`${error instanceof Error ? error.message : "The horse claim could not be completed."}${submittedHash ? " The transaction was submitted; check its explorer status before retrying." : ""}`);
@@ -529,6 +540,7 @@ export function HorfStables({
       setSuccess({ action: `${amount} ${amount === "1" ? "edition" : "editions"} returned to your wallet`, opHash });
       logClientSystemEvent({ eventType: "horf.stable.cancelled", message: "Horse listing cancelled in Horf Stable", metadata: { mode: activeStable.key, listingId: listing.id, amount, opHash } });
       void snapshotQuery.refetch();
+      if (showManagement) void managementQuery.refetch();
     } catch (error) {
       setActionError(`${error instanceof Error ? error.message : "The listing could not be cancelled."}${submittedHash ? " The transaction was submitted; check its explorer status before retrying." : ""}`);
     } finally {
@@ -544,7 +556,7 @@ export function HorfStables({
           <h2>Horf Stables</h2>
           <p>Deposit or claim horse editions. Every Stable requires Marshal approval before deposit.</p>
         </div>
-        <SmallButton type="button" onClick={() => void snapshotQuery.refetch()} disabled={snapshotQuery.isFetching}>Refresh stables</SmallButton>
+        <div><SmallButton data-horf-stable-manage-toggle type="button" onClick={() => setShowManagement((open) => !open)} aria-expanded={showManagement} aria-controls="horf-stable-management">{showManagement ? "Close my listings" : "List or manage my horses"}</SmallButton>{" "}<SmallButton type="button" onClick={() => void Promise.all([snapshotQuery.refetch(), ...(showManagement ? [managementQuery.refetch()] : [])])} disabled={snapshotQuery.isFetching}>Refresh stables</SmallButton></div>
       </Header>
 
       {snapshotQuery.isPending && <Status role="status">Reading the stable contract and listings…</Status>}
@@ -579,8 +591,8 @@ export function HorfStables({
         <span>Group claims: {address && snapshot ? snapshot.groupCredits : "Connect wallet"}</span>
       </CreditStrip>
       <Status $warn data-horf-stable-trust-note>Marshal approval is a documented human review, not proof that an arbitrary FA2 transfers honestly. Check the token contract and trader before depositing or claiming.</Status>
-      <Inside>
-        <Panel data-horf-stable-deposit>
+      <Inside $single={!showManagement}>
+        {showManagement && <Panel id="horf-stable-management" data-horf-stable-deposit>
           <Eyebrow>Offer a horse</Eyebrow>
           <h3>Deposit in {activeStable.name}</h3>
           <p>{activeStable.rule} Add several horses in one wallet transaction. Operator access is removed with it.</p>
@@ -658,7 +670,7 @@ export function HorfStables({
               <SmallButton data-horf-stable-review-back type="button" onClick={() => setDepositReview(null)} disabled={busy}>Back to edit</SmallButton>
             </ReviewPanel>
           )}
-        </Panel>
+        </Panel>}
 
         <Panel data-horf-stable-listings>
           <Eyebrow>Inside the stable</Eyebrow>
@@ -698,6 +710,20 @@ export function HorfStables({
           ) : <p>{snapshotQuery.isPending ? "Reading stable listings…" : snapshotQuery.isError ? "Listings unavailable until the stable ledger loads." : snapshot?.status === "unconfigured" ? "Listings will appear once the Mainnet contract is deployed." : "No horse editions are listed in this stable yet."}</p>}
         </Panel>
       </Inside>
+      {showManagement && address && <Panel data-horf-stable-owner-listings>
+        <Eyebrow>Your saddle ledger</Eyebrow>
+        <h3>Manage my stable listings</h3>
+        <p>All your open escrow listings appear here, including horses a Marshal later removed from the public market. You can return unclaimed editions to your wallet.</p>
+        {managementQuery.isPending && <p role="status">Reading your escrow listings…</p>}
+        {managementQuery.isError && <Status $warn role="alert">Your listings could not be loaded. Refresh stables to try again.</Status>}
+        {!managementQuery.isPending && !managementQuery.isError && (ownListings.length ? <ListingList>
+          {ownListings.map((listing) => <li key={listing.id} data-horf-stable-owner-listing data-horf-stable-owner-listing-id={listing.id}>
+            <strong><a href={tokenUrl(listing.tokenContract, listing.tokenId)} target="_blank" rel="noopener noreferrer">Horse token #{listing.tokenId}</a> · {listing.remaining} {listing.remaining === "1" ? "edition" : "editions"} left</strong>
+            <small>Listing #{listing.id} · {activeListings.some((marketListing) => marketListing.id === listing.id) ? "On Marshal’s Market" : "Off the public market"}</small>
+            <ListingActions><label>Return editions<input aria-label={`Return my editions from listing ${listing.id}`} inputMode="numeric" pattern="[0-9]+" value={cancelAmounts[listing.id] ?? listing.remaining} onChange={(event) => setCancelAmounts((current) => ({ ...current, [listing.id]: event.target.value }))} disabled={!configured || busy} /></label><SmallButton data-horf-stable-owner-cancel type="button" onClick={() => void cancel(listing)} disabled={!configured || busy}>Cancel listing</SmallButton></ListingActions>
+          </li>)}
+        </ListingList> : <p>No open listings of yours in this stable.</p>)}
+      </Panel>}
       {pending && <Status role="status" aria-live="polite">{pendingLabel(pending)} {pending.opHash && <a href={explorerUrl(pending.opHash)} target="_blank" rel="noopener noreferrer">View submitted transaction</a>}</Status>}
       {actionError && <Status $warn role="alert">{actionError}{permitScopeDenied === "unverified" && <> Reconnect and verify this wallet to request a deposit permit. <SmallButton type="button" onClick={() => void connectWallet()} disabled={isConnecting}>{isConnecting ? "Connecting…" : "Reconnect and verify wallet"}</SmallButton></>}{permitScopeDenied === "restricted" && " Check Trader standing by the race board for this wallet’s restriction."}</Status>}
       {success && <Status role="status">{success.action}. <a href={explorerUrl(success.opHash)} target="_blank" rel="noopener noreferrer">View Tezos transaction</a>. The indexed listing and credit totals may take a moment to catch up.</Status>}

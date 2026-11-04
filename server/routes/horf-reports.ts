@@ -3,6 +3,7 @@ import { and, desc, eq, sql } from "drizzle-orm";
 import { horfInspectionApprovals, horfInspectionRequests, horfTokenNonhorseDecisions } from "@shared/schema";
 import { db } from "../db";
 import { loadInspectionEvidence, HorseTokenIneligibleError, HorseTokenNotFoundError } from "../features/horf/inspections";
+import { invalidateHorseTokenEligibilityCache } from "../features/horf/stables/eligibility";
 import { currentHorfRole } from "../features/horf/roles";
 import { requireHorfCsrf } from "../features/horf/wallet-scope";
 
@@ -70,14 +71,96 @@ router.post("/api/horf/reports/not-a-horse", requireHorfCsrf, async (req, res) =
   }
 });
 
+/** A Marshal's direct Hide uses only the selected exact token key. It never
+ * waits for Objkt or chain evidence before removing a known false positive. */
+router.post("/api/horf/reports/not-a-horse/direct", requireHorfCsrf, async (req, res) => {
+  const key = tokenKey(req.body);
+  if (!key) return res.status(400).json({ error: "An exact FA2 contract and token ID are required" });
+  try {
+    const role = await currentHorfRole(req);
+    if (!role?.admin && !role?.marshal) return res.status(403).json({ error: "HORF MARSHAL role required" });
+    const now = new Date();
+    const reason = typeof req.body?.reason === "string" && req.body.reason.trim()
+      ? req.body.reason.trim() : "Marshal confirmed this token is not a horse.";
+    const result = await db.transaction(async (tx) => {
+      const [current] = await tx.select().from(horfTokenNonhorseDecisions).where(and(
+        eq(horfTokenNonhorseDecisions.tokenContract, key.tokenContract),
+        eq(horfTokenNonhorseDecisions.tokenId, key.tokenId),
+      )).limit(1).for("update");
+      if (current?.active) return { status: "hidden" as const, inspectionId: current.inspectionId,
+        tokenContract: key.tokenContract, tokenId: key.tokenId };
+
+      const [pending] = await tx.select().from(horfInspectionRequests).where(and(
+        eq(horfInspectionRequests.tokenContract, key.tokenContract),
+        eq(horfInspectionRequests.tokenId, key.tokenId),
+        eq(horfInspectionRequests.status, "pending"),
+      )).orderBy(desc(horfInspectionRequests.id)).limit(1).for("update");
+      let inspectionId: number;
+      if (pending) {
+        const prior = (pending.chainEvidence.communityReport ?? {}) as Record<string, unknown>;
+        const [updated] = await tx.update(horfInspectionRequests).set({
+          status: "rejected", reviewedByUserId: role.userId, reviewedAt: now, reviewReason: reason,
+          chainEvidence: { ...pending.chainEvidence, communityReport: { ...prior,
+            source: "marshal_direct", resolution: "hide", reason,
+            reviewedByUserId: role.userId, reviewedAt: now.toISOString() } },
+        }).where(and(eq(horfInspectionRequests.id, pending.id),
+          eq(horfInspectionRequests.status, "pending"))).returning({ id: horfInspectionRequests.id });
+        if (!updated) throw new Error("Pending horse report changed during direct Hide");
+        inspectionId = updated.id;
+      } else {
+        const [created] = await tx.insert(horfInspectionRequests).values({
+          submitterAddress: null, source: "open_range",
+          ...key, status: "rejected", reviewedByUserId: role.userId,
+          reviewedAt: now, reviewReason: reason,
+          objktMetadata: { source: "not_fetched", checkedAt: null, name: null,
+            description: null, image: null, artifactUri: null, mime: null,
+            decimals: null, tags: [] },
+          chainEvidence: { source: "not_fetched", checkedAt: null,
+            ownerAddress: null, ownerBalance: null, identity: null,
+            recentTransfers: [], note: "Objkt and chain evidence not fetched for direct Marshal Hide.",
+            communityReport: { source: "marshal_direct", reportedAt: now.toISOString(),
+              resolution: "hide", reason, reviewedByUserId: role.userId,
+              reviewedAt: now.toISOString() } },
+        }).returning({ id: horfInspectionRequests.id });
+        inspectionId = created.id;
+      }
+      await tx.insert(horfTokenNonhorseDecisions).values({
+        tokenContract: key.tokenContract, tokenId: key.tokenId, active: true,
+        inspectionId, marshalUserId: role.userId, reason, decidedAt: now,
+      }).onConflictDoUpdate({
+        target: [horfTokenNonhorseDecisions.tokenContract, horfTokenNonhorseDecisions.tokenId],
+        set: { active: true, inspectionId, marshalUserId: role.userId, reason, decidedAt: now },
+      });
+      await tx.update(horfInspectionApprovals).set({ active: false,
+        revokedByUserId: role.userId, revokedAt: now,
+        revocationReason: `Not a horse: ${reason}` }).where(and(
+        eq(horfInspectionApprovals.tokenContract, key.tokenContract),
+        eq(horfInspectionApprovals.tokenId, key.tokenId),
+        eq(horfInspectionApprovals.active, true),
+      ));
+      await tx.execute(sql`UPDATE public.horf_season_sync
+        SET policy_version = 'marshal-horse-decision-changed', updated_at = now()`);
+      return { status: "hidden" as const, inspectionId,
+        tokenContract: key.tokenContract, tokenId: key.tokenId };
+    });
+    invalidateHorseTokenEligibilityCache(result.tokenContract, result.tokenId);
+    return res.json(result);
+  } catch (error) {
+    console.error("[horf] direct Marshal Hide failed:", error);
+    return res.status(503).json({ error: "Marshal horse decision is temporarily unavailable" });
+  }
+});
+
 /** Hide is an exact-token exclusion; Keep dismisses the report only. */
 router.post("/api/horf/reports/not-a-horse/:id/decision", requireHorfCsrf, async (req, res) => {
   const id = Number(req.params.id);
   const decision = req.body?.decision;
-  const reason = typeof req.body?.reason === "string" ? req.body.reason.trim() : "";
-  if (!Number.isSafeInteger(id) || id <= 0 || (decision !== "hide" && decision !== "keep") || !reason) {
-    return res.status(400).json({ error: "Report, Hide or Keep decision, and reason are required" });
+  const suppliedReason = typeof req.body?.reason === "string" ? req.body.reason.trim() : "";
+  if (!Number.isSafeInteger(id) || id <= 0 || (decision !== "hide" && decision !== "keep") ||
+      (decision === "keep" && !suppliedReason)) {
+    return res.status(400).json({ error: "Report and Hide or Keep decision are required; Keep also needs a reason" });
   }
+  const reason = suppliedReason || "Marshal confirmed this token is not a horse.";
   try {
     const role = await currentHorfRole(req);
     if (!role?.admin && !role?.marshal) return res.status(403).json({ error: "HORF MARSHAL role required" });
@@ -138,6 +221,7 @@ router.post("/api/horf/reports/not-a-horse/:id/decision", requireHorfCsrf, async
     });
     if (result.kind === "missing") return res.status(404).json({ error: "Report not found" });
     if (result.kind === "decided") return res.status(409).json({ error: "Report has already been decided" });
+    invalidateHorseTokenEligibilityCache(result.tokenContract, result.tokenId);
     return res.json(result);
   } catch (error) {
     console.error("[horf] not-a-horse decision failed:", error);

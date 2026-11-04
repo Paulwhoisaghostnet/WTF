@@ -886,7 +886,7 @@ export const DOMAIN_WORKFLOWS = [
     name: "horf open range public search and owner offer loop",
     domain: "Market, Exchange, Inventory, and Commerce",
     routes: ["/horf/open-range"],
-    eventHandles: ["horf.open_range.viewed", "horf.open_range.horse_viewed", "horf.open_range.offer_posted", "horf.open_range.offer_removed", "horf.open_range.refreshed"],
+    eventHandles: ["horf.open_range.viewed", "horf.open_range.horse_viewed", "horf.open_range.offer_posted", "horf.open_range.offer_removed", "horf.open_range.refreshed", "horf.inspection.submitted", "horf.inspection.decided"],
     apiProbes: [
       { method: "GET", path: "/api/horf/open-range?season=current-2026", expectedStatuses: [200, 503] },
       { method: "GET", path: "/api/horf/open-range?season=all-seasons", expectedStatuses: [200, 503] },
@@ -960,12 +960,13 @@ export const DOMAIN_WORKFLOWS = [
   {
     name: "horf marshal evidence and direct approval loop",
     domain: "Market, Exchange, Inventory, and Commerce",
-    routes: ["/horf/open-range", "/horf/marshals-market", "/admin"],
+    routes: ["/horf/open-range", "/horf/inspection-desk", "/admin"],
     eventHandles: ["horf.inspection.marshal_review_started", "horf.inspection.decided", "horf.inspection.approval_revoked"],
     apiProbes: [
       { method: "GET", path: "/api/horf/inspectors/status", expectedStatuses: [200] },
       { method: "GET", path: "/api/horf/inspections/pending", expectedStatuses: [200, 403, 503] },
       { method: "POST", path: "/api/horf/inspections/marshal", body: {}, expectedStatuses: [400, 403] },
+      { method: "POST", path: "/api/horf/reports/not-a-horse/direct", body: {}, expectedStatuses: [400, 403] },
       { method: "GET", path: "/api/horf/inspections/0", expectedStatuses: [400, 403] },
       { method: "POST", path: "/api/horf/inspections/0/decision", body: { decision: "reject", reason: "inventory probe" }, expectedStatuses: [400, 403] },
       { method: "POST", path: "/api/horf/admin/inspection-approvals/invalid/0/revoke", body: { reason: "inventory probe" }, expectedStatuses: [400, 403] },
@@ -983,6 +984,7 @@ export const DOMAIN_WORKFLOWS = [
       "horf.stable.cancelled",
     ],
     apiProbes: [
+      { method: "GET", path: "/api/horf/stables?market=1", expectedStatuses: [200, 503] },
       { method: "GET", path: "/api/horf/stables", expectedStatuses: [200, 503] },
       { method: "GET", path: "/api/horf/stables?address=tz1VSUr8wwNhLAzempoch5d6hLRiTh8Cjcjb", expectedStatuses: [200, 503] },
       {

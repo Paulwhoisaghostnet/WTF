@@ -17,7 +17,7 @@ import { HorfPublicTraderProfile, parseProfile } from "../features/horf/HorfTrad
 import { findHorfMintSeason } from "../features/horf/mint-season";
 import { approveHorseDirectly } from "../features/horf/marshal-approval";
 import { HorfInspectorDesk } from "../features/horf/HorfInspectorDesk";
-import { resolveHorfHorseArt, resolveHorfHorseVideo, type HorfHorseMedia } from "../features/horf/horse-media";
+import { resolveHorfHorseArt, resolveHorfHorseCardArt, resolveHorfHorseVideo, uniqueHorfThumbnailIdentities, type HorfHorseMedia } from "../features/horf/horse-media";
 import { formatHorseAmount } from "../features/horf/recipient-input";
 import { objktTokenUrl } from "../features/horf/token-input";
 import { useHorfWallet } from "../features/horf/useHorfWallet";
@@ -820,16 +820,16 @@ function TraderLink({ address, name }: { address: string; name?: string | null }
   );
 }
 
-function ProfileArt({ media, name }: { media: HorfHorseMedia; name: string }) {
+function ProfileArt({ media, name, uniqueThumbnails, card = false }: { media: HorfHorseMedia; name: string; uniqueThumbnails?: ReadonlySet<string>; card?: boolean }) {
   const [videoFailed, setVideoFailed] = useState(false);
   const [imageFailed, setImageFailed] = useState(false);
   useEffect(() => { setVideoFailed(false); setImageFailed(false); }, [media.image, media.artifactUri, media.mime]);
   const video = resolveHorfHorseVideo(media);
-  const art = resolveHorfHorseArt(media);
+  const art = uniqueThumbnails ? resolveHorfHorseCardArt(media, uniqueThumbnails) : resolveHorfHorseArt(media);
   if (video && !videoFailed) return <video src={video.src} controls playsInline preload="metadata" aria-label={`${name} video artwork`} onError={(event) => {
     if (!advanceResolvedMediaFallback(event.currentTarget, video)) setVideoFailed(true);
   }} />;
-  if (art && !imageFailed) return <img src={art.src} alt={`${name} horse token artwork`} loading="lazy" onError={(event) => {
+  if (art && !imageFailed) return <img src={art.src} alt={`${name} horse token artwork`} loading={card ? "lazy" : "eager"} decoding="async" onError={(event) => {
     if (!advanceResolvedMediaFallback(event.currentTarget, art)) setImageFailed(true);
   }} />;
   return <span className="missing-preview">Token preview unavailable</span>;
@@ -874,6 +874,7 @@ export function Horf() {
     : profileAddress ? "profile"
     : routePath === "/horf/info" ? "info"
     : routePath === "/horf/marshals-market" ? "marshal"
+    : routePath === "/horf/inspection-desk" ? "inspection-desk"
     : routePath === "/horf/outlaw-corral" ? "outlaw"
     : routePath === "/horf/stable" || (routePath === "/horf" && Boolean(address)) ? "stable"
     : routePath === "/horf/send-horse" ? "horse"
@@ -882,6 +883,7 @@ export function Horf() {
     : routePath === "/horf/posse" ? "posse"
     : routePath === "/horf/gifts" ? "gifts" : "race";
   const routeTitle = routeSection === "marshal" ? "Marshal’s Market"
+    : routeSection === "inspection-desk" ? "Inspection Desk"
     : routeSection === "outlaw" ? "Outlaw Corral"
     : routeSection === "stable" ? "My Stable & Profile"
     : routeSection === "horse" ? "Send $HORSE"
@@ -954,7 +956,7 @@ export function Horf() {
   const profileMarshalQuery = useQuery({
     queryKey: ["horf", "inspector-status", isGuest],
     queryFn: () => api.get<{ active: boolean; role: "horf_marshal" | "admin" | null }>("/api/horf/inspectors/status"),
-    enabled: routeSection === "profile",
+    enabled: true,
     refetchOnWindowFocus: true,
   });
   const profileIdentityQuery = useQuery({
@@ -986,7 +988,11 @@ export function Horf() {
     return [...rows.values()].sort((a, b) => b.trades - a.trades || b.offerCount - a.offerCount || a.address.localeCompare(b.address));
   }, [leaderboard, directoryOffersQuery.data?.offers]);
   const profileRider = leaderboard.find((row) => row.address === validProfileAddress);
-  const profileHorses = profileHorsesQuery.data?.pages.flatMap((page) => page.items) ?? [];
+  const profileHorses = useMemo(() => profileHorsesQuery.data?.pages.flatMap((page) => page.items) ?? [], [profileHorsesQuery.data]);
+  const profileThumbnails = useMemo(() => uniqueHorfThumbnailIdentities([
+    ...(profileOffersQuery.data?.offers ?? []).map((offer) => ({ ...offer, contract: offer.tokenContract })),
+    ...profileHorses,
+  ]), [profileOffersQuery.data?.offers, profileHorses]);
   const selectedProfileContract = selectedProfileHorse && ("contract" in selectedProfileHorse ? selectedProfileHorse.contract : selectedProfileHorse.tokenContract);
   const selectedProfileName = selectedProfileHorse?.name || (selectedProfileHorse ? `Horse token #${selectedProfileHorse.tokenId}` : "Horse card");
   const leadTrades = leaderboard.reduce((lead, row) => Math.max(lead, row.trades), 1);
@@ -1179,7 +1185,7 @@ export function Horf() {
   }
 
   return (
-    <HorfFrame title={`${routeTitle} · ${seasonDisplayName}`} walletAddress={address} onConnectWallet={connectWallet} walletConnecting={isConnecting} aside={<AsideRail>
+    <HorfFrame title={`${routeTitle} · ${seasonDisplayName}`} walletAddress={address} onConnectWallet={connectWallet} walletConnecting={isConnecting} marshalActive={profileMarshalQuery.data?.active === true} aside={<AsideRail>
       {walletError && <div className="rail-section" role="alert"><span className="eyebrow">Wallet alert</span><p>{walletError}</p></div>}
       {personal?.blacklisted === true && <div className="rail-section" role="alert"><span className="eyebrow">Trader standing</span><p>This wallet is restricted from private Horf actions. Review the public standing before trading.</p></div>}
       <div className="rail-section"><span className="eyebrow">🐎 Live trail</span><strong>{seasonDisplayName}</strong><p>{countsProvisional ? "The race is still scanning Mainnet." : hasError ? "Season totals need a refresh." : "Season ledger ready for the next ride."}</p></div>
@@ -1310,7 +1316,7 @@ export function Horf() {
                   {profileOffersQuery.data.offers.map((offer) => {
                     const name = offer.name || `Horse token #${offer.tokenId}`;
                     return <ProfileHorseCard key={offer.id} data-horf-profile-horse>
-                      <div className="art">{resolveHorfHorseVideo(offer) ? <ProfileArt media={offer} name={name} /> : <button className="art-open" type="button" aria-label={`View ${name} horse card`} onClick={() => setSelectedProfileHorse(offer)}><ProfileArt media={offer} name={name} /></button>}</div>
+                      <div className="art">{resolveHorfHorseVideo(offer) ? <ProfileArt media={offer} name={name} uniqueThumbnails={profileMarshalQuery.data?.active ? undefined : profileThumbnails} card /> : <button className="art-open" type="button" aria-label={`View ${name} horse card`} onClick={() => setSelectedProfileHorse(offer)}><ProfileArt media={offer} name={name} uniqueThumbnails={profileMarshalQuery.data?.active ? undefined : profileThumbnails} card /></button>}</div>
                       <div className="copy"><h3><button type="button" onClick={() => setSelectedProfileHorse(offer)}>{name}</button></h3><p>{offer.amount} {offer.amount === "1" ? "edition" : "editions"} offered · {offer.acceptedTokenPolicy === "marshal_only" ? "Marshal-approved horse wanted" : "Any qualifying horse welcome"}</p><p data-horf-edition-holdings>{holdingsText(offer.ownerBalance, offer.viewerBalance, Boolean(address))}</p><a href={objktTokenUrl(offer.tokenContract, offer.tokenId)} target="_blank" rel="noopener noreferrer">View token on Objkt ↗</a><Action data-horf-profile-view-horse type="button" onClick={() => setSelectedProfileHorse(offer)}>View horse card</Action></div>
                     </ProfileHorseCard>;
                   })}
@@ -1327,7 +1333,7 @@ export function Horf() {
                     const approval = profileApprovalResults[`${horse.contract}/${horse.tokenId}`];
                     const isApproved = horse.approvedForMarshalsMarket || approval?.status === "approved";
                     return <ProfileHorseCard key={`${horse.contract}:${horse.tokenId}`} data-horf-profile-horse>
-                      <div className="art">{resolveHorfHorseVideo(horse) ? <ProfileArt media={horse} name={name} /> : <button className="art-open" type="button" aria-label={`View ${name} horse card`} onClick={() => setSelectedProfileHorse(horse)}><ProfileArt media={horse} name={name} /></button>}</div>
+                      <div className="art">{resolveHorfHorseVideo(horse) ? <ProfileArt media={horse} name={name} uniqueThumbnails={profileMarshalQuery.data?.active ? undefined : profileThumbnails} card /> : <button className="art-open" type="button" aria-label={`View ${name} horse card`} onClick={() => setSelectedProfileHorse(horse)}><ProfileArt media={horse} name={name} uniqueThumbnails={profileMarshalQuery.data?.active ? undefined : profileThumbnails} card /></button>}</div>
                       <div className="copy"><h3><button type="button" onClick={() => setSelectedProfileHorse(horse)}>{name}</button></h3>{mintedSeason && <span className="mint-badge" data-horf-mint-badge><img src="/horf-art/horseshoe.svg" alt="" aria-hidden="true" />{mintedSeason.label}</span>}<p data-horf-edition-holdings>{holdingsText(horse.balance, horse.viewerBalance, Boolean(address))}</p><p>{shortAddress(horse.contract)} / #{horse.tokenId}</p><a href={objktTokenUrl(horse.contract, horse.tokenId)} target="_blank" rel="noopener noreferrer">View token on Objkt ↗</a><Action data-horf-profile-view-horse type="button" onClick={() => setSelectedProfileHorse(horse)}>View horse card</Action>{isApproved && <p data-horf-profile-approved>✦ Marshal approved</p>}{profileMarshalQuery.data?.active && !isApproved && <Action data-horf-profile-approve-horse type="button" disabled={profileApprovalBusy} onClick={() => void approveProfileHorse(horse)}>Approve this horse</Action>}</div>
                     </ProfileHorseCard>;
                   })}</ProfileHorseGrid> : <LedgerPanel><h3>No qualifying horses on the scanned pages</h3><p>{profileHorsesQuery.hasNextPage ? "This wallet has more editions to check. Load the next page to keep looking." : "There are no current balances that pass the horse test for this wallet."}</p></LedgerPanel>}
@@ -1404,13 +1410,17 @@ export function Horf() {
         </Section>}
 
         {routeSection === "stable" && <HorfPersonalStable address={address} connectWallet={connectWallet} isConnecting={isConnecting} seasonKey={profileSeasonKey} seasonLabel={profileSeasonLabel} seasons={availableSeasons} />}
-        {routeSection === "marshal" && <><HorfInspectorDesk isGuest={isGuest} isAdmin={isAdmin} />
-        <TradingZone id="horf-marshals-market" data-horf-region="marshals-market">
-          <small>Inspected horses · escrow route</small>
+        {routeSection === "marshal" && <TradingZone id="horf-marshals-market" data-horf-region="marshals-market">
+          <small>Marshal-approved horses · escrow route</small>
           <h2>Marshal’s Market</h2>
-          <p>Marshals review each horse’s code and trade history. Approved horses can enter the escrow Stables; inspection is a human judgment, not a guarantee that FA2 code will behave.</p>
+          <p>Browse approved horses currently listed for swap. Connect a wallet to claim one or list an approved horse of your own.</p>
           <HorfStables address={address} connectWallet={connectWallet} isConnecting={isConnecting} />
-        </TradingZone></>}
+        </TradingZone>}
+        {routeSection === "inspection-desk" && (profileMarshalQuery.isPending
+          ? <Section role="status">Checking your Marshal badge…</Section>
+          : profileMarshalQuery.data?.active
+            ? <HorfInspectorDesk isGuest={isGuest} isAdmin={isAdmin} />
+            : <Section role="alert"><h2>Marshal badge required</h2><p>The Inspection Desk opens for signed-in HORF MARSHALs.</p></Section>)}
         {routeSection === "outlaw" && <TradingZone id="horf-outlaw-corral" data-horf-region="outlaw-corral" $outlaw>
           <small>Qualifying horse art · direct wallet route</small>
           <h2>Outlaw Corral</h2>

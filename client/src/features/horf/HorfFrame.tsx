@@ -11,6 +11,7 @@ type HorfFrameProps = {
   walletAddress?: string | null;
   onConnectWallet?: () => Promise<void>;
   walletConnecting?: boolean;
+  marshalActive?: boolean;
 };
 
 const Frame = styled.div`
@@ -230,6 +231,7 @@ const links = [
   { path: "/horf/traders", label: "Find Other Traders", icon: "🧭", section: "traders" },
   { path: "/horf/open-range", label: "Open Range", icon: "🐎", section: "range" },
   { path: "/horf/marshals-market", label: "Marshal’s Market", icon: "✦", section: "marshal" },
+  { path: "/horf/inspection-desk", label: "Inspection Desk", icon: "🔎", section: "inspection-desk" },
   { path: "/horf/outlaw-corral", label: "Outlaw Corral", icon: "↗", section: "outlaw" },
   { path: "/horf/stable", label: "My stable", icon: "♞", section: "stable" },
   { path: "/horf/send-horse", label: "Send $HORSE", icon: "◈", section: "horse" },
@@ -240,7 +242,7 @@ const links = [
   { path: "/horf/info", label: "Is It a Horse?", icon: "?", section: "info" },
 ];
 
-export function HorfFrame({ title, children, aside, walletAddress, onConnectWallet, walletConnecting = false }: HorfFrameProps) {
+export function HorfFrame({ title, children, aside, walletAddress, onConnectWallet, walletConnecting = false, marshalActive = false }: HorfFrameProps) {
   const [location, navigate] = useLocation();
   const wm = useWindowManager();
   const pagePath = useContext(WindowPathContext);
@@ -304,7 +306,7 @@ export function HorfFrame({ title, children, aside, walletAddress, onConnectWall
       <a className="wtf-origin" data-horf-wtf-home href="/" onClick={openWtfHome} aria-label="Brought to you by wtfOS.app — visit WTF OS home" title="Visit wtfOS.app"><span className="wtf-mark" aria-hidden="true">WTF<span>OS</span></span><span className="wtf-statement">Brought to you by <strong>wtfOS.app</strong></span></a>
       <a className="brand" href={`/horf?season=${encodeURIComponent(ledgerSeason)}`} onClick={(event) => navigateTo(event, `/horf?season=${encodeURIComponent(ledgerSeason)}`)} aria-label="Horf home"><img src="/horf-art/horse-portrait-photo.jpg" alt="" /><span>HORF<small>Horse trading</small></span></a>
       <span className="nav-caption">The trails</span>
-      <div className="links">{links.map((link) => {
+      <div className="links">{links.filter((link) => link.section !== "inspection-desk" || marshalActive).map((link) => {
         const linkSeason = link.section === "range" ? rangeSeason
           : link.section === "race" || link.section === "stable" || link.section === "traders" ? ledgerSeason : "current-2026";
         const href = `${link.path}?season=${encodeURIComponent(linkSeason)}`;

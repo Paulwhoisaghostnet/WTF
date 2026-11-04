@@ -15,7 +15,7 @@ ALTER TABLE public.horf_inspection_requests
 
 -- Ordinary inspection rejection means no escrow approval. This separate
 -- exact-token judgment is the only durable “not a horse” override.
-CREATE TABLE public.horf_token_nonhorse_decisions (
+CREATE TABLE IF NOT EXISTS public.horf_token_nonhorse_decisions (
   token_contract text NOT NULL,
   token_id text NOT NULL,
   active boolean NOT NULL DEFAULT true,

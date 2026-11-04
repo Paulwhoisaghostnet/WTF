@@ -41,6 +41,7 @@ export const BROWSER_ROUTE_META: readonly BrowserRouteMeta[] = [
   { pattern: "/horf/info", auth: false, title: "Horf Is It a Horse?" },
   { pattern: "/horf/open-range", auth: false, title: "Horf Open Range" },
   { pattern: "/horf/marshals-market", auth: false, title: "Horf Marshal’s Market" },
+  { pattern: "/horf/inspection-desk", auth: true, title: "Horf Inspection Desk" },
   { pattern: "/horf/outlaw-corral", auth: false, title: "Horf Outlaw Corral" },
   { pattern: "/horf/stable", auth: false, title: "Horf My Stable" },
   { pattern: "/horf/send-horse", auth: false, title: "Horf Send HORSE" },

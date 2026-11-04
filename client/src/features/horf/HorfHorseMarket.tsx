@@ -310,11 +310,11 @@ export function HorfHorseMarket({ address, connectWallet, isConnecting }: {
         {listingQuery.isPending && <Notice role="status">Rounding up the live listings…</Notice>}
         {listingQuery.isError && <Notice $error role="alert">Listings could not be read. Refresh to try again.</Notice>}
         {!listingQuery.isPending && !listingQuery.isError && listings.length === 0 && <Notice>No horses on the block yet. A Marshal-approved horse can be the first in the ring.</Notice>}
-        <Grid>{listings.map((listing) => {
+        <Grid>{listings.map((listing, index) => {
           const name = listing.token?.name || `Horse #${listing.tokenId}`;
           const art = listing.token?.image ? resolveTokenThumbnail({ thumbnail: listing.token.image }) : null;
           return <Card key={listing.id} $selected={selected?.id === listing.id} data-horf-horse-market-listing>
-            <div className="art">{art ? <img src={art.src} alt={`${name} token artwork`} onError={(event) => { if (!advanceResolvedMediaFallback(event.currentTarget, art)) { event.currentTarget.src = "/horf-art/horse-portrait-photo.jpg"; event.currentTarget.classList.add("photo"); event.currentTarget.alt = "Horse photograph placeholder"; } }} /> : <img className="photo" src="/horf-art/horse-portrait-photo.jpg" alt="Horse photograph placeholder" />}<span className="tag">✦ Marshal approved</span></div>
+            <div className="art">{art ? <img src={art.src} alt={`${name} token artwork`} loading={index === 0 ? "eager" : "lazy"} decoding="async" fetchPriority={index === 0 ? "high" : "auto"} onError={(event) => { if (!advanceResolvedMediaFallback(event.currentTarget, art)) { event.currentTarget.src = "/horf-art/horse-portrait-photo.jpg"; event.currentTarget.classList.add("photo"); event.currentTarget.alt = "Horse photograph placeholder"; } }} /> : <img className="photo" src="/horf-art/horse-portrait-photo.jpg" alt="Horse photograph placeholder" loading="lazy" decoding="async" />}<span className="tag">✦ Marshal approved</span></div>
             <div className="body"><h4>{name}</h4><p>{listing.remaining} {listing.remaining === "1" ? "edition" : "editions"} · {shortAddress(listing.sellerAddress)}</p><div className="price"><div><span>Per edition</span><br /><strong>{formatHorseRaw(listing.unitPriceHorseRaw)}</strong> <span>HORSE</span></div><span>100% to seller</span></div><Action type="button" $strong={selected?.id === listing.id} onClick={() => setSelectedId(listing.id)} aria-label={`Inspect ${name} listing and payment options`}>Inspect this horse →</Action></div>
           </Card>;
         })}</Grid>

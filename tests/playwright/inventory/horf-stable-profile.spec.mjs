@@ -43,6 +43,36 @@ async function mockConnectedWallet(page, onTokenRead = () => {}) {
 }
 
 test.describe("Horf Stable and trader profile", () => {
+  test("waits to attach a Stable video source until its horse card is visible", async ({ page, request }) => {
+    expect((await request.post("/__test/state", { data: { userRole: "admin" } })).ok()).toBeTruthy();
+    await page.setViewportSize({ width: 390, height: 480 });
+    await mockConnectedWallet(page);
+    await mockSeason(page);
+    await page.route(/\/api\/horf\/traders\/[^/]+\/profile\?season=current-2026$/, (route) => json(route, {
+      address: wallet, seasonKey: season.key, imageUrl: null, description: "", updatedAt: null,
+      username: null, displayName: null, usernameSource: "wallet", canEditUsername: true,
+    }));
+    await page.route(/\/api\/horf\/traders\/[^/]+\/horses(?:\?.*)?$/, (route) => json(route, {
+      address: wallet,
+      items: [
+        ...Array.from({ length: 4 }, (_, index) => ({
+          contract, tokenId: String(index + 1), balance: "1", name: `Horse ${index + 1}`,
+          image: "/horf-art/horse-gallop-photo.jpg", mintedAt: season.startsAt,
+        })),
+        { contract, tokenId: "5", balance: "1", name: "Video Horse", image: null,
+          artifactUri: "/horf-art/horse-gallop-photo.jpg", mime: "video/mp4", mintedAt: season.startsAt },
+      ],
+      pagination: { hasMore: false, nextOffset: 5 },
+    }));
+    await page.goto("/horf/stable?season=current-2026");
+    const video = page.locator("[data-horf-stable-horse]").filter({ hasText: "Video Horse" }).locator("video");
+    await expect(video).toHaveAttribute("preload", "none");
+    await expect(video).not.toHaveAttribute("src", /.+/);
+    await video.scrollIntoViewIfNeeded();
+    await expect(video).toHaveAttribute("src", "/horf-art/horse-gallop-photo.jpg");
+    await expect(video).toHaveAttribute("preload", "metadata");
+  });
+
   test("gives a disconnected rider clear Stable directions and retains a separate public race", async ({ page, request }) => {
     const state = await request.post("/__test/state", { data: { userRole: "anonymous" } });
     expect(state.ok()).toBeTruthy();

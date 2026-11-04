@@ -5,7 +5,7 @@ import { api, fetchWithCsrf, isApiRequestError } from "../../lib/api";
 import { useAuth } from "../../lib/auth-context";
 import { advanceResolvedMediaFallback, resolveTokenThumbnail } from "../../lib/media-resolve";
 import { logClientSystemEvent } from "../../lib/system-log";
-import { resolveHorfHorseArt, resolveHorfHorseVideo } from "./horse-media";
+import { resolveHorfHorseArt, resolveHorfHorseCardArt, resolveHorfHorseVideo, uniqueHorfThumbnailIdentities } from "./horse-media";
 import { parseHorfOwnedTokenPage } from "./owned-tokens";
 import { HorfProfileEditor } from "./HorfTraderProfile";
 import { findHorfMintSeason, type HorfMintSeason } from "./mint-season";
@@ -222,6 +222,30 @@ const HorseGallery = styled.div`
   .title-open { width: auto; min-height: 0; margin: 0; padding: 0; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; }
 `;
 
+function StableVideoPreview({ src }: { src: string }) {
+  const elementRef = useRef<HTMLVideoElement>(null);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const element = elementRef.current;
+    if (!element) return;
+    if (typeof IntersectionObserver === "undefined") {
+      setVisible(true);
+      return;
+    }
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) {
+        setVisible(true);
+        observer.disconnect();
+      }
+    });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+
+  return <video ref={elementRef} src={visible ? src : undefined} muted playsInline preload={visible ? "metadata" : "none"} aria-hidden="true" />;
+}
+
 const StableHorseDetail = styled.dialog`
   width: min(860px, calc(100vw - 28px));
   max-height: min(850px, calc(100vh - 28px));
@@ -339,6 +363,7 @@ export function HorfPersonalStable({ address, connectWallet, isConnecting, seaso
     if (!selectedMintSeason) return qualifyingHorses;
     return qualifyingHorses.filter((horse) => findHorfMintSeason(horse, mintSeasons)?.key === selectedMintSeason.key);
   }, [qualifyingHorses, selectedMintSeason, mintSeasons]);
+  const uniqueThumbnails = useMemo(() => uniqueHorfThumbnailIdentities(qualifyingHorses), [qualifyingHorses]);
   useEffect(() => {
     const dialog = detailRef.current;
     if (!dialog) return;
@@ -482,13 +507,13 @@ export function HorfPersonalStable({ address, connectWallet, isConnecting, seaso
       </MintFilter>
       {!qualifyingQuery.isError && !scanComplete && <p data-horf-stable-scan-progress role="status">Scanning wallet holdings… {scannedPages} {scannedPages === 1 ? "page" : "pages"} checked · {qualifyingHorses.length} {qualifyingHorses.length === 1 ? "horse" : "horses"} found.</p>}
       {qualifyingQuery.isError && <Note $error role="alert">Horse scan paused after {scannedPages} {scannedPages === 1 ? "page" : "pages"}. {qualifyingQuery.error instanceof Error ? qualifyingQuery.error.message : "The Mainnet horse index is unavailable."} Horses already found remain below. <Action data-horf-stable-scan-retry type="button" onClick={retryHorseScan}>Retry horse scan</Action> <Action type="button" onClick={() => void connectWallet()} disabled={isConnecting}>{isConnecting ? "Connecting…" : "Switch wallet"}</Action></Note>}
-      {visibleHorses.length > 0 && <HorseGallery>{visibleHorses.map((horse) => {
-        const art = resolveHorfHorseArt(horse);
+      {visibleHorses.length > 0 && <HorseGallery>{visibleHorses.map((horse, index) => {
+        const art = resolveHorfHorseCardArt(horse, uniqueThumbnails);
         const video = resolveHorfHorseVideo(horse);
         const name = horse.name || `Horse token #${horse.tokenId}`;
         const mintedSeason = findHorfMintSeason(horse, mintSeasons);
         return <article key={`${horse.contract}:${horse.tokenId}`} data-horf-stable-horse>
-          <div className="art"><button className="art-open" type="button" aria-label={`View ${name} horse card`} onClick={() => setDetailHorse(horse)}>{video ? <video src={video.src} muted playsInline preload="metadata" aria-hidden="true" /> : art ? <img src={art.src} alt={`${name} artwork`} onError={(event) => { if (!advanceResolvedMediaFallback(event.currentTarget, art)) event.currentTarget.style.display = "none"; }} /> : <span>Preview unavailable</span>}</button></div>
+          <div className="art"><button className="art-open" type="button" aria-label={`View ${name} horse card`} onClick={() => setDetailHorse(horse)}>{video ? <StableVideoPreview src={video.src} /> : art ? <img src={art.src} alt={`${name} artwork`} loading={index === 0 ? "eager" : "lazy"} decoding="async" fetchPriority={index === 0 ? "high" : "auto"} onError={(event) => { if (!advanceResolvedMediaFallback(event.currentTarget, art)) event.currentTarget.style.display = "none"; }} /> : <span>Preview unavailable</span>}</button></div>
           <div className="copy"><h4><button className="title-open" type="button" onClick={() => setDetailHorse(horse)}>{name}</button></h4>{mintedSeason && <MintBadge data-horf-mint-badge><img src="/horf-art/horseshoe.svg" alt="" aria-hidden="true" />{mintedSeason.label}</MintBadge>}<p data-horf-edition-holdings>You own {horse.balance} {horse.balance === "1" ? "edition" : "editions"} · {shortAddress(horse.contract)} / #{horse.tokenId}</p>
             <a href={objktTokenUrl(horse.contract, horse.tokenId)} target="_blank" rel="noopener noreferrer">View horse on Objkt ↗</a>
             <button data-horf-stable-view-horse type="button" onClick={() => setDetailHorse(horse)}>View horse card</button>

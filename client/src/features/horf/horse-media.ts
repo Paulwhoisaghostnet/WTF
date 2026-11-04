@@ -3,12 +3,57 @@ import {
   resolveTokenThumbnail,
   type ResolvedThumbnail,
 } from "../../lib/media-resolve";
+import { extractIpfsPath } from "@shared/ipfs-gateways";
 
 export type HorfHorseMedia = {
   image?: string | null;
   artifactUri?: string | null;
   mime?: string | null;
 };
+
+type HorfThumbnailCandidate = HorfHorseMedia & { contract: string; tokenId: string };
+
+function thumbnailIdentity(uri: string): string {
+  const ipfsPath = extractIpfsPath(uri);
+  if (ipfsPath) return `ipfs:${ipfsPath.split("?")[0]}`;
+  try {
+    const url = new URL(uri, "https://wtfos.app");
+    return `${url.origin}${url.pathname}`;
+  } catch {
+    return uri.split("?")[0].trim();
+  }
+}
+
+/** A shared Objkt thumbnail may belong to a collection rather than a token. */
+export function uniqueHorfThumbnailIdentities(horses: readonly HorfThumbnailCandidate[]): Set<string> {
+  const tokensByImage = new Map<string, Set<string>>();
+  for (const horse of horses) {
+    if (!horse.image) continue;
+    const image = thumbnailIdentity(horse.image);
+    const tokens = tokensByImage.get(image) ?? new Set<string>();
+    tokens.add(`${horse.contract}/${horse.tokenId}`);
+    tokensByImage.set(image, tokens);
+  }
+  return new Set([...tokensByImage].filter(([, tokens]) => tokens.size === 1).map(([image]) => image));
+}
+
+/** Use a small, token-specific Objkt preview on cards, with exact art as backup. */
+export function resolveHorfHorseCardArt(horse: HorfHorseMedia, uniqueThumbnails: ReadonlySet<string>): ResolvedThumbnail | null {
+  const exact = resolveHorfHorseArt({ ...horse, image: null });
+  if (!horse.image || !uniqueThumbnails.has(thumbnailIdentity(horse.image))) return exact;
+  const thumbnail = resolveTokenThumbnail({ thumbnail: horse.image });
+  if (!thumbnail) return exact;
+  return {
+    src: thumbnail.src,
+    fallbackCandidates: unique([
+      ...(thumbnail.fallbackCandidates || []),
+      thumbnail.fallbackSrc,
+      exact?.src,
+      ...(exact?.fallbackCandidates || []),
+      exact?.fallbackSrc,
+    ]),
+  };
+}
 
 function unique(values: Array<string | undefined>): string[] {
   return [...new Set(values.filter((value): value is string => Boolean(value)))];

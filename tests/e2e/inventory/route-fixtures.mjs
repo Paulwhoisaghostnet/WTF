@@ -40,6 +40,7 @@ export const ROUTE_FIXTURES = [
   { pattern: "/horf/race", path: "/horf/race", title: "The Race", domain: "commerce", subdomain: "Horf horse trading", auth: false },
   { pattern: "/horf/open-range", path: "/horf/open-range", title: "Horf Open Range", domain: "commerce", subdomain: "Public horse trading market", auth: false },
   { pattern: "/horf/marshals-market", path: "/horf/marshals-market", title: "Marshal’s Market", domain: "commerce", subdomain: "Horf Stables", auth: false },
+  { pattern: "/horf/inspection-desk", path: "/horf/inspection-desk", title: "Inspection Desk", domain: "commerce", subdomain: "Horf Marshal inspection", auth: true },
   { pattern: "/horf/outlaw-corral", path: "/horf/outlaw-corral", title: "Outlaw Corral", domain: "commerce", subdomain: "Horf horse trades and gifts", auth: false },
   { pattern: "/horf/stable", path: "/horf/stable", title: "My Stable", domain: "commerce", subdomain: "Horf personal stable", auth: false },
   { pattern: "/horf/send-horse", path: "/horf/send-horse", title: "Send HORSE", domain: "commerce", subdomain: "Horf HORSE sends, claims, and posse", auth: false },

@@ -132,6 +132,37 @@ async function mockSeason(page, observedAddresses, observedSeasons = []) {
 }
 
 test.describe("Horf horse trading", () => {
+  test("keeps the Inspection Desk out of a non-Marshal rider's trails", async ({ page, request }) => {
+    expect((await request.post("/__test/state", { data: { userRole: "user" } })).ok()).toBeTruthy();
+    await mockSeason(page, []);
+    await page.route("**/api/horf/inspectors/status", (route) => route.fulfill({
+      status: 200, contentType: "application/json", body: JSON.stringify({ active: false, role: null }),
+    }));
+    await page.goto("/horf/marshals-market");
+    await expect(page.locator('[data-horf-region="marshals-market"]')).toBeVisible();
+    await expect(page.locator('[data-horf-nav="inspection-desk"]')).toHaveCount(0);
+    await expect(page.locator('[data-horf-region="inspector-desk"]')).toHaveCount(0);
+    await page.goto("/horf/inspection-desk");
+    await expect(page.getByRole("alert")).toContainText("Marshal badge required");
+    await expect(page.locator('[data-horf-region="inspector-desk"]')).toHaveCount(0);
+  });
+
+  test("opens a separate Inspection Desk trail after Marshal role verification", async ({ page, request }) => {
+    expect((await request.post("/__test/state", { data: { userRole: "admin" } })).ok()).toBeTruthy();
+    await mockSeason(page, []);
+    await page.route("**/api/horf/inspectors/status", (route) => route.fulfill({
+      status: 200, contentType: "application/json", body: JSON.stringify({ active: true, role: "admin" }),
+    }));
+    await page.goto("/horf/marshals-market");
+    const deskLink = page.locator('[data-horf-nav="inspection-desk"]');
+    await expect(deskLink).toBeVisible();
+    await expect(page.locator('[data-horf-region="inspector-desk"]')).toHaveCount(0);
+    await deskLink.click();
+    await expect(page).toHaveURL(/\/horf\/inspection-desk\?season=current-2026$/);
+    await expect(page.locator('[data-horf-region="inspector-desk"]')).toBeVisible();
+    await expect(page.locator('[data-horf-region="marshals-market"]')).toHaveCount(0);
+  });
+
   test("uses separate trail routes instead of scrolling one long page", async ({ page, request }) => {
     const response = await request.post("/__test/state", { data: { userRole: "anonymous" } });
     expect(response.ok()).toBeTruthy();
@@ -165,7 +196,7 @@ test.describe("Horf horse trading", () => {
       else await expect(page.locator(`[data-horf-region="${region}"]`)).toBeVisible();
       if (section !== "race") await expect(page.locator('[data-horf-region="intro"]')).toHaveCount(0);
       if (section !== "stable") await expect(page.locator('[data-horf-region="trader-ledger"]')).toHaveCount(0);
-      if (section !== "marshal") await expect(page.locator('[data-horf-region="inspector-desk"]')).toHaveCount(0);
+      await expect(page.locator('[data-horf-region="inspector-desk"]')).toHaveCount(0);
     }
   });
 
@@ -244,8 +275,8 @@ test.describe("Horf horse trading", () => {
     await page.locator('[data-horf-left-nav] a[href^="/horf/marshals-market"]').click();
     await expect(page).toHaveURL(/\/horf\/marshals-market\?season=current-2026$/);
     await expect(app).toHaveAttribute("data-horf-page", "marshal");
-    await expect(app.locator('[data-horf-region="inspector-desk"]')).toContainText("HORF MARSHAL role");
-    await expect(app.locator('[data-horf-region="inspector-desk"] [data-horf-inspection-queue]')).toHaveCount(0);
+    await expect(app.locator('[data-horf-region="inspector-desk"]')).toHaveCount(0);
+    await expect(page.locator('[data-horf-nav="inspection-desk"]')).toHaveCount(0);
     await expect(app.locator('[data-horf-region="personal-stable"]')).toHaveCount(0);
     await page.setViewportSize({ width: 390, height: 844 });
     await expect(wtfHome).toBeVisible();

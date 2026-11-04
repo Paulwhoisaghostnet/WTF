@@ -28,6 +28,41 @@ async function mockSeasons(page) {
 }
 
 test.describe("Horf Open Range", () => {
+  test("prioritizes the first horse preview and defers later artwork", async ({ page, request }) => {
+    expect((await request.post("/__test/state", { data: { userRole: "anonymous" } })).ok()).toBeTruthy();
+    await mockSeasons(page);
+    await page.route("**/api/horf/inspectors/status", (route) => route.fulfill({
+      status: 200, contentType: "application/json", body: JSON.stringify({ active: false, role: null }),
+    }));
+    await page.route("**/api/horf/open-range?*", (route) => route.fulfill({
+      status: 200, contentType: "application/json", body: JSON.stringify({
+        season: current,
+        items: [
+          horse("1", { image: "/horf-art/horse-gallop-photo.jpg" }),
+          horse("2", { image: "/horf-art/horse-portrait-photo.jpg" }),
+          horse("3", { image: "ipfs://QmSharedThumbnail", artifactUri: "ipfs://QmExactFirst", mime: "image/jpeg" }),
+          horse("4", { image: "https://nftstorage.link/ipfs/QmSharedThumbnail", artifactUri: "ipfs://QmExactSecond", mime: "image/jpeg" }),
+          horse("5", { image: "ipfs://QmUniqueThumbnail", artifactUri: "ipfs://QmLargeArtifact", mime: "image/jpeg" }),
+        ],
+        nextCursor: null, hasMore: false, asOf: now,
+      }),
+    }));
+    await page.route(/\/api\/cache\/(?:media|artifact)\?/, (route) => route.fulfill({
+      status: 200, contentType: "image/svg+xml", body: '<svg xmlns="http://www.w3.org/2000/svg" width="2" height="2"/>',
+    }));
+    await page.goto("/horf/open-range");
+    const previews = page.locator("[data-horf-open-range-horse] [data-horf-open-range-view-horse] img");
+    await expect(previews).toHaveCount(5);
+    await expect(previews.first()).toHaveAttribute("loading", "eager");
+    await expect(previews.first()).toHaveAttribute("fetchpriority", "high");
+    await expect(previews.nth(1)).toHaveAttribute("loading", "lazy");
+    await expect(previews.nth(1)).toHaveAttribute("decoding", "async");
+    await expect(previews.nth(2)).toHaveAttribute("src", /^\/api\/cache\/artifact\?/);
+    await expect(previews.nth(3)).toHaveAttribute("src", /^\/api\/cache\/artifact\?/);
+    expect(await previews.nth(2).getAttribute("src")).not.toBe(await previews.nth(3).getAttribute("src"));
+    await expect(previews.nth(4)).toHaveAttribute("src", /^\/api\/cache\/media\?/);
+  });
+
   test("shows a Marshal rejection as a reviewed horse card", async ({ page, request }) => {
     expect((await request.post("/__test/state", { data: { userRole: "anonymous" } })).ok()).toBeTruthy();
     await mockSeasons(page);
@@ -72,6 +107,76 @@ test.describe("Horf Open Range", () => {
     await expect(page.locator("[data-horf-open-range-detail-not-horse]")).toBeDisabled();
     expect(reports).toEqual([{ tokenContract: contract, tokenId: "77" }]);
     await expect(card).toBeVisible();
+  });
+
+  test("a Marshal removes a non-horse from the range with one click", async ({ page, request }) => {
+    expect((await request.post("/__test/state", { data: { userRole: "admin" } })).ok()).toBeTruthy();
+    await mockSeasons(page);
+    let hidden = false;
+    const directHides = [];
+    let releaseDecision;
+    const decisionGate = new Promise((resolve) => { releaseDecision = resolve; });
+    await page.route("**/api/horf/inspectors/status", (route) => route.fulfill({
+      status: 200, contentType: "application/json", body: JSON.stringify({ active: true, role: "horf_marshal" }),
+    }));
+    await page.route("**/api/horf/open-range?*", (route) => route.fulfill({
+      status: 200, contentType: "application/json", body: JSON.stringify({
+        season: current, items: hidden ? [horse("78")] : [horse("77"), horse("78")],
+        nextCursor: null, hasMore: false, asOf: now,
+      }),
+    }));
+    await page.route("**/api/horf/reports/not-a-horse/direct", async (route) => {
+      directHides.push(route.request().postDataJSON());
+      await decisionGate;
+      hidden = true;
+      return route.fulfill({ status: 200, contentType: "application/json",
+        body: JSON.stringify({ status: "hidden", inspectionId: 77, tokenContract: contract, tokenId: "77" }) });
+    });
+
+    await page.goto("/horf/open-range");
+    await expect(page.locator("[data-horf-open-range-horse]")).toHaveCount(2);
+    await page.locator("[data-horf-open-range-horse]").first().locator("[data-horf-open-range-not-horse]").click();
+    await expect.poll(() => directHides.length).toBe(1);
+    expect(hidden).toBe(false);
+    await expect(page.locator("[data-horf-open-range-horse]")).toHaveCount(1);
+    await expect(page.locator("[data-horf-open-range-horse]")).toContainText("Horse #78");
+    releaseDecision();
+    await expect(page.locator("[data-horf-right-rail]")).toContainText("hidden from Horf");
+    expect(directHides).toEqual([{ tokenContract: contract, tokenId: "77" }]);
+
+    await page.reload();
+    await expect(page.locator("[data-horf-open-range-horse]")).toHaveCount(1);
+    await expect(page.locator("[data-horf-open-range-horse]")).toContainText("Horse #78");
+  });
+
+  test("restores a Marshal-hidden card if its direct decision fails", async ({ page, request }) => {
+    expect((await request.post("/__test/state", { data: { userRole: "admin" } })).ok()).toBeTruthy();
+    await mockSeasons(page);
+    await page.route("**/api/horf/inspectors/status", (route) => route.fulfill({
+      status: 200, contentType: "application/json", body: JSON.stringify({ active: true, role: "horf_marshal" }),
+    }));
+    await page.route("**/api/horf/open-range?*", (route) => route.fulfill({
+      status: 200, contentType: "application/json", body: JSON.stringify({
+        season: current, items: [horse("77"), horse("78")], nextCursor: null, hasMore: false, asOf: now,
+      }),
+    }));
+    let releaseDecision;
+    const decisionGate = new Promise((resolve) => { releaseDecision = resolve; });
+    let attempts = 0;
+    await page.route("**/api/horf/reports/not-a-horse/direct", async (route) => {
+      attempts += 1;
+      await decisionGate;
+      return route.fulfill({ status: 503, contentType: "application/json",
+        body: JSON.stringify({ error: "Marshal decision unavailable" }) });
+    });
+    await page.goto("/horf/open-range");
+    await expect(page.locator("[data-horf-open-range-horse]")).toHaveCount(2);
+    await page.locator("[data-horf-open-range-horse]").first().locator("[data-horf-open-range-not-horse]").click();
+    await expect.poll(() => attempts).toBe(1);
+    await expect(page.locator("[data-horf-open-range-horse]")).toHaveCount(1);
+    releaseDecision();
+    await expect(page.locator("[data-horf-open-range-horse]")).toHaveCount(2);
+    await expect(page.getByRole("alert").first()).toContainText("Marshal decision unavailable");
   });
 
   test("tells a rate-limited horse reporter to hold their horses", async ({ page, request }) => {

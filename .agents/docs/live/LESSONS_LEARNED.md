@@ -14270,3 +14270,53 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: A healthy deployment cannot prove that a new account receives one authentic unread welcome, sees the intended sparse desktop, or retains its unread indicator until opening the message. Stale bounty text also understated completed live proof.
 
 **Rule**: Promote onboarding bounties only after recording both the exact deploy commit/readiness result and actor-backed live observations for new, existing, and role-specific accounts. Keep local spoofing tests as the authority proof for rejected senders.
+
+---
+
+## 2026-11-04 - Separate lightweight horse cards from Marshal evidence
+
+**What happened**: Horf rendered exact full-size artifacts in every Open Range card, including media far below the viewport. Seven current cards transferred about 77 MB of artifact data where their Objkt thumbnails totaled about 3.33 MB. Switching all cards to thumbnails would have repeated the earlier wrong-horse inspection bug because distinct tokens can share a collection thumbnail.
+
+**Why it mattered**: Large visible artifacts delayed browsing and competing offscreen requests wasted bandwidth. A misleading thumbnail beside a direct Marshal approval action could also make a wrong token appear safe to approve.
+
+**Rule**: Use a lightweight Objkt preview on ordinary horse cards only when its canonical IPFS identity is unique among loaded token IDs; otherwise use that token's exact artifact. Keep cards with direct Marshal approval and expanded evidence on exact artifacts. Lazy-load offscreen images and video sources, prioritize the first visible grid image, and verify both shared-thumbnail correctness and browser loading behavior.
+
+---
+
+## 2026-11-04 - A Marshal report click must finish the moderation decision
+
+**What happened**: Open Range sent a Marshal's “That's not a horse” click through the same report-only route as an ordinary rider. The report entered the queue, but the card stayed visible until a separate Hide decision was made at the inspection desk. Public listing reads could also retain a one-block cached eligibility result after that decision.
+
+**Why it mattered**: The Marshal's explicit judgment did not change the horse list the user was reviewing, and a stale eligibility cache could briefly keep the token visible in offers or the HORSE Market.
+
+**Rule**: For an authorized Marshal one-click removal, persist the exact-token Hide decision before removing the card locally; leave it visible on a failed decision. Invalidate affected client lists and the exact cached eligibility entry after Hide or Keep. Keep ordinary rider reports as queue submissions that do not hide tokens.
+
+---
+
+## 2026-11-04 - Seed the Horf moderation schema before actor-backed tests
+
+**What happened**: The local live-puppet database preparation stopped at Horf migration 0153. It lacked the exact-token nonhorse decision table from 0155, so browser mocks could pass while the real Marshal Hide route had no durable local proof. Migration 0155 also created that table without `IF NOT EXISTS`, which would fail on repeated preparation.
+
+**Why it mattered**: Horf moderation changes reward eligibility and every public horse list. A mock-only test cannot prove the exclusion row is written or that a subsequent Open Range read filters it.
+
+**Rule**: Keep local actor database preparation current with Horf migrations and repeatable. Exercise Marshal Hide through the real authenticated route, inspect the exact decision row in Postgres, and verify the public Open Range omits only that token. Restore synthetic cache and ledger state after the test.
+
+---
+
+## 2026-11-04 - Direct Marshal Hide should show its result immediately
+
+**What happened**: The initial correction waited for a report route to fetch Objkt and chain evidence, then waited for a second decision route before removing the card. It was durable but left a known false horse visible while slow external reads ran. A pending review note could also carry into another token.
+
+**Why it mattered**: A Marshal's one-click judgment appeared ineffective, and stale text risked recording the wrong reason for a different token.
+
+**Rule**: On a signed-in Marshal click, remove the exact token optimistically, call a single role-checked direct Hide route without upstream reads, and restore the card if that request fails. Record a distinct direct-Marshal audit origin and an automatic reason when no note is supplied. Clear the note when changing Inspector Desk tabs or selecting another inspection. Keep rider reports in the review queue without hiding public cards.
+
+---
+
+## 2026-11-04 - Keep Marshal inspection separate from the public market
+
+**What happened**: The inspection desk and public escrow listings shared the Marshal's Market page. Riders saw review controls beside trade listings, while owned listings and public eligibility needed different filtering after a token lost approval.
+
+**Why it mattered**: The public market could show ineligible listings, and hiding an owner's revoked listing would also hide the path needed to cancel it.
+
+**Rule**: Put role-gated inspection at `/horf/inspection-desk`. Keep `/horf/marshals-market` public and show only active, currently approved swap listings there; load an owner's own listings separately and preserve cancellation after revocation. On the Inspector Desk, separate pending rider reports, unapproved tokens, and loaded approved tokens; label page-limited counts honestly.
