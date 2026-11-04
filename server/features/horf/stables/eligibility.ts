@@ -111,6 +111,7 @@ export async function inspectHorseToken(
     tokenId,
     name: String(token.name || `Token #${tokenId}`).trim() || `Token #${tokenId}`,
     image: safeImage(token.thumbnail_uri || token.display_uri),
+    displayUri: safeImage(token.display_uri),
     artifactUri: safeImage(token.artifact_uri),
     mime: typeof token.mime === "string" ? token.mime.trim().toLowerCase() || null : null,
   };

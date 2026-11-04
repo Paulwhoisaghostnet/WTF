@@ -1054,6 +1054,7 @@ export const DOMAIN_WORKFLOWS = [
     routes: ["/horf/horse-market", "/horf/open-range"],
     eventHandles: [
       "horf.horse_market.buying_options_opened",
+      "horf.horse_market.artwork_opened",
       "horf.horse_market.listed",
       "horf.horse_market.bought",
       "horf.horse_market.cancelled",

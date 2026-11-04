@@ -11,7 +11,7 @@ function json(route, body) {
   return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(body) });
 }
 
-async function mockMarket(page, ready) {
+async function mockMarket(page, ready, token = { name: "Neighvember Chestnut", image: "/horf-art/horse-portrait-photo.jpg" }) {
   await page.route(/\/api\/horf\/season(?:\?.*)?$/, (route) => json(route, {
     season, seasons: [season], asOf: "2026-11-03T20:00:00Z", status: "ready", error: null,
     nextRefreshAt: null, currentUser: null, leaderboard: [],
@@ -24,7 +24,7 @@ async function mockMarket(page, ready) {
   await page.route("**/api/horf/horse-market/listings", (route) => json(route, { listings: ready ? [{
     id: "2", sellerAddress: seller, tokenContract: horse, tokenId: "7", remaining: "3",
     unitPriceHorseRaw: "123000000", unitPriceHorse: "1.23",
-    token: { name: "Neighvember Chestnut", image: "/horf-art/horse-portrait-photo.jpg" },
+    token,
   }] : [] }));
   await page.route(/\/api\/horf\/horse-market\/objkt-listings(?:\?.*)?$/, (route) => json(route, { listings: [{
     listingId: "8669074", askId: "12802880", marketplaceContract: "KT1SwbTqhSKF6Pdokiu1K4Fpi17ahPPzmt1X",
@@ -73,6 +73,75 @@ test.describe("HORSE market", () => {
     await expect(detail).toBeFocused();
     await expect(detail).toContainText("1.23 HORSE per edition");
     await expect(detail.getByRole("button", { name: "Connect wallet for HORSE" })).toBeVisible();
+  });
+
+  test("opens exact token artwork and details in a full-screen viewer with every close control", async ({ page, request }) => {
+    expect((await request.post("/__test/state", { data: { userRole: "anonymous" } })).ok()).toBeTruthy();
+    await mockMarket(page, true);
+    await page.goto("/horf/horse-market");
+    const open = page.locator("[data-horf-horse-market-art-trigger]");
+    const viewer = page.locator("[data-horf-horse-market-art-modal]");
+    await open.click();
+    await expect(viewer).toBeVisible();
+    const bounds = await viewer.boundingBox();
+    expect(bounds).toMatchObject({ x: 0, y: 0 });
+    expect(bounds.width).toBe(page.viewportSize().width);
+    expect(bounds.height).toBe(page.viewportSize().height);
+    await expect(viewer).toContainText("Neighvember Chestnut");
+    await expect(viewer).toContainText(horse);
+    await expect(viewer).toContainText("#7");
+    await expect(viewer).toContainText("HORSE price");
+    await expect(viewer).toContainText("1.23 per edition");
+    await expect(viewer.locator("[data-horf-horse-market-art-image]")).toBeVisible();
+    await expect(viewer.locator("[data-horf-horse-market-art-image]")).toHaveAttribute("src", /horse-portrait-photo\.jpg/);
+    await page.keyboard.press("Escape");
+    await expect(viewer).toBeHidden();
+
+    await open.click();
+    await viewer.getByRole("button", { name: "Close horse artwork" }).click();
+    await expect(viewer).toBeHidden();
+
+    await open.click();
+    await viewer.getByText("Close this popup").click();
+    await expect(viewer).toBeHidden();
+
+    await open.click();
+    await page.locator("[data-horf-horse-market-art-backdrop]").click({ position: { x: 5, y: 5 } });
+    await expect(viewer).toBeHidden();
+  });
+
+  test("keeps animated GIFs on cards and plays video art in the full-screen viewer", async ({ page, request }) => {
+    expect((await request.post("/__test/state", { data: { userRole: "anonymous" } })).ok()).toBeTruthy();
+    await mockMarket(page, true, {
+      name: "Galloping GIF",
+      image: "/creation-tools/industrializer/background.gif",
+      artifactUri: "/creation-tools/industrializer/background.gif",
+      mime: "image/gif",
+    });
+    await page.goto("/horf/horse-market");
+    const card = page.locator("[data-horf-horse-market-listing]");
+    await expect(card.locator("[data-horf-horse-market-card-gif]")).toHaveAttribute("src", /background\.gif/);
+    await card.locator("[data-horf-horse-market-art-trigger]").click();
+    const viewer = page.locator("[data-horf-horse-market-art-modal]");
+    await expect(viewer.locator("[data-horf-horse-market-art-image]")).toHaveAttribute("src", /background\.gif/);
+    await page.keyboard.press("Escape");
+
+    await mockMarket(page, true, {
+      name: "Video Mare",
+      image: "/horf-art/horse-portrait-photo.jpg",
+      artifactUri: "/desktop/paul-tutorials/talk.mp4",
+      mime: "video/mp4",
+    });
+    await page.reload();
+    await expect(card.locator("[data-horf-horse-market-card-video]")).toBeVisible();
+    await expect(card.locator("[data-horf-horse-market-card-video]")).toHaveAttribute("src", /talk\.mp4/);
+    await expect(card.locator("[data-horf-horse-market-card-video]")).toHaveAttribute("autoplay", "");
+    expect(await card.locator("[data-horf-horse-market-card-video]").evaluate((video) => video.muted)).toBe(true);
+    await expect(card.locator("[data-horf-horse-market-card-video]")).toHaveAttribute("loop", "");
+    await card.locator("[data-horf-horse-market-art-trigger]").click();
+    await expect(viewer.locator("[data-horf-horse-market-art-video]")).toBeVisible();
+    await expect(viewer.locator("[data-horf-horse-market-art-video]")).toHaveAttribute("controls", "");
+    await expect(viewer.locator("[data-horf-horse-market-art-video]")).toHaveAttribute("src", /talk\.mp4/);
   });
 
   test("lets a connected buyer reach the exact HORSE purchase control and validates quantity", async ({ page, request }) => {

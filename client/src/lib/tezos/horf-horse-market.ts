@@ -43,7 +43,13 @@ export type HorfHorseMarketListing = {
   tokenId: string;
   remaining: string;
   unitPriceHorseRaw: string;
-  token?: { name?: string; image?: string | null };
+  token?: {
+    name?: string;
+    image?: string | null;
+    displayUri?: string | null;
+    artifactUri?: string | null;
+    mime?: string | null;
+  };
 };
 
 export type HorfObjktPurchase = {

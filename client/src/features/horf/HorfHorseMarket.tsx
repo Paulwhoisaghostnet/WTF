@@ -2,8 +2,9 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import styled from "styled-components";
 import { api } from "../../lib/api";
-import { advanceResolvedMediaFallback, resolveTokenThumbnail } from "../../lib/media-resolve";
+import { advanceResolvedMediaFallback, resolveTokenThumbnail, type ResolvedThumbnail } from "../../lib/media-resolve";
 import { logClientSystemEvent } from "../../lib/system-log";
+import { resolveHorfHorseArt, resolveHorfHorseVideo } from "./horse-media";
 import {
   HORF_MARKET_CHAIN_ID,
   assertHorseMarketPermitMatchesReview,
@@ -110,9 +111,12 @@ const Card = styled.article<{ $selected: boolean }>`
   min-width: 0; overflow: hidden; border: 1px solid ${(p) => p.$selected ? 'var(--horf-teal, #71b7a0)' : 'var(--horf-line, #3d5148)'};
   border-radius: 18px; background: var(--horf-surface, #1b2723); box-shadow: ${(p) => p.$selected ? '0 10px 30px #00000040' : '0 3px 12px #00000026'};
   .art { position: relative; aspect-ratio: 1.35; overflow: hidden; background: #2b3d34; }
-  .art img { width: 100%; height: 100%; object-fit: contain; display: block; }
+  .art-open { width: 100%; height: 100%; padding: 0; border: 0; background: transparent; cursor: zoom-in; }
+  .art-open:focus-visible { outline: 3px solid var(--horf-teal, #71b7a0); outline-offset: -4px; }
+  .art img, .art video { width: 100%; height: 100%; object-fit: contain; display: block; }
   .art .photo { object-fit: cover; }
-  .tag { position: absolute; top: 11px; left: 11px; padding: 6px 9px; border-radius: 999px; background: #ffcf76; color: #382a17; font: 850 10px/1 var(--horf-font); text-transform: uppercase; }
+  .tag { position: absolute; top: 11px; left: 11px; padding: 6px 9px; border-radius: 999px; background: #ffcf76; color: #382a17; font: 850 10px/1 var(--horf-font); text-transform: uppercase; pointer-events: none; }
+  .expand { position: absolute; right: 11px; bottom: 11px; padding: 6px 9px; border-radius: 999px; background: #101816d9; color: var(--horf-ink, #f4ead6); font: 800 11px/1.2 var(--horf-font); pointer-events: none; }
   .body { padding: 15px; }
   h4 { margin: 0 0 4px; font: 700 20px/1.15 var(--horf-display); overflow-wrap: anywhere; }
   p { margin: 0; color: var(--horf-muted); font-size: 12px; }
@@ -120,6 +124,28 @@ const Card = styled.article<{ $selected: boolean }>`
   .price strong { font: 750 24px/1 var(--horf-display); color: var(--horf-gold, #d8a34a); }
   .price span { color: var(--horf-muted); font-size: 11px; }
   .body > button { width: 100%; }
+`;
+const ArtDialog = styled.dialog`
+  position: fixed; inset: 0; width: 100vw; height: 100dvh; max-width: none; max-height: none;
+  margin: 0; padding: 0; overflow: hidden; border: 0; background: transparent; color: var(--horf-ink, #f4ead6);
+  &::backdrop { background: #030806e8; }
+  .backdrop { position: absolute; inset: 0; background: #030806ec; cursor: zoom-out; }
+  .viewer { position: relative; z-index: 1; display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 360px); width: min(1480px, calc(100% - 32px)); height: calc(100% - 32px); margin: 16px auto; overflow: hidden; border: 1px solid var(--horf-line, #3d5148); border-radius: 18px; background: var(--horf-surface, #1b2723); box-shadow: 0 24px 80px #000b; }
+  .close-x { position: absolute; top: 14px; left: 14px; z-index: 2; display: grid; place-items: center; width: 44px; height: 44px; border: 1px solid var(--horf-line, #3d5148); border-radius: 50%; background: #101816e8; color: var(--horf-ink, #f4ead6); font-size: 26px; line-height: 1; cursor: pointer; }
+  .close-x:focus-visible, .close-bottom:focus-visible { outline: 3px solid var(--horf-teal, #71b7a0); outline-offset: 3px; }
+  .stage { display: grid; place-items: center; min-width: 0; min-height: 0; padding: clamp(18px, 3vw, 48px); background: var(--horf-canvas, #101816); }
+  .stage img, .stage video { display: block; max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; }
+  .stage video { width: 100%; }
+  .stage p { color: var(--horf-muted, #b7b5a7); }
+  .info { display: flex; flex-direction: column; gap: 14px; min-width: 0; overflow: auto; padding: clamp(22px, 3vw, 36px); border-left: 1px solid var(--horf-line, #3d5148); }
+  .info small { color: var(--horf-gold, #d8a34a); font-weight: 850; text-transform: uppercase; letter-spacing: .08em; }
+  .info h3 { margin: 0; font: 700 clamp(26px, 3vw, 40px)/1.05 var(--horf-display); overflow-wrap: anywhere; }
+  .info dl { display: grid; grid-template-columns: 100px minmax(0, 1fr); gap: 8px 12px; margin: 0; font-size: 13px; }
+  .info dt { color: var(--horf-muted, #b7b5a7); }
+  .info dd { margin: 0; overflow-wrap: anywhere; }
+  .info a, .close-bottom { color: var(--horf-teal, #71b7a0); font-weight: 800; }
+  .close-bottom { align-self: flex-start; margin-top: auto; padding: 8px 0; border: 0; background: transparent; text-decoration: underline; cursor: pointer; }
+  @media (max-width: 760px) { .viewer { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) auto; } .stage { padding: 48px 12px 12px; } .info { max-height: 34dvh; padding: 17px; border-left: 0; border-top: 1px solid var(--horf-line, #3d5148); } .info dl { grid-template-columns: 90px minmax(0, 1fr); } }
 `;
 const Panel = styled.aside`
   min-width: 0; padding: 21px; border: 1px solid var(--horf-line, #3d5148); border-radius: 18px;
@@ -141,6 +167,29 @@ const Stamp = styled.span`
   background: #25483a; color: #a5d9bd; font-size: 11px; font-weight: 800;
 `;
 
+function MarketVideoPreview({ video, poster }: { video: ResolvedThumbnail; poster: ResolvedThumbnail | null }) {
+  const elementRef = useRef<HTMLVideoElement>(null);
+  const [visible, setVisible] = useState(false);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    const element = elementRef.current;
+    if (!element) return;
+    if (typeof IntersectionObserver === "undefined") { setVisible(true); return; }
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) {
+        setVisible(true);
+        observer.disconnect();
+      }
+    });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+
+  if (failed) return <img src={poster?.src ?? "/horf-art/horse-portrait-photo.jpg"} alt="" onError={(event) => { if (!advanceResolvedMediaFallback(event.currentTarget, poster)) event.currentTarget.src = "/horf-art/horse-portrait-photo.jpg"; }} />;
+  return <video ref={elementRef} data-horf-horse-market-card-video src={visible ? video.src : undefined} poster={poster?.src} muted autoPlay loop playsInline preload={visible ? "metadata" : "none"} aria-hidden="true" onError={(event) => { if (!advanceResolvedMediaFallback(event.currentTarget, video)) setFailed(true); }} />;
+}
+
 function shortAddress(value: string) { return value.length > 18 ? `${value.slice(0, 8)}…${value.slice(-6)}` : value; }
 function isPositive(value: string) { try { return BigInt(value) > 0n; } catch { return false; } }
 function pendingText(pending: Pending) {
@@ -156,7 +205,13 @@ export function HorfHorseMarket({ address, connectWallet, isConnecting }: {
 }) {
   const qc = useQueryClient();
   const detailsRef = useRef<HTMLElement>(null);
+  const artDialogRef = useRef<HTMLDialogElement>(null);
+  const artCloseRef = useRef<HTMLButtonElement>(null);
+  const artTriggerRef = useRef<HTMLButtonElement | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [artListing, setArtListing] = useState<HorfHorseMarketListing | null>(null);
+  const [artVideoFailed, setArtVideoFailed] = useState(false);
+  const [artImageFailed, setArtImageFailed] = useState(false);
   const [selectedOwnedKey, setSelectedOwnedKey] = useState("");
   const [ownedSearchDraft, setOwnedSearchDraft] = useState("");
   const [ownedSearch, setOwnedSearch] = useState("");
@@ -202,7 +257,36 @@ export function HorfHorseMarket({ address, connectWallet, isConnecting }: {
     selectedOwned.balance === review.ownedBalance && quantity === review.quantity &&
     price.trim() === review.priceInput && inspectionQuery.data?.status === "approved");
   useEffect(() => { setReview(null); }, [address]);
+  useEffect(() => {
+    const dialog = artDialogRef.current;
+    if (!dialog) return;
+    if (artListing && !dialog.open) {
+      dialog.showModal();
+      artCloseRef.current?.focus();
+    } else if (!artListing && dialog.open) dialog.close();
+  }, [artListing]);
+  useEffect(() => {
+    if (!artListing) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = previousOverflow; };
+  }, [artListing]);
   const busy = pending !== null;
+  const artName = artListing?.token?.name || (artListing ? `Horse #${artListing.tokenId}` : "Horse artwork");
+  const artVideo = artListing ? resolveHorfHorseVideo(artListing.token ?? {}) : null;
+  const artImage = artListing ? resolveHorfHorseArt({ ...(artListing.token ?? {}), image: artListing.token?.image || artListing.token?.displayUri }) : null;
+
+  function openArtwork(listing: HorfHorseMarketListing, trigger: HTMLButtonElement) {
+    artTriggerRef.current = trigger;
+    setArtVideoFailed(false);
+    setArtImageFailed(false);
+    setArtListing(listing);
+    logClientSystemEvent({
+      eventType: "horf.horse_market.artwork_opened",
+      message: "HORF Market horse artwork opened",
+      metadata: { listingId: listing.id, tokenContract: listing.tokenContract, tokenId: listing.tokenId },
+    });
+  }
 
   function inspectListing(listing: HorfHorseMarketListing) {
     setSelectedId(listing.id);
@@ -334,9 +418,16 @@ export function HorfHorseMarket({ address, connectWallet, isConnecting }: {
         {!listingQuery.isPending && !listingQuery.isError && listings.length === 0 && <Notice>No horses on the block yet. A Marshal-approved horse can be the first in the ring.</Notice>}
         <Grid>{listings.map((listing, index) => {
           const name = listing.token?.name || `Horse #${listing.tokenId}`;
-          const art = listing.token?.image ? resolveTokenThumbnail({ thumbnail: listing.token.image }) : null;
+          const video = listing.token ? resolveHorfHorseVideo(listing.token) : null;
+          const isGif = listing.token?.mime?.trim().toLowerCase().startsWith("image/gif") ?? false;
+          const hasGifPreview = isGif || Boolean(listing.token?.displayUri && /\.gif(?:[?#]|$)/i.test(listing.token.displayUri));
+          const art = isGif
+            ? resolveHorfHorseArt({ ...(listing.token ?? {}), image: listing.token?.displayUri || listing.token?.image })
+            : hasGifPreview && listing.token?.displayUri
+              ? resolveTokenThumbnail({ thumbnail: listing.token.displayUri })
+              : listing.token?.image ? resolveTokenThumbnail({ thumbnail: listing.token.image }) : null;
           return <Card key={listing.id} $selected={selected?.id === listing.id} data-horf-horse-market-listing>
-            <div className="art">{art ? <img src={art.src} alt={`${name} token artwork`} loading={index === 0 ? "eager" : "lazy"} decoding="async" fetchPriority={index === 0 ? "high" : "auto"} onError={(event) => { if (!advanceResolvedMediaFallback(event.currentTarget, art)) { event.currentTarget.src = "/horf-art/horse-portrait-photo.jpg"; event.currentTarget.classList.add("photo"); event.currentTarget.alt = "Horse photograph placeholder"; } }} /> : <img className="photo" src="/horf-art/horse-portrait-photo.jpg" alt="Horse photograph placeholder" loading="lazy" decoding="async" />}<span className="tag">✦ Marshal approved</span></div>
+            <div className="art"><button className="art-open" type="button" data-horf-horse-market-art-trigger aria-haspopup="dialog" aria-label={`View larger artwork for ${name}`} onClick={(event) => openArtwork(listing, event.currentTarget)}>{video ? <MarketVideoPreview video={video} poster={art} /> : art ? <img data-horf-horse-market-card-gif={hasGifPreview ? "" : undefined} src={art.src} alt="" loading={index === 0 ? "eager" : "lazy"} decoding="async" fetchPriority={index === 0 ? "high" : "auto"} onError={(event) => { if (!advanceResolvedMediaFallback(event.currentTarget, art)) { event.currentTarget.src = "/horf-art/horse-portrait-photo.jpg"; event.currentTarget.classList.add("photo"); } }} /> : <img className="photo" src="/horf-art/horse-portrait-photo.jpg" alt="" loading="lazy" decoding="async" />}</button><span className="tag">✦ Marshal approved</span><span className="expand" aria-hidden="true">⤢ View art</span></div>
             <div className="body"><h4>{name}</h4><p>{listing.remaining} {listing.remaining === "1" ? "edition" : "editions"} · {shortAddress(listing.sellerAddress)}</p><div className="price"><div><span>Per edition</span><br /><strong>{formatHorseRaw(listing.unitPriceHorseRaw)}</strong> <span>HORSE</span></div><span>100% to seller</span></div><Action type="button" $strong={selected?.id === listing.id} onClick={() => inspectListing(listing)} aria-label={`View buying options for ${name}`}>View buying options →</Action><a href={objktTokenUrl(listing.tokenContract, listing.tokenId)} target="_blank" rel="noopener noreferrer">View full artwork on Objkt ↗</a></div>
           </Card>;
         })}</Grid>
@@ -388,5 +479,23 @@ export function HorfHorseMarket({ address, connectWallet, isConnecting }: {
         </Panel>
       </div>
     </Layout>
+    <ArtDialog ref={artDialogRef} data-horf-horse-market-art-modal aria-modal="true" aria-labelledby="horf-market-art-title" onClose={() => { setArtListing(null); artTriggerRef.current?.focus(); }}>
+      <div className="backdrop" data-horf-horse-market-art-backdrop onClick={() => setArtListing(null)} aria-hidden="true" />
+      {artListing && <div className="viewer">
+        <button ref={artCloseRef} className="close-x" type="button" onClick={() => setArtListing(null)} aria-label="Close horse artwork">×</button>
+        <div className="stage">
+          {artVideo && !artVideoFailed ? <video key={`${artListing.id}:video`} data-horf-horse-market-art-video src={artVideo.src} poster={artImage?.src} controls autoPlay muted playsInline preload="metadata" aria-label={`${artName} video artwork`} onError={(event) => { if (!advanceResolvedMediaFallback(event.currentTarget, artVideo)) setArtVideoFailed(true); }} />
+            : artImage && !artImageFailed ? <img key={`${artListing.id}:image`} data-horf-horse-market-art-image src={artImage.src} alt={`${artName} artwork`} onError={(event) => { if (!advanceResolvedMediaFallback(event.currentTarget, artImage)) setArtImageFailed(true); }} />
+              : <p>Token artwork is unavailable here. Open the exact token on Objkt.</p>}
+        </div>
+        <div className="info">
+          <small>🐎 On the block</small>
+          <h3 id="horf-market-art-title">{artName}</h3>
+          <dl><dt>Token</dt><dd>{artListing.tokenContract} / #{artListing.tokenId}</dd><dt>Seller</dt><dd>{artListing.sellerAddress}</dd><dt>Available</dt><dd>{artListing.remaining} {artListing.remaining === "1" ? "edition" : "editions"}</dd><dt>HORSE price</dt><dd>{formatHorseRaw(artListing.unitPriceHorseRaw)} per edition</dd></dl>
+          <a href={objktTokenUrl(artListing.tokenContract, artListing.tokenId)} target="_blank" rel="noopener noreferrer">Open this token on Objkt ↗</a>
+          <button className="close-bottom" type="button" onClick={() => setArtListing(null)}>Close this popup</button>
+        </div>
+      </div>}
+    </ArtDialog>
   </Page>;
 }

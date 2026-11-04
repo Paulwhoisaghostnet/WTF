@@ -14520,3 +14520,13 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: Even after making the payment panel visible, the label still promised a different result.
 
 **Rule**: Name the destination of a card action (“View buying options”) and offer a separately labeled path to the full token artwork. Test the accessible name and destination together.
+
+---
+
+## 2026-11-04 - Horse cards must reveal the actual token media
+
+**What happened**: HORSE Market cards used static thumbnails even when Objkt metadata exposed a different video or GIF artifact. The card artwork did not open a larger view, so a trader could not inspect the actual horse from the market.
+
+**Why it mattered**: A still preview could misrepresent animated token art and made the market harder to browse.
+
+**Rule**: Keep token media type and artifact URI in listing data, use animated previews when available, and open the exact token media in an in-page viewer with clear close controls. Verify image, GIF, video, and Escape/backdrop dismissal in browser tests.

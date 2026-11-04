@@ -28,6 +28,15 @@ test("stable eligibility uses live Objkt metadata and group counts", async () =>
   const found = await inspectHorseToken(tokenContract, tokenId, async () => token, { exclusionCheck });
   assert.equal(found.name, token.name);
   assert.match(found.image || "", /^https:\/\//);
+  const animated = await inspectHorseToken(tokenContract, tokenId, async () => ({
+    ...token,
+    display_uri: "ipfs://QmYSZCWcof4Ep9ayVSgDDuiKhmE2qEv8V9xuuMYh9fDeUc",
+    artifact_uri: "ipfs://QmYSZCWcof4Ep9ayVSgDDuiKhmE2qEv8V9xuuMYh9fDeUc",
+    mime: "image/gif",
+  }), { exclusionCheck });
+  assert.match(animated.displayUri || "", /^https:\/\//);
+  assert.match(animated.artifactUri || "", /^https:\/\//);
+  assert.equal(animated.mime, "image/gif");
   const groupOnly = { ...token, name: "Untitled", description: "", tags: [{ tag: { name: "pony", token_count: 6 } }] };
   assert.equal((await inspectHorseToken(tokenContract, tokenId, async () => groupOnly, { exclusionCheck })).tokenId, tokenId);
   await assert.rejects(
