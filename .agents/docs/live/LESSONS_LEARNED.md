@@ -14380,3 +14380,13 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: A trader with many editions had to repeat a wallet operation for each rider, and a mismatched retry label could obscure which submitted operation was being verified.
 
 **Rule**: For a batch horse-art send, show each destination and positive edition quantity, reject duplicate/self addresses and totals above owned balance, recheck the exact token balance before signing, and preserve every recipient in the pending confirmation record. Tie progress labels to the submitted operation kind, not the current form selection.
+
+---
+
+## 2026-11-04 - Update cross-page Horf assertions when send copy changes
+
+**What happened**: The HORF batch send changed direct-trade copy to describe scanning each transfer. The dedicated social browser suite passed, but a Stable journey also visited Gifts and still asserted the old single-transfer phrase, failing the full inventory run.
+
+**Why it mattered**: A correct batch feature produced a red release signal in a neighboring domain test.
+
+**Rule**: Search all browser assertions for changed user-facing copy before promoting a Horf interaction change. Keep the shared journey's wording assertion aligned with the actual per-recipient transfer behavior, then rerun the owning browser suites.

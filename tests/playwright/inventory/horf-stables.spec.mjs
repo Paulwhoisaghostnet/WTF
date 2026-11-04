@@ -313,7 +313,7 @@ test.describe("Horf Stables", () => {
     await directTrade.locator("[data-horf-gift-recipient]").fill(otherTrader);
     await expect(directTrade.locator("[data-horf-gift-submit]")).toHaveText("Review horse send");
     await expect(directTrade.locator("[data-horf-gift-submit]")).toBeEnabled();
-    await expect(directTrade).toContainText("Direct trades count when the season ledger scans the transfer");
+    await expect(directTrade).toContainText("Direct trades count when the season ledger scans each transfer");
     await page.goto("/horf/stable");
     await expect(personal.locator("[data-horf-personal-saved-row]")).toHaveCount(1);
     await personal.scrollIntoViewIfNeeded();
