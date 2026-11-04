@@ -57,4 +57,45 @@ test.describe("HORSE market", () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await expect(detail).toBeVisible();
   });
+
+  test("starts at zero editions and reviews an exact listing before requesting a permit", async ({ page, request }) => {
+    expect((await request.post("/__test/state", { data: { userRole: "anonymous" } })).ok()).toBeTruthy();
+    await page.addInitScript(({ address }) => {
+      window.localStorage.setItem("wtf:wallet-session", JSON.stringify({ address, providerName: "octez.connect" }));
+    }, { address: seller });
+    await mockMarket(page, true);
+    await page.route("**/api/horf/wallet/session", (route) => json(route, { walletAddress: seller, verified: true }));
+    await page.route(/\/api\/horf\/wallet\/tokens\?.*$/, (route) => json(route, {
+      items: [{ contract: horse, tokenId: "7", name: "Neighvember Chestnut", balance: "5", walletAddress: seller }],
+      pagination: { hasMore: false, nextOffset: 1 },
+    }));
+    await page.route(/\/api\/horf\/inspections\/status\?.*$/, (route) => json(route, { status: "approved", reason: null }));
+    let permitCalls = 0;
+    await page.route("**/api/horf/horse-market/permit", (route) => {
+      permitCalls++;
+      expect(route.request().postDataJSON()).toMatchObject({
+        address: seller, tokenContract: horse, tokenId: "7", quantity: "3", unitPriceHorseRaw: "2500000000",
+      });
+      return json(route, { address: seller, tokenContract: horse, tokenId: "7", quantity: "4",
+        unitPriceHorseRaw: "2500000000", contractAddress: market, chainId: "NetXdQprcVkpaWU",
+        nonce: `0x${"a".repeat(64)}`, signature: "sig", oracleEpoch: "1" });
+    });
+    await page.goto("/horf/horse-market");
+    const form = page.locator("[data-horf-horse-market-list-form]");
+    await expect(form.locator("[data-horf-horse-market-quantity]")).toHaveValue("0");
+    await form.locator("[data-horf-horse-market-owned]").selectOption(`${horse}:7`);
+    await expect(form.getByRole("button", { name: "Review listing" })).toBeDisabled();
+    await form.locator("[data-horf-horse-market-quantity]").fill("3");
+    await form.locator("[data-horf-horse-market-price]").fill("25");
+    await form.getByRole("button", { name: "Review listing" }).click();
+    const review = form.locator("[data-horf-horse-market-list-review]");
+    await expect(review).toContainText(horse);
+    await expect(review).toContainText("#7");
+    await expect(review).toContainText("3 editions");
+    await expect(review).toContainText("25 HORSE per edition");
+    expect(permitCalls).toBe(0);
+    await review.locator("[data-horf-horse-market-list-confirm]").click();
+    await expect(page.getByRole("alert")).toContainText("permit changed the reviewed horse");
+    expect(permitCalls).toBe(1);
+  });
 });

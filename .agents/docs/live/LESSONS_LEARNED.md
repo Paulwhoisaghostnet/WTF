@@ -14126,3 +14126,25 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: A window identity change erased valid local UI state and made successful actions look stalled or failed.
 
 **Rule**: Keep pathname window identity for apps that use query parameters as transient callback or local view state; keep query-aware identity where the query defines an explicit window. Verify both sides with domain-owned browser stories after changing URL-to-window synchronization.
+
+---
+
+## 2026-11-04 - Make escrow quantities deliberate before wallet signing
+
+**What happened**: Stable deposit rows and HORSE Market listings began at one edition. Submitting the form immediately requested a permit and proceeded toward wallet signing, so the trader never had a separate look at the exact token and count.
+
+**Why it mattered**: A default value could escrow an edition the trader had not deliberately counted, even though the contracts correctly reject zero and sign the exact positive quantity.
+
+**Rule**: Start listing quantities at zero, require the trader to enter a positive amount, show the full token identity and edition count in a separate review, and invalidate that review after any edit. Keep the on-chain one-credit-per-edition reciprocal ratio while allowing explicitly chosen multi-edition listings.
+
+---
+
+---
+
+## 2026-11-04 - Let a completed HORSE claim survive the next source scan
+
+**What happened**: The live reward API reported a completed claim-ready snapshot with positive HORSE while its status said `syncing` for the next Mainnet scan. The client required `status=ready` and disabled Claim despite `sourceComplete=true` and `claimReady=true`.
+
+**Why it mattered**: A routine source refresh made funded rewards appear unavailable to senders. Wallets with no outbound qualifying horses also needed a clearer zero-claim explanation.
+
+**Rule**: Gate Claim on the verified vault, completed source snapshot, positive claimable amount, and `claimReady`; a newer scan status alone must not override that completed claim decision. Keep zero-claim copy tied to the sender-only reward rule.

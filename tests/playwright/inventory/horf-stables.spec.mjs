@@ -562,9 +562,28 @@ test.describe("Horf Stables", () => {
     await stables.locator("[data-horf-objkt-input]").fill(`https://objkt.com/tokens/${tokenContract}/8`);
     await stables.getByRole("button", { name: "Add Objkt token" }).click();
     await expect(stables.locator("[data-horf-stable-deposit-row]")).toHaveCount(2);
+    await expect(stables.getByRole("textbox", { name: "Editions of Neighvember Seven" })).toHaveValue("0");
+    await expect(stables.getByRole("textbox", { name: "Editions of Token #8" })).toHaveValue("0");
+    await stables.locator("[data-horf-stable-submit]").click();
+    await expect(stables.getByRole("alert")).toContainText("Edition amount must be greater than zero");
+    await expect(stables.locator("[data-horf-stable-review]")).toHaveCount(0);
+    expect(permitRequests).toEqual([]);
     await stables.getByRole("textbox", { name: "Editions of Neighvember Seven" }).fill("2");
+    await stables.getByRole("textbox", { name: "Editions of Token #8" }).fill("1");
     await expect(stables.locator("[data-horf-stable-submit]")).toBeEnabled();
     await stables.locator("[data-horf-stable-submit]").click();
+    await expect(stables.locator("[data-horf-stable-review]")).toContainText("Honor Stable · Tezos Mainnet");
+    await expect(stables.locator("[data-horf-stable-review-row]")).toHaveCount(2);
+    await expect(stables.locator("[data-horf-stable-review-row]").first()).toContainText(`${tokenContract} / #7`);
+    await expect(stables.locator("[data-horf-stable-review-row]").first()).toContainText("2 editions");
+    await expect(stables.locator("[data-horf-stable-review-row]").last()).toContainText(`${tokenContract} / #8`);
+    await expect(stables.locator("[data-horf-stable-review-row]").last()).toContainText("1 edition");
+    expect(permitRequests).toEqual([]);
+    await stables.getByRole("textbox", { name: "Editions of Neighvember Seven" }).fill("1");
+    await expect(stables.locator("[data-horf-stable-review]")).toHaveCount(0);
+    await stables.getByRole("textbox", { name: "Editions of Neighvember Seven" }).fill("2");
+    await stables.locator("[data-horf-stable-submit]").click();
+    await stables.locator("[data-horf-stable-review-confirm]").click();
     await expect(stables.getByRole("alert")).toContainText("permit does not match this horse deposit");
     expect(permitRequests).toEqual([
       { address: traderWallet, mode: 1, tokenContract, tokenId: "7", amount: "2" },

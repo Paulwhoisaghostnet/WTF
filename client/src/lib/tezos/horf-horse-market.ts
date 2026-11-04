@@ -24,6 +24,18 @@ export type HorfHorseMarketPermit = Pick<HorfHorseMarketContract, "contractAddre
   oracleEpoch: string;
 };
 
+export function assertHorseMarketPermitMatchesReview(
+  permit: HorfHorseMarketPermit,
+  review: Pick<HorfHorseMarketPermit, "address" | "tokenContract" | "tokenId" | "quantity" | "unitPriceHorseRaw">,
+): void {
+  if (permit.address !== review.address || permit.tokenContract !== review.tokenContract ||
+      toNatString(permit.tokenId) !== toNatString(review.tokenId) ||
+      toNatString(permit.quantity) !== toNatString(review.quantity) ||
+      toNatString(permit.unitPriceHorseRaw) !== toNatString(review.unitPriceHorseRaw)) {
+    throw new Error("The listing permit changed the reviewed horse, edition count, or HORSE price. Review the listing again.");
+  }
+}
+
 export type HorfHorseMarketListing = {
   id: string;
   sellerAddress: string;

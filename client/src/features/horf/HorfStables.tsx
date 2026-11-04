@@ -43,6 +43,12 @@ type StableSnapshot = {
 };
 
 type DepositRow = HorfSelectedDeposit & { id: number; name: string };
+type DepositReview = {
+  address: string;
+  contract: { contractAddress: string; chainId: string };
+  mode: HorfStableMode;
+  rows: Array<HorfSelectedDeposit & { name: string }>;
+};
 type InspectionStatus = { status: "none" | "pending" | "approved" | "rejected" | "revoked"; reason: string | null };
 type PendingAction = {
   action: "deposit" | "claim" | "cancel";
@@ -229,6 +235,24 @@ const DraftList = styled.ul`
   @container (max-width: 480px) { li { grid-template-columns: minmax(0, 1fr) 72px; } li button { grid-column: 1 / -1; } }
 `;
 
+const ReviewList = styled.ul`
+  list-style: none;
+  margin: 12px 0;
+  padding: 0;
+  li { padding: 10px 0; border-top: 1px solid var(--horf-line, #3d5148); overflow-wrap: anywhere; }
+  strong, small { display: block; }
+  small { margin-top: 4px; color: var(--horf-muted, #b7b5a7); }
+`;
+
+const ReviewPanel = styled.section`
+  margin-top: 16px;
+  padding: 18px;
+  border: 1px solid var(--horf-gold, #d8a34a);
+  border-radius: 14px;
+  background: var(--horf-field, #24332d);
+  overflow-wrap: anywhere;
+`;
+
 const ListingList = styled.ul`
   list-style: none;
   margin: 0;
@@ -308,6 +332,7 @@ export function HorfStables({
   const [permitScopeDenied, setPermitScopeDenied] = useState<"restricted" | "unverified" | null>(null);
   const [success, setSuccess] = useState<{ action: string; opHash: string } | null>(null);
   const [pending, setPending] = useState<PendingAction | null>(null);
+  const [depositReview, setDepositReview] = useState<DepositReview | null>(null);
 
   const snapshotQuery = useQuery({
     queryKey: ["horf", "stables", address],
@@ -347,6 +372,7 @@ export function HorfStables({
   const busy = pending !== null;
 
   function addRow(contractAddress: string, tokenId: string, name: string) {
+    setDepositReview(null);
     setFormError(null);
     const normalizedId = toNatString(tokenId);
     if (rows[mode].some((row) => row.tokenContract === contractAddress && row.tokenId === normalizedId)) {
@@ -355,7 +381,7 @@ export function HorfStables({
     }
     setRows((current) => ({
       ...current,
-      [mode]: [...current[mode], { id: nextRowId, tokenContract: contractAddress, tokenId: normalizedId, amount: "1", name }],
+      [mode]: [...current[mode], { id: nextRowId, tokenContract: contractAddress, tokenId: normalizedId, amount: "0", name }],
     }));
     setNextRowId((id) => id + 1);
   }
@@ -372,10 +398,14 @@ export function HorfStables({
   }
 
   function changeRow(id: number, amount: string) {
+    setDepositReview(null);
+    setFormError(null);
     setRows((current) => ({ ...current, [mode]: current[mode].map((row) => row.id === id ? { ...row, amount } : row) }));
   }
 
   function removeRow(id: number) {
+    setDepositReview(null);
+    setFormError(null);
     setRows((current) => ({ ...current, [mode]: current[mode].filter((row) => row.id !== id) }));
   }
 
@@ -386,27 +416,52 @@ export function HorfStables({
     };
   }
 
-  async function deposit(event: FormEvent) {
+  function reviewDeposit(event: FormEvent) {
     event.preventDefault();
     if (!address || !contract || !depositReady || busy) return;
     setFormError(null);
     setActionError(null);
     setPermitScopeDenied(null);
     setSuccess(null);
-    let submittedHash: string | null = null;
     try {
-      const selected: HorfSelectedDeposit[] = rows[mode].map((row) => ({
+      const selected = rows[mode].map((row) => ({
         tokenContract: row.tokenContract,
         tokenId: toNatString(row.tokenId),
         amount: positiveAmount(row.amount),
+        name: row.name,
       }));
       if (!selected.length) throw new Error("Add at least one eligible horse token to this stable.");
+      setDepositReview({ address, contract, mode, rows: selected });
+    } catch (error) {
+      setDepositReview(null);
+      setFormError(error instanceof Error ? error.message : "Check the horse editions before continuing.");
+    }
+  }
+
+  async function deposit() {
+    const review = depositReview;
+    if (!review || busy) return;
+    const unchanged = contract !== null && address === review.address && contract.contractAddress === review.contract.contractAddress &&
+      contract.chainId === review.contract.chainId && mode === review.mode && depositReady &&
+      rows[mode].length === review.rows.length && rows[mode].every((row, index) =>
+        row.tokenContract === review.rows[index].tokenContract && row.tokenId === review.rows[index].tokenId &&
+        row.name === review.rows[index].name && toNatString(row.amount) === review.rows[index].amount);
+    if (!unchanged) {
+      setDepositReview(null);
+      setFormError("The wallet, stable, or horse editions changed. Review the deposit again.");
+      return;
+    }
+    setActionError(null);
+    setPermitScopeDenied(null);
+    setSuccess(null);
+    let submittedHash: string | null = null;
+    try {
       setPending({ action: "deposit", stage: "eligibility", opHash: null });
       const authorized: HorfAuthorizedDeposit[] = [];
-      for (const selection of selected) {
+      for (const selection of review.rows) {
         const permit = await api.post<HorfDepositPermit>("/api/horf/stables/permit", {
-          address,
-          mode,
+          address: review.address,
+          mode: review.mode,
           tokenContract: selection.tokenContract,
           tokenId: selection.tokenId,
           amount: selection.amount,
@@ -414,19 +469,21 @@ export function HorfStables({
         authorized.push({ selection, permit });
       }
       const handlers = progress("deposit");
-      const opHash = await depositHorfHorses(address, contract, mode, authorized, {
+      const opHash = await depositHorfHorses(review.address, review.contract, review.mode, authorized, {
         ...handlers,
         onSubmitted: (hash) => { submittedHash = hash; handlers.onSubmitted(hash); },
       });
-      setRows((current) => ({ ...current, [mode]: [] }));
-      setSuccess({ action: `${activeStable.name} deposit confirmed`, opHash });
-      logClientSystemEvent({ eventType: "horf.stable.deposited", message: "Horse editions deposited in Horf Stable", metadata: { mode: activeStable.key, tokenRows: selected.length, opHash } });
+      setRows((current) => ({ ...current, [review.mode]: [] }));
+      setDepositReview(null);
+      setSuccess({ action: `${STABLES[review.mode].name} deposit confirmed`, opHash });
+      logClientSystemEvent({ eventType: "horf.stable.deposited", message: "Horse editions deposited in Horf Stable", metadata: { mode: STABLES[review.mode].key, tokenRows: review.rows.length, opHash } });
       void snapshotQuery.refetch();
     } catch (error) {
       if (isApiRequestError(error) && error.status === 403) {
         setPermitScopeDenied(/restricted|blacklist/i.test(error.message) ? "restricted" : "unverified");
       }
       setActionError(`${error instanceof Error ? error.message : "The horse deposit could not be completed."}${submittedHash ? " The transaction was submitted; check its explorer status before retrying." : ""}`);
+      if (submittedHash) setDepositReview(null);
     } finally {
       setPending(null);
     }
@@ -508,7 +565,7 @@ export function HorfStables({
             $selected={mode === stable.mode}
             aria-pressed={mode === stable.mode}
             disabled={busy}
-            onClick={() => { setMode(stable.mode); setFormError(null); setActionError(null); }}
+            onClick={() => { setMode(stable.mode); setDepositReview(null); setFormError(null); setActionError(null); }}
           >
             <small>{stable.marker}</small>
             <strong>{stable.name}</strong>
@@ -559,7 +616,7 @@ export function HorfStables({
               <SmallButton type="submit" disabled={!address || !depositReady || busy || !objktInput.trim()}>Add Objkt token</SmallButton>
             </InputAction>
           </form>
-          <form onSubmit={(event) => void deposit(event)}>
+          <form onSubmit={reviewDeposit}>
             {rows[mode].length > 0 ? (
               <DraftList data-horf-stable-deposit-rows>
                 {rows[mode].map((row, index) => (
@@ -576,11 +633,31 @@ export function HorfStables({
               </DraftList>
             ) : <p>No horse editions added to this deposit yet.</p>}
             {formError && <Status $warn role="alert">{formError}</Status>}
-            <SmallButton data-horf-stable-submit type="submit" $strong disabled={!address || !depositReady || !allRowsApproved || busy}>
-              {busy && pending?.action === "deposit" ? "Deposit in progress…" : `Deposit in ${activeStable.name}`}
-            </SmallButton>
-            <p>Deposits require active inspection and enough editions. Tezos fees apply.</p>
+            {!depositReview && <SmallButton data-horf-stable-submit type="submit" $strong disabled={!address || !depositReady || !allRowsApproved || busy}>
+              Review horse deposit
+            </SmallButton>}
+            <p>Set the edition count for each horse. Deposits require active inspection and enough editions. Tezos fees apply.</p>
           </form>
+          {depositReview && depositReview.mode === mode && (
+            <ReviewPanel data-horf-stable-review aria-label="Review horse deposit">
+              <Eyebrow>Before the wallet opens</Eyebrow>
+              <h3>Review horse deposit</h3>
+              <p>{STABLES[depositReview.mode].name} · Tezos Mainnet · from {depositReview.address}</p>
+              <ReviewList>
+                {depositReview.rows.map((row) => (
+                  <li key={`${row.tokenContract}:${row.tokenId}`} data-horf-stable-review-row>
+                    <strong>{row.name} · {row.amount} {row.amount === "1" ? "edition" : "editions"}</strong>
+                    <small>Token {row.tokenContract} / #{row.tokenId}</small>
+                  </li>
+                ))}
+              </ReviewList>
+              <p>Escrow contract: {depositReview.contract.contractAddress}</p>
+              <SmallButton data-horf-stable-review-confirm type="button" $strong onClick={() => void deposit()} disabled={busy || !depositReady || !allRowsApproved}>
+                {busy && pending?.action === "deposit" ? "Deposit in progress…" : "Confirm and open wallet"}
+              </SmallButton>{" "}
+              <SmallButton data-horf-stable-review-back type="button" onClick={() => setDepositReview(null)} disabled={busy}>Back to edit</SmallButton>
+            </ReviewPanel>
+          )}
         </Panel>
 
         <Panel data-horf-stable-listings>
