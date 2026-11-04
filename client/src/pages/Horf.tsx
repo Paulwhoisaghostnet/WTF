@@ -645,6 +645,29 @@ const DirectoryCard = styled.article`
   a { display: block; color: var(--horf-teal); font: 750 22px/1.15 var(--horf-display, sans-serif); overflow-wrap: anywhere; }
   p { margin: 9px 0 0; color: var(--horf-muted); font-size: 13px; }
   strong { color: var(--horf-ink); }
+  button[data-horf-trader-quick-send] { width: 100%; margin-top: 15px; }
+`;
+
+const QuickSendDialog = styled.dialog`
+  width: min(440px, calc(100vw - 24px));
+  max-height: calc(100dvh - 24px);
+  overflow: auto;
+  padding: 0;
+  border: 1px solid var(--horf-line);
+  border-radius: 18px;
+  background: var(--horf-surface);
+  color: var(--horf-ink);
+  box-shadow: 0 28px 70px #06100dd9;
+  font-family: var(--horf-font, ui-sans-serif, system-ui, sans-serif);
+  &::backdrop { background: #07120fd9; backdrop-filter: blur(4px); }
+  .quick-head { display: flex; justify-content: space-between; align-items: start; gap: 12px; padding: 20px 20px 13px; border-bottom: 1px solid var(--horf-line); }
+  .quick-head small { display: block; color: var(--horf-gold); font: 800 11px/1.2 ui-sans-serif, system-ui, sans-serif; text-transform: uppercase; letter-spacing: .08em; }
+  .quick-head h2 { margin: 5px 0 0; font: 750 25px/1.08 var(--horf-display, Georgia, serif); overflow-wrap: anywhere; }
+  .quick-head button { flex: 0 0 auto; min-width: 38px; min-height: 38px; border: 1px solid var(--horf-line); border-radius: 999px; background: var(--horf-field); color: var(--horf-ink); cursor: pointer; font-size: 18px; }
+  .quick-head button:disabled { cursor: wait; opacity: .5; }
+  .quick-body { padding: 16px 20px 20px; }
+  button:focus-visible, select:focus-visible, input:focus-visible, a:focus-visible { outline: 3px solid var(--horf-focus); outline-offset: 2px; }
+  @media (max-width: 480px) { .quick-head { padding: 16px 16px 12px; } .quick-body { padding: 14px 16px 16px; } }
 `;
 
 const ProfileTabs = styled.div`
@@ -903,6 +926,10 @@ export function Horf() {
   const [profileTab, setProfileTab] = useState<"for-trade" | "all-horses">("for-trade");
   const [selectedProfileHorse, setSelectedProfileHorse] = useState<PublicHeldHorse | PublicOffer | null>(null);
   const profileHorseDialogRef = useRef<HTMLDialogElement>(null);
+  const [quickSendRider, setQuickSendRider] = useState<{ address: string; name: string | null } | null>(null);
+  const [quickSendBusy, setQuickSendBusy] = useState(false);
+  const quickSendDialogRef = useRef<HTMLDialogElement>(null);
+  const quickSendTriggerRef = useRef<HTMLButtonElement | null>(null);
   const [profileApprovalBusy, setProfileApprovalBusy] = useState(false);
   const [profileApprovalStatus, setProfileApprovalStatus] = useState<string | null>(null);
   const [profileApprovalResults, setProfileApprovalResults] = useState<Record<string, { status: "approved" | "failed"; message: string }>>({});
@@ -1006,6 +1033,31 @@ export function Horf() {
   useEffect(() => {
     if (data?.seasons) setSeasonManifest(data.seasons);
   }, [data?.seasons]);
+
+  useEffect(() => {
+    const dialog = quickSendDialogRef.current;
+    if (!quickSendRider || !dialog || dialog.open) return;
+    dialog.showModal();
+    const focusFrame = window.requestAnimationFrame(() => {
+      const horseSelect = dialog.querySelector<HTMLSelectElement>("[data-horf-gift-owned]");
+      const closeButton = dialog.querySelector<HTMLButtonElement>("[data-horf-quick-send-close]");
+      (horseSelect && !horseSelect.disabled ? horseSelect : closeButton)?.focus();
+    });
+    return () => window.cancelAnimationFrame(focusFrame);
+  }, [quickSendRider]);
+
+  function openQuickSend(rider: { address: string; name: string | null }, trigger: HTMLButtonElement) {
+    quickSendTriggerRef.current = trigger;
+    setQuickSendBusy(false);
+    setQuickSendRider(rider);
+    logClientSystemEvent({ eventType: "horf.trader.quick_send_opened", message: "Horf trader quick horse send opened", metadata: { targetWallet: rider.address } });
+  }
+
+  function closeQuickSend() {
+    setQuickSendRider(null);
+    setQuickSendBusy(false);
+    window.requestAnimationFrame(() => quickSendTriggerRef.current?.focus());
+  }
 
   useEffect(() => {
     if (isHorfLocation() && (!pagePath || windowManager.focusedPath === pagePath)) {
@@ -1294,8 +1346,13 @@ export function Horf() {
               <TraderLink address={rider.address} name={rider.name} />
               <p><strong>{rider.trades}</strong> {rider.trades === 1 ? "season trade" : "season trades"} · <strong>{rider.offerCount}</strong> {rider.offerCount === 1 ? "horse offered" : "horses offered"}</p>
               <HorfTradeHorseCarousel address={rider.address} />
+              {rider.address !== address && <Action data-horf-trader-quick-send type="button" $primary aria-label={`Send a horse to ${traderName(rider.name, rider.address)}`} onClick={(event) => openQuickSend(rider, event.currentTarget)}>Send a horse 🐎</Action>}
             </DirectoryCard>)}
           </DirectoryGrid> : <LedgerPanel><h3>{query.isPending || directoryOffersQuery.isPending ? "Gathering the riders…" : "No riders at the rail yet"}</h3><p>Try another season or check the Open Range for new horse trade signs.</p></LedgerPanel>}
+          {quickSendRider && <QuickSendDialog ref={quickSendDialogRef} data-horf-quick-send-dialog aria-labelledby="horf-quick-send-title" onCancel={(event) => { if (quickSendBusy) event.preventDefault(); }} onClose={closeQuickSend} onClick={(event) => { if (event.target === event.currentTarget && !quickSendBusy) event.currentTarget.close(); }}>
+            <div className="quick-head"><div><small>🐎 Quick trade</small><h2 id="horf-quick-send-title">Send a horse to {traderName(quickSendRider.name, quickSendRider.address)}</h2></div><button data-horf-quick-send-close type="button" aria-label="Close horse send" disabled={quickSendBusy} onClick={() => quickSendDialogRef.current?.close()}>×</button></div>
+            <div className="quick-body"><HorfGifts key={quickSendRider.address} address={address} isGuest={isGuest} connectWallet={connectWallet} isConnecting={isConnecting} quickRecipient={quickSendRider} onQuickBusyChange={setQuickSendBusy} /></div>
+          </QuickSendDialog>}
         </Section>}
 
         {routeSection === "profile" && <Section data-horf-region="trader-profile" aria-label="Horf trader profile">

@@ -674,6 +674,7 @@ export const ADMIN_SURFACES: AdminSurface[] = [
       "horf.season_art.rotation_toggled",
       "horf.season_art.objkt_opened",
       "horf.traders.viewed",
+      "horf.trader.quick_send_opened",
       "horf.trader_profile.viewed",
       "horf.trader_profile.tab_selected",
       "horf.info.viewed",

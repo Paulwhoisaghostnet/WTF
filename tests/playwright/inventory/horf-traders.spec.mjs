@@ -157,6 +157,136 @@ test.describe("Horf trader discovery and horse test", () => {
     await expect(page.locator('[data-horf-region="trader-directory"]')).toHaveCount(0);
   });
 
+  test("sends a horse from the trader list through a compact reviewed popup", async ({ page, request }) => {
+    expect((await request.post("/__test/state", { data: { userRole: "admin" } })).ok()).toBeTruthy();
+    await page.addInitScript(({ address }) => {
+      window.localStorage.setItem("wtf:wallet-session", JSON.stringify({ address, providerName: "octez.connect" }));
+    }, { address: viewerWallet });
+    await mockPublicHorf(page);
+    await page.route("**/api/wallets", (route) => json(route, [{ walletAddress: viewerWallet }]));
+    await page.route(/\/api\/horf\/traders\/[^/]+\/horses(?:\?.*)?$/, (route) => {
+      const address = decodeURIComponent(new URL(route.request().url()).pathname.split("/").at(-2));
+      if (address !== viewerWallet) return json(route, { address, items: [], pagination: { hasMore: false, nextOffset: 0 } });
+      return json(route, { address, items: [{
+        contract, tokenId: "7", balance: "2", mintedAt: "2026-11-02T12:00:00.000Z",
+        name: "Neighvember Seven", image: "/horf-art/horse-gallop-photo.jpg", creatorAddress: viewerWallet,
+      }], pagination: { hasMore: false, nextOffset: 1 } });
+    });
+    await page.route("**/api/horf/wallet/tokens?*", (route) => json(route, {
+      items: [{ contract, tokenId: "7", name: "Neighvember Seven", balance: "2", walletAddress: viewerWallet }],
+      pagination: { hasMore: false, nextOffset: 1 },
+    }));
+    let eligibilityChecks = 0;
+    await page.route("**/api/horf/token-eligibility?*", (route) => {
+      eligibilityChecks += 1;
+      return route.fulfill({ status: 422, contentType: "application/json", body: JSON.stringify({ error: "This token is not qualifying horse art." }) });
+    });
+
+    await page.goto("/horf/traders?season=current-2026");
+    const directoryUrl = page.url();
+    const directory = page.locator('[data-horf-region="trader-directory"]');
+    const leadCard = directory.locator("[data-horf-trader-card]").filter({ hasText: "Sir Canter" });
+    const leadSend = leadCard.locator("[data-horf-trader-quick-send]");
+    await expect(leadSend).toBeVisible();
+    await leadSend.click();
+    const dialog = page.locator("[data-horf-quick-send-dialog]");
+    await expect(dialog).toBeVisible();
+    await expect(dialog).toContainText("Sir Canter");
+    await expect(dialog).toContainText(leadWallet);
+    await expect(page).toHaveURL(directoryUrl);
+    expect(await dialog.evaluate((node) => node.contains(document.activeElement))).toBe(true);
+
+    await dialog.locator("[data-horf-gift-owned]").selectOption(`${contract}:7`);
+    const amount = dialog.locator("[data-horf-gift-amount]");
+    await expect(amount).toHaveValue("");
+    await expect(dialog.locator("[data-horf-gift-submit]")).toBeDisabled();
+    await amount.fill("3");
+    await dialog.locator("[data-horf-gift-submit]").click();
+    await expect(dialog.getByRole("alert")).toContainText("owns 2");
+    await expect(dialog.locator("[data-horf-gift-review]")).toHaveCount(0);
+    await amount.fill("1");
+    await dialog.locator("[data-horf-gift-submit]").click();
+    const review = dialog.locator("[data-horf-gift-review]");
+    await expect(review).toContainText(leadWallet);
+    await expect(review).toContainText("Neighvember Seven");
+    await expect(review).toContainText(`${contract} / #7`);
+    await expect(review).toContainText("1 of 2 owned editions");
+    await expect(dialog.locator("[data-horf-gift-owned]")).not.toBeVisible();
+    await expect(dialog.locator("[data-horf-gift-amount]")).not.toBeVisible();
+    await expect(review.getByRole("button", { name: "Edit horse or quantity" })).toBeVisible();
+    expect(eligibilityChecks).toBe(0);
+    await page.screenshot({ path: "test-results/horf-quick-send-desktop.png" });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect(dialog).toBeVisible();
+    expect(await dialog.evaluate((node) => node.getBoundingClientRect().width <= innerWidth && node.scrollWidth - node.clientWidth <= 1)).toBe(true);
+    await page.screenshot({ path: "test-results/horf-quick-send-narrow.png" });
+    await review.locator("[data-horf-gift-confirm]").click();
+    await expect(dialog.getByRole("alert")).toContainText("not qualifying horse art");
+    expect(eligibilityChecks).toBe(1);
+    await expect(page).toHaveURL(directoryUrl);
+
+    await page.keyboard.press("Escape");
+    await expect(dialog).not.toBeVisible();
+    await expect(leadSend).toBeFocused();
+    const offerOnly = directory.locator("[data-horf-trader-card]").filter({ hasText: "Rider with a trade sign" });
+    await offerOnly.locator("[data-horf-trader-quick-send]").click();
+    await expect(dialog).toContainText(offerOnlyWallet);
+    await dialog.locator("[data-horf-quick-send-close]").click();
+    await expect(dialog).not.toBeVisible();
+    await expect(page).toHaveURL(directoryUrl);
+  });
+
+  test("opens quick send for a visitor and asks them to connect before sending", async ({ page, request }) => {
+    expect((await request.post("/__test/state", { data: { userRole: "anonymous" } })).ok()).toBeTruthy();
+    await mockPublicHorf(page);
+    await page.goto("/horf/traders?season=current-2026");
+    const directoryUrl = page.url();
+    const card = page.locator('[data-horf-region="trader-directory"] [data-horf-trader-card]').first();
+    await card.locator("[data-horf-trader-quick-send]").click();
+    const dialog = page.locator("[data-horf-quick-send-dialog]");
+    await expect(dialog).toBeVisible();
+    await expect(dialog).toContainText(leadWallet);
+    await expect(dialog.getByRole("button", { name: "Connect and verify wallet" })).toBeVisible();
+    await expect(dialog.locator("[data-horf-gift-owned]")).toBeDisabled();
+    await expect(dialog.locator("[data-horf-gift-submit]")).toBeDisabled();
+    await dialog.locator("[data-horf-quick-send-close]").click();
+    await expect(dialog).not.toBeVisible();
+    await expect(page).toHaveURL(directoryUrl);
+  });
+
+  test("recovers a horse picker error and keeps searching after an empty holdings page", async ({ page, request }) => {
+    expect((await request.post("/__test/state", { data: { userRole: "admin" } })).ok()).toBeTruthy();
+    await page.addInitScript(({ address }) => {
+      window.localStorage.setItem("wtf:wallet-session", JSON.stringify({ address, providerName: "octez.connect" }));
+    }, { address: viewerWallet });
+    await mockPublicHorf(page);
+    let unavailable = true;
+    const offsets = [];
+    await page.route(/\/api\/horf\/traders\/[^/]+\/horses(?:\?.*)?$/, (route) => {
+      const url = new URL(route.request().url());
+      const address = decodeURIComponent(url.pathname.split("/").at(-2));
+      const offset = Number(url.searchParams.get("offset") || 0);
+      if (address !== viewerWallet) return json(route, { address, items: [], pagination: { hasMore: false, nextOffset: 0 } });
+      offsets.push(offset);
+      if (unavailable) return route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ error: "Hold your horses" }) });
+      return json(route, { address, items: offset === 0 ? [] : [{
+        contract, tokenId: "7", balance: "2", mintedAt: "2026-11-02T12:00:00.000Z",
+        name: "Later Page Pony", image: "/horf-art/horse-gallop-photo.jpg", creatorAddress: viewerWallet,
+      }], pagination: { hasMore: offset === 0, nextOffset: offset === 0 ? 2 : 3 } });
+    });
+    await page.goto("/horf/traders?season=current-2026");
+    await page.locator('[data-horf-region="trader-directory"] [data-horf-trader-card]').first().locator('[data-horf-trader-quick-send]').click();
+    const dialog = page.locator('[data-horf-quick-send-dialog]');
+    await expect(dialog.getByRole("alert")).toContainText("qualifying horses are unavailable");
+    unavailable = false;
+    await dialog.getByRole("button", { name: "Retry horses" }).click();
+    await expect(dialog).toContainText("No horses on this page yet");
+    await expect(dialog.locator('[data-horf-gift-owned] option')).toHaveCount(1);
+    await dialog.getByRole("button", { name: "More horses" }).click();
+    await expect(dialog.locator('[data-horf-gift-owned]').locator(`option[value="${contract}:7"]`)).toHaveText("Later Page Pony · 2 owned");
+    expect(offsets).toContain(2);
+  });
+
   test("shows both traders' edition counts to a connected viewer on trade and held tabs", async ({ page, request }) => {
     const state = await request.post("/__test/state", { data: { userRole: "admin" } });
     expect(state.ok()).toBeTruthy();

@@ -14390,3 +14390,13 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: A correct batch feature produced a red release signal in a neighboring domain test.
 
 **Rule**: Search all browser assertions for changed user-facing copy before promoting a Horf interaction change. Keep the shared journey's wording assertion aligned with the actual per-recipient transfer behavior, then rerun the owning browser suites.
+
+---
+
+## 2026-11-04 - Compact horse sends need a separate review step
+
+**What happened**: The first trader-directory quick-send popup stacked the full horse picker above the transaction review, pushing Confirm below the visible phone viewport.
+
+**Why it mattered**: A dialog called a quick send still required scrolling at the moment the rider needed to verify and sign the exact token, quantity, and recipient.
+
+**Rule**: In narrow transaction dialogs, replace the composition controls with a concise exact-terms review and an Edit action. Require an explicit edition quantity, then verify the Confirm action fits without scrolling at phone width.

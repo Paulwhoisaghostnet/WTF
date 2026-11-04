@@ -8,7 +8,7 @@ import { HORF_RECIPIENT_LIMIT } from "./recipient-input";
 import { validateArtSendRecipients, type ArtSendRecipient } from "./art-send-recipients";
 import type { HorfGuestSession } from "./guest-wallet";
 import { objktTokenUrl, parseObjktToken } from "./token-input";
-import { parseHorfOwnedTokenPage } from "./owned-tokens";
+import { parseHorfOwnedTokenPage, type HorfOwnedTokenPage } from "./owned-tokens";
 import type { HorfGift, HorfGiftsResponse, HorfPosseResponse } from "./social-types";
 
 type TokenChoice = { contract: string; tokenId: string; name: string };
@@ -26,12 +26,13 @@ type PendingGift = { address: string; opHash: string; gifts: GiftToConfirm[] };
 type PendingTrade = { address: string; opHash: string; trades: GiftToConfirm[] };
 type ConfirmResponse = { status: "pending"; opHash: string } | { gifts: HorfGift[] };
 type GiftStage = "eligibility" | "preflight" | "preparing" | "wallet" | "confirming" | "indexing";
+type QuickRecipient = { address: string; name?: string | null };
 
 const PENDING_KEY_PREFIX = "horf:pending-gift-confirmation:";
 const PENDING_TRADE_KEY_PREFIX = "horf:pending-trade-confirmation:";
 
-const Shell = styled.section`
-  margin-top: clamp(36px, 5vw, 68px);
+const Shell = styled.section<{ $compact?: boolean }>`
+  margin-top: ${(p) => p.$compact ? "0" : "clamp(36px, 5vw, 68px)"};
   padding: 0;
   border: 0;
   background: transparent;
@@ -67,19 +68,19 @@ const Reminder = styled.div`
   strong { font: 700 21px/1.2 var(--horf-display, Georgia, serif); }
 `;
 
-const Columns = styled.div`
+const Columns = styled.div<{ $compact?: boolean }>`
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: ${(p) => p.$compact ? "minmax(0, 1fr)" : "minmax(0, 1fr) minmax(0, 1fr)"};
   gap: 18px;
   @container (max-width: 730px) { grid-template-columns: 1fr; }
 `;
 
-const Panel = styled.div`
+const Panel = styled.div<{ $compact?: boolean }>`
   min-width: 0;
-  padding: 20px;
-  border: 1px solid var(--horf-line, #3d5148);
+  padding: ${(p) => p.$compact ? "0" : "20px"};
+  border: ${(p) => p.$compact ? "0" : "1px solid var(--horf-line, #3d5148)"};
   border-radius: 14px;
-  background: var(--horf-surface, #1b2723);
+  background: ${(p) => p.$compact ? "transparent" : "var(--horf-surface, #1b2723)"};
   form > div { margin-bottom: 10px; }
 `;
 
@@ -142,6 +143,12 @@ const ReviewList = styled.ol`
   strong { color: var(--horf-gold, #d8a34a); }
 `;
 
+const CompactReviewWallet = styled.span`
+  display: block;
+  font: 600 11px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+  overflow-wrap: anywhere;
+`;
+
 const SendKind = styled.fieldset`
   display: flex;
   flex-wrap: wrap;
@@ -173,6 +180,17 @@ function shortAddress(address: string): string {
 
 function isPositive(value: string): boolean {
   try { return BigInt(value) > 0n; } catch { return false; }
+}
+
+function parseQuickHorsePage(value: unknown, address: string): HorfOwnedTokenPage {
+  const page = value as { address?: unknown; items?: unknown; pagination?: unknown } | null;
+  if (!page || page.address !== address || !Array.isArray(page.items)) {
+    throw new Error("Your qualifying horses could not be read. Refresh and try again.");
+  }
+  return parseHorfOwnedTokenPage({
+    items: page.items.map((item: unknown) => ({ ...(item && typeof item === "object" ? item : {}), walletAddress: address })),
+    pagination: page.pagination,
+  });
 }
 
 function pendingKey(address: string): string {
@@ -258,19 +276,25 @@ export function HorfGifts({
   isGuest,
   connectWallet,
   isConnecting,
+  quickRecipient,
+  onQuickBusyChange,
 }: {
   address: string | null;
   isGuest: boolean;
   connectWallet: () => Promise<void>;
   isConnecting: boolean;
+  quickRecipient?: QuickRecipient;
+  onQuickBusyChange?: (busy: boolean) => void;
 }) {
+  const compact = Boolean(quickRecipient);
   const qc = useQueryClient();
   const [ownedKey, setOwnedKey] = useState("");
   const [manualLink, setManualLink] = useState("");
   const [token, setToken] = useState<TokenChoice | null>(null);
-  const [sendKind, setSendKind] = useState<"gift" | "trade">("gift");
-  const [recipients, setRecipients] = useState<RecipientRow[]>([{ id: 1, address: "", amount: "1" }]);
+  const [sendKind, setSendKind] = useState<"gift" | "trade">(compact ? "trade" : "gift");
+  const [recipients, setRecipients] = useState<RecipientRow[]>([{ id: 1, address: quickRecipient?.address ?? "", amount: compact ? "" : "1" }]);
   const nextRecipientId = useRef(2);
+  const sendInFlight = useRef(false);
   const [review, setReview] = useState<SendReview | null>(null);
   const [pendingGifts, setPendingGifts] = useState<PendingGift[]>(() => readPending(address));
   const [pendingTrades, setPendingTrades] = useState<PendingTrade[]>(() => readPendingTrades(address));
@@ -288,7 +312,7 @@ export function HorfGifts({
   const posseQuery = useQuery({
     queryKey: ["horf", "posse", address],
     queryFn: () => api.get<HorfPosseResponse>(`/api/horf/posse?address=${encodeURIComponent(address!)}`),
-    enabled: Boolean(address),
+    enabled: Boolean(address && !compact),
   });
   const tradersQuery = useQuery({
     queryKey: ["horf", "art-send-traders", "all-time"],
@@ -299,12 +323,12 @@ export function HorfGifts({
         typeof trader.address === "string" && trader.blacklisted !== true &&
         Number.isSafeInteger(trader.trades) && (trader.trades ?? 0) > 0);
     },
-    enabled: Boolean(address),
+    enabled: Boolean(address && !compact),
   });
   const giftsQuery = useQuery({
     queryKey: ["horf", "gifts", address],
     queryFn: () => api.get<HorfGiftsResponse>(`/api/horf/gifts?address=${encodeURIComponent(address!)}`),
-    enabled: Boolean(address),
+    enabled: Boolean(address && !compact),
     refetchOnWindowFocus: true,
   });
   const ownedQuery = useInfiniteQuery({
@@ -312,11 +336,22 @@ export function HorfGifts({
     queryFn: ({ pageParam }) => api.get<unknown>(`/api/horf/wallet/tokens?address=${encodeURIComponent(address!)}&offset=${pageParam}`).then(parseHorfOwnedTokenPage),
     initialPageParam: 0,
     getNextPageParam: (lastPage) => lastPage.pagination.hasMore ? lastPage.pagination.nextOffset : undefined,
-    enabled: Boolean(address),
+    enabled: Boolean(address && !compact),
+  });
+  const quickHorsesQuery = useInfiniteQuery({
+    queryKey: ["horf", "quick-send-horses", address],
+    queryFn: async ({ pageParam }) => parseQuickHorsePage(
+      await api.get<unknown>(`/api/horf/traders/${encodeURIComponent(address!)}/horses?offset=${pageParam}`),
+      address!,
+    ),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage) => lastPage.pagination.hasMore ? lastPage.pagination.nextOffset : undefined,
+    enabled: Boolean(address && compact),
   });
   const ownedTokens = useMemo(
-    () => (ownedQuery.data?.pages.flatMap((page) => page.items) ?? []).filter((item) => item.walletAddress === address && isPositive(item.balance)),
-    [address, ownedQuery.data],
+    () => ((compact ? quickHorsesQuery.data?.pages : ownedQuery.data?.pages)?.flatMap((page) => page.items) ?? [])
+      .filter((item) => item.walletAddress === address && isPositive(item.balance)),
+    [address, compact, ownedQuery.data, quickHorsesQuery.data],
   );
   const selectedOwned = ownedTokens.find((item) => `${item.contract}:${item.tokenId}` === ownedKey);
   const ownedBalanceQuery = useQuery({
@@ -331,6 +366,9 @@ export function HorfGifts({
   const giftScopeDenied = isApiRequestError(giftsQuery.error) && giftsQuery.error.status === 403;
   const giftRestricted = giftScopeDenied && /restricted|blacklist/i.test(giftsQuery.error?.message ?? "");
   const busy = stage !== null;
+  const pendingQuickTrade = compact ? pendingTrades.find((item) => item.trades.some((trade) => trade.recipient === quickRecipient?.address)) : null;
+
+  useEffect(() => onQuickBusyChange?.(busy), [busy, onQuickBusyChange]);
 
   function changeRecipient(id: number, patch: Partial<ArtSendRecipient>) {
     setRecipients((current) => current.map((row) => row.id === id ? { ...row, ...patch } : row));
@@ -408,6 +446,9 @@ export function HorfGifts({
     try {
       if (ownedBalanceQuery.data == null) throw new Error("This wallet’s horse edition balance is still loading. Try again shortly.");
       const allocation = validateArtSendRecipients(recipients, address, ownedBalanceQuery.data);
+      if (compact && (sendKind !== "trade" || allocation.recipients.length !== 1 || allocation.recipients[0]?.address !== quickRecipient?.address)) {
+        throw new Error("This quick trade must go to the rider you chose.");
+      }
       setReview({ sender: address, token: { ...token }, kind: sendKind, ...allocation, ownedBalance: ownedBalanceQuery.data });
     } catch (cause) {
       setReview(null);
@@ -416,8 +457,10 @@ export function HorfGifts({
   }
 
   async function sendHorse() {
-    if (!address || !review || busy || review.sender !== address) return;
+    if (!address || !review || busy || sendInFlight.current || review.sender !== address) return;
     const { token, kind, recipients: destinations } = review;
+    if (compact && (kind !== "trade" || destinations.length !== 1 || destinations[0]?.address !== quickRecipient?.address)) return;
+    sendInFlight.current = true;
     const gifts: GiftToConfirm[] = destinations.map(({ address: recipient, amountRaw: amount }) => ({
       recipient, tokenContract: token.contract, tokenId: token.tokenId, amount,
     }));
@@ -480,9 +523,10 @@ export function HorfGifts({
       setToken(null);
       setOwnedKey("");
       setManualLink("");
-      setRecipients([{ id: nextRecipientId.current++, address: "", amount: "1" }]);
+      setRecipients([{ id: nextRecipientId.current++, address: quickRecipient?.address ?? "", amount: compact ? "" : "1" }]);
       setReview(null);
-      void ownedQuery.refetch();
+      if (compact) void quickHorsesQuery.refetch();
+      else void ownedQuery.refetch();
       void ownedBalanceQuery.refetch();
     } catch (cause) {
       const submittedNote = submitted
@@ -491,6 +535,7 @@ export function HorfGifts({
       setError(`${cause instanceof Error ? cause.message : "The horse send could not be completed."}${submittedNote}`);
     } finally {
       setStage(null);
+      sendInFlight.current = false;
     }
   }
 
@@ -526,46 +571,55 @@ export function HorfGifts({
   }
 
   return (
-    <Shell id="horf-gifts" data-horf-region="gifts" aria-label="Gift horses">
-      <Header>
+    <Shell id="horf-gifts" data-horf-region="gifts" data-horf-quick-send-form={compact || undefined} aria-label={compact ? "Quick horse trade" : "Gift horses"} $compact={compact}>
+      {!compact && <Header>
         <div>
           <small>Horse trader’s gift book</small>
           <h2>Gift horses</h2>
           <p>Send a horse as a trade or gift. See what came your way below.</p>
         </div>
         <Action type="button" onClick={() => void giftsQuery.refetch()} disabled={!address || giftsQuery.isFetching}>Refresh gifts</Action>
-      </Header>
-      <Reminder><strong>Don’t look them in the mouth.</strong><br />A gift is a gift. If you send a horse back later, mark that you returned the favor here; Horf does not count gifts as social return-ride debt.</Reminder>
-      {!address && <Note $error>Connect and verify your Tezos wallet to send and review gifts. <Action type="button" onClick={() => void connectWallet()} disabled={isConnecting}>{isConnecting ? "Connecting…" : isGuest ? "Connect and verify wallet" : "Connect wallet"}</Action></Note>}
-      <Columns>
-        <Panel data-horf-gift-send>
-          <h3>Trade or give a horse</h3>
-          <p>Send one horse to several riders in one Mainnet transaction. Pick familiar faces from your posse or the trader directory.</p>
-          <label htmlFor="horf-gift-owned">Choose an indexed token from this wallet</label>
+      </Header>}
+      {!compact && <Reminder><strong>Don’t look them in the mouth.</strong><br />A gift is a gift. If you send a horse back later, mark that you returned the favor here; Horf does not count gifts as social return-ride debt.</Reminder>}
+      {!address && <Note $error>{compact ? "Connect and verify your wallet to send this rider a horse." : "Connect and verify your Tezos wallet to send and review gifts."} <Action type="button" onClick={() => void connectWallet()} disabled={isConnecting}>{isConnecting ? "Connecting…" : isGuest ? "Connect and verify wallet" : "Connect wallet"}</Action></Note>}
+      <Columns $compact={compact}>
+        <Panel data-horf-gift-send $compact={compact}>
+          {!compact && <><h3>Trade or give a horse</h3><p>Send one horse to several riders in one Mainnet transaction. Pick familiar faces from your posse or the trader directory.</p></>}
+          {(!compact || !review) && <>
+          {compact && <p>Pick a horse from your stable, set its editions, then review the ride.</p>}
+          <label htmlFor="horf-gift-owned">{compact ? "Your horse" : "Choose an indexed token from this wallet"}</label>
           <InputAction>
             <select id="horf-gift-owned" data-horf-gift-owned value={selectedOwned ? ownedKey : ""} onChange={(event) => { setOwnedKey(event.target.value); const chosen = ownedTokens.find((item) => `${item.contract}:${item.tokenId}` === event.target.value); setToken(chosen ? { contract: chosen.contract, tokenId: chosen.tokenId, name: chosen.name || `Token #${chosen.tokenId}` } : null); setReview(null); }} disabled={!address || busy}>
-              <option value="">{ownedQuery.isPending && address ? "Loading owned tokens…" : "Choose a token"}</option>
+              <option value="">{compact
+                ? quickHorsesQuery.isPending && address ? "Loading your horses…" : "Choose a horse"
+                : ownedQuery.isPending && address ? "Loading owned tokens…" : "Choose a token"}</option>
               {ownedTokens.map((item) => <option key={`${item.contract}:${item.tokenId}`} value={`${item.contract}:${item.tokenId}`}>{item.name || `Token #${item.tokenId}`} · {item.balance} owned</option>)}
             </select>
-            {ownedQuery.hasNextPage && <Action type="button" onClick={() => void ownedQuery.fetchNextPage()} disabled={ownedQuery.isFetchingNextPage}>{ownedQuery.isFetchingNextPage ? "Loading…" : "More tokens"}</Action>}
+            {(compact ? quickHorsesQuery.hasNextPage : ownedQuery.hasNextPage) && <Action type="button" onClick={() => void (compact ? quickHorsesQuery.fetchNextPage() : ownedQuery.fetchNextPage())} disabled={compact ? quickHorsesQuery.isFetchingNextPage : ownedQuery.isFetchingNextPage}>{(compact ? quickHorsesQuery.isFetchingNextPage : ownedQuery.isFetchingNextPage) ? "Loading…" : compact ? "More horses" : "More tokens"}</Action>}
           </InputAction>
-          {ownedQuery.isError && <p role="alert">Indexed owned tokens are unavailable. You can still paste an Objkt link.</p>}
-          <form onSubmit={chooseManual}>
+          {compact && quickHorsesQuery.isError && <Note $error role="alert">Your qualifying horses are unavailable. <Action type="button" onClick={() => void quickHorsesQuery.refetch()} disabled={quickHorsesQuery.isFetching}>Retry horses</Action></Note>}
+          {!compact && ownedQuery.isError && <p role="alert">Indexed owned tokens are unavailable. You can still paste an Objkt link.</p>}
+          {compact && address && !quickHorsesQuery.isPending && !quickHorsesQuery.isError && !ownedTokens.length && <p role="status">{quickHorsesQuery.hasNextPage ? "No horses on this page yet. Load more to keep looking." : "No qualifying horse editions found in this wallet."}</p>}
+          {!compact && <form onSubmit={chooseManual}>
             <label htmlFor="horf-gift-link">Or paste an Objkt token link</label>
             <InputAction>
               <input id="horf-gift-link" data-horf-gift-link value={manualLink} onChange={(event) => setManualLink(event.target.value)} placeholder="https://objkt.com/tokens/KT1…/123" disabled={!address || busy} />
               <Action type="submit" disabled={!address || !manualLink.trim() || busy}>Use token</Action>
             </InputAction>
-          </form>
-          {token && <Note>Selected: <a href={objktTokenUrl(token.contract, token.tokenId)} target="_blank" rel="noopener noreferrer">{token.name}</a> · {shortAddress(token.contract)} / #{token.tokenId} · {ownedBalanceQuery.isPending ? "checking editions…" : ownedBalanceQuery.data != null ? `${ownedBalanceQuery.data} editions owned` : "balance unavailable"}</Note>}
+          </form>}
+          {!compact && token && <Note>Selected: <a href={objktTokenUrl(token.contract, token.tokenId)} target="_blank" rel="noopener noreferrer">{token.name}</a> · {shortAddress(token.contract)} / #{token.tokenId} · {ownedBalanceQuery.isPending ? "checking editions…" : ownedBalanceQuery.data != null ? `${ownedBalanceQuery.data} editions owned` : "balance unavailable"}</Note>}
           {token && ownedBalanceQuery.isError && <Note $error role="alert">This wallet’s edition balance is unavailable. Refresh and try again before sending.</Note>}
           <form onSubmit={reviewHorse}>
-            <SendKind data-horf-art-send-kind>
+            {!compact && <SendKind data-horf-art-send-kind>
               <legend>Send this horse as</legend>
               <label><input type="radio" name="horf-art-send-kind" value="trade" checked={sendKind === "trade"} onChange={() => { setSendKind("trade"); setReview(null); }} disabled={busy} />Trade</label>
               <label><input type="radio" name="horf-art-send-kind" value="gift" checked={sendKind === "gift"} onChange={() => { setSendKind("gift"); setReview(null); }} disabled={busy} />Gift</label>
-            </SendKind>
-            <RecipientRows data-horf-gift-recipient-rows>
+            </SendKind>}
+            {compact ? <div>
+              <p data-horf-quick-send-recipient>To <strong>{quickRecipient?.name?.trim() || shortAddress(quickRecipient?.address ?? "")}</strong> · {quickRecipient?.address}</p>
+              <label htmlFor="horf-quick-send-amount">Editions to send</label>
+              <input id="horf-quick-send-amount" data-horf-gift-amount inputMode="numeric" required placeholder="Enter editions" value={recipients[0]?.amount ?? ""} onChange={(event) => changeRecipient(recipients[0]!.id, { amount: event.target.value })} disabled={!address || busy} />
+            </div> : <RecipientRows data-horf-gift-recipient-rows>
               {recipients.map((row, index) => <li key={row.id} data-horf-gift-recipient-row>
                 <b>{index + 1}.</b>
                 <div>
@@ -588,25 +642,29 @@ export function HorfGifts({
                 </div>
                 <Action className="remove-cell" type="button" onClick={() => { setRecipients((current) => current.filter((item) => item.id !== row.id)); setReview(null); }} disabled={busy || recipients.length === 1} aria-label={`Remove rider ${index + 1}`}>Remove</Action>
               </li>)}
-            </RecipientRows>
-            <Action data-horf-gift-add-recipient type="button" onClick={addRecipient} disabled={!address || busy || recipients.length >= HORF_RECIPIENT_LIMIT}>Add another rider</Action>
-            <p>{recipients.length} of {HORF_RECIPIENT_LIMIT} rider slots. Each edition goes to one wallet. Need $HORSE instead? Use Send $HORSE.</p>
-            {tradersQuery.isError && <p role="status">Known traders are unavailable right now; you can still use your posse or enter a wallet.</p>}
-            <Action data-horf-gift-submit type="submit" $primary disabled={!address || !token || busy || ownedBalanceQuery.data == null}>Review horse send</Action>
-            <p>{sendKind === "gift"
+            </RecipientRows>}
+            {!compact && <><Action data-horf-gift-add-recipient type="button" onClick={addRecipient} disabled={!address || busy || recipients.length >= HORF_RECIPIENT_LIMIT}>Add another rider</Action>
+              <p>{recipients.length} of {HORF_RECIPIENT_LIMIT} rider slots. Each edition goes to one wallet. Need $HORSE instead? Use Send $HORSE.</p>
+              {tradersQuery.isError && <p role="status">Known traders are unavailable right now; you can still use your posse or enter a wallet.</p>}
+            </>}
+            {pendingQuickTrade && <Note role="status">A trade to this rider is still pending. Retry its confirmation below before sending again.</Note>}
+            <Action data-horf-gift-submit type="submit" $primary disabled={!address || !token || busy || ownedBalanceQuery.data == null || Boolean(pendingQuickTrade) || (compact && !recipients[0]?.amount.trim())}>Review horse send</Action>
+            <p>{compact ? "One Mainnet wallet transfer. Gas applies; Horf verifies the trade after it confirms." : sendKind === "gift"
               ? "One Mainnet wallet transaction sends every gift. Tezos gas applies. Horf verifies each recipient. Gifts count as trades without a return ride."
               : "One Mainnet wallet transaction sends every trade. Tezos gas applies. Direct trades count when the season ledger scans each transfer and create a social return ride for each recipient."}</p>
           </form>
+          </>}
           {review && <Note data-horf-gift-review role="region" aria-label="Review horse send">
             <strong>Check the reins before signing</strong><br />
-            {review.kind === "trade" ? "Trade" : "Gift"} {review.token.name} from {shortAddress(review.sender)}:
-            <ReviewList>{review.recipients.map((row) => <li key={row.address}><strong>{row.amountRaw} {row.amountRaw === "1" ? "edition" : "editions"}</strong> → {row.address}</li>)}</ReviewList>
+            {review.kind === "trade" ? "Trade" : "Gift"} {review.token.name} from {shortAddress(review.sender)}:<br />
+            <small>{review.token.contract} / #{review.token.tokenId} · <a href={objktTokenUrl(review.token.contract, review.token.tokenId)} target="_blank" rel="noopener noreferrer">Objkt token ↗</a></small>
+            <ReviewList>{review.recipients.map((row) => <li key={row.address}><strong>{row.amountRaw} {row.amountRaw === "1" ? "edition" : "editions"}</strong> {compact ? <>→<CompactReviewWallet>{row.address}</CompactReviewWallet></> : <>→ {row.address}</>}</li>)}</ReviewList>
             <p>{review.total} of {review.ownedBalance} owned editions · {review.recipients.length} {review.recipients.length === 1 ? "rider" : "riders"}. Your wallet will approve one Mainnet transfer and pay gas.</p>
-            <Action data-horf-gift-confirm type="button" $primary onClick={() => void sendHorse()} disabled={busy || Boolean(submittedHash)}>Confirm {review.kind} in wallet</Action>{" "}
-            <Action type="button" onClick={() => setReview(null)} disabled={busy}>Edit riders</Action>
+            <Action data-horf-gift-confirm type="button" $primary onClick={() => void sendHorse()} disabled={busy || Boolean(submittedHash) || Boolean(pendingQuickTrade)}>Confirm {review.kind} in wallet</Action>{" "}
+            <Action type="button" onClick={() => setReview(null)} disabled={busy}>{compact ? "Edit horse or quantity" : "Edit riders"}</Action>
           </Note>}
         </Panel>
-        <Panel data-horf-gift-received>
+        {!compact && <Panel data-horf-gift-received>
           <h3>Horses gifted to you</h3>
           <p>These are verified gifts received by {address ? shortAddress(address) : "your connected wallet"}. Marking a returned favor is your own note, not a blockchain debt.</p>
           {giftsQuery.isPending && address && <p>Reading your gift book…</p>}
@@ -621,10 +679,10 @@ export function HorfGifts({
               <Action data-horf-gift-returned type="button" onClick={() => void markFavor(gift)} disabled={marking !== null}>{marking === gift.id ? "Saving…" : gift.returnedFavor ? "Returned the favor ✓ · undo" : "Mark returned the favor"}</Action>
             </li>
           ))}</GiftList> : address && !giftsQuery.isPending && !giftsQuery.isError && <p>No verified horse gifts have arrived for this wallet yet.</p>}
-        </Panel>
+        </Panel>}
       </Columns>
-      {pendingGifts.map((pendingGift) => <Note key={pendingGift.opHash} role="status">A horse transfer was submitted at <a href={`https://tzkt.io/${encodeURIComponent(pendingGift.opHash)}`} target="_blank" rel="noopener noreferrer">{shortAddress(pendingGift.opHash)}</a>. Gift classification is pending. <Action data-horf-gift-retry type="button" onClick={() => void retryConfirmation(pendingGift)} disabled={busy}>Retry confirmation</Action> <Action type="button" onClick={() => { clearPending(pendingGift); setPendingGifts((current) => current.filter((item) => item.opHash !== pendingGift.opHash)); }} disabled={busy}>Clear if transfer failed</Action></Note>)}
-      {pendingTrades.map((pendingTrade) => <Note key={pendingTrade.opHash} role="status">A direct horse trade was submitted at <a href={`https://tzkt.io/${encodeURIComponent(pendingTrade.opHash)}`} target="_blank" rel="noopener noreferrer">{shortAddress(pendingTrade.opHash)}</a>. Horf trade verification is pending. <Action data-horf-trade-retry type="button" onClick={() => void retryTradeConfirmation(pendingTrade)} disabled={busy}>Retry trade confirmation</Action> <Action type="button" onClick={() => { clearPendingTrade(pendingTrade); setPendingTrades((current) => current.filter((item) => item.opHash !== pendingTrade.opHash)); }} disabled={busy}>Clear if transfer failed</Action></Note>)}
+      {!compact && pendingGifts.map((pendingGift) => <Note key={pendingGift.opHash} role="status">A horse transfer was submitted at <a href={`https://tzkt.io/${encodeURIComponent(pendingGift.opHash)}`} target="_blank" rel="noopener noreferrer">{shortAddress(pendingGift.opHash)}</a>. Gift classification is pending. <Action data-horf-gift-retry type="button" onClick={() => void retryConfirmation(pendingGift)} disabled={busy}>Retry confirmation</Action> <Action type="button" onClick={() => { clearPending(pendingGift); setPendingGifts((current) => current.filter((item) => item.opHash !== pendingGift.opHash)); }} disabled={busy}>Clear if transfer failed</Action></Note>)}
+      {pendingTrades.filter((pendingTrade) => !compact || pendingTrade.trades.some((trade) => trade.recipient === quickRecipient?.address)).map((pendingTrade) => <Note key={pendingTrade.opHash} role="status">A direct horse trade was submitted at <a href={`https://tzkt.io/${encodeURIComponent(pendingTrade.opHash)}`} target="_blank" rel="noopener noreferrer">{shortAddress(pendingTrade.opHash)}</a>. Horf trade verification is pending. <Action data-horf-trade-retry type="button" onClick={() => void retryTradeConfirmation(pendingTrade)} disabled={busy}>Retry trade confirmation</Action> <Action type="button" onClick={() => { clearPendingTrade(pendingTrade); setPendingTrades((current) => current.filter((item) => item.opHash !== pendingTrade.opHash)); }} disabled={busy}>Clear if transfer failed</Action></Note>)}
       {stage && <Note role="status" aria-live="polite">{giftStageLabel(stage, stageKind ?? sendKind)} {submittedHash && <a href={`https://tzkt.io/${encodeURIComponent(submittedHash)}`} target="_blank" rel="noopener noreferrer">View submitted transfer</a>}</Note>}
       {error && <Note $error role="alert">{error}</Note>}
       {success && <Note role="status">{success}</Note>}
