@@ -14260,3 +14260,13 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: A rider could be blocked from browsing, inspecting, or claiming HORSE because of another session’s traffic. Changing only the error wording would leave that shared bucket in place.
 
 **Rule**: Keep the existing request ceiling and wallet authentication protection, but apply Horf’s quota after session verification. Key verified WTF users and Horf wallet sessions separately; retain IP fallback for anonymous traffic. Test both the request key and the middleware order when moving rate limits.
+
+---
+
+## 2026-11-04 - Verify starter account state with live actors after deployment
+
+**What happened**: The starter welcome, Wastebasket, and first-login desktop bounties had local proof but still described production verification as pending after the exact f56f6e5d Hetzner deployment succeeded. Two production witness puppets then exercised the new-account state, while a classic account and contestant/witness roles checked the adjacent boundaries.
+
+**Why it mattered**: A healthy deployment cannot prove that a new account receives one authentic unread welcome, sees the intended sparse desktop, or retains its unread indicator until opening the message. Stale bounty text also understated completed live proof.
+
+**Rule**: Promote onboarding bounties only after recording both the exact deploy commit/readiness result and actor-backed live observations for new, existing, and role-specific accounts. Keep local spoofing tests as the authority proof for rejected senders.

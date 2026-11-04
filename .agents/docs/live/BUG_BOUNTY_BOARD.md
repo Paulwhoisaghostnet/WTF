@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **758** · Open: **9** · Claimed: **42** · In Progress: **16** · Blocked: **4** · Fixed: **147** · Verified: **535** · Archived: **5**
+Total: **758** · Open: **9** · Claimed: **42** · In Progress: **16** · Blocked: **4** · Fixed: **144** · Verified: **538** · Archived: **5**
 
 ## Canonical Board
 
@@ -149,7 +149,6 @@ Total: **758** · Open: **9** · Claimed: **42** · In Progress: **16** · Block
 | WTF-BB-077 | Fixed | Codex TV storage pass | 2026-05-03 | TV microapp / storage pipeline | P1 | 13 | 191 | 4 | 4 | 1 | TV cache still treats IPFS/external fetch as canonical and does not persist all served TV media into object storage |
 | WTF-BB-076 | Fixed | Codex TV hardening pass | 2026-05-03 | TV microapp / source ownership | P1 | 13 | 191 | 3 | 4 | 2 | Canonical dial 03 WTF TV is overwritten with platform-wide mixed media instead of owner-scoped media |
 | WTF-BB-064 | Fixed | gardener session | 2026-04-27 | Kiln integration / deploy | P1 | 13 | 191 | 3 | 4 | 2 | Collection factory depended on sibling Kiln paths and local-only API defaults |
-| WTF-BB-788 | Fixed | Codex first-login desktop pass | 2026-11-03 | Desktop OS / first-login clarity | P1 | 12 | 284 | 4 | 4 | 0 | New accounts receive an icon wall without an actionable welcome message |
 | WTF-BB-780 | Fixed | Codex Horf Marshal approval and per-token preview correction | 2026-11-03 | Horf / Marshal inspection and horse media | P1 | 12 | 284 | 2 | 4 | 2 | Marshal previews can repeat the wrong horse art and approval requires a full evidence screen |
 | WTF-BB-770 | Fixed | Codex coLILseum escrow completion | 2026-11-03 | coLILseum / sponsored prize recovery | P1 | 12 | 284 | 2 | 4 | 2 | Hosted sponsored rooms cannot request an evidenced technical void |
 | WTF-BB-750 | Fixed | Codex Pasta consolidation | 2026-11-02 | Macaroni V3.5 / alpha network boundary | P1 | 12 | 284 | 2 | 5 | 1 | Hosted Macaroni V3.5 alpha could reach Mainnet when the native package alone enforced Shadownet |
@@ -186,7 +185,6 @@ Total: **758** · Open: **9** · Claimed: **42** · In Progress: **16** · Block
 | WTF-BB-029 | Fixed | Codex modular architecture refactor | 2026-05-05 | Data quality / scalability | P1 | 12 | 284 | 3 | 4 | 1 | `/api/w/timeline` loads all verified users before paging or cursoring |
 | WTF-BB-791 | Fixed | Codex Horf mint-tag eligibility correction | 2026-11-04 | Horf / false horse token eligibility | P1 | 11 | 399 | 2 | 4 | 1 | Description laughter can classify non-horse art as a tradeable horse |
 | WTF-BB-786 | Fixed | Codex Horf escrow quantity review | 2026-11-04 | Horf / escrow listing quantity confirmation | P1 | 11 | 399 | 1 | 4 | 2 | Escrow listing starts at one edition and reaches wallet signing without an exact quantity review |
-| WTF-BB-782 | Fixed | Codex starter welcome DM sender validation | 2026-11-03 | Auth / administrative welcome DM | P1 | 11 | 399 | 1 | 3 | 3 | A non-admin account named wtf-admin could author automated welcomes |
 | WTF-BB-771 | Fixed | Codex coLILseum escrow completion | 2026-11-03 | coLILseum / wager wallet recovery | P1 | 11 | 399 | 2 | 4 | 1 | A failed duel seat claim or rejected wallet prompt can lock the stake panel |
 | WTF-BB-761 | Fixed | Codex coLILseum signer response hardening | 2026-11-03 | coLILseum / signer deployment parity | P1 | 11 | 399 | 2 | 4 | 1 | Sponsored escrow signer deployment and response liveness |
 | WTF-BB-760 | Fixed | Codex coLILseum sponsored-room recovery | 2026-11-03 | coLILseum / deployment guard | P1 | 11 | 399 | 2 | 4 | 1 | Deployment guard omits sponsored escrow bindings for active funded rooms |
@@ -239,7 +237,6 @@ Total: **758** · Open: **9** · Claimed: **42** · In Progress: **16** · Block
 | WTF-BB-048 | Fixed | Codex TV telemetry hardening pass | 2026-05-04 | TV microapp / availability | P2 | 9 | 571 | 2 | 3 | 1 | TV telemetry endpoint can grow session-tracking memory under spam |
 | WTF-BB-010 | Fixed | Swarm A1 | 2026-04-28 | Startup performance | P2 | 9 | 571 | 2 | 3 | 1 | Entrypoint recursively `chown -R`s mounted volumes every boot |
 | WTF-BB-009 | Fixed | Codex warning cleanup pass | 2026-05-06 | Build config | P2 | 9 | 571 | 2 | 2 | 2 | Vite build loads `.env` with unsupported `NODE_ENV=production` |
-| WTF-BB-784 | Fixed | Codex first-login desktop pass | 2026-11-03 | Desktop OS / Wastebasket shortcuts | P2 | 8 | 648 | 2 | 3 | 0 | Recycle Bin is inert and desktop shortcut deletion has no restore path |
 | WTF-BB-307 | Fixed | Codex local SSH bootstrap pass | 2026-06-21 | Ops / local SSH access | P2 | 8 | 648 | 2 | 3 | 0 | Codex repeatedly tried the wrong SSH path for Hetzner checks because the GitHub publish key path differs from this Mac's normal `ssh wtf` alias and Codex could not see the passphrase-loaded local identity; fixed with ignored `.codex/machine-ssh.env`, tracked `scripts/wtf-ssh.sh`, and project rules that force future agents through the local alias/agent bootstrap |
 | WTF-BB-170 | Fixed | Codex Skywire profile disconnect pass | 2026-05-24 | Profile / Identity bridge UX | P2 | 8 | 648 | 1 | 4 | 0 | Profile shows linked Skywire identity but lacks a manual disconnect action |
 | WTF-BB-157 | Fixed | Codex Skywire full-send gate repair | 2026-05-24 | Build / shared DTO typing | P2 | 8 | 648 | 1 | 4 | 0 | Communication route resolver leaks nullable browser policy reason into non-null DTO |
@@ -439,6 +436,7 @@ Total: **758** · Open: **9** · Claimed: **42** · In Progress: **16** · Block
 | WTF-BB-053 | Verified | Codex canonical TV broken-clip recovery | 2026-09-02 | TV microapp / reliability | P1 | 13 | 191 | 3 | 4 | 2 | Canonical `/tv` misses TV2 resilience paths (skip/error telemetry, skip-notice UX, session telemetry) |
 | WTF-BB-020 | Verified | Swarm A3 | 2026-09-02 | DB connectivity / TLS | P1 | 13 | 191 | 2 | 2 | 5 | Supabase migration and connection scripts disable TLS certificate verification |
 | WTF-BB-019 | Verified | Codex dedicated encryption-key production verification | 2026-05-30 | Secrets / key management | P1 | 13 | 191 | 3 | 2 | 4 | OAuth and Studio secret encryption fall back to `SESSION_SECRET` |
+| WTF-BB-788 | Verified | Codex first-login desktop pass | 2026-11-04 | Desktop OS / first-login clarity | P1 | 12 | 284 | 4 | 4 | 0 | New accounts receive an icon wall without an actionable welcome message |
 | WTF-BB-749 | Verified | Codex Pasta Macaroni restore custody pass | 2026-10-30 | Macaroni V3.5 / backup and restore custody | P1 | 12 | 284 | 2 | 5 | 1 | Restored Companion can pass doctor while active private paths still point at a previous runtime root |
 | WTF-BB-720 | Verified | Codex October 28 security full send | 2026-10-28 | Desktop / newly published Electron Node fixes | P1 | 12 | 284 | 2 | 3 | 3 | Stable Electron 43.8.4 now includes Node 24.22.1 while active installers remain on 43.8.3 |
 | WTF-BB-692 | Verified | Codex October security remediation | 2026-10-22 | Release / stale dependency lock regression | P1 | 12 | 284 | 2 | 3 | 3 | Dirty root lock would restore security-sensitive dependency versions older than live |
@@ -511,6 +509,7 @@ Total: **758** · Open: **9** · Claimed: **42** · In Progress: **16** · Block
 | WTF-BB-030 | Verified | Codex platform-settings concurrency verification | 2026-09-01 | Data integrity / config | P1 | 12 | 284 | 3 | 3 | 2 | `platform_settings` updates are prone to lost updates across concurrent actors |
 | WTF-BB-007 | Verified | Codex deploy hardening pass | 2026-05-03 | Runtime / supply chain | P1 | 12 | 284 | 2 | 3 | 3 | Production runtime image includes DB schema mutation tooling |
 | WTF-BB-002 | Verified | Codex deploy hardening pass | 2026-05-03 | Startup / background jobs | P1 | 12 | 284 | 3 | 4 | 1 | App starts production jobs before deploy-time migrations complete |
+| WTF-BB-782 | Verified | Codex starter welcome DM sender validation | 2026-11-04 | Auth / administrative welcome DM | P1 | 11 | 399 | 1 | 3 | 3 | A non-admin account named wtf-admin could author automated welcomes |
 | WTF-BB-762 | Verified | Codex Horf Stables wallet operation pass | 2026-11-03 | Tezos wallet / explicit send network binding | P1 | 11 | 399 | 1 | 4 | 2 | Explicit Mainnet sends can initialize Octez Connect from a stored Shadownet default |
 | WTF-BB-740 | Verified | Codex Pasta alpha remaining release gates | 2026-10-27 | Macaroni V3.5 / duplicate CID launch preflight | P1 | 11 | 399 | 2 | 4 | 1 | Privacy-preserving Objkt full scan hits a live 429 rate limit and blocks sale activation |
 | WTF-BB-728 | Verified | Codex workspace recovery | 2026-11-02 | Release hygiene / mixed dirty checkout | P1 | 11 | 399 | 2 | 4 | 1 | A stale mixed workspace invites privacy regressions and restricted asset publication |
@@ -695,6 +694,7 @@ Total: **758** · Open: **9** · Claimed: **42** · In Progress: **16** · Block
 | WTF-BB-033 | Verified | Codex W groupchat settings hardening | 2026-09-02 | Data integrity / ops | P2 | 9 | 571 | 2 | 3 | 1 | Unbounded `platform_settings` value payload allows oversized conversation lists |
 | WTF-BB-026 | Verified | Codex TzKT upstream consolidation | 2026-09-02 | API / reliability | P2 | 9 | 571 | 3 | 2 | 1 | Profile and metadata fetchers duplicate hardcoded upstream paths |
 | WTF-BB-022 | Verified | Codex Supabase boot-backfill reconciliation | 2026-09-02 | Deploy / DB operations | P2 | 9 | 571 | 2 | 3 | 1 | Backfill pipeline defaults to `us-west-2` when Supabase region is missing |
+| WTF-BB-784 | Verified | Codex first-login desktop pass | 2026-11-04 | Desktop OS / Wastebasket shortcuts | P2 | 8 | 648 | 2 | 3 | 0 | Recycle Bin is inert and desktop shortcut deletion has no restore path |
 | WTF-BB-781 | Verified | Codex Reggie release window-sync correction | 2026-11-03 | Desktop OS / query route window sync | P2 | 8 | 648 | 2 | 3 | 0 | Query navigation opens duplicate windows for the same app route |
 | WTF-BB-745 | Verified | Codex Pasta current-main integration | 2026-10-29 | Pasta integration / permissions | P2 | 8 | 648 | 1 | 2 | 2 | Managed Macaroni permission duplicated during current-main integration |
 | WTF-BB-744 | Verified | Codex Pasta current-main integration | 2026-10-29 | Pasta release / production dependency audit | P2 | 8 | 648 | 1 | 2 | 2 | Transitive Hono static server advisory entered the integrated production graph |
@@ -3339,19 +3339,6 @@ Total: **758** · Open: **9** · Claimed: **42** · In Progress: **16** · Block
 - Verification idea:
   - Build the app image, run a dry-run collection deployment against host Kiln, and confirm missing/slow Kiln fails fast with a 503 instead of hanging.
 
-### WTF-BB-788 - New accounts receive an icon wall without an actionable welcome message
-
-- Category: Desktop OS / first-login clarity
-- Priority: P1
-- Status: Fixed
-- Owner/Session: Codex first-login desktop pass
-- Last touched: 2026-11-03
-- Score: C4 + F4 + S0 + P1(4) = 12
-- Evidence (2026-11-03): The classic desktop exposes many native app icons to a new witness account. No initial wtf-admin DM guides Profile identity proof, verified EXP, or the existing role unlock path; the 30-day account counter sits at the lower right in generic window styling.
-- Correction: New accounts persist starter icon mode, showing only Inbox and Wastebasket while Stuffs retains app discovery. An idempotent DM from the canonical wtf-admin account guides Profile, identity proof, verified EXP, and the Green Room contestant milestone. The 30-day count is an upper-right worksite sign, and Inbox does not read the DM during preview. Existing accounts remain classic.
-- Verification (2026-11-03): Production build, typecheck, focused policy/unit tests, inventory coverage, and focused browser checks for starter icons, Stuffs, sign, Inbox unread/read transition, WIM message, and Wastebasket passed. An isolated PostgreSQL run proved one unread admin DM under four concurrent login hooks, read transition, and legacy-account skip. Production browser smoke remains pending.
-- Additional coverage gap (2026-11-03): Standalone Skywire ATProto signup used the central account creator but bypassed the auth-route welcome hook, leaving that new starter account without the welcome DM and Inbox badge. The standalone session-login helper now invokes the same idempotent welcome hook after a successful login and keeps login available if delivery fails. A focused 3-case test covers register/login retries, failed session, and delivery outage.
-
 ### WTF-BB-780 - Marshal previews can repeat the wrong horse art and approval requires a full evidence screen
 
 - Category: Horf / Marshal inspection and horse media
@@ -4074,18 +4061,6 @@ Total: **758** · Open: **9** · Claimed: **42** · In Progress: **16** · Block
 - Correction: Start every new listing quantity at zero, require a deliberate positive amount, and show exact token identity, quantity, and market price where applicable in a separate confirmation before any permit or wallet operation. Editing selection invalidates the review. Preserve user-selected multi-edition listings. The Market wallet builder rejects permits that differ from the reviewed quantity or price.
 - Verification (2026-11-04): Focused Stable and Market Chromium browser stories pass: zero is blocked, the first review sends no permit request, exact token IDs and edition counts are visible, edits clear the review, and a mismatched Market permit is rejected before wallet send. Production build and Market helper unit test pass; live post-deploy verification follows.
 - Score: P1(4)+C1/F4/S2=11; unintended escrow listing quantity is a material wallet-signing risk.
-
-### WTF-BB-782 - A non-admin account named wtf-admin could author automated welcomes
-
-- Category: Auth / administrative welcome DM
-- Priority: P1
-- Status: Fixed
-- Owner/Session: Codex starter welcome DM sender validation
-- Last touched: 2026-11-03
-- Score: C1 + F3 + S3 + P1(4) = 11
-- Evidence (2026-11-03): The first welcome-DM sender lookup matched username `wtf-admin` without checking its assigned role. Registration does not reserve that username, so an ordinary account could claim it before platform provisioning and have its identity used for automated messages.
-- Correction: Resolve the canonical username and require an admin role from the account role set before inserting a DM; if missing or untrusted, skip delivery and retry on a future login rather than impersonate an admin.
-- Verification (2026-11-03): In isolated PostgreSQL 16, witness and host accounts named `wtf-admin` sent zero DMs. After assigning the exact admin role, four concurrent hooks created exactly one unread admin-authored DM; opening it cleared unread. A legacy account was skipped. Typecheck, policy tests, and focused browser checks pass; production rollout remains pending.
 
 ### WTF-BB-771 - A failed duel seat claim or rejected wallet prompt can lock the stake panel
 
@@ -5113,18 +5088,6 @@ Total: **758** · Open: **9** · Claimed: **42** · In Progress: **16** · Block
 - Verification idea: Production build emits no Vite `NODE_ENV` warning.
 - 2026-05-06 fix note: Removed `NODE_ENV=production` from `.env`; runtime production mode remains controlled by scripts/process env.
 - Verification: `npm run build` completed without the Vite `NODE_ENV` warning.
-
-### WTF-BB-784 - Recycle Bin is inert and desktop shortcut deletion has no restore path
-
-- Category: Desktop OS / Wastebasket shortcuts
-- Priority: P2
-- Status: Fixed
-- Owner/Session: Codex first-login desktop pass
-- Last touched: 2026-11-03
-- Score: C2 + F3 + S0 + P2(3) = 8
-- Evidence (2026-11-03): The desktop Recycle Bin icon has no route or behavior, while the shortcut context menu permanently removes shortcuts. The owner requested a Wastebasket that removes user-created shortcuts from the desktop and works like an OS trashcan.
-- Correction: Wastebasket opens a window; shortcut context menu and drag target move shortcuts into account-scoped browser storage. Restore, individual permanent delete, and confirmed empty work from the window.
-- Verification (2026-11-03): Focused browser flow passed for create, menu move, restore, drag move, confirmed empty, and reload persistence; domain tests passed for safe normalization, per-account isolation, and full-desktop restore. Production verification is pending.
 
 ### WTF-BB-307 - Codex repeatedly tried the wrong SSH path for Hetzner checks because the GitHub publish key path differs from this Mac's normal `ssh wtf` alias and Codex could not see the passphrase-loaded local identity; fixed with ignored `.codex/machine-ssh.env`, tracked `scripts/wtf-ssh.sh`, and project rules that force future agents through the local alias/agent bootstrap
 
@@ -9674,6 +9637,20 @@ Copy this when adding a new issue:
   - Six focused crypto tests pass: both domains reject session-only production configuration, allow the documented development fallback, and prove dedicated-key precedence. Fourteen focused deploy-policy checks require the dedicated secrets before replacement.
   - The correction is an ancestor of deployed `47319133`; self-deploy run 33630052693 passed the production secret preflight, build, migrations, replacement, and exact-commit readiness. Public health reported `47319133`. A successful deploy could not have crossed this fail-closed boundary without the dedicated production values. WTF-BB-019 is Verified.
 
+### WTF-BB-788 - New accounts receive an icon wall without an actionable welcome message
+
+- Category: Desktop OS / first-login clarity
+- Priority: P1
+- Status: Verified
+- Owner/Session: Codex first-login desktop pass
+- Last touched: 2026-11-04
+- Score: C4 + F4 + S0 + P1(4) = 12
+- Evidence (2026-11-03): The classic desktop exposes many native app icons to a new witness account. No initial wtf-admin DM guides Profile identity proof, verified EXP, or the existing role unlock path; the 30-day account counter sits at the lower right in generic window styling.
+- Correction: New accounts persist starter icon mode, showing only Inbox and Wastebasket while Stuffs retains app discovery. An idempotent DM from the canonical wtf-admin account guides Profile, identity proof, verified EXP, and the Green Room contestant milestone. The 30-day count is an upper-right worksite sign, and Inbox does not read the DM during preview. Existing accounts remain classic.
+- Verification (2026-11-03): Production build, typecheck, focused policy/unit tests, inventory coverage, and focused browser checks for starter icons, Stuffs, sign, Inbox unread/read transition, WIM message, and Wastebasket passed. An isolated PostgreSQL run proved one unread admin DM under four concurrent login hooks, read transition, and legacy-account skip.
+- Additional coverage gap (2026-11-03): Standalone Skywire ATProto signup used the central account creator but bypassed the auth-route welcome hook, leaving that new starter account without the welcome DM and Inbox badge. The standalone session-login helper now invokes the same idempotent welcome hook after a successful login and keeps login available if delivery fails. A focused 3-case test covers register/login retries, failed session, and delivery outage.
+- Production verification (2026-11-04): Hetzner deploy run `41746714597` succeeded for commit `f56f6e5d`; at 2026-11-04 00:28:48 UTC its readiness check reported `status=ready`, `commitRef=f56f6e5d`, and `db=true`, `chain=true`, `jobs=true`. Two production witness puppet accounts showed only Inbox and Wastebasket as starter native icons, the upper-right `Unique users served (30 days):` sign showed 27 with `windowDays=30`, and the new-message indicator remained until the admin-authored welcome was opened. Preview left that message unread; its first steps named Profile identity proof, verified EXP, and the Green Room contestant milestone. Wastebasket was available; an existing account retained its classic desktop. Reggie was absent for a witness and present for a contestant, confirming the role-gated companion alongside onboarding.
+
 ### WTF-BB-749 - Restored Companion can pass doctor while active private paths still point at a previous runtime root
 
 - Category: Macaroni V3.5 / backup and restore custody
@@ -11288,6 +11265,19 @@ Copy this when adding a new issue:
 - Local fix note: Added `scripts/server-deploy.sh` so production deploy now builds first, ensures Postgres is healthy, stops the app, applies migrations, and only then starts the new app container. The GitHub Hetzner workflow now calls that script instead of starting the app before schema work.
 - Verification: live Hetzner deploy via `bash scripts/server-deploy.sh`; production app restarted only after migration step completed, then returned healthy `/api/health`.
 - Verification idea: Deploy logs show migration completion before first production app boot and background-job start.
+
+### WTF-BB-782 - A non-admin account named wtf-admin could author automated welcomes
+
+- Category: Auth / administrative welcome DM
+- Priority: P1
+- Status: Verified
+- Owner/Session: Codex starter welcome DM sender validation
+- Last touched: 2026-11-04
+- Score: C1 + F3 + S3 + P1(4) = 11
+- Evidence (2026-11-03): The first welcome-DM sender lookup matched username `wtf-admin` without checking its assigned role. Registration does not reserve that username, so an ordinary account could claim it before platform provisioning and have its identity used for automated messages.
+- Correction: Resolve the canonical username and require an admin role from the account role set before inserting a DM; if missing or untrusted, skip delivery and retry on a future login rather than impersonate an admin.
+- Verification (2026-11-03): In isolated PostgreSQL 16, witness and host accounts named `wtf-admin` sent zero DMs. After assigning the exact admin role, four concurrent hooks created exactly one unread admin-authored DM; opening it cleared unread. A legacy account was skipped. Typecheck, policy tests, and focused browser checks pass.
+- Production verification (2026-11-04): Hetzner deploy run `41746714597` succeeded for commit `f56f6e5d`; at 2026-11-04 00:28:48 UTC its readiness check reported `status=ready`, `commitRef=f56f6e5d`, and `db=true`, `chain=true`, `jobs=true`. Two authenticated production witness puppets observed exactly one unread welcome DM authored by the canonical admin account, with the Inbox indicator present and preview leaving the message unread. The local PostgreSQL witness/host spoof rejection above remains the security proof; production observation confirms the authorized sender path.
 
 ### WTF-BB-762 - Explicit Mainnet sends can initialize Octez Connect from a stored Shadownet default
 
@@ -15103,6 +15093,19 @@ Copy this when adding a new issue:
 - Verification (2026-09-02):
   - Focused policy suite passes 2/2. A real missing-region invocation with a dummy project reference/password exits 1 and reports `SUPABASE_REGION is required ... refusing to guess a pooler region`, before importing the backfill/database layer.
   - `38f806e3` is an ancestor of live production commit `3775bbe2`, whose Quality Gates and Hetzner deploy succeeded and whose public health is alive. WTF-BB-022 is Verified.
+
+### WTF-BB-784 - Recycle Bin is inert and desktop shortcut deletion has no restore path
+
+- Category: Desktop OS / Wastebasket shortcuts
+- Priority: P2
+- Status: Verified
+- Owner/Session: Codex first-login desktop pass
+- Last touched: 2026-11-04
+- Score: C2 + F3 + S0 + P2(3) = 8
+- Evidence (2026-11-03): The desktop Recycle Bin icon has no route or behavior, while the shortcut context menu permanently removes shortcuts. The owner requested a Wastebasket that removes user-created shortcuts from the desktop and works like an OS trashcan.
+- Correction: Wastebasket opens a window; shortcut context menu and drag target move shortcuts into account-scoped browser storage. Restore, individual permanent delete, and confirmed empty work from the window.
+- Verification (2026-11-03): Focused browser flow passed for create, menu move, restore, drag move, confirmed empty, and reload persistence; domain tests passed for safe normalization, per-account isolation, and full-desktop restore.
+- Production verification (2026-11-04): Hetzner deploy run `41746714597` succeeded for commit `f56f6e5d`; at 2026-11-04 00:28:48 UTC its readiness check reported `status=ready`, `commitRef=f56f6e5d`, and `db=true`, `chain=true`, `jobs=true`. Two production witness puppet sessions verified the sparse desktop exposes Wastebasket, and the live Wastebasket path works alongside the local create, move, restore, empty, and reload-persistence browser proof above. An existing classic account retained its full desktop layout.
 
 ### WTF-BB-781 - Query navigation opens duplicate windows for the same app route
 

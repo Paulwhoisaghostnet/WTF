@@ -11762,9 +11762,9 @@
     },
     {
       "id": "WTF-BB-784",
-      "status": "Fixed",
+      "status": "Verified",
       "owner": "Codex first-login desktop pass",
-      "lastTouched": "2026-11-03",
+      "lastTouched": "2026-11-04",
       "category": "Desktop OS / Wastebasket shortcuts",
       "priority": "P2",
       "complexity": 2,
@@ -11773,13 +11773,13 @@
       "points": 8,
       "rank": 648,
       "title": "Recycle Bin is inert and desktop shortcut deletion has no restore path",
-      "body": "- Evidence (2026-11-03): The desktop Recycle Bin icon has no route or behavior, while the shortcut context menu permanently removes shortcuts. The owner requested a Wastebasket that removes user-created shortcuts from the desktop and works like an OS trashcan.\n- Correction: Wastebasket opens a window; shortcut context menu and drag target move shortcuts into account-scoped browser storage. Restore, individual permanent delete, and confirmed empty work from the window.\n- Verification (2026-11-03): Focused browser flow passed for create, menu move, restore, drag move, confirmed empty, and reload persistence; domain tests passed for safe normalization, per-account isolation, and full-desktop restore. Production verification is pending."
+      "body": "- Evidence (2026-11-03): The desktop Recycle Bin icon has no route or behavior, while the shortcut context menu permanently removes shortcuts. The owner requested a Wastebasket that removes user-created shortcuts from the desktop and works like an OS trashcan.\n- Correction: Wastebasket opens a window; shortcut context menu and drag target move shortcuts into account-scoped browser storage. Restore, individual permanent delete, and confirmed empty work from the window.\n- Verification (2026-11-03): Focused browser flow passed for create, menu move, restore, drag move, confirmed empty, and reload persistence; domain tests passed for safe normalization, per-account isolation, and full-desktop restore.\n- Production verification (2026-11-04): Hetzner deploy run `41746714597` succeeded for commit `f56f6e5d`; at 2026-11-04 00:28:48 UTC its readiness check reported `status=ready`, `commitRef=f56f6e5d`, and `db=true`, `chain=true`, `jobs=true`. Two production witness puppet sessions verified the sparse desktop exposes Wastebasket, and the live Wastebasket path works alongside the local create, move, restore, empty, and reload-persistence browser proof above. An existing classic account retained its full desktop layout."
     },
     {
       "id": "WTF-BB-788",
-      "status": "Fixed",
+      "status": "Verified",
       "owner": "Codex first-login desktop pass",
-      "lastTouched": "2026-11-03",
+      "lastTouched": "2026-11-04",
       "category": "Desktop OS / first-login clarity",
       "priority": "P1",
       "complexity": 4,
@@ -11788,13 +11788,13 @@
       "points": 12,
       "rank": 284,
       "title": "New accounts receive an icon wall without an actionable welcome message",
-      "body": "- Evidence (2026-11-03): The classic desktop exposes many native app icons to a new witness account. No initial wtf-admin DM guides Profile identity proof, verified EXP, or the existing role unlock path; the 30-day account counter sits at the lower right in generic window styling.\n- Correction: New accounts persist starter icon mode, showing only Inbox and Wastebasket while Stuffs retains app discovery. An idempotent DM from the canonical wtf-admin account guides Profile, identity proof, verified EXP, and the Green Room contestant milestone. The 30-day count is an upper-right worksite sign, and Inbox does not read the DM during preview. Existing accounts remain classic.\n- Verification (2026-11-03): Production build, typecheck, focused policy/unit tests, inventory coverage, and focused browser checks for starter icons, Stuffs, sign, Inbox unread/read transition, WIM message, and Wastebasket passed. An isolated PostgreSQL run proved one unread admin DM under four concurrent login hooks, read transition, and legacy-account skip. Production browser smoke remains pending.\n- Additional coverage gap (2026-11-03): Standalone Skywire ATProto signup used the central account creator but bypassed the auth-route welcome hook, leaving that new starter account without the welcome DM and Inbox badge. The standalone session-login helper now invokes the same idempotent welcome hook after a successful login and keeps login available if delivery fails. A focused 3-case test covers register/login retries, failed session, and delivery outage."
+      "body": "- Evidence (2026-11-03): The classic desktop exposes many native app icons to a new witness account. No initial wtf-admin DM guides Profile identity proof, verified EXP, or the existing role unlock path; the 30-day account counter sits at the lower right in generic window styling.\n- Correction: New accounts persist starter icon mode, showing only Inbox and Wastebasket while Stuffs retains app discovery. An idempotent DM from the canonical wtf-admin account guides Profile, identity proof, verified EXP, and the Green Room contestant milestone. The 30-day count is an upper-right worksite sign, and Inbox does not read the DM during preview. Existing accounts remain classic.\n- Verification (2026-11-03): Production build, typecheck, focused policy/unit tests, inventory coverage, and focused browser checks for starter icons, Stuffs, sign, Inbox unread/read transition, WIM message, and Wastebasket passed. An isolated PostgreSQL run proved one unread admin DM under four concurrent login hooks, read transition, and legacy-account skip.\n- Additional coverage gap (2026-11-03): Standalone Skywire ATProto signup used the central account creator but bypassed the auth-route welcome hook, leaving that new starter account without the welcome DM and Inbox badge. The standalone session-login helper now invokes the same idempotent welcome hook after a successful login and keeps login available if delivery fails. A focused 3-case test covers register/login retries, failed session, and delivery outage.\n- Production verification (2026-11-04): Hetzner deploy run `41746714597` succeeded for commit `f56f6e5d`; at 2026-11-04 00:28:48 UTC its readiness check reported `status=ready`, `commitRef=f56f6e5d`, and `db=true`, `chain=true`, `jobs=true`. Two production witness puppet accounts showed only Inbox and Wastebasket as starter native icons, the upper-right `Unique users served (30 days):` sign showed 27 with `windowDays=30`, and the new-message indicator remained until the admin-authored welcome was opened. Preview left that message unread; its first steps named Profile identity proof, verified EXP, and the Green Room contestant milestone. Wastebasket was available; an existing account retained its classic desktop. Reggie was absent for a witness and present for a contestant, confirming the role-gated companion alongside onboarding."
     },
     {
       "id": "WTF-BB-782",
-      "status": "Fixed",
+      "status": "Verified",
       "owner": "Codex starter welcome DM sender validation",
-      "lastTouched": "2026-11-03",
+      "lastTouched": "2026-11-04",
       "category": "Auth / administrative welcome DM",
       "priority": "P1",
       "complexity": 1,
@@ -11803,7 +11803,7 @@
       "points": 11,
       "rank": 399,
       "title": "A non-admin account named wtf-admin could author automated welcomes",
-      "body": "- Evidence (2026-11-03): The first welcome-DM sender lookup matched username `wtf-admin` without checking its assigned role. Registration does not reserve that username, so an ordinary account could claim it before platform provisioning and have its identity used for automated messages.\n- Correction: Resolve the canonical username and require an admin role from the account role set before inserting a DM; if missing or untrusted, skip delivery and retry on a future login rather than impersonate an admin.\n- Verification (2026-11-03): In isolated PostgreSQL 16, witness and host accounts named `wtf-admin` sent zero DMs. After assigning the exact admin role, four concurrent hooks created exactly one unread admin-authored DM; opening it cleared unread. A legacy account was skipped. Typecheck, policy tests, and focused browser checks pass; production rollout remains pending."
+      "body": "- Evidence (2026-11-03): The first welcome-DM sender lookup matched username `wtf-admin` without checking its assigned role. Registration does not reserve that username, so an ordinary account could claim it before platform provisioning and have its identity used for automated messages.\n- Correction: Resolve the canonical username and require an admin role from the account role set before inserting a DM; if missing or untrusted, skip delivery and retry on a future login rather than impersonate an admin.\n- Verification (2026-11-03): In isolated PostgreSQL 16, witness and host accounts named `wtf-admin` sent zero DMs. After assigning the exact admin role, four concurrent hooks created exactly one unread admin-authored DM; opening it cleared unread. A legacy account was skipped. Typecheck, policy tests, and focused browser checks pass.\n- Production verification (2026-11-04): Hetzner deploy run `41746714597` succeeded for commit `f56f6e5d`; at 2026-11-04 00:28:48 UTC its readiness check reported `status=ready`, `commitRef=f56f6e5d`, and `db=true`, `chain=true`, `jobs=true`. Two authenticated production witness puppets observed exactly one unread welcome DM authored by the canonical admin account, with the Inbox indicator present and preview leaving the message unread. The local PostgreSQL witness/host spoof rejection above remains the security proof; production observation confirms the authorized sender path."
     },
     {
       "id": "WTF-BB-777",
