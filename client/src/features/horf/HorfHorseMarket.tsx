@@ -186,6 +186,14 @@ function MarketVideoPreview({ video, poster }: { video: ResolvedThumbnail; poste
     return () => observer.disconnect();
   }, []);
 
+  useEffect(() => {
+    const element = elementRef.current;
+    if (!element || !visible || failed) return;
+    // The source is assigned after IntersectionObserver sees the card. In some
+    // browsers that late assignment does not trigger the autoplay attribute.
+    void element.play().catch(() => { /* Keep the poster if autoplay is blocked. */ });
+  }, [visible, failed, video.src]);
+
   if (failed) return <img src={poster?.src ?? "/horf-art/horse-portrait-photo.jpg"} alt="" onError={(event) => { if (!advanceResolvedMediaFallback(event.currentTarget, poster)) event.currentTarget.src = "/horf-art/horse-portrait-photo.jpg"; }} />;
   return <video ref={elementRef} data-horf-horse-market-card-video src={visible ? video.src : undefined} poster={poster?.src} muted autoPlay loop playsInline preload={visible ? "metadata" : "none"} aria-hidden="true" onError={(event) => { if (!advanceResolvedMediaFallback(event.currentTarget, video)) setFailed(true); }} />;
 }

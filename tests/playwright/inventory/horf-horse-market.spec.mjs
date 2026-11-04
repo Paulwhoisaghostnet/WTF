@@ -138,6 +138,9 @@ test.describe("HORSE market", () => {
     await expect(card.locator("[data-horf-horse-market-card-video]")).toHaveAttribute("autoplay", "");
     expect(await card.locator("[data-horf-horse-market-card-video]").evaluate((video) => video.muted)).toBe(true);
     await expect(card.locator("[data-horf-horse-market-card-video]")).toHaveAttribute("loop", "");
+    await expect.poll(() => card.locator("[data-horf-horse-market-card-video]").evaluate(
+      (video) => !video.paused && video.readyState >= 2,
+    )).toBe(true);
     await card.locator("[data-horf-horse-market-art-trigger]").click();
     await expect(viewer.locator("[data-horf-horse-market-art-video]")).toBeVisible();
     await expect(viewer.locator("[data-horf-horse-market-art-video]")).toHaveAttribute("controls", "");

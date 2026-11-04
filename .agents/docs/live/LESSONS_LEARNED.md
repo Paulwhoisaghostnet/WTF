@@ -14530,3 +14530,13 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: A still preview could misrepresent animated token art and made the market harder to browse.
 
 **Rule**: Keep token media type and artifact URI in listing data, use animated previews when available, and open the exact token media in an in-page viewer with clear close controls. Verify image, GIF, video, and Escape/backdrop dismissal in browser tests.
+
+---
+
+## 2026-11-04 - Lazy video sources need an explicit play step
+
+**What happened**: The live HORSE Market card loaded its video after becoming visible, but the browser left it paused despite `autoplay` and `muted` attributes.
+
+**Why it mattered**: The new card still looked like a static image even though the full-screen viewer could play its video.
+
+**Rule**: When an observer assigns a video source after mount, request playback once that source is active and retain the poster if autoplay is blocked. Assert actual playback state in browser coverage, not just the presence of video attributes.

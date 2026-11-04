@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **767** · Open: **9** · Claimed: **42** · In Progress: **16** · Blocked: **4** · Fixed: **150** · Verified: **541** · Archived: **5**
+Total: **768** · Open: **9** · Claimed: **42** · In Progress: **16** · Blocked: **4** · Fixed: **151** · Verified: **541** · Archived: **5**
 
 ## Canonical Board
 
@@ -250,6 +250,7 @@ Total: **767** · Open: **9** · Claimed: **42** · In Progress: **16** · Block
 | WTF-BB-755 | Fixed | Codex release integration | 2026-11-02 | AT Protocol / Profile OAuth CI test precondition | P2 | 6 | 745 | 1 | 2 | 0 | Profile AT OAuth client metadata tests reject a clean CI local origin before assertions |
 | WTF-BB-747 | Fixed | Codex Pasta mainnet alpha integration | 2026-10-29 | Pasta Protocol / IPFS Pinning inventory test | P2 | 6 | 745 | 1 | 2 | 0 | Gamma pinning inventory waits for obsolete Connect Porcupin button |
 | WTF-BB-011 | Fixed | Codex warning cleanup pass | 2026-05-06 | Frontend bundle | P3 | 9 | 573 | 4 | 2 | 1 | Wallet/Tezos bundle chunks are huge and pull Node core externals |
+| WTF-BB-802 | Fixed | Codex Horf Market media playback | 2026-11-04 | HORF / token media playback | P3 | 5 | 762 | 1 | 2 | 0 | HORSE Market video card loads but remains paused |
 | WTF-BB-508 | Verified | Codex wtfOS contract deployment pass | - | Tezos / WTF reward claims and contract ownership | P0 | 19 | 3 | 5 | 5 | 4 | Reward escrow is tested but absent from the live reward path |
 | WTF-BB-218 | Verified | Codex Marketplace V2 production cutover | 2026-07-24 | Tezos / WTF marketplace contract | P0 | 19 | 3 | 4 | 5 | 5 | Marketplace V2 is Shadownet-proven, separately administered, live on mainnet, and active on wtfOS; legacy V1 remains unmodified with its abandoned offer for later human recovery |
 | WTF-BB-509 | Verified | Codex Ravioli v3 Shadownet proof | - | Pasta Protocol / deployment artifact identity | P0 | 18 | 12 | 5 | 5 | 3 | Ravioli's deployment certificate authenticated only half of its four-contract product |
@@ -5316,6 +5317,19 @@ Total: **767** · Open: **9** · Claimed: **42** · In Progress: **16** · Block
 - Verification idea: Main route loads without wallet mega-chunks; wallet flows still work after lazy import.
 - 2026-05-06 fix note: Added browser-safe aliases for `fs`/`crypto` side-effect imports from wallet UI packages, split wallet dependencies into `vendor-taquito`, `vendor-octez`, `vendor-beacon`, and `vendor-crypto`, and set an explicit 2 MB Vite chunk budget for those lazy wallet chunks.
 - Verification: `npm run build` completed without browser-externalized Node core warnings or the generic Vite chunk-size warning.
+
+### WTF-BB-802 - HORSE Market video card loads but remains paused
+
+- Category: HORF / token media playback
+- Priority: P3
+- Status: Fixed
+- Owner/Session: Codex Horf Market media playback
+- Last touched: 2026-11-04
+- Score: C1 + F2 + S0 + P3(2) = 5
+- Evidence (2026-11-04): On live commit 890294c1, the All Stirred Up card video was visible with a playable source and readyState 3, but its paused property remained true. The source is assigned only after IntersectionObserver sees the card, so the autoplay attribute alone did not start playback.
+- Correction direction: Explicitly call play() after the source is assigned, retaining the poster when the browser blocks autoplay.
+- Verification idea: In browser coverage, wait for the video source to become playable and assert that a visible muted card video is not paused. Verify the production card after deployment.
+- Local verification (2026-11-04): The HORSE Market focused browser suite passes 12/12, including an active playback assertion.
 
 ### WTF-BB-508 - Reward escrow is tested but absent from the live reward path
 
