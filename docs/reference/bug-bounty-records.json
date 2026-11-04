@@ -11809,7 +11809,7 @@
       "id": "WTF-BB-777",
       "status": "Verified",
       "owner": "Codex Horf release gate correction",
-      "lastTouched": "2026-11-03",
+      "lastTouched": "2026-11-04",
       "category": "Release governance / environment inventory",
       "priority": "P1",
       "complexity": 1,
@@ -11818,7 +11818,7 @@
       "points": 9,
       "rank": 572,
       "title": "Horf release leaves the deterministic environment inventory stale and stops Quality Gates before typecheck and build",
-      "body": "- Evidence (2026-11-03): Main Quality Gates run 41739315195 failed at `npm run env:inventory:check` on commit ba675939, skipping TypeScript, build, and inventory smoke. The exact clean local tree reproduces `Environment inventory is stale`.\n- Correction: Regenerated `docs/reference/environment-variables.md` from the tracked Horf release tree. It now records 1,348 variables across 2,793 scanned files, including the HORSE Market address and visual-capture switch.\n- Local verification (2026-11-03): `npm run env:inventory:check`, all 3 focused inventory policy tests, `npm run bounty:board:check`, and `git diff --check` pass. Quality Gates run 41740987174 progressed past this check on main, confirming it remotely.\n- Score: P1(4)+C1/F4/S0=9; the independent release signal was red while production had deployed."
+      "body": "- Evidence (2026-11-03): Main Quality Gates run 41739315195 failed at `npm run env:inventory:check` on commit ba675939, skipping TypeScript, build, and inventory smoke. The exact clean local tree reproduces `Environment inventory is stale`.\n- Correction: Regenerated `docs/reference/environment-variables.md` from the tracked Horf release tree. It now records 1,348 variables across 2,793 scanned files, including the HORSE Market address and visual-capture switch.\n- Local verification (2026-11-03): `npm run env:inventory:check`, all 3 focused inventory policy tests, `npm run bounty:board:check`, and `git diff --check` pass. Quality Gates run 41740987174 progressed past this check on main, confirming it remotely.\n- Score: P1(4)+C1/F4/S0=9; the independent release signal was red while production had deployed.\n- Recurrence (2026-11-04): Horf main commit 846bc788 failed Quality Gates run 41751540159 at the same environment inventory check. Three new scanned source files raised the source count from 2,813 to 2,816; the DATABASE_URL reference count rose from 49 to 50. Regenerated the checked-in inventory from the committed source tree. Local `npm run env:inventory:check` and all 3 focused environment-inventory policy tests pass; replacement main CI remains the release gate."
     },
     {
       "id": "WTF-BB-778",

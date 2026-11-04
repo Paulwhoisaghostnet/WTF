@@ -14320,3 +14320,13 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: The public market could show ineligible listings, and hiding an owner's revoked listing would also hide the path needed to cancel it.
 
 **Rule**: Put role-gated inspection at `/horf/inspection-desk`. Keep `/horf/marshals-market` public and show only active, currently approved swap listings there; load an owner's own listings separately and preserve cancellation after revocation. On the Inspector Desk, separate pending rider reports, unapproved tokens, and loaded approved tokens; label page-limited counts honestly.
+
+---
+
+## 2026-11-04 - Regenerate release metadata after the final Horf test files are added
+
+**What happened**: Horf commit `846bc788` added three source files, including a live puppet test that reads `DATABASE_URL`, after the checked-in environment inventory was last generated. Quality Gates stopped at `env:inventory:check` before running its tests.
+
+**Why it mattered**: The feature deployed while its independent CI signal was red, repeating a Horf release failure already documented under WTF-BB-777.
+
+**Rule**: Regenerate the environment inventory from the exact final tracked source tree immediately before committing a release that adds tests or code; run the deterministic check and focused policy test, then require replacement main Quality Gates to pass before calling the release verified.

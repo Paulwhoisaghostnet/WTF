@@ -611,7 +611,7 @@ Total: **761** · Open: **9** · Claimed: **42** · In Progress: **16** · Block
 | WTF-BB-069 | Verified | Codex top-priority stale bounty reconciliation | 2026-09-02 | Kiln integration / network metadata | P1 | 10 | 498 | 2 | 3 | 1 | Deployed Kiln may advertise stale Etherlink Ghostnet-era metadata |
 | WTF-BB-006 | Verified | Codex top-priority stale bounty reconciliation | 2026-09-02 | DB migrations | P1 | 10 | 498 | 2 | 3 | 1 | `0031_wtf_recapture.sql` is not idempotent for enum type creation |
 | WTF-BB-778 | Verified | Codex Horf route metadata gate correction | 2026-11-03 | Horf / shared browser route metadata | P1 | 9 | 572 | 1 | 4 | 0 | Horf subroutes are missing from shared browser metadata and fail the route synchronization gate |
-| WTF-BB-777 | Verified | Codex Horf release gate correction | 2026-11-03 | Release governance / environment inventory | P1 | 9 | 572 | 1 | 4 | 0 | Horf release leaves the deterministic environment inventory stale and stops Quality Gates before typecheck and build |
+| WTF-BB-777 | Verified | Codex Horf release gate correction | 2026-11-04 | Release governance / environment inventory | P1 | 9 | 572 | 1 | 4 | 0 | Horf release leaves the deterministic environment inventory stale and stops Quality Gates before typecheck and build |
 | WTF-BB-693 | Verified | Codex October desktop security release | 2026-10-22 | Desktop installers / Windows static paths and Linux smoke | P1 | 9 | 572 | 2 | 3 | 0 | Installer verification blocks security release on Windows root asset paths and the suite Linux executable name |
 | WTF-BB-686 | Verified | Codex WTFIAP-v0.01 publication | 2026-10-19 | Desktop OS / Stuffs flyout visibility | P1 | 9 | 572 | 2 | 3 | 0 | Top Stuffs categories can place their first game launchers above the viewport |
 | WTF-BB-684 | Verified | Codex WTFIAP-v0.01 publication | 2026-10-19 | Game hosting / vendored module boundaries | P1 | 9 | 572 | 1 | 4 | 0 | Vendored WTFIAP engine inherits ESM host semantics and prevents room authority startup |
@@ -13350,12 +13350,13 @@ Copy this when adding a new issue:
 - Priority: P1
 - Status: Verified
 - Owner/Session: Codex Horf release gate correction
-- Last touched: 2026-11-03
+- Last touched: 2026-11-04
 - Score: C1 + F4 + S0 + P1(4) = 9
 - Evidence (2026-11-03): Main Quality Gates run 41739315195 failed at `npm run env:inventory:check` on commit ba675939, skipping TypeScript, build, and inventory smoke. The exact clean local tree reproduces `Environment inventory is stale`.
 - Correction: Regenerated `docs/reference/environment-variables.md` from the tracked Horf release tree. It now records 1,348 variables across 2,793 scanned files, including the HORSE Market address and visual-capture switch.
 - Local verification (2026-11-03): `npm run env:inventory:check`, all 3 focused inventory policy tests, `npm run bounty:board:check`, and `git diff --check` pass. Quality Gates run 41740987174 progressed past this check on main, confirming it remotely.
 - Score: P1(4)+C1/F4/S0=9; the independent release signal was red while production had deployed.
+- Recurrence (2026-11-04): Horf main commit 846bc788 failed Quality Gates run 41751540159 at the same environment inventory check. Three new scanned source files raised the source count from 2,813 to 2,816; the DATABASE_URL reference count rose from 49 to 50. Regenerated the checked-in inventory from the committed source tree. Local `npm run env:inventory:check` and all 3 focused environment-inventory policy tests pass; replacement main CI remains the release gate.
 
 ### WTF-BB-693 - Installer verification blocks security release on Windows root asset paths and the suite Linux executable name
 
