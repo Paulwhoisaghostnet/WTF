@@ -14,9 +14,9 @@ const BLOCK_MS = 6_000;
 function page(tokenIds: string[], nextCursor: string | null, hasMore: boolean, label = "Horse"): OpenRangeMintPage {
   return {
     items: tokenIds.map((tokenId) => ({ contract: CONTRACT, tokenId,
-      name: `${label} ${tokenId}`, description: null, image: null,
+      name: `${label} ${tokenId}`, description: null, image: null, artifactUri: null, mime: null,
       mintedAt: "2026-11-03T00:00:00.000Z", creatorAddress: null })),
-    nextCursor, hasMore, asOf: "2026-11-03T00:00:00.000Z", sourceRows: tokenIds.length,
+    nextCursor, hasMore, asOf: "2026-11-03T00:00:00.000Z", sourceRows: tokenIds.length, mediaVersion: 1,
   };
 }
 
@@ -47,6 +47,31 @@ test("a discovered page survives a new cache instance without another source loo
   assert.equal(result.cacheStatus, "cached");
   assert.deepEqual(result.items.map((item) => item.tokenId), ["1"]);
   assert.equal(result.nextCursor, "9");
+  assert.equal(lookups, 1);
+});
+
+test("a legacy cached page refreshes its missing per-token media on first read", async () => {
+  const { store, rows, key } = memoryStore();
+  const old = page(["180", "181"], null, false);
+  delete (old as Partial<typeof old>).mediaVersion;
+  for (const item of old.items) {
+    delete (item as Partial<typeof item>).artifactUri;
+    delete (item as Partial<typeof item>).mime;
+  }
+  rows.set(key("all-horse-search", "0"), { page: old, fetchedAt: Date.now() });
+  let lookups = 0;
+  const cached = createOpenRangePageCache(store, async () => {
+    lookups++;
+    const fresh = page(["181"], null, false);
+    fresh.items[0].artifactUri = "https://ipfs.fileship.xyz/QmHorseVideo";
+    fresh.items[0].mime = "video/mp4";
+    return fresh;
+  });
+  const result = await cached("all-horse-search", "0");
+  assert.equal(result.cacheStatus, "refreshed");
+  assert.equal(result.items.find((item) => item.tokenId === "181")?.artifactUri, "https://ipfs.fileship.xyz/QmHorseVideo");
+  assert.deepEqual(result.items.map((item) => item.tokenId), ["180", "181"]);
+  assert.equal((await cached("all-horse-search", "0")).cacheStatus, "cached");
   assert.equal(lookups, 1);
 });
 

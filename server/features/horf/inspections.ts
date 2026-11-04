@@ -75,6 +75,7 @@ export async function loadInspectionEvidence(
     objktMetadata: {
       source: "Objkt Tezos Mainnet GraphQL", checkedAt: new Date().toISOString(),
       name: eligible.name, description: rawToken.description ?? null, image: eligible.image,
+      artifactUri: eligible.artifactUri, mime: eligible.mime,
       decimals: rawToken.decimals ?? null,
       tags: (rawToken.tags || []).map((row) => ({ name: row.tag?.name ?? null, tokenCount: row.tag?.token_count ?? null })),
     },

@@ -944,9 +944,9 @@ export const DOMAIN_WORKFLOWS = [
     ],
   },
   {
-    name: "horf marshal inspection and approval loop",
+    name: "horf marshal evidence and direct approval loop",
     domain: "Market, Exchange, Inventory, and Commerce",
-    routes: ["/horf/marshals-market", "/admin"],
+    routes: ["/horf/open-range", "/horf/marshals-market", "/admin"],
     eventHandles: ["horf.inspection.marshal_review_started", "horf.inspection.decided", "horf.inspection.approval_revoked"],
     apiProbes: [
       { method: "GET", path: "/api/horf/inspectors/status", expectedStatuses: [200] },

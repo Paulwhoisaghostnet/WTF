@@ -38,6 +38,8 @@ export interface ObjktToken {
   description?: string | null;
   thumbnail_uri?: string | null;
   display_uri?: string | null;
+  artifact_uri?: string | null;
+  mime?: string | null;
   decimals?: number | null;
   tags?: Array<{ tag?: ObjktTag | null }> | null;
 }

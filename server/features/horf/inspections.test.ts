@@ -20,6 +20,7 @@ test("Marshal Open Range evidence checks a horse without inventing an owner", as
     },
     loadToken: async () => ({
       fa_contract: contract, token_id: tokenId, name: "Horse Art 2026", decimals: 0,
+      thumbnail_uri: "ipfs://QmSharedThumbnail", artifact_uri: "ipfs://QmUniqueHorse", mime: "image/png",
       tags: [{ tag: { name: "horse art" } }],
     }),
     readIdentity: async () => ({
@@ -34,6 +35,8 @@ test("Marshal Open Range evidence checks a horse without inventing an owner", as
   assert.equal(evidence.chainEvidence.ownerBalance, null);
   assert.match(String(evidence.chainEvidence.note), /no owner submission or owner-balance claim/i);
   assert.equal(evidence.objktMetadata.name, "Horse Art 2026");
+  assert.equal(evidence.objktMetadata.artifactUri, "https://ipfs.fileship.xyz/QmUniqueHorse");
+  assert.equal(evidence.objktMetadata.mime, "image/png");
   assert.deepEqual(evidence.chainEvidence.recentTransfers, [{
     id: 21, transactionId: 11, from: "tz1VSUr8wwNhLAzempoch5d6hLRiTh8Cjcjb",
     to: "tz1aSkwEot3L2kmUvcoxzjMomb9mvBNuzFK6", amount: "1",

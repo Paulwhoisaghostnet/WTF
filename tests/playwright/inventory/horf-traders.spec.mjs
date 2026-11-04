@@ -43,6 +43,57 @@ async function mockPublicHorf(page) {
 }
 
 test.describe("Horf trader discovery and horse test", () => {
+  test("lets a Marshal approve one profile horse or scan every held-horse page for batch approval", async ({ page, request }) => {
+    expect((await request.post("/__test/state", { data: { userRole: "admin" } })).ok()).toBeTruthy();
+    await mockPublicHorf(page);
+    const approved = new Set(["91"]);
+    const reads = [];
+    const prepared = [];
+    const decisions = [];
+    await page.route("**/api/horf/inspectors/status", (route) => json(route, { active: true, role: "horf_marshal" }));
+    await page.route(/\/api\/horf\/traders\/[^/]+\/horses(?:\?.*)?$/, (route) => {
+      const url = new URL(route.request().url());
+      const offset = Number(url.searchParams.get("offset") || 0);
+      reads.push({ offset, refresh: url.searchParams.get("refresh") });
+      const ids = offset === 0 ? ["7", "91"] : ["92", "93"];
+      return json(route, { address: leadWallet, items: ids.map((tokenId) => ({
+        contract, tokenId, balance: "1", mintedAt: "2026-11-03T12:00:00.000Z",
+        name: `Horse #${tokenId}`, image: null, description: null, creatorAddress: leadWallet,
+        approvedForMarshalsMarket: approved.has(tokenId),
+      })), pagination: { hasMore: offset === 0, nextOffset: offset === 0 ? 2 : 4 } });
+    });
+    await page.route("**/api/horf/inspections/marshal", (route) => {
+      const body = route.request().postDataJSON();
+      prepared.push(body);
+      return json(route, { id: Number(body.tokenId) });
+    });
+    await page.route(/\/api\/horf\/inspections\/\d+\/decision$/, (route) => {
+      const id = Number(new URL(route.request().url()).pathname.split("/").at(-2));
+      decisions.push({ id, ...route.request().postDataJSON() });
+      if (id === 93) return route.fulfill({ status: 422, contentType: "application/json", body: JSON.stringify({ error: "FA2 identity changed" }) });
+      approved.add(String(id));
+      return json(route, { id, status: "approved" });
+    });
+
+    await page.goto(`/horf/traders/${leadWallet}?season=current-2026`);
+    const profile = page.locator('[data-horf-region="trader-profile"]');
+    await profile.locator('[data-horf-profile-tab="all-horses"]').click();
+    const first = profile.locator('[data-horf-profile-horse]').filter({ hasText: "Horse #7" });
+    const already = profile.locator('[data-horf-profile-horse]').filter({ hasText: "Horse #91" });
+    await expect(first.locator('[data-horf-profile-approve-horse]')).toBeVisible();
+    await expect(already.locator('[data-horf-profile-approved]')).toBeVisible();
+    await expect(already.locator('[data-horf-profile-approve-horse]')).toHaveCount(0);
+    await first.locator('[data-horf-profile-approve-horse]').click();
+    await expect(first.locator('[data-horf-profile-approved]')).toBeVisible();
+    await profile.locator('[data-horf-profile-approve-all]').click();
+    await expect(profile.locator('[data-horf-profile-approval-progress]')).toContainText("Checked all 4 held horses: 1 approved, 2 already approved, 1 failed.");
+    await expect(profile.locator('[data-horf-profile-approval-failure]')).toContainText(`${contract}/93: FA2 identity changed`);
+    expect(reads).toEqual(expect.arrayContaining([{ offset: 0, refresh: "1" }, { offset: 2, refresh: "1" }]));
+    expect(prepared.map((item) => item.tokenId)).toEqual(["7", "92", "93"]);
+    expect(decisions.map((item) => item.id)).toEqual([7, 92, 93]);
+    expect(decisions.every((item) => item.decision === "approve" && /direct approval/i.test(item.reason))).toBe(true);
+  });
+
   test("opens a rider profile from the directory and shows offered versus all held horses", async ({ page, request }) => {
     const state = await request.post("/__test/state", { data: { userRole: "anonymous" } });
     expect(state.ok()).toBeTruthy();
@@ -79,6 +130,10 @@ test.describe("Horf trader discovery and horse test", () => {
     await expect(profile.locator("[data-horf-edition-holdings]").first()).not.toContainText("You own");
     await expect(profile).toContainText("Bay Neighvember");
     await expect(profile).not.toContainText("Unlisted Foal");
+    await profile.locator("[data-horf-profile-horse]").first().locator("[data-horf-profile-view-horse]").click();
+    await expect(profile.locator("[data-horf-profile-horse-detail]")).toBeVisible();
+    await expect(profile.locator("[data-horf-profile-horse-detail]")).toContainText(`${contract} / #7`);
+    await profile.locator("[data-horf-profile-horse-detail]").getByRole("button", { name: "Close horse card" }).click();
     await profile.locator('[data-horf-profile-tab="all-horses"]').click();
     await expect(profile.locator('[data-horf-profile-tab="all-horses"]')).toHaveAttribute("aria-selected", "true");
     await expect(profile.locator("[data-horf-profile-horse]")).toHaveCount(2);
@@ -87,10 +142,16 @@ test.describe("Horf trader discovery and horse test", () => {
     await expect(profile.locator("[data-horf-profile-horse]").last().locator("[data-horf-mint-badge]")).toHaveCount(0);
     await expect(profile).toContainText("Unlisted Foal");
     await expect(profile).not.toContainText("Bay Neighvember");
+    await profile.locator("[data-horf-profile-horse]").filter({ hasText: "Unlisted Foal" }).getByRole("button", { name: "View Unlisted Foal horse card" }).click();
+    await expect(profile.locator("[data-horf-profile-horse-detail]")).toContainText(`${contract} / #91`);
+    await profile.locator("[data-horf-profile-horse-detail]").getByRole("button", { name: "Close horse card" }).click();
     await profile.getByRole("button", { name: "Load more horses" }).click();
     await expect(profile.locator("[data-horf-profile-horse]")).toHaveCount(3);
     await expect(profile).toContainText("Older Pony");
     await expect(profile.locator("[data-horf-profile-horse]").last().locator("[data-horf-mint-badge]")).toHaveText(archiveSeason.label);
+    await profile.locator("[data-horf-profile-horse]").filter({ hasText: "Older Pony" }).locator("[data-horf-profile-view-horse]").click();
+    await expect(profile.locator("[data-horf-profile-horse-detail]")).toContainText(`${contract} / #92`);
+    await profile.locator("[data-horf-profile-horse-detail]").getByRole("button", { name: "Close horse card" }).click();
     await expect(page.locator('[data-horf-region="trader-directory"]')).toHaveCount(0);
   });
 
