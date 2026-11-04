@@ -8,6 +8,8 @@ import { connectWallet, getTezos } from "../../client/src/lib/tezos/wallet";
 const MAINNET_CHAIN_ID = "NetXdQprcVkpaWU";
 const ADMIN = "tz1cVRngZw42KZ42VQF2ZCy2CJSPNG3H7Cgt";
 const LEGACY_STABLES = "KT1DBXe1QqiHrc5J5SMm7N9kz1hLPGQucn7m";
+const VERIFIED_V2_ORIGINATION = "ooxwCr7EMzuBer3wvBdpD6LoQjuRJeM9vSsCsfdibm7BwhmDCiV";
+const VERIFIED_V2_STABLES = "KT1Rg7ippRJGrFgKBDCGUyiFG7jKdcU7Dmsg";
 const EXPECTED_ORACLE_PUBLIC_KEY = "edpkvZL5ek6Njb9RWQVtnUMkV2HJQtNFsycFdrgDjTnshrsXmzEzVy";
 const RPC = `${window.location.origin}/horf-mainnet-rpc`;
 const connectButton = document.getElementById("connect") as HTMLButtonElement;
@@ -24,6 +26,10 @@ if (previousHash && !/^o[1-9A-HJ-NP-Za-km-z]{40,60}$/.test(previousHash)) {
   sessionStorage.removeItem(OPERATION_KEY);
 }
 const storedHash = sessionStorage.getItem(OPERATION_KEY);
+// Recover the applied V2 address if the RPC failed while awaiting confirmation.
+if (storedHash === VERIFIED_V2_ORIGINATION && !sessionStorage.getItem(CONTRACT_KEY)) {
+  sessionStorage.setItem(CONTRACT_KEY, VERIFIED_V2_STABLES);
+}
 let submitted = Boolean(storedHash);
 let connected = false;
 let retiring = false;
@@ -48,24 +54,22 @@ function findStorageField(type: any, value: any, annotation: string): string | n
   return null;
 }
 
-function findStorageNat(type: any, value: any, annotation: string): bigint | null {
-  if (type?.annots?.includes(annotation)) {
-    return typeof value?.int === "string" && /^\d+$/.test(value.int) ? BigInt(value.int) : null;
-  }
-  if (type?.prim !== "pair" || !Array.isArray(type.args) || !Array.isArray(value?.args)) return null;
-  for (let i = 0; i < type.args.length; i++) {
-    const found = findStorageNat(type.args[i], value.args[i], annotation);
-    if (found !== null) return found;
-  }
-  return null;
+function storageLeaves(type: any): any[] {
+  return type?.prim === "pair" && Array.isArray(type.args)
+    ? type.args.flatMap(storageLeaves)
+    : [type];
 }
 
 async function legacyOracleEpoch(tezos: Awaited<ReturnType<typeof getTezos>>): Promise<bigint> {
   const script = await tezos.rpc.getScript(LEGACY_STABLES);
   const storageType = script.code.find((section: any) => section.prim === "storage")?.args?.[0];
-  const epoch = findStorageNat(storageType, script.storage, "%oracle_epoch");
-  if (epoch === null) throw new Error("Cannot verify the old Stable oracle epoch on Mainnet.");
-  return epoch;
+  const epochIndex = storageLeaves(storageType).findIndex((field) => field?.annots?.includes("%oracle_epoch"));
+  const storage = await tezos.rpc.getStorage(LEGACY_STABLES) as { args?: Array<{ int?: string }> };
+  const value = epochIndex >= 0 ? storage.args?.[epochIndex]?.int : null;
+  if (typeof value !== "string" || !/^\d+$/.test(value)) {
+    throw new Error("Cannot verify the old Stable oracle epoch on Mainnet.");
+  }
+  return BigInt(value);
 }
 
 function replaceStorageFields(type: any, value: any) {

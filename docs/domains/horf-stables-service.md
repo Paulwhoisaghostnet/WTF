@@ -48,7 +48,11 @@ in applied operation
 [`ooxwCr7EMzuBer3wvBdpD6LoQjuRJeM9vSsCsfdibm7BwhmDCiV`](https://tzkt.io/ooxwCr7EMzuBer3wvBdpD6LoQjuRJeM9vSsCsfdibm7BwhmDCiV)
 at 2026-11-04 19:00:37 UTC. The earlier per-edition contract
 [`KT1DBXe1QqiHrc5J5SMm7N9kz1hLPGQucn7m`](https://tzkt.io/KT1DBXe1QqiHrc5J5SMm7N9kz1hLPGQucn7m)
-is historical. Origination does not by itself switch the app or its permit service to V2.
+is historical. Production commit `3cc5fc65` switched the app and permit service
+to V2; the public Stable API now reports this V2 KT1 and a ready matching
+permit signer. Applied `wtf.tez` operation
+[`ongncdmJDQntVdoJch8eiPr3QeJKbYhz5echgH9xnX2EgZ8om5u`](https://tzkt.io/ongncdmJDQntVdoJch8eiPr3QeJKbYhz5echgH9xnX2EgZ8om5u)
+advanced V1's oracle epoch from `0` to `1`, invalidating unused V1 permits.
 Marshal approval is a trust decision rather than a guarantee of
 safe escrow. This review uses dated
 Objkt metadata, Mainnet ownership, transfer samples, contract creator, TzKT
@@ -173,9 +177,14 @@ The V2 production configuration requires `TEZOS_NETWORK=mainnet`,
 `HORF_STABLES_ORACLE_SECRET_KEY=<private key whose public key is stored in the
 V2 contract>`. The earlier `KT1DBXe1QqiHrc5J5SMm7N9kz1hLPGQucn7m` setting
 targets historical V1 and must not be paired with V2 credit copy. The browser
-takes the configured KT1 from the read API. This document does not assert that
-the production runtime switch has completed. No oracle private key is checked
-into the repository. Horf
+takes the configured KT1 from the read API. The production runtime switch is
+verified: `/api/health/ready` reports commit `3cc5fc65` and ready DB, chain,
+and jobs; `/api/horf/stables` reports Tezos Mainnet `NetXdQprcVkpaWU`,
+`KT1Rg7ippRJGrFgKBDCGUyiFG7jKdcU7Dmsg`, `status: ready`,
+`permitReady: true`, `custodyReady: true`, and admin
+`tz1cVRngZw42KZ42VQF2ZCy2CJSPNG3H7Cgt`. Mainnet RPC script sections
+for parameter, storage, code, and four views match the compiled V2 artifact.
+No oracle private key is checked into the repository. Horf
 uses an explicit Mainnet index, `HORF_MAINNET_TZKT_URL` when configured and
 `https://api.tzkt.io/v1` otherwise, independent of the generic WTF OS
 `TZKT_API_URL` that may target Shadownet locally. Contract identity checks
@@ -187,8 +196,9 @@ primary `https://tezos-mainnet.octez.io/` and fallback
 The current artifacts describe the per-token V2 contract, which was originated
 on Mainnet in the applied operation above. Local contract tests and actor-backed
 app tests cover deposit, claim, moderation, and indexing paths. The runtime
-contract address and matching oracle key must be checked after configuration
-rotation; a first Mainnet deposit and claim remains a separate wallet smoke.
+contract address and matching oracle key passed the live checks above; a first
+Mainnet deposit and claim remains a separate wallet smoke. V1's oracle epoch
+is `1` after the applied admin operation above.
 
 ## Minimal source probes
 

@@ -143,8 +143,12 @@ The **per-token V2** Stables contract was originated on Mainnet at
 in applied operation
 [`ooxwCr7EMzuBer3wvBdpD6LoQjuRJeM9vSsCsfdibm7BwhmDCiV`](https://tzkt.io/ooxwCr7EMzuBer3wvBdpD6LoQjuRJeM9vSsCsfdibm7BwhmDCiV)
 at 2026-11-04 19:00:37 UTC. The current source and artifacts implement this
-per-token rule. Origination alone does not switch Horf's server configuration,
-permit signer, or browser to V2.
+per-token rule. Production commit `3cc5fc65` switched Horf to V2: the public
+Stable API reports Tezos Mainnet `NetXdQprcVkpaWU`, this KT1, `status: ready`,
+`permitReady: true`, `custodyReady: true`, and admin `wtf.tez`. Mainnet RPC
+`/script` verification matched the deployed parameter, storage, code, and all
+four view sections to the compiled artifact. A live browser displays the
+thirty-claims-per-distinct-token rule and the V2 KT1.
 
 The earlier **per-edition V1** Stables contract was originated on Mainnet by `wtf.tez` at
 [`KT1DBXe1QqiHrc5J5SMm7N9kz1hLPGQucn7m`](https://tzkt.io/KT1DBXe1QqiHrc5J5SMm7N9kz1hLPGQucn7m)
@@ -159,9 +163,11 @@ on the earlier KT1, so there is no existing escrow balance or claim credit to
 migrate. TzKT storage confirmed the earlier contract's admin
 `tz1cVRngZw42KZ42VQF2ZCy2CJSPNG3H7Cgt`, oracle public key
 `edpkvZL5ek6Njb9RWQVtnUMkV2HJQtNFsycFdrgDjTnshrsXmzEzVy`, epoch `0`,
-and no listings at the original launch check. At V2 origination, the server
-runtime still pointed to V1; a configuration rotation and live API check must
-establish when Horf actually starts using V2.
+and no listings at the original launch check. After the V2 application switch,
+`wtf.tez` called V1 `bump_oracle_epoch` in applied operation
+[`ongncdmJDQntVdoJch8eiPr3QeJKbYhz5echgH9xnX2EgZ8om5u`](https://tzkt.io/ongncdmJDQntVdoJch8eiPr3QeJKbYhz5echgH9xnX2EgZ8om5u)
+at 2026-11-04 19:11:55 UTC. TzKT storage shows the V1 oracle epoch advanced
+from `0` to `1`, invalidating its previously issued unused deposit permits.
 The client reads the verified KT1 from the Stable API and has no separate
 contract-address configuration.
 

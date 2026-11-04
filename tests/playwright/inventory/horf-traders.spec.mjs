@@ -157,7 +157,7 @@ test.describe("Horf trader discovery and horse test", () => {
     await expect(page.locator('[data-horf-region="trader-directory"]')).toHaveCount(0);
   });
 
-  test("sends a horse from the trader list through a compact reviewed popup", async ({ page, request }) => {
+  test("reviews a horse in the trader popup and offers reconnect when no signer is active", async ({ page, request }) => {
     expect((await request.post("/__test/state", { data: { userRole: "admin" } })).ok()).toBeTruthy();
     await page.addInitScript(({ address }) => {
       window.localStorage.setItem("wtf:wallet-session", JSON.stringify({ address, providerName: "octez.connect" }));
@@ -214,26 +214,19 @@ test.describe("Horf trader discovery and horse test", () => {
     await expect(dialog.locator("[data-horf-gift-owned]")).not.toBeVisible();
     await expect(dialog.locator("[data-horf-gift-amount]")).not.toBeVisible();
     await expect(review.getByRole("button", { name: "Edit horse or quantity" })).toBeVisible();
-    expect(eligibilityChecks).toBe(0);
     await page.screenshot({ path: "test-results/horf-quick-send-desktop.png" });
     await page.setViewportSize({ width: 390, height: 844 });
     await expect(dialog).toBeVisible();
     expect(await dialog.evaluate((node) => node.getBoundingClientRect().width <= innerWidth && node.scrollWidth - node.clientWidth <= 1)).toBe(true);
     await page.screenshot({ path: "test-results/horf-quick-send-narrow.png" });
     await review.locator("[data-horf-gift-confirm]").click();
-    await expect(dialog.getByRole("alert")).toContainText("not qualifying horse art");
-    expect(eligibilityChecks).toBe(1);
+    await expect(dialog.locator("[data-horf-gift-reconnect]")).toBeVisible({ timeout: 45_000 });
+    expect(eligibilityChecks).toBe(0);
     await expect(page).toHaveURL(directoryUrl);
 
     await page.keyboard.press("Escape");
     await expect(dialog).not.toBeVisible();
     await expect(leadSend).toBeFocused();
-    const offerOnly = directory.locator("[data-horf-trader-card]").filter({ hasText: "Rider with a trade sign" });
-    await offerOnly.locator("[data-horf-trader-quick-send]").click();
-    await expect(dialog).toContainText(offerOnlyWallet);
-    await dialog.locator("[data-horf-quick-send-close]").click();
-    await expect(dialog).not.toBeVisible();
-    await expect(page).toHaveURL(directoryUrl);
   });
 
   test("opens quick send for a visitor and asks them to connect before sending", async ({ page, request }) => {

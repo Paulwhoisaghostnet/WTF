@@ -134,6 +134,12 @@ function sameWalletConfig(a: WalletNetworkConfig | null, b: WalletNetworkConfig)
   return !!a && a.network === b.network && a.rpcUrl === b.rpcUrl;
 }
 
+export function sameWalletProviderNetwork(a: WalletNetworkConfig | null, b: WalletNetworkConfig): boolean {
+  return !!a && a.network === b.network && (
+    NAMED_WALLET_NETWORKS.has(b.network) || a.rpcUrl === b.rpcUrl
+  );
+}
+
 function normalizeRpcUrl(value: string): string {
   return value.replace(/\/+$/, "");
 }
@@ -574,10 +580,10 @@ async function createAdapter(config: WalletNetworkConfig): Promise<WalletAdapter
 }
 
 async function ensureAdapter(config = resolveWalletConfig()): Promise<WalletAdapter> {
-  if (currentAdapter && sameWalletConfig(currentAdapterConfig, config)) return currentAdapter;
-  if (adapterInitPromise && sameWalletConfig(adapterInitConfig, config)) return adapterInitPromise;
+  if (currentAdapter && sameWalletProviderNetwork(currentAdapterConfig, config)) return currentAdapter;
+  if (adapterInitPromise && sameWalletProviderNetwork(adapterInitConfig, config)) return adapterInitPromise;
 
-  if (currentAdapter && !sameWalletConfig(currentAdapterConfig, config)) {
+  if (currentAdapter && !sameWalletProviderNetwork(currentAdapterConfig, config)) {
     currentAdapter = null;
     currentAdapterConfig = null;
   }
@@ -603,7 +609,7 @@ export async function getTezos(options: { network?: string; rpcUrl?: string } = 
   const { TezosToolkit } = await loadTaquito();
   tezosToolkit = new TezosToolkit(config.rpcUrl);
   tezosToolkitConfig = config;
-  if (currentAdapter && sameWalletConfig(currentAdapterConfig, config)) {
+  if (currentAdapter && sameWalletProviderNetwork(currentAdapterConfig, config)) {
     await currentAdapter.setAsTaquitoProvider(tezosToolkit);
   }
   return tezosToolkit;
@@ -688,7 +694,7 @@ export async function connectWallet(
 ): Promise<WalletConnectionResult> {
   const { forcePermissions = false } = options;
   const config = resolveWalletConfig(options);
-  if (connectPromise && !forcePermissions && sameWalletConfig(connectPromiseConfig, config)) {
+  if (connectPromise && !forcePermissions && sameWalletProviderNetwork(connectPromiseConfig, config)) {
     return connectPromise;
   }
 

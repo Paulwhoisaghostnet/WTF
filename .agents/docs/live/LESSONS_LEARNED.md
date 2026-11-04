@@ -14420,3 +14420,23 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: The Group Stable promise is thirty claims per qualifying FA2 contract and token ID contributed by a trader, independent of edition count. The immutable Mainnet contract cannot be corrected by changing UI copy or the permit service alone.
 
 **Rule**: Track Group contributions on-chain by owner, FA2 contract, and token ID. Award thirty credits once, keep top-up editions credit-neutral, and revoke that grant only when every contributed edition is returned before any outside claim. Compile and test a replacement contract, then originate and rotate runtime configuration only after verifying the old contract has no listings or credits.
+
+---
+
+## 2026-11-04 - Verify Tezos origination storage by its actual RPC shape
+
+**What happened**: The V2 Horf Stables proof initially treated the `/script` storage value as a nested Michelson `Pair`, but the RPC returned a flattened array. An attempted chain-ID probe also used `/blocks/head/chain_id` instead of the Mainnet RPC's `/chains/main/chain_id` path.
+
+**Why it mattered**: A correct on-chain origination could appear to fail artifact or network verification because the verifier assumed the wrong response shape or endpoint.
+
+**Rule**: Read the originated contract's Michelson `Pair` value from `/chains/main/blocks/head/context/contracts/<KT1>/storage` instead of assuming `/script.storage` is nested. Flatten both the compiled storage type and returned value into ordered leaves for comparison, then compare the deployed parameter, storage type, code, and views to the artifact. Read chain ID from `/chains/main/chain_id` before treating any result as Mainnet evidence.
+
+---
+
+## 2026-11-04 - Keep named Tezos wallet sessions independent of dapp RPC failover
+
+**What happened**: Horf quick trade showed an Octez Connect wallet-prompt timeout after the Tezos Mainnet primary RPC failed. The dapp cache treated a fallback RPC URL as a different Octez wallet network and recreated the DAppClient, even though Octez's named Mainnet permission does not include the dapp RPC URL. The Confirm handler also waited for balance, account proof, and token eligibility before asking for an active signer; a saved wallet address could look connected without one.
+
+**Why it mattered**: A valid rider could review a horse trade yet lose the wallet session before signing. Retrying the network read through the configured fallback should not require a second wallet permission, and a persisted address cannot authorize a transaction.
+
+**Rule**: Key Octez adapters and connection coalescing by named wallet network, including the RPC URL only for custom networks. Keep Taquito toolkits RPC-specific, rebind a retained adapter to each rebuilt toolkit, and start active-signer/expected-address preflight at the Confirm click before slower data reads. Keep balance, eligibility, and chain checks before operation submission.

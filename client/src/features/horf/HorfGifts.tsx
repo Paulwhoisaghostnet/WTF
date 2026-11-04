@@ -4,6 +4,7 @@ import styled from "styled-components";
 import { api, isApiRequestError } from "../../lib/api";
 import { logClientSystemEvent } from "../../lib/system-log";
 import { sendHorfTokenTransfer, type HorfSendProgress } from "../../lib/tezos/horf-send";
+import { ensureWalletProviderForSend } from "../../lib/tezos/wallet";
 import { HORF_RECIPIENT_LIMIT } from "./recipient-input";
 import { validateArtSendRecipients, type ArtSendRecipient } from "./art-send-recipients";
 import type { HorfGuestSession } from "./guest-wallet";
@@ -302,6 +303,7 @@ export function HorfGifts({
   const [stageKind, setStageKind] = useState<"gift" | "trade" | null>(null);
   const [submittedHash, setSubmittedHash] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [needsWalletReconnect, setNeedsWalletReconnect] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
   const [marking, setMarking] = useState<number | null>(null);
 
@@ -465,12 +467,17 @@ export function HorfGifts({
       recipient, tokenContract: token.contract, tokenId: token.tokenId, amount,
     }));
     setError(null);
+    setNeedsWalletReconnect(false);
     setSuccess(null);
     setSubmittedHash(null);
     let submitted = false;
+    let signerReady = false;
     let submittedOpHash: string | null = null;
     try {
       setStageKind(kind);
+      setStage("preflight");
+      await ensureWalletProviderForSend(address, { network: "mainnet" });
+      signerReady = true;
       setStage("eligibility");
       const freshBalance = await readOwnedHorseBalance(address, token, true);
       validateArtSendRecipients(destinations.map(({ address: to, amountRaw }) => ({ address: to, amount: amountRaw })), address, freshBalance);
@@ -529,6 +536,7 @@ export function HorfGifts({
       else void ownedQuery.refetch();
       void ownedBalanceQuery.refetch();
     } catch (cause) {
+      setNeedsWalletReconnect(!signerReady);
       const submittedNote = submitted
         ? ` The transfer was submitted; retry ${kind} confirmation after checking its explorer status. Do not resend it.`
         : submittedOpHash ? " The transfer was submitted; inspect it on TzKT before retrying." : "";
@@ -684,7 +692,7 @@ export function HorfGifts({
       {!compact && pendingGifts.map((pendingGift) => <Note key={pendingGift.opHash} role="status">A horse transfer was submitted at <a href={`https://tzkt.io/${encodeURIComponent(pendingGift.opHash)}`} target="_blank" rel="noopener noreferrer">{shortAddress(pendingGift.opHash)}</a>. Gift classification is pending. <Action data-horf-gift-retry type="button" onClick={() => void retryConfirmation(pendingGift)} disabled={busy}>Retry confirmation</Action> <Action type="button" onClick={() => { clearPending(pendingGift); setPendingGifts((current) => current.filter((item) => item.opHash !== pendingGift.opHash)); }} disabled={busy}>Clear if transfer failed</Action></Note>)}
       {pendingTrades.filter((pendingTrade) => !compact || pendingTrade.trades.some((trade) => trade.recipient === quickRecipient?.address)).map((pendingTrade) => <Note key={pendingTrade.opHash} role="status">A direct horse trade was submitted at <a href={`https://tzkt.io/${encodeURIComponent(pendingTrade.opHash)}`} target="_blank" rel="noopener noreferrer">{shortAddress(pendingTrade.opHash)}</a>. Horf trade verification is pending. <Action data-horf-trade-retry type="button" onClick={() => void retryTradeConfirmation(pendingTrade)} disabled={busy}>Retry trade confirmation</Action> <Action type="button" onClick={() => { clearPendingTrade(pendingTrade); setPendingTrades((current) => current.filter((item) => item.opHash !== pendingTrade.opHash)); }} disabled={busy}>Clear if transfer failed</Action></Note>)}
       {stage && <Note role="status" aria-live="polite">{giftStageLabel(stage, stageKind ?? sendKind)} {submittedHash && <a href={`https://tzkt.io/${encodeURIComponent(submittedHash)}`} target="_blank" rel="noopener noreferrer">View submitted transfer</a>}</Note>}
-      {error && <Note $error role="alert">{error}</Note>}
+      {error && <Note $error role="alert">{error}{needsWalletReconnect && <> <Action data-horf-gift-reconnect type="button" onClick={() => { setError(null); setNeedsWalletReconnect(false); void connectWallet(); }} disabled={isConnecting}>{isConnecting ? "Connecting…" : "Reconnect wallet"}</Action></>}</Note>}
       {success && <Note role="status">{success}</Note>}
     </Shell>
   );
