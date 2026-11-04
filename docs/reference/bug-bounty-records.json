@@ -12077,7 +12077,7 @@
     },
     {
       "id": "WTF-BB-798",
-      "status": "Fixed",
+      "status": "Verified",
       "owner": "Codex Horf Stable wallet snapshot repair",
       "lastTouched": "2026-11-04",
       "category": "Horf / Stable deposit availability",
@@ -12088,7 +12088,7 @@
       "points": 9,
       "rank": 572,
       "title": "Wallet-scoped Stable snapshot fails on absent TzKT big-map keys",
-      "body": "- Evidence (2026-11-04): The screenshot wallet tz1Qi77tcJn9foeHHP1QHj6UX1m1vLVLMbuY owns 39 editions of Marshal-approved All Stirred Up, yet /api/horf/stables?market=1&address=... returns 503 while the public snapshot returns 200. TzKT returns 204 No Content for its absent blacklist and credit singleton keys; the shared JSON reader throws when parsing the empty body. The Add owned horse control is disabled because the wallet-scoped snapshot cannot establish deposit readiness.\n- Correction: Stable blacklist and credit reads now use TzKT filtered key collections, which return 200 [] for absent keys; responses are checked for the exact wallet and at most one row. Deposit rows still start at zero editions and require an explicit positive quantity before wallet signing.\n- Verification idea: An empty-key regression test returns a ready snapshot with zero credits and no blacklist; the exact production wallet API returns 200 and enables Add owned horse in the browser.\n- Local verification (2026-11-04): The regression failed before the change on the absent-key singleton path and passes after it; all 10 focused Stable service tests pass. A real read of the screenshot wallet through the corrected chain reader returns status=ready, zero credits, no blacklist, and no listings. Production deployment and browser verification remain pending."
+      "body": "- Evidence (2026-11-04): The screenshot wallet tz1Qi77tcJn9foeHHP1QHj6UX1m1vLVLMbuY owns 39 editions of Marshal-approved All Stirred Up, yet /api/horf/stables?market=1&address=... returns 503 while the public snapshot returns 200. TzKT returns 204 No Content for its absent blacklist and credit singleton keys; the shared JSON reader throws when parsing the empty body. The Add owned horse control is disabled because the wallet-scoped snapshot cannot establish deposit readiness.\n- Correction: Stable blacklist and credit reads now use TzKT filtered key collections, which return 200 [] for absent keys; responses are checked for the exact wallet and at most one row. Deposit rows still start at zero editions and require an explicit positive quantity before wallet signing.\n- Verification idea: An empty-key regression test returns a ready snapshot with zero credits and no blacklist; the exact production wallet API returns 200 and enables Add owned horse in the browser.\n- Local verification (2026-11-04): The regression failed before the change on the absent-key singleton path and passes after it; all 10 focused Stable service tests pass. A real read of the screenshot wallet through the corrected chain reader returns status=ready, zero credits, no blacklist, and no listings. Production verification (2026-11-04): Hetzner deploy run 41790639590 succeeded; public health reports commit ff0d58b3, the affected wallet Stable API returns HTTP 200 with status=ready, permitReady=true, custodyReady=true, zero credits and no blacklist, and the Horf Stables route returns HTTP 200. The focused browser Stable suite passed 10/10 before deployment; no wallet transaction was submitted."
     }
   ]
 }

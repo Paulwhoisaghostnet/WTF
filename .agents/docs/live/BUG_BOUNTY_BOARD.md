@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **764** · Open: **9** · Claimed: **42** · In Progress: **16** · Blocked: **4** · Fixed: **148** · Verified: **540** · Archived: **5**
+Total: **764** · Open: **9** · Claimed: **42** · In Progress: **16** · Blocked: **4** · Fixed: **147** · Verified: **541** · Archived: **5**
 
 ## Canonical Board
 
@@ -207,7 +207,6 @@ Total: **764** · Open: **9** · Claimed: **42** · In Progress: **16** · Block
 | WTF-BB-643 | Fixed | Codex tz2at CEX classifier pass | 2026-05-28 | Tezos / tz2at ecosystem analytics | P1 | 10 | 498 | 2 | 4 | 0 | CEX flow classifier shipped without a default exchange custody address book |
 | WTF-BB-306 | Fixed | Codex desktop pet water repair | 2026-06-21 | Desktop pet / care tool UX | P1 | 10 | 498 | 2 | 4 | 0 | Water tool can clean instead of hydrate a thirsty sick/dirty pet, leaving the Water/thirst meter stuck at 0 despite repeated water care; fixed with water-first care policy and focused tests, pending unrelated inventory coverage blocker |
 | WTF-BB-186 | Fixed | Cursor comparable-mutez deploy (2026-05-30) | - | Tezos / tz2at ecosystem analytics | P1 | 10 | 498 | 2 | 4 | 0 | tz2at liquidity aggregates sum Etherlink 18-decimal units with Tezos 6-decimal mutez |
-| WTF-BB-798 | Fixed | Codex Horf Stable wallet snapshot repair | 2026-11-04 | Horf / Stable deposit availability | P1 | 9 | 572 | 1 | 4 | 0 | Wallet-scoped Stable snapshot fails on absent TzKT big-map keys |
 | WTF-BB-796 | Fixed | Codex Horf deployment checksum repair | 2026-11-04 | Deploy / immutable migration history | P1 | 9 | 572 | 1 | 4 | 0 | Edited applied Horf migration blocks Hetzner deployment |
 | WTF-BB-792 | Fixed | Codex Horf API rate-limit correction | 2026-11-04 | Horf / API availability | P1 | 9 | 572 | 1 | 4 | 0 | Shared pre-auth IP quota causes verified Horf riders to receive 429 responses |
 | WTF-BB-787 | Fixed | Codex Horf HORSE claim availability correction | 2026-11-04 | Horf / HORSE reward claim availability | P1 | 9 | 572 | 1 | 4 | 0 | Claim HORSE is disabled during a fresh scan despite a completed claim-ready reward snapshot |
@@ -612,6 +611,7 @@ Total: **764** · Open: **9** · Claimed: **42** · In Progress: **16** · Block
 | WTF-BB-176 | Verified | Codex pending batch live puppet cleanup | 2026-06-03 | Live E2E / local environment drift | P1 | 10 | 498 | 2 | 4 | 0 | Live puppet harness has stale local DB/storage prerequisites |
 | WTF-BB-069 | Verified | Codex top-priority stale bounty reconciliation | 2026-09-02 | Kiln integration / network metadata | P1 | 10 | 498 | 2 | 3 | 1 | Deployed Kiln may advertise stale Etherlink Ghostnet-era metadata |
 | WTF-BB-006 | Verified | Codex top-priority stale bounty reconciliation | 2026-09-02 | DB migrations | P1 | 10 | 498 | 2 | 3 | 1 | `0031_wtf_recapture.sql` is not idempotent for enum type creation |
+| WTF-BB-798 | Verified | Codex Horf Stable wallet snapshot repair | 2026-11-04 | Horf / Stable deposit availability | P1 | 9 | 572 | 1 | 4 | 0 | Wallet-scoped Stable snapshot fails on absent TzKT big-map keys |
 | WTF-BB-778 | Verified | Codex Horf route metadata gate correction | 2026-11-03 | Horf / shared browser route metadata | P1 | 9 | 572 | 1 | 4 | 0 | Horf subroutes are missing from shared browser metadata and fail the route synchronization gate |
 | WTF-BB-777 | Verified | Codex Horf release gate correction | 2026-11-04 | Release governance / environment inventory | P1 | 9 | 572 | 1 | 4 | 0 | Horf release leaves the deterministic environment inventory stale and stops Quality Gates before typecheck and build |
 | WTF-BB-693 | Verified | Codex October desktop security release | 2026-10-22 | Desktop installers / Windows static paths and Linux smoke | P1 | 9 | 572 | 2 | 3 | 0 | Installer verification blocks security release on Windows root asset paths and the suite Linux executable name |
@@ -4466,19 +4466,6 @@ Total: **764** · Open: **9** · Claimed: **42** · In Progress: **16** · Block
   - `normalizeToComparableMutez` / `readComparableAmount` in `server/features/tz2at/ecosystem-analytics.ts` convert Etherlink wei to 6-decimal mutez-equivalent before cross-network totals, segment sums, entity/route rankings, and min-amount filters; native amounts remain on routes, CEX flows, and value-flow rows for network-aware display.
   - Unit test `tz2at comparable mutez normalizes etherlink wei before cross-network liquidity totals` in `ecosystem-analytics.test.ts`.
   - Deployed via SSH to production WTF host (`5.78.202.50`, `scripts/server-deploy.sh`); serves `https://wtfgameshow.app/api/tz2at/ecosystem/analytics`. Etherlink bridge tab still uses raw rollup units intentionally.
-
-### WTF-BB-798 - Wallet-scoped Stable snapshot fails on absent TzKT big-map keys
-
-- Category: Horf / Stable deposit availability
-- Priority: P1
-- Status: Fixed
-- Owner/Session: Codex Horf Stable wallet snapshot repair
-- Last touched: 2026-11-04
-- Score: C1 + F4 + S0 + P1(4) = 9
-- Evidence (2026-11-04): The screenshot wallet tz1Qi77tcJn9foeHHP1QHj6UX1m1vLVLMbuY owns 39 editions of Marshal-approved All Stirred Up, yet /api/horf/stables?market=1&address=... returns 503 while the public snapshot returns 200. TzKT returns 204 No Content for its absent blacklist and credit singleton keys; the shared JSON reader throws when parsing the empty body. The Add owned horse control is disabled because the wallet-scoped snapshot cannot establish deposit readiness.
-- Correction: Stable blacklist and credit reads now use TzKT filtered key collections, which return 200 [] for absent keys; responses are checked for the exact wallet and at most one row. Deposit rows still start at zero editions and require an explicit positive quantity before wallet signing.
-- Verification idea: An empty-key regression test returns a ready snapshot with zero credits and no blacklist; the exact production wallet API returns 200 and enables Add owned horse in the browser.
-- Local verification (2026-11-04): The regression failed before the change on the absent-key singleton path and passes after it; all 10 focused Stable service tests pass. A real read of the screenshot wallet through the corrected chain reader returns status=ready, zero credits, no blacklist, and no listings. Production deployment and browser verification remain pending.
 
 ### WTF-BB-796 - Edited applied Horf migration blocks Hetzner deployment
 
@@ -13356,6 +13343,19 @@ Copy this when adding a new issue:
   - Commit `c70b85d52` guarded all three enum types in migration 0031—`buyback_window_status`, `wtf_auction_status`, and `side_quest_entry_fee_status`—with `pg_type` existence checks before creation.
 - Verification (2026-09-02):
   - The production migration policy suite now asserts all three guards and passes 9/9. Current source inspection and blame both confirm the replay-safe correction is already present, so the original report was stale rather than an outstanding defect.
+
+### WTF-BB-798 - Wallet-scoped Stable snapshot fails on absent TzKT big-map keys
+
+- Category: Horf / Stable deposit availability
+- Priority: P1
+- Status: Verified
+- Owner/Session: Codex Horf Stable wallet snapshot repair
+- Last touched: 2026-11-04
+- Score: C1 + F4 + S0 + P1(4) = 9
+- Evidence (2026-11-04): The screenshot wallet tz1Qi77tcJn9foeHHP1QHj6UX1m1vLVLMbuY owns 39 editions of Marshal-approved All Stirred Up, yet /api/horf/stables?market=1&address=... returns 503 while the public snapshot returns 200. TzKT returns 204 No Content for its absent blacklist and credit singleton keys; the shared JSON reader throws when parsing the empty body. The Add owned horse control is disabled because the wallet-scoped snapshot cannot establish deposit readiness.
+- Correction: Stable blacklist and credit reads now use TzKT filtered key collections, which return 200 [] for absent keys; responses are checked for the exact wallet and at most one row. Deposit rows still start at zero editions and require an explicit positive quantity before wallet signing.
+- Verification idea: An empty-key regression test returns a ready snapshot with zero credits and no blacklist; the exact production wallet API returns 200 and enables Add owned horse in the browser.
+- Local verification (2026-11-04): The regression failed before the change on the absent-key singleton path and passes after it; all 10 focused Stable service tests pass. A real read of the screenshot wallet through the corrected chain reader returns status=ready, zero credits, no blacklist, and no listings. Production verification (2026-11-04): Hetzner deploy run 41790639590 succeeded; public health reports commit ff0d58b3, the affected wallet Stable API returns HTTP 200 with status=ready, permitReady=true, custodyReady=true, zero credits and no blacklist, and the Horf Stables route returns HTTP 200. The focused browser Stable suite passed 10/10 before deployment; no wallet transaction was submitted.
 
 ### WTF-BB-778 - Horf subroutes are missing from shared browser metadata and fail the route synchronization gate
 
