@@ -17,7 +17,7 @@ async function seedTrader(request) {
   expect(response.ok()).toBeTruthy();
 }
 
-async function mockHorf(page, { readyHorse = false, initialPosse = [], initialGifts = [], ownedBalance = "2", seasonRiders = [] } = {}) {
+async function mockHorf(page, { readyHorse = false, initialPosse = [], initialGifts = [], ownedBalance = "2", seasonRiders = [], openRangeOffers = [] } = {}) {
   let partners = [...initialPosse];
   let gifts = [...initialGifts];
   const marks = [];
@@ -61,6 +61,12 @@ async function mockHorf(page, { readyHorse = false, initialPosse = [], initialGi
     items: [{ contract: horseToken, tokenId: "7", name: "Neighvember Seven", balance: ownedBalance, walletAddress: traderWallet }],
     pagination: { limit: 48, offset: 0, total: 1, hasMore: false, nextOffset: 1 },
   }));
+  await page.route(/\/api\/horf\/traders\/[^/]+\/horses(?:\?.*)?$/, (route) => json(route, {
+    address: traderWallet,
+    items: [{ contract: horseToken, tokenId: "7", name: "Neighvember Seven", balance: ownedBalance, image: "/horf-art/horse-gallop-photo.jpg" }],
+    pagination: { limit: 48, offset: 0, total: 1, hasMore: false, nextOffset: 1 },
+  }));
+  await page.route(/\/api\/horf\/open-range\/offers(?:\?.*)?$/, (route) => json(route, { offers: openRangeOffers }));
   await page.route(/\/api\/horf\/posse(?:\?.*)?$/, (route) => {
     if (route.request().method() === "POST") {
       const body = route.request().postDataJSON();
@@ -127,6 +133,47 @@ async function mockOfficialCrpPrefill(page, nomineeAddress) {
 }
 
 test.describe("Horf HORSE, posse, and horse gifts", () => {
+  test("adds a directory rider to posse and removes them from their profile", async ({ page, request }) => {
+    await seedTrader(request);
+    await mockHorf(page, { seasonRiders: [
+      { address: traderWallet, name: "My Stable", trades: 3, received: 2, sent: 3 },
+      { address: leadWallet, name: "Sir Canter", trades: 2, received: 2, sent: 2 },
+    ] });
+    await page.route(/\/api\/horf\/traders\/[^/]+\/profile\?season=current-2026$/, (route) => json(route, {
+      address: leadWallet, seasonKey: season.key, imageUrl: null, description: "", updatedAt: null,
+      username: "Sir Canter", displayName: "Sir Canter", usernameSource: "horf", canEditUsername: true,
+    }));
+    await page.goto("/horf/traders?season=current-2026");
+    const myCard = page.locator("[data-horf-trader-card]").filter({ hasText: "My Stable" });
+    const riderCard = page.locator("[data-horf-trader-card]").filter({ hasText: "Sir Canter" });
+    await expect(myCard.locator("[data-horf-trader-posse-actions]")).toHaveCount(0);
+    await riderCard.locator("[data-horf-trader-posse-add]").click();
+    await expect(riderCard.locator("[data-horf-trader-in-posse]")).toBeVisible();
+
+    await page.goto("/horf/posse?season=current-2026");
+    await expect(page.locator("[data-horf-posse-member]")).toContainText("Sir Canter");
+    await page.goto(`/horf/traders/${leadWallet}?season=current-2026`);
+    const profile = page.locator('[data-horf-region="trader-profile"]');
+    await expect(profile.locator("[data-horf-trader-in-posse]")).toBeVisible();
+    await profile.locator("[data-horf-trader-posse-remove]").click();
+    await expect(profile.locator("[data-horf-trader-posse-add]")).toBeVisible();
+    await page.goto("/horf/posse?season=current-2026");
+    await expect(page.locator("[data-horf-posse-member]")).toHaveCount(0);
+  });
+
+  test("offers an active Open Range rider in the gift recipient picker", async ({ page, request }) => {
+    await seedTrader(request);
+    await mockHorf(page, {
+      seasonRiders: [{ address: leadWallet, name: "Sir Canter", trades: 2, received: 2, sent: 2 }],
+      openRangeOffers: [{ ownerAddress: thirdWallet, ownerName: "Prairie Pony" }],
+    });
+    await page.goto("/horf/gifts");
+    const gift = page.locator('[data-horf-region="gifts"]');
+    await expect(gift.locator("[data-horf-gift-trader-picker] option[value='" + thirdWallet + "']")).toContainText("Prairie Pony");
+    await gift.locator("[data-horf-gift-trader-picker]").selectOption(thirdWallet);
+    await expect(gift.locator("[data-horf-gift-recipient]")).toHaveValue(thirdWallet);
+  });
+
   test("allows posse and CSV preparation while HORSE sends are unconfigured", async ({ page, request }) => {
     await seedTrader(request);
     await mockHorf(page);
@@ -157,7 +204,7 @@ test.describe("Horf HORSE, posse, and horse gifts", () => {
     await expect(send.locator("[data-horf-horse-claim]")).toBeDisabled();
     await expect(send).toContainText("has not been verified and configured yet");
     await expect(send.locator("[data-horf-horse-send]")).toBeDisabled();
-    await send.getByRole("combobox", { name: "Choose posse trader for recipient 1" }).selectOption(leadWallet);
+    await send.locator("[data-horf-horse-posse-picker]").first().selectOption(leadWallet);
     await expect(send.locator("[data-horf-horse-row] [data-horf-horse-address]")).toHaveValue(leadWallet);
 
     await send.locator("[data-horf-horse-csv]").setInputFiles({

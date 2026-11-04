@@ -498,4 +498,55 @@ test.describe("Horf Open Range", () => {
     await expect(range.locator("[data-horf-open-range-my-offer]")).toHaveCount(0);
     await expect(range).toContainText("The horse never left your wallet");
   });
+
+  test("offers a qualifying owned horse outside the visible season feed", async ({ page, request }) => {
+    expect((await request.post("/__test/state", { data: { userRole: "admin" } })).ok()).toBeTruthy();
+    await page.addInitScript(({ address }) => {
+      window.localStorage.setItem("wtf:wallet-session", JSON.stringify({ address, providerName: "octez.connect" }));
+    }, { address: owner });
+    await page.route("**/api/wallets", (route) => route.fulfill({
+      status: 200, contentType: "application/json", body: JSON.stringify([{ walletAddress: owner }]),
+    }));
+    await page.route(`**/api/wallets/${owner}/sync`, (route) => route.fulfill({
+      status: 200, contentType: "application/json", body: JSON.stringify({ ok: true }),
+    }));
+    await mockSeasons(page);
+    await page.route("**/api/horf/open-range?*", (route) => route.fulfill({
+      status: 200, contentType: "application/json",
+      body: JSON.stringify({ season: current, items: [], nextCursor: null, hasMore: false, asOf: now }),
+    }));
+    await page.route("**/api/horf/open-range/offers?*", (route) => route.fulfill({
+      status: 200, contentType: "application/json", body: JSON.stringify({ offers: [] }),
+    }));
+    const horsePages = [];
+    await page.route(`**/api/horf/traders/${owner}/horses?*`, (route) => {
+      const offset = Number(new URL(route.request().url()).searchParams.get("offset"));
+      horsePages.push(offset);
+      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({
+        address: owner,
+        items: offset === 0 ? [] : [{ ...horse("42"), balance: "3", name: "Later Page Pony" }],
+        pagination: { hasMore: offset === 0, nextOffset: offset === 0 ? 48 : 49 },
+      }) });
+    });
+    let posted = null;
+    await page.route("**/api/horf/open-range/offers", (route) => {
+      posted = route.request().postDataJSON();
+      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({
+        id: 101, ownerAddress: owner, tokenContract: contract, tokenId: "42", amount: "2",
+        acceptedTokenPolicy: "any_qualifying", createdAt: now, updatedAt: now,
+      }) });
+    });
+
+    await page.goto("/horf/open-range");
+    const range = page.locator("[data-horf-open-range]");
+    await expect(range.locator("[data-horf-open-range-horse]")).toHaveCount(0);
+    await expect(range.locator("[data-horf-open-range-owned-horse]")).toBeVisible();
+    await range.getByRole("button", { name: "More horses from this wallet" }).click();
+    await range.locator("[data-horf-open-range-owned-horse]").selectOption(`${contract}:42`);
+    await expect(range.locator("[data-horf-open-range-offer-amount]")).toBeVisible();
+    await range.locator("[data-horf-open-range-offer-amount]").fill("2");
+    await range.locator("[data-horf-open-range-offer-post]").click();
+    expect(horsePages).toEqual([0, 48]);
+    expect(posted).toEqual({ address: owner, tokenContract: contract, tokenId: "42", amount: "2", acceptedTokenPolicy: "any_qualifying" });
+  });
 });

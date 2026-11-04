@@ -14480,3 +14480,13 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: A link to current holdings could look empty or incomplete after a successful trade, contradicting the drafted social post.
 
 **Rule**: Share a public rider URL with an explicit Received horses tab and selected season. Read the public season ledger for the rider address and render every recognized inbound receipt; keep current holdings labeled separately. When adding receipt tokens to a shared horse-card dialog, narrow Marshal-only controls by the required held-balance field rather than by contract address, which receipt tokens also have.
+
+---
+
+## 2026-11-04 - Share trader choices and filter wallet picks to qualifying horses
+
+**What happened**: HORF saved posse members only through a separate form, while trader cards and public profiles offered no direct action. Address forms used different trader sources, and the full horse-send form listed every wallet token even though only qualifying horses could be sent.
+
+**Why it mattered**: Riders had to copy wallet addresses across pages, offer-only traders were missing from some pickers, and a nonhorse could appear selectable until a later eligibility check rejected it.
+
+**Rule**: Expose posse actions at the trader card and profile, reuse all-time race riders plus active offer owners and the viewer's posse for address choices, and source wallet horse choices from the qualifying held-horse endpoint. Keep typed addresses and exact Objkt links as fallbacks, and retain fresh eligibility and balance checks before a wallet operation.

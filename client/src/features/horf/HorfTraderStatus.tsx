@@ -6,6 +6,7 @@ import { logClientSystemEvent } from "../../lib/system-log";
 import { HORF_STABLES_CHAIN_ID, setHorfStableBlacklist } from "../../lib/tezos/horf-stables";
 import { assertTraderAddress } from "./recipient-input";
 import { parseHorfTraderStatus, safeHorfEvidenceUrl } from "./trader-status-model";
+import { HorfKnownTraderPicker, useHorfTraderChoices } from "./HorfKnownTraderPicker";
 
 type AdminEntry = {
   address: string;
@@ -123,6 +124,7 @@ export function HorfTraderStatus({
   const [chainBusy, setChainBusy] = useState(false);
   const [chainError, setChainError] = useState<string | null>(null);
   const [chainHash, setChainHash] = useState<string | null>(null);
+  const traderChoices = useHorfTraderChoices(walletAddress);
 
   useEffect(() => setLookupAddress(selectedAddress ?? ""), [selectedAddress]);
 
@@ -246,6 +248,7 @@ export function HorfTraderStatus({
           <input id="horf-status-wallet" data-horf-status-address value={lookupAddress} onChange={(event) => setLookupAddress(event.target.value)} placeholder="tz1…" />
           <Action data-horf-status-search type="submit">Check standing</Action>
         </Row>
+        <HorfKnownTraderPicker choices={traderChoices} onSelect={(wallet) => { setLookupAddress(wallet); setLookupError(null); onSelect(wallet); }} label="trader to check" includeBlacklisted posseDataAttribute="data-horf-status-posse-picker" knownDataAttribute="data-horf-status-trader-picker" />
       </form>
       {lookupError && <Report $listed role="alert">{lookupError}</Report>}
       {!selectedAddress && <p>Choose a rider on the race board or enter a Tezos wallet address above.</p>}
@@ -266,7 +269,7 @@ export function HorfTraderStatus({
         <h3>Admin · wallet blacklist</h3>
         <p>Add a public reason. This blocks private Horf actions; Stable claims need a separate on-chain block. Past trades stay visible.</p>
         <form onSubmit={(event) => void addBlacklist(event)}>
-          <div><label htmlFor="horf-admin-blacklist-address">Wallet to blacklist</label><input id="horf-admin-blacklist-address" data-horf-admin-blacklist-address value={adminAddress} onChange={(event) => setAdminAddress(event.target.value)} placeholder="tz1…" disabled={adminBusy} /></div>
+          <div><label htmlFor="horf-admin-blacklist-address">Wallet to blacklist</label><input id="horf-admin-blacklist-address" data-horf-admin-blacklist-address value={adminAddress} onChange={(event) => setAdminAddress(event.target.value)} placeholder="tz1…" disabled={adminBusy} /><HorfKnownTraderPicker choices={traderChoices} onSelect={(wallet) => setAdminAddress(wallet)} disabled={adminBusy} label="wallet to blacklist" includeBlacklisted posseDataAttribute="data-horf-admin-blacklist-posse-picker" knownDataAttribute="data-horf-admin-blacklist-trader-picker" /></div>
           <div><label htmlFor="horf-admin-blacklist-reason">Reason shown publicly</label><textarea id="horf-admin-blacklist-reason" data-horf-admin-blacklist-reason value={reason} onChange={(event) => setReason(event.target.value)} disabled={adminBusy} /></div>
           <div><label htmlFor="horf-admin-blacklist-evidence">Evidence link (optional)</label><input id="horf-admin-blacklist-evidence" data-horf-admin-blacklist-evidence value={evidenceUrl} onChange={(event) => setEvidenceUrl(event.target.value)} placeholder="https://…" disabled={adminBusy} /></div>
           <Action data-horf-admin-blacklist-submit type="submit" $danger disabled={adminBusy || !adminAddress.trim() || !reason.trim()}>{adminBusy ? "Saving…" : "Blacklist wallet"}</Action>

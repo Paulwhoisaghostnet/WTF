@@ -6,6 +6,7 @@ import { logClientSystemEvent } from "../../lib/system-log";
 import { assertTraderAddress } from "./recipient-input";
 import type { HorfPosseResponse } from "./social-types";
 import { HorfTradeHorseCarousel } from "./HorfTradeHorseCarousel";
+import { HorfKnownTraderPicker, useHorfTraderChoices } from "./HorfKnownTraderPicker";
 
 const Shell = styled.section`
   min-width: 0;
@@ -53,6 +54,7 @@ export function HorfPosse({ address, connectWallet, isConnecting }: {
     queryFn: () => api.get<HorfPosseResponse>(`/api/horf/posse?address=${encodeURIComponent(address!)}`),
     enabled: Boolean(address),
   });
+  const traderChoices = useHorfTraderChoices(address);
   const partners = Array.isArray(posseQuery.data?.partners) ? posseQuery.data.partners : [];
   const scopeDenied = isApiRequestError(posseQuery.error) && posseQuery.error.status === 403;
 
@@ -96,7 +98,7 @@ export function HorfPosse({ address, connectWallet, isConnecting }: {
     <div className="intro"><span className="eyebrow">Your regular riders 🐎</span><h2>The posse</h2><p>Find their horses, visit their stables, or send HORSE and gifts.</p></div>
     {!address && <div className="status" role="status">Connect and verify your Tezos wallet to see and manage your posse. <button type="button" onClick={() => void connectWallet()} disabled={isConnecting}>{isConnecting ? "Connecting…" : "Connect wallet"}</button></div>}
     <form className="add-form" onSubmit={(event) => void addPartner(event)}>
-      <div><label htmlFor="horf-posse-address">Trader wallet address</label><input id="horf-posse-address" data-horf-posse-address value={partnerAddress} onChange={(event) => setPartnerAddress(event.target.value)} placeholder="tz1…" disabled={!address || busy} /></div>
+      <div><label htmlFor="horf-posse-address">Trader wallet address</label><input id="horf-posse-address" data-horf-posse-address value={partnerAddress} onChange={(event) => setPartnerAddress(event.target.value)} placeholder="tz1…" disabled={!address || busy} /><HorfKnownTraderPicker choices={traderChoices} onSelect={(wallet) => setPartnerAddress(wallet)} disabled={!address || busy} excludeAddress={address} label="trader to add" showPosse={false} knownDataAttribute="data-horf-posse-trader-picker" /></div>
       <div><label htmlFor="horf-posse-name">Nickname (optional)</label><input id="horf-posse-name" value={nickname} onChange={(event) => setNickname(event.target.value)} placeholder="Sir Canter" disabled={!address || busy} /></div>
       <button data-horf-posse-add type="submit" disabled={!address || busy || !partnerAddress.trim()}>{busy ? "Saving…" : "Add to posse"}</button>
     </form>

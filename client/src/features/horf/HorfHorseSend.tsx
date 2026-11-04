@@ -14,7 +14,8 @@ import {
   validateHorseRecipients,
   type HorfRecipient,
 } from "./recipient-input";
-import type { HorfHorseActivity, HorfHorseConfig, HorfPosseResponse } from "./social-types";
+import type { HorfHorseActivity, HorfHorseConfig } from "./social-types";
+import { HorfKnownTraderPicker, useHorfTraderChoices } from "./HorfKnownTraderPicker";
 
 type RecipientRow = HorfRecipient & { id: number };
 type CommunityCrpCategory = "helping-hand" | "influencer";
@@ -219,11 +220,7 @@ export function HorfHorseSend({
     queryFn: () => api.get<HorfHorseConfig>(`/api/horf/horse/config${address ? `?address=${encodeURIComponent(address)}` : ""}`),
     refetchOnWindowFocus: true,
   });
-  const posseQuery = useQuery({
-    queryKey: ["horf", "posse", address],
-    queryFn: () => api.get<HorfPosseResponse>(`/api/horf/posse?address=${encodeURIComponent(address!)}`),
-    enabled: Boolean(address),
-  });
+  const traderChoices = useHorfTraderChoices(address);
   const config = configQuery.data;
   const ready = !configQuery.isError && config?.status === "ready" &&
     config.network === "mainnet" && config.chainId === "NetXdQprcVkpaWU" &&
@@ -246,7 +243,6 @@ export function HorfHorseSend({
   const activityReady = ready && activity?.status === "ready" &&
     activity.network === "mainnet" && activity.chainId === "NetXdQprcVkpaWU" &&
     activity.token?.contract === config?.token?.contract;
-  const partners = Array.isArray(posseQuery.data?.partners) ? posseQuery.data.partners : [];
   const reward = rewardsQuery.data;
   const canClaimReward = Boolean(address && reward && reward.status !== "error" && reward.asOf && reward.sourceComplete && reward.claimReady &&
     reward.vaultAddress && /^KT1[1-9A-HJ-NP-Za-km-z]{33}$/.test(reward.vaultAddress) &&
@@ -420,10 +416,7 @@ export function HorfHorseSend({
                   <div>
                     <label htmlFor={`horf-horse-address-${row.id}`}>Trader wallet</label>
                     <input id={`horf-horse-address-${row.id}`} data-horf-horse-address value={row.address} onChange={(event) => setRow(row.id, { address: event.target.value })} placeholder="tz1…" disabled={busy} />
-                    {partners.length > 0 && <select aria-label={`Choose posse trader for recipient ${index + 1}`} value="" onChange={(event) => { setRow(row.id, { address: event.target.value }); logClientSystemEvent({ eventType: "horf.posse.selected", message: "Horf posse trader selected for HORSE send", metadata: { address: event.target.value } }); }} disabled={busy}>
-                      <option value="">Choose from posse…</option>
-                      {partners.map((partner) => <option key={partner.id} value={partner.address}>{partner.nickname || shortAddress(partner.address)}</option>)}
-                    </select>}
+                    <HorfKnownTraderPicker choices={traderChoices} onSelect={(wallet) => setRow(row.id, { address: wallet })} disabled={busy} excludeAddress={address} label={`recipient ${index + 1}`} posseDataAttribute="data-horf-horse-posse-picker" knownDataAttribute="data-horf-horse-trader-picker" />
                   </div>
                   <div>
                     <label htmlFor={`horf-horse-amount-${row.id}`}>$HORSE</label>

@@ -22,7 +22,8 @@ import { resolveHorfHorseArt, resolveHorfHorseCardArt, resolveHorfHorseVideo, un
 import { formatHorseAmount } from "../features/horf/recipient-input";
 import { objktTokenUrl } from "../features/horf/token-input";
 import { useHorfWallet } from "../features/horf/useHorfWallet";
-import { api } from "../lib/api";
+import { api, fetchWithCsrf, isApiRequestError } from "../lib/api";
+import type { HorfPosseMember, HorfPosseResponse } from "../features/horf/social-types";
 import { useAuth } from "../lib/auth-context";
 import { logClientSystemEvent } from "../lib/system-log";
 import { advanceResolvedMediaFallback } from "../lib/media-resolve";
@@ -667,6 +668,17 @@ const DirectoryCard = styled.article`
   button[data-horf-trader-quick-send] { width: 100%; margin-top: 15px; }
 `;
 
+const PosseActions = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  > span { color: var(--horf-teal); font: 750 12px/1.3 ui-sans-serif, system-ui, sans-serif; }
+  button { min-height: 36px; }
+  [role="alert"] { flex-basis: 100%; color: #e6a18c; font-size: 12px; line-height: 1.4; }
+`;
+
 const QuickSendDialog = styled.dialog`
   width: min(440px, calc(100vw - 24px));
   max-height: calc(100dvh - 24px);
@@ -957,6 +969,8 @@ export function Horf() {
   const [profileApprovalBusy, setProfileApprovalBusy] = useState(false);
   const [profileApprovalStatus, setProfileApprovalStatus] = useState<string | null>(null);
   const [profileApprovalResults, setProfileApprovalResults] = useState<Record<string, { status: "approved" | "failed"; message: string }>>({});
+  const [posseBusyAddress, setPosseBusyAddress] = useState<string | null>(null);
+  const [posseError, setPosseError] = useState<{ address: string; message: string; needsProof: boolean } | null>(null);
   const ledgerAddress = routeSection === "profile" && validProfileAddress ? validProfileAddress : address;
   const query = useQuery({
     queryKey: ["horf", "season", selectedSeasonKey, ledgerAddress],
@@ -975,6 +989,12 @@ export function Horf() {
     queryKey: ["horf", "horse-rewards", address],
     queryFn: () => api.get<{ claimableRaw: string; claimReady: boolean; asOf: string | null; status: "ready" | "syncing" | "error" }>(`/api/horf/horse/rewards?address=${encodeURIComponent(address!)}`),
     enabled: Boolean(address),
+    refetchOnWindowFocus: true,
+  });
+  const posseQuery = useQuery({
+    queryKey: ["horf", "posse", address],
+    queryFn: () => api.get<HorfPosseResponse>(`/api/horf/posse?address=${encodeURIComponent(address!)}`),
+    enabled: Boolean(address) && (routeSection === "traders" || routeSection === "profile"),
     refetchOnWindowFocus: true,
   });
   const directoryOffersQuery = useQuery({
@@ -1041,6 +1061,7 @@ export function Horf() {
     return [...rows.values()].sort((a, b) => b.trades - a.trades || b.offerCount - a.offerCount || a.address.localeCompare(b.address));
   }, [leaderboard, directoryOffersQuery.data?.offers]);
   const profileRider = leaderboard.find((row) => row.address === validProfileAddress);
+  const possePartners = new Map((posseQuery.data?.partners ?? []).map((partner) => [partner.address, partner]));
   const profileHorses = useMemo(() => profileHorsesQuery.data?.pages.flatMap((page) => page.items) ?? [], [profileHorsesQuery.data]);
   const profileThumbnails = useMemo(() => uniqueHorfThumbnailIdentities([
     ...(profileOffersQuery.data?.offers ?? []).map((offer) => ({ ...offer, contract: offer.tokenContract })),
@@ -1187,6 +1208,72 @@ export function Horf() {
     setProfileTab(tab);
     writeProfileTabToUrl(tab);
     logClientSystemEvent({ eventType: "horf.trader_profile.tab_selected", message: "Horf trader horses tab selected", metadata: { address: profileAddress, tab } });
+  }
+
+  async function addPosseRider(riderAddress: string, name: string | null) {
+    if (!address || posseBusyAddress || riderAddress === address) return;
+    setPosseBusyAddress(riderAddress);
+    setPosseError(null);
+    try {
+      const member = await api.post<HorfPosseMember>("/api/horf/posse", {
+        ownerAddress: address, address: riderAddress, nickname: name?.trim() || undefined,
+      });
+      qc.setQueryData<HorfPosseResponse>(["horf", "posse", address], (current) => ({
+        partners: [...(current?.partners ?? []).filter((partner) => partner.address !== riderAddress), member],
+      }));
+      void qc.invalidateQueries({ queryKey: ["horf", "posse", address] });
+      logClientSystemEvent({ eventType: "horf.posse.added", message: "Trader added to Horf posse from their card", metadata: { address: riderAddress } });
+    } catch (cause) {
+      setPosseError({
+        address: riderAddress,
+        message: cause instanceof Error ? cause.message : "This rider could not join your posse. Try again.",
+        needsProof: isApiRequestError(cause) && cause.status === 403 && !cause.message.toLowerCase().includes("restricted"),
+      });
+    } finally { setPosseBusyAddress(null); }
+  }
+
+  async function removePosseRider(member: HorfPosseMember) {
+    if (!address || posseBusyAddress) return;
+    setPosseBusyAddress(member.address);
+    setPosseError(null);
+    try {
+      const response = await fetchWithCsrf(`/api/horf/posse/${member.id}`, { method: "DELETE" });
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(typeof body.error === "string" ? body.error : "This rider could not leave your posse. Try again.");
+      }
+      qc.setQueryData<HorfPosseResponse>(["horf", "posse", address], (current) => ({
+        partners: (current?.partners ?? []).filter((partner) => partner.address !== member.address),
+      }));
+      void qc.invalidateQueries({ queryKey: ["horf", "posse", address] });
+      logClientSystemEvent({ eventType: "horf.posse.removed", message: "Trader removed from Horf posse from their card", metadata: { address: member.address } });
+    } catch (cause) {
+      setPosseError({
+        address: member.address,
+        message: cause instanceof Error ? cause.message : "This rider could not leave your posse. Try again.",
+        needsProof: isApiRequestError(cause) && cause.status === 403 && !cause.message.toLowerCase().includes("restricted"),
+      });
+    } finally { setPosseBusyAddress(null); }
+  }
+
+  function renderPosseAction(riderAddress: string, name: string | null) {
+    if (address === riderAddress) return null;
+    const label = traderName(name, riderAddress);
+    const member = possePartners.get(riderAddress);
+    const busy = posseBusyAddress === riderAddress;
+    const unavailable = Boolean(address && posseQuery.isError && !posseQuery.data);
+    const needsProof = isApiRequestError(posseQuery.error) && posseQuery.error.status === 403 && !posseQuery.error.message.toLowerCase().includes("restricted");
+    return <PosseActions data-horf-trader-posse-actions>
+      {!address ? <Action data-horf-trader-posse-connect type="button" disabled={isConnecting} aria-label={`Connect wallet to add ${label} to your posse`} onClick={() => void connectWallet()}>{isConnecting ? "Connecting…" : "Connect wallet to add 🤠"}</Action>
+        : unavailable && needsProof ? <Action data-horf-trader-posse-verify type="button" disabled={isConnecting} onClick={() => void connectWallet()}>{isConnecting ? "Verifying…" : "Verify wallet for posse"}</Action>
+        : unavailable ? <Action data-horf-trader-posse-retry type="button" onClick={() => void posseQuery.refetch()}>Retry posse</Action>
+        : posseQuery.isPending ? <Action type="button" disabled>Checking posse…</Action>
+        : member ? <><span data-horf-trader-in-posse>✓ In your posse</span><Action data-horf-trader-posse-remove type="button" disabled={Boolean(posseBusyAddress)} aria-label={`Remove ${label} from your posse`} onClick={() => void removePosseRider(member)}>{busy ? "Removing…" : "Remove"}</Action></>
+        : <Action data-horf-trader-posse-add type="button" disabled={Boolean(posseBusyAddress)} aria-label={`Add ${label} to your posse`} onClick={() => void addPosseRider(riderAddress, name)}>{busy ? "Adding…" : "Add to posse 🤠"}</Action>}
+      {unavailable && <span role="alert">{posseQuery.error instanceof Error ? posseQuery.error.message : "Your posse could not load."}</span>}
+      {posseError?.address === riderAddress && <span role="alert">{posseError.message}</span>}
+      {posseError?.address === riderAddress && posseError.needsProof && <Action data-horf-trader-posse-verify type="button" disabled={isConnecting} onClick={() => void connectWallet()}>{isConnecting ? "Verifying…" : "Verify wallet for posse"}</Action>}
+    </PosseActions>;
   }
 
   async function approveProfileHorse(horse: PublicHeldHorse) {
@@ -1395,6 +1482,7 @@ export function Horf() {
               <p><strong>{rider.trades}</strong> {rider.trades === 1 ? "season trade" : "season trades"} · <strong>{rider.offerCount}</strong> {rider.offerCount === 1 ? "horse offered" : "horses offered"}</p>
               <HorfTradeHorseCarousel address={rider.address} />
               {rider.address !== address && <Action data-horf-trader-quick-send type="button" $primary aria-label={`Send a horse to ${traderName(rider.name, rider.address)}`} onClick={(event) => openQuickSend(rider, event.currentTarget)}>Send a horse 🐎</Action>}
+              {renderPosseAction(rider.address, rider.name)}
             </DirectoryCard>)}
           </DirectoryGrid> : <LedgerPanel><h3>{query.isPending || directoryOffersQuery.isPending ? "Gathering the riders…" : "No riders at the rail yet"}</h3><p>Try another season or check the Open Range for new horse trade signs.</p></LedgerPanel>}
         </Section>}
@@ -1405,6 +1493,7 @@ export function Horf() {
             <h2>{traderName(profileIdentityQuery.data?.displayName ?? profileRider?.name, validProfileAddress)}</h2>
             <p>{validProfileAddress} · {profileRider?.trades ?? 0} {profileRider?.trades === 1 ? "trade" : "trades"} in {seasonDisplayName}. <a href={profileUrl(validProfileAddress)} target="_blank" rel="noopener noreferrer">View wallet on Objkt ↗</a></p>
             <Link href={`/horf/traders?season=${encodeURIComponent(selectedSeasonKey)}`}>← Back to other traders</Link>
+            {renderPosseAction(validProfileAddress, profileIdentityQuery.data?.displayName ?? profileRider?.name ?? null)}
             <HorfPublicTraderProfile address={validProfileAddress} seasonKey={profileSeasonKey} seasonLabel={profileSeasonLabel} />
             <ProfileTabs role="tablist" aria-label="Trader horse collections">
               <button type="button" role="tab" id="horf-profile-tab-for-trade" data-horf-profile-tab="for-trade" aria-selected={profileTab === "for-trade"} aria-controls="horf-profile-panel" onClick={() => selectProfileTab("for-trade")}>For trade on Horf</button>

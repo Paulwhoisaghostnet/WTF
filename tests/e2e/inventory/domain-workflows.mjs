@@ -906,7 +906,7 @@ export const DOMAIN_WORKFLOWS = [
     name: "horf trader directory, return-ride ledger, profile, and horse criteria loop",
     domain: "Market, Exchange, Inventory, and Commerce",
     routes: ["/horf/traders", "/horf/stable", "/horf/traders/tz1VSUr8wwNhLAzempoch5d6hLRiTh8Cjcjb", "/horf/info"],
-    eventHandles: ["horf.traders.viewed", "horf.trader.quick_send_opened", "horf.trader_profile.viewed", "horf.trader_profile.tab_selected", "horf.trader_profile.address_copied", "horf.trader_offer.selected", "horf.info.viewed"],
+    eventHandles: ["horf.traders.viewed", "horf.trader.quick_send_opened", "horf.trader_profile.viewed", "horf.trader_profile.tab_selected", "horf.trader_profile.address_copied", "horf.trader_offer.selected", "horf.posse.added", "horf.posse.removed", "horf.info.viewed"],
     apiProbes: [
       { method: "GET", path: "/api/horf/traders/tz1VSUr8wwNhLAzempoch5d6hLRiTh8Cjcjb/profile?season=current-2026", expectedStatuses: [200, 503] },
       { method: "GET", path: "/api/horf/traders/tz1VSUr8wwNhLAzempoch5d6hLRiTh8Cjcjb/profile-picture", expectedStatuses: [200, 404, 503] },
@@ -933,7 +933,7 @@ export const DOMAIN_WORKFLOWS = [
     name: "horf trader standing and admin moderation loop",
     domain: "Market, Exchange, Inventory, and Commerce",
     routes: ["/horf/outlaw-corral"],
-    eventHandles: ["horf.trader_status.viewed", "horf.blacklist.added", "horf.blacklist.removed", "horf.blacklist.chain_updated"],
+    eventHandles: ["horf.trader_status.viewed", "horf.blacklist.added", "horf.blacklist.removed", "horf.blacklist.chain_updated", "horf.trader_picker.selected"],
     apiProbes: [
       { method: "GET", path: "/api/horf/trader-status?address=tz1VSUr8wwNhLAzempoch5d6hLRiTh8Cjcjb", expectedStatuses: [200, 503] },
       { method: "GET", path: "/api/horf/admin/blacklist", expectedStatuses: [200, 503] },
@@ -1016,6 +1016,7 @@ export const DOMAIN_WORKFLOWS = [
       "horf.posse.added",
       "horf.posse.removed",
       "horf.posse.selected",
+      "horf.trader_picker.selected",
       "horf.trader_offer.selected",
     ],
     apiProbes: [
@@ -1036,6 +1037,7 @@ export const DOMAIN_WORKFLOWS = [
       "haha.crp.category.selected",
       "haha.crp.nomination.submitted",
       "haha.crp.nomination.removed",
+      "horf.trader_picker.selected",
     ],
     apiProbes: [
       { method: "GET", path: "/api/haha-crp/season", expectedStatuses: [200] },
@@ -1079,6 +1081,7 @@ export const DOMAIN_WORKFLOWS = [
       "horf.gift.sent",
       "horf.gift.return_marked",
       "horf.gift.return_unmarked",
+      "horf.trader_picker.selected",
     ],
     apiProbes: [
       { method: "GET", path: "/api/horf/token-eligibility?contract=invalid&tokenId=0", expectedStatuses: [400] },

@@ -6,6 +6,7 @@ import { logClientSystemEvent } from "../../lib/system-log";
 import { WindowPathContext } from "../../lib/window-context";
 import { assertTraderAddress } from "../horf/recipient-input";
 import { useHorfWallet } from "../horf/useHorfWallet";
+import { HorfKnownTraderPicker, useHorfTraderChoices } from "../horf/HorfKnownTraderPicker";
 
 type HahaCategory = { id: string; label: string; description?: string; icon?: string };
 type HahaSeason = { key: string; label: string; startsAt: string; endsAt: string | null; status: string };
@@ -25,9 +26,6 @@ type MineResponse = {
   address: string;
   nominations: Array<{ id: number; categoryId: string; nomineeAddress: string; nomineeDisplayName: string | null; note: string | null; createdAt: string; updatedAt: string }>;
 };
-type KnownTrader = { address: string; name: string | null };
-type TraderSeasonResponse = { leaderboard?: Array<{ address: string; name: string | null }> };
-type TraderOffersResponse = { offers?: Array<{ ownerAddress: string }> };
 
 const Shell = styled.section`
   --haha-ink: var(--horf-ink, #f4ead6);
@@ -177,25 +175,14 @@ export function HahaCrp() {
   });
   const myNominations = Array.isArray(mineQuery.data?.nominations) ? mineQuery.data.nominations : [];
   const categoryNominations = myNominations.filter((item) => item.categoryId === categoryId);
-  const knownSeasonQuery = useQuery({
-    queryKey: ["haha-crp", "known-traders-season"],
-    queryFn: () => api.get<TraderSeasonResponse>("/api/horf/season?season=current-2026"),
-  });
-  const knownOffersQuery = useQuery({
-    queryKey: ["haha-crp", "known-traders-offers"],
-    queryFn: () => api.get<TraderOffersResponse>("/api/horf/open-range/offers"),
-  });
-  const knownTraders = useMemo<KnownTrader[]>(() => {
-    const byAddress = new Map<string, KnownTrader>();
-    for (const rider of knownSeasonQuery.data?.leaderboard || []) {
-      if (rider?.address) byAddress.set(rider.address, { address: rider.address, name: rider.name || null });
+  const traderChoices = useHorfTraderChoices(address);
+  const knownTraders = useMemo(() => {
+    const byAddress = new Map<string, (typeof traderChoices.known)[number]>();
+    for (const rider of [...traderChoices.posse, ...traderChoices.known]) {
+      if (rider.address !== address && !rider.blacklisted && !byAddress.has(rider.address)) byAddress.set(rider.address, rider);
     }
-    for (const offer of knownOffersQuery.data?.offers || []) {
-      if (offer?.ownerAddress && !byAddress.has(offer.ownerAddress)) byAddress.set(offer.ownerAddress, { address: offer.ownerAddress, name: null });
-    }
-    return [...byAddress.values()].filter((rider) => rider.address !== address).sort((a, b) =>
-      (a.name || a.address).localeCompare(b.name || b.address));
-  }, [knownOffersQuery.data?.offers, knownSeasonQuery.data?.leaderboard, address]);
+    return [...byAddress.values()];
+  }, [traderChoices.posse, traderChoices.known, address]);
   let validNominee: string | null = null;
   try { validNominee = assertTraderAddress(nomineeAddress); } catch { /* The field stays editable until a valid wallet is entered. */ }
   const duplicateNominee = Boolean(validNominee && categoryNominations.some((item) => item.nomineeAddress === validNominee));
@@ -308,9 +295,7 @@ export function HahaCrp() {
             <option value="">Choose one horse trading category…</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.label}</option>)}
           </select>{selectedCategory?.description && <p className="field-help">{selectedCategory.description}</p>}</div>
           <div><label htmlFor="haha-nominee-address">Nominee’s Tezos wallet address</label><input id="haha-nominee-address" data-haha-nominee-address value={nomineeAddress} onChange={(event) => { setNomineeAddress(event.currentTarget.value); setSuccess(null); }} placeholder="tz1…" disabled={!address || !nominationOpen || categoryFull} /><p className="field-help">Enter a wallet directly, or choose a rider Horf already knows below.</p></div>
-          <div className="known"><label htmlFor="haha-known-trader">Choose a known Horf trader (optional)</label><select id="haha-known-trader" data-haha-known-trader-select value={knownTraders.some((rider) => rider.address === nomineeAddress) ? nomineeAddress : ""} onChange={(event) => { setNomineeAddress(event.currentTarget.value); setSuccess(null); }} disabled={!address || !nominationOpen || categoryFull}>
-            <option value="">Select a rider from the trail…</option>{knownTraders.map((rider) => <option key={rider.address} value={rider.address}>{rider.name ? `${rider.name} · ` : ""}{shortAddress(rider.address)}</option>)}
-          </select>{!knownTraders.length && (knownSeasonQuery.isPending || knownOffersQuery.isPending) && <p>Rounding up known riders…</p>}{!knownTraders.length && !knownSeasonQuery.isPending && !knownOffersQuery.isPending && <p>Enter a Tezos wallet above to nominate anyone.</p>}</div>
+          <div className="known"><HorfKnownTraderPicker choices={traderChoices} onSelect={(wallet) => { setNomineeAddress(wallet); setSuccess(null); }} disabled={!address || !nominationOpen || categoryFull} excludeAddress={address} label="nominee" posseDataAttribute="data-haha-posse-trader-select" knownDataAttribute="data-haha-known-trader-select" />{!knownTraders.length && !traderChoices.isLoading && <p>Enter a Tezos wallet above to nominate anyone.</p>}</div>
           <div><label htmlFor="haha-note">Why this rider? (optional)</label><textarea id="haha-note" data-haha-nomination-note value={note} onChange={(event) => setNote(event.currentTarget.value)} placeholder="Tell the herd what they did for horse trading, art, or HAHA." /></div>
           {selectedCategory && <div className="wallet-status" data-haha-category-quota>{categoryNominations.length} of 3 nominations used for {selectedCategory.label}. {categoryFull ? "Remove a pick below to nominate another rider." : "Each nominee must have a different wallet."}</div>}
           {nomineeAddress.trim() && !validNominee && <div className="message error" role="alert">Enter a valid Tezos wallet address.</div>}

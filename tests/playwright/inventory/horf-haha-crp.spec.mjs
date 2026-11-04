@@ -160,4 +160,38 @@ test.describe("HAHA horse community awards", () => {
     expect(ledger.removed).toHaveLength(1);
     expect(ledger.nominations().map((item) => item.nomineeAddress)).toEqual([nominees[1], nominees[2], nominees[3]]);
   });
+
+  test("fills a nominee from posse or an offer-only trader while omitting blocked riders", async ({ page, request }) => {
+    const state = await request.post("/__test/state", { data: { userRole: "anonymous" } });
+    expect(state.ok()).toBeTruthy();
+    const ledger = await mockHaha(page, { verified: true });
+    await page.route(/\/api\/horf\/season(?:\?.*)?$/, (route) => json(route, {
+      season, seasons: [season], asOf: "2026-11-03T12:00:00.000Z", status: "ready",
+      leaderboard: [
+        { address: nominees[0], name: "Sir Canter", trades: 7, blacklisted: true },
+        { address: "tz1invalid", name: "Bad address", trades: 4 },
+      ],
+    }));
+    await page.route(/\/api\/horf\/open-range\/offers(?:\?.*)?$/, (route) => json(route, {
+      offers: [{ ownerAddress: nominees[1], ownerName: "Offer Only" }],
+    }));
+    await page.route(/\/api\/horf\/posse(?:\?.*)?$/, (route) => json(route, {
+      partners: [{ id: 3, address: nominees[2], nickname: "Posse Pony", createdAt: "2026-11-03T12:00:00.000Z" }],
+    }));
+
+    await page.goto("/horf/haha-crp");
+    const awards = page.locator("[data-haha-crp]");
+    await awards.locator("[data-haha-category-select]").selectOption("trailblazer-trader");
+    await expect(awards.locator(`[data-haha-posse-trader-select] option[value="${nominees[2]}"]`)).toHaveCount(1);
+    await awards.locator("[data-haha-posse-trader-select]").selectOption(nominees[2]);
+    await expect(awards.locator("[data-haha-nominee-address]")).toHaveValue(nominees[2]);
+    await expect(awards.locator(`[data-haha-known-trader-select] option[value="${nominees[1]}"]`)).toHaveCount(1);
+    await awards.locator("[data-haha-known-trader-select]").selectOption(nominees[1]);
+    await expect(awards.locator("[data-haha-nominee-address]")).toHaveValue(nominees[1]);
+    await expect(awards.locator(`[data-haha-known-trader-select] option[value="${nominees[0]}"]`)).toHaveCount(0);
+    await expect(awards.locator('[data-haha-known-trader-select] option[value="tz1invalid"]')).toHaveCount(0);
+    await awards.locator("[data-haha-submit]").click();
+    await expect(awards.locator("[data-haha-my-nomination]")).toHaveCount(1);
+    expect(ledger.submitted[0].nomineeAddress).toBe(nominees[1]);
+  });
 });
