@@ -67,7 +67,8 @@ test.describe("HORSE market", () => {
     const card = page.locator("[data-horf-horse-market-listing]");
     const detail = page.locator("[data-horf-horse-market-details]");
     await expect(card).toHaveCount(1);
-    await card.getByRole("button", { name: /Inspect Neighvember Chestnut listing/ }).click();
+    await expect(card.getByRole("link", { name: "View full artwork on Objkt" })).toHaveAttribute("href", `https://objkt.com/tokens/${horse}/7`);
+    await card.getByRole("button", { name: /View buying options for Neighvember Chestnut/ }).click();
     await expect(detail).toBeInViewport({ ratio: 0.4 });
     await expect(detail).toBeFocused();
     await expect(detail).toContainText("1.23 HORSE per edition");
@@ -82,7 +83,7 @@ test.describe("HORSE market", () => {
     await mockMarket(page, true);
     await page.route("**/api/horf/wallet/session", (route) => json(route, { walletAddress: buyer, verified: true }));
     await page.goto("/horf/horse-market");
-    await page.locator("[data-horf-horse-market-listing]").getByRole("button", { name: /Inspect Neighvember Chestnut listing/ }).click();
+    await page.locator("[data-horf-horse-market-listing]").getByRole("button", { name: /View buying options for Neighvember Chestnut/ }).click();
     const detail = page.locator("[data-horf-horse-market-details]");
     await expect(detail).toContainText("Neighvember Chestnut");
     await expect(detail).toContainText("Token #7");

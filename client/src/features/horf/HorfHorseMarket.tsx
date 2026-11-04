@@ -209,8 +209,8 @@ export function HorfHorseMarket({ address, connectWallet, isConnecting }: {
     setBuyQuantity("1");
     setError(null);
     logClientSystemEvent({
-      eventType: "horf.horse_market.listing_inspected",
-      message: "HORF Market horse listing opened for payment choices",
+      eventType: "horf.horse_market.buying_options_opened",
+      message: "HORF Market buying options opened",
       metadata: { listingId: listing.id, tokenContract: listing.tokenContract, tokenId: listing.tokenId },
     });
     window.requestAnimationFrame(() => {
@@ -337,7 +337,7 @@ export function HorfHorseMarket({ address, connectWallet, isConnecting }: {
           const art = listing.token?.image ? resolveTokenThumbnail({ thumbnail: listing.token.image }) : null;
           return <Card key={listing.id} $selected={selected?.id === listing.id} data-horf-horse-market-listing>
             <div className="art">{art ? <img src={art.src} alt={`${name} token artwork`} loading={index === 0 ? "eager" : "lazy"} decoding="async" fetchPriority={index === 0 ? "high" : "auto"} onError={(event) => { if (!advanceResolvedMediaFallback(event.currentTarget, art)) { event.currentTarget.src = "/horf-art/horse-portrait-photo.jpg"; event.currentTarget.classList.add("photo"); event.currentTarget.alt = "Horse photograph placeholder"; } }} /> : <img className="photo" src="/horf-art/horse-portrait-photo.jpg" alt="Horse photograph placeholder" loading="lazy" decoding="async" />}<span className="tag">✦ Marshal approved</span></div>
-            <div className="body"><h4>{name}</h4><p>{listing.remaining} {listing.remaining === "1" ? "edition" : "editions"} · {shortAddress(listing.sellerAddress)}</p><div className="price"><div><span>Per edition</span><br /><strong>{formatHorseRaw(listing.unitPriceHorseRaw)}</strong> <span>HORSE</span></div><span>100% to seller</span></div><Action type="button" $strong={selected?.id === listing.id} onClick={() => inspectListing(listing)} aria-label={`Inspect ${name} listing and payment options`}>Inspect this horse →</Action></div>
+            <div className="body"><h4>{name}</h4><p>{listing.remaining} {listing.remaining === "1" ? "edition" : "editions"} · {shortAddress(listing.sellerAddress)}</p><div className="price"><div><span>Per edition</span><br /><strong>{formatHorseRaw(listing.unitPriceHorseRaw)}</strong> <span>HORSE</span></div><span>100% to seller</span></div><Action type="button" $strong={selected?.id === listing.id} onClick={() => inspectListing(listing)} aria-label={`View buying options for ${name}`}>View buying options →</Action><a href={objktTokenUrl(listing.tokenContract, listing.tokenId)} target="_blank" rel="noopener noreferrer">View full artwork on Objkt ↗</a></div>
           </Card>;
         })}</Grid>
       </div>

@@ -14510,3 +14510,13 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: The production deploy can succeed independently while the release quality job remains red, hiding later checks.
 
 **Rule**: After adding or removing tracked source files, run `npm run env:inventory`, then `npm run env:inventory:check` in the same commit before pushing `main`.
+
+---
+
+## 2026-11-04 - Market action labels must name the destination
+
+**What happened**: HORSE Market said “Inspect this horse” on a listing card, but the action selected payment choices. The user expected an art view and read the unchanged first-card selection as a broken button.
+
+**Why it mattered**: Even after making the payment panel visible, the label still promised a different result.
+
+**Rule**: Name the destination of a card action (“View buying options”) and offer a separately labeled path to the full token artwork. Test the accessible name and destination together.

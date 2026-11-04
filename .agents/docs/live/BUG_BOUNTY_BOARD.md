@@ -5243,6 +5243,7 @@ Total: **767** · Open: **9** · Claimed: **42** · In Progress: **16** · Block
 - Correction direction: Make both actions visibly reveal and focus the exact selected controls; keep the Marshal role and wallet preflight intact.
 - Verification idea: At a narrow viewport, click Select for inspection and Inspect this horse, assert the exact token or listing controls enter the viewport and are keyboard reachable, then verify the next action reaches its guarded preflight without signing a transaction.
 - Local verification (2026-11-04): The personal-Stable browser story failed before the fix because the selected region remained outside a 900×600 viewport, then passed with selected-card state and focused inspection controls. The HORSE Market story failed before the fix because the first listing detail was only 31.9% in a 390×600 viewport after Inspect. Its full focused browser suite now passes 5/5: the listing panel enters view and receives focus, a guest sees the HORSE wallet connect action, and a connected buyer reaches valid-quantity wallet preflight without signing. TypeScript and production build pass. Production verification follows deployment.
+- Wording correction (2026-11-04): The user clarified that “Inspect this horse” promises an art view. The card now says “View buying options,” and a separate link names the full artwork destination on Objkt. Browser coverage checks both paths.
 
 ### WTF-BB-773 - Prepaid tie receipt says XTZ paid when the guest receives credit
 
