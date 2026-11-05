@@ -536,8 +536,11 @@ export function HorfGifts({
     try {
       setStageKind(kind);
       setStage("preflight");
+      signerAttempted = true;
+      await ensureWalletProviderForSend(address, { network: "mainnet" });
+      signerReady = true;
+      setStage("eligibility");
       if (posseBatch) {
-        setStage("eligibility");
         const freshBalance = await readOwnedHorseBalance(address, token, true);
         validateArtSendRecipients(destinations.map(({ address: to, amountRaw }) => ({ address: to, amount: amountRaw })), address, freshBalance);
         const params = new URLSearchParams({ address, contract: token.contract, tokenId: token.tokenId, refresh: "1" });
@@ -555,10 +558,6 @@ export function HorfGifts({
           throw new Error("Your posse or its horse holders changed. Review the updated recipient list before signing.");
         }
       }
-      signerAttempted = true;
-      await ensureWalletProviderForSend(address, { network: "mainnet" });
-      signerReady = true;
-      setStage("eligibility");
       if (!posseBatch) {
         const freshBalance = await readOwnedHorseBalance(address, token, true);
         validateArtSendRecipients(destinations.map(({ address: to, amountRaw }) => ({ address: to, amount: amountRaw })), address, freshBalance);

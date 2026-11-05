@@ -14690,3 +14690,23 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: The production deployment could proceed while the repository's required quality workflow was red.
 
 **Rule**: After adding or changing environment variables or their references, run `npm run env:inventory` and `npm run env:inventory:check` before pushing main.
+
+---
+
+## 2026-11-05 - Open the wallet signer before async posse checks
+
+**What happened**: The posse batch send rechecked token balance and holders before requesting a wallet signer, breaking the existing click-to-wallet policy test in CI.
+
+**Why it mattered**: Octez Connect can lose the user gesture while waiting for network reads, leaving the rider unable to sign a send.
+
+**Rule**: Activate the wallet provider as the first awaited action after Confirm, then recheck balances, holders, and eligibility before submitting the transfer.
+
+---
+
+## 2026-11-05 - Serialize Playwright suites that share artifacts
+
+**What happened**: The full inventory suite and live puppet suite ran at the same time and both used `test-results/`. The second suite removed a trace file while the first was finishing an unrelated PixAlerce test.
+
+**Why it mattered**: The test reported a missing artifact even though the feature under review was elsewhere.
+
+**Rule**: Run these suites serially unless each has an isolated Playwright output directory. Rerun any test affected by artifact contention after the other suite stops.

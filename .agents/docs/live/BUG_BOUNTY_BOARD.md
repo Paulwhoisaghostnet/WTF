@@ -5289,7 +5289,7 @@ Total: **777** · Open: **9** · Claimed: **43** · In Progress: **18** · Block
 - Score: C1 + F3 + S0 + P2(3) = 7
 - Evidence (2026-11-05): Horse-art FA2 recipient validation and send helper reused the HORSE currency's 50-recipient cap, so sending one edition to every eligible posse holder could omit riders after 50.
 - Correction: Removed the cap from horse-art validation, manual art rows, and FA2 transfer helper. HORSE currency payout recipient limits remain separate.
-- Verification (2026-11-05): Five focused art-send and posse-holder tests pass, including 51 distinct Tezos recipients. Browser and production checks remain pending.
+- Verification (2026-11-05): Five focused art-send and posse-holder tests pass, including 51 distinct Tezos recipients. The CI wallet policy caught a posse regression that awaited balance and holder checks before opening Octez Connect; signer activation now precedes every asynchronous check, with the focused policy test passing 4/4. Browser and production checks remain pending.
 
 ### WTF-BB-801 - HORF inspect actions change state below the viewport without revealing the next step
 
