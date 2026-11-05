@@ -14803,6 +14803,16 @@ When shop and board are visible together, contextual help must prioritize a sele
 
 ---
 
+## 2026-11-05 - Regenerate the environment inventory when adding source files
+
+**What happened**: The Stable preview release added one tracked TSX file, but the generated environment inventory still reported the prior source-file count. Quality Gates stopped at its inventory check before running unit tests or browser smoke.
+
+**Why it mattered**: The generated file tracks scanned source files even when the new file introduces no environment variables, so a code-only release can leave the gate stale.
+
+**Rule**: After adding a scanned source file, regenerate `docs/reference/environment-variables.md` and run `npm run env:inventory:check` before pushing the release commit.
+
+---
+
 ## 2026-11-05 - Use the same exact horse preview across escrow rooms
 
 **What happened**: V2 public and recovery listings already had art cards, but V3 room cards loaded videos eagerly and used a separate media path, while a pinned private escrow showed only token text despite returning its artwork. The V3 test harness initially served an old `dist/public` build, so new selectors appeared absent even while old images rendered.

@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **779** · Open: **9** · Claimed: **42** · In Progress: **19** · Blocked: **4** · Fixed: **154** · Verified: **546** · Archived: **5**
+Total: **779** · Open: **9** · Claimed: **42** · In Progress: **19** · Blocked: **4** · Fixed: **155** · Verified: **545** · Archived: **5**
 
 ## Canonical Board
 
@@ -214,6 +214,7 @@ Total: **779** · Open: **9** · Claimed: **42** · In Progress: **19** · Block
 | WTF-BB-796 | Fixed | Codex Horf deployment checksum repair | 2026-11-04 | Deploy / immutable migration history | P1 | 9 | 577 | 1 | 4 | 0 | Edited applied Horf migration blocks Hetzner deployment |
 | WTF-BB-792 | Fixed | Codex Horf API rate-limit correction | 2026-11-04 | Horf / API availability | P1 | 9 | 577 | 1 | 4 | 0 | Shared pre-auth IP quota causes verified Horf riders to receive 429 responses |
 | WTF-BB-787 | Fixed | Codex Horf HORSE claim availability correction | 2026-11-04 | Horf / HORSE reward claim availability | P1 | 9 | 577 | 1 | 4 | 0 | Claim HORSE is disabled during a fresh scan despite a completed claim-ready reward snapshot |
+| WTF-BB-777 | Fixed | Codex Horf Stable preview release gate correction | 2026-11-05 | Release governance / environment inventory | P1 | 9 | 577 | 1 | 4 | 0 | Horf release leaves the deterministic environment inventory stale and stops Quality Gates before typecheck and build |
 | WTF-BB-727 | Fixed | Codex desktop login full-send release | 2026-11-02 | E2E live puppets / wallet auth schema parity | P1 | 9 | 577 | 2 | 3 | 0 | Local puppet database preparation omits the wallet auth proof-binding migration |
 | WTF-BB-726 | Fixed | Codex Docker readiness repair | 2026-10-29 | coLILseum / room directory admission | P1 | 9 | 577 | 1 | 4 | 0 | A new guest sees Return to room instead of Join table for a room with a human player |
 | WTF-BB-656 | Fixed | Codex full-send casino release verification | - | E2E inventory / Swap DEX | P1 | 9 | 577 | 2 | 3 | 0 | DEX route smoke receives object-shaped array fixtures |
@@ -624,7 +625,6 @@ Total: **779** · Open: **9** · Claimed: **42** · In Progress: **19** · Block
 | WTF-BB-006 | Verified | Codex top-priority stale bounty reconciliation | 2026-09-02 | DB migrations | P1 | 10 | 501 | 2 | 3 | 1 | `0031_wtf_recapture.sql` is not idempotent for enum type creation |
 | WTF-BB-798 | Verified | Codex Horf Stable wallet snapshot repair | 2026-11-04 | Horf / Stable deposit availability | P1 | 9 | 577 | 1 | 4 | 0 | Wallet-scoped Stable snapshot fails on absent TzKT big-map keys |
 | WTF-BB-778 | Verified | Codex Horf route metadata gate correction | 2026-11-03 | Horf / shared browser route metadata | P1 | 9 | 577 | 1 | 4 | 0 | Horf subroutes are missing from shared browser metadata and fail the route synchronization gate |
-| WTF-BB-777 | Verified | Codex Horf release gate correction | 2026-11-04 | Release governance / environment inventory | P1 | 9 | 577 | 1 | 4 | 0 | Horf release leaves the deterministic environment inventory stale and stops Quality Gates before typecheck and build |
 | WTF-BB-693 | Verified | Codex October desktop security release | 2026-10-22 | Desktop installers / Windows static paths and Linux smoke | P1 | 9 | 577 | 2 | 3 | 0 | Installer verification blocks security release on Windows root asset paths and the suite Linux executable name |
 | WTF-BB-686 | Verified | Codex WTFIAP-v0.01 publication | 2026-10-19 | Desktop OS / Stuffs flyout visibility | P1 | 9 | 577 | 2 | 3 | 0 | Top Stuffs categories can place their first game launchers above the viewport |
 | WTF-BB-684 | Verified | Codex WTFIAP-v0.01 publication | 2026-10-19 | Game hosting / vendored module boundaries | P1 | 9 | 577 | 1 | 4 | 0 | Vendored WTFIAP engine inherits ESM host semantics and prevents room authority startup |
@@ -4574,6 +4574,21 @@ Total: **779** · Open: **9** · Claimed: **42** · In Progress: **19** · Block
 - Correction: Keep Claim enabled for a completed, claim-ready snapshot during a subsequent scan; still require a verified vault, positive claimable amount, and non-error status. Clarify zero claimable copy for wallets with no outbound horse sends.
 - Verification idea: Browser test a `syncing` response with `sourceComplete=true` and `claimReady=true` to prove Claim is enabled, and confirm a zero-claimable wallet remains disabled; smoke-test the live reward API after deployment.
 - Score: P1(4)+C1/F4/S0=9; a safe, funded reward claim was unavailable during routine index refreshes.
+
+### WTF-BB-777 - Horf release leaves the deterministic environment inventory stale and stops Quality Gates before typecheck and build
+
+- Category: Release governance / environment inventory
+- Priority: P1
+- Status: Fixed
+- Owner/Session: Codex Horf Stable preview release gate correction
+- Last touched: 2026-11-05
+- Score: C1 + F4 + S0 + P1(4) = 9
+- Evidence (2026-11-03): Main Quality Gates run 41739315195 failed at `npm run env:inventory:check` on commit ba675939, skipping TypeScript, build, and inventory smoke. The exact clean local tree reproduces `Environment inventory is stale`.
+- Correction: Regenerated `docs/reference/environment-variables.md` from the tracked Horf release tree. It now records 1,348 variables across 2,793 scanned files, including the HORSE Market address and visual-capture switch.
+- Local verification (2026-11-03): `npm run env:inventory:check`, all 3 focused inventory policy tests, `npm run bounty:board:check`, and `git diff --check` pass. Quality Gates run 41740987174 progressed past this check on main, confirming it remotely.
+- Score: P1(4)+C1/F4/S0=9; the independent release signal was red while production had deployed.
+- Recurrence (2026-11-04): Horf main commit 846bc788 failed Quality Gates run 41751540159 at the same environment inventory check. Three new scanned source files raised the source count from 2,813 to 2,816; the DATABASE_URL reference count rose from 49 to 50. Regenerated the checked-in inventory from the committed source tree. Local `npm run env:inventory:check` and all 3 focused environment-inventory policy tests pass; replacement main CI remains the release gate.
+- Recurrence (2026-11-05): HORF Stable artwork commit 8e0c0b30 added one new tracked source file, raising the scanned-file count from 2,853 to 2,854 without changing variable names. Quality Gates 42100984785 stopped at `env:inventory:check` before unit/browser checks. Regenerated `docs/reference/environment-variables.md`; local inventory check passes. Replacement Mainnet release gate and public smoke remain pending.
 
 ### WTF-BB-727 - Local puppet database preparation omits the wallet auth proof-binding migration
 
@@ -13561,20 +13576,6 @@ Copy this when adding a new issue:
 - Correction: Mirrored all ten public Horf route patterns with their canonical auth gates and titles in shared metadata. The interaction inventory and route fixtures already included these paths.
 - Local verification (2026-11-03): Shared route sync and access tests pass 10/10. Inventory coverage passes 281/281 rows, 1,055/1,055 handles, and 136/136 registered routes; bounty board check and diff check pass. Quality Gates run 41740987174 progressed past this check on main, confirming it remotely.
 - Score: P1(4)+C1/F4/S0=9; route access discovery and the release gate were inconsistent.
-
-### WTF-BB-777 - Horf release leaves the deterministic environment inventory stale and stops Quality Gates before typecheck and build
-
-- Category: Release governance / environment inventory
-- Priority: P1
-- Status: Verified
-- Owner/Session: Codex Horf release gate correction
-- Last touched: 2026-11-04
-- Score: C1 + F4 + S0 + P1(4) = 9
-- Evidence (2026-11-03): Main Quality Gates run 41739315195 failed at `npm run env:inventory:check` on commit ba675939, skipping TypeScript, build, and inventory smoke. The exact clean local tree reproduces `Environment inventory is stale`.
-- Correction: Regenerated `docs/reference/environment-variables.md` from the tracked Horf release tree. It now records 1,348 variables across 2,793 scanned files, including the HORSE Market address and visual-capture switch.
-- Local verification (2026-11-03): `npm run env:inventory:check`, all 3 focused inventory policy tests, `npm run bounty:board:check`, and `git diff --check` pass. Quality Gates run 41740987174 progressed past this check on main, confirming it remotely.
-- Score: P1(4)+C1/F4/S0=9; the independent release signal was red while production had deployed.
-- Recurrence (2026-11-04): Horf main commit 846bc788 failed Quality Gates run 41751540159 at the same environment inventory check. Three new scanned source files raised the source count from 2,813 to 2,816; the DATABASE_URL reference count rose from 49 to 50. Regenerated the checked-in inventory from the committed source tree. Local `npm run env:inventory:check` and all 3 focused environment-inventory policy tests pass; replacement main CI remains the release gate.
 
 ### WTF-BB-693 - Installer verification blocks security release on Windows root asset paths and the suite Linux executable name
 
