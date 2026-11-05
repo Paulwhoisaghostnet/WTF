@@ -1029,7 +1029,8 @@ export function Horf() {
     : routePath === "/horf/send-horse" ? "horse"
     : routePath === "/horf/haha-crp" ? "haha"
     : routePath === "/horf/posse" ? "posse"
-    : routePath === "/horf/gifts" ? "gifts" : "race";
+    : routePath === "/horf/gifts" ? "gifts"
+    : routePath === "/horf" ? "home" : "race";
   const routeTitle = routeSection === "inspection-desk" ? "Inspection Desk"
     : routeSection === "legacy-stables" ? "Legacy Stable Recovery"
     : routeSection === "stable" ? "My Stable & Profile"
@@ -1040,7 +1041,8 @@ export function Horf() {
     : routeSection === "posse" ? "Posse"
     : routeSection === "traders" ? "Find Other Traders"
     : routeSection === "profile" ? "Trader Profile"
-    : routeSection === "info" ? "Is It a Horse?" : "Horf";
+    : routeSection === "info" ? "Is It a Horse?"
+    : routeSection === "home" ? "Welcome to Horf" : "The Race";
   const traderFromUrl = new URLSearchParams(search).get("trader");
   const offerFromUrl = new URLSearchParams(search).get("offer");
   const listingFromUrl = new URLSearchParams(search).get("listing");
@@ -1561,7 +1563,7 @@ export function Horf() {
       {claimAlert && <div className="rail-section"><span className="eyebrow">HORSE waiting</span><span className="rail-number">{formatHorseAmount(claimAlert.claimableRaw, 8)}</span><p>Earned HORSE · your wallet pays XTZ gas to claim.</p></div>}
     </AsideRail>}>
       <Shell data-horf-app data-horf-page={routeSection}>
-        {routeSection === "race" && <Masthead data-horf-region="intro">
+        {routeSection === "home" && <Masthead data-horf-region="intro">
           <div>
             <small>WTF OS · Tezos horse trading</small>
             <h1>HORF! <span aria-hidden="true">★</span></h1>
@@ -1570,7 +1572,7 @@ export function Horf() {
               <Action type="button" $primary onClick={() => navigateHorf("/horf/traders")}><span aria-hidden="true">🐎 </span>Find horse traders</Action>
               <Action data-horf-open-range-open type="button" style={{ backgroundImage: "url('/horf-art/lasso.svg')", backgroundPosition: "8px center", backgroundSize: 18, backgroundRepeat: "no-repeat", paddingLeft: 31 }} onClick={() => navigateHorf("/horf/open-range")}>Browse the Open Range</Action>
               {!address && <Action data-horf-wallet-connect-intro type="button" onClick={() => void connectWallet()} disabled={isConnecting}>{isConnecting ? "Connecting wallet…" : isGuest ? "Connect and verify wallet" : "Connect Tezos wallet"}</Action>}
-              {!isGuest && <Action type="button" onClick={() => windowManager.openPage("/trade-boards")}>Browse Trade Boards</Action>}
+              <Action data-horf-horse-market-open type="button" onClick={() => navigateHorf("/horf/horse-market")}>Browse Horse Market</Action>
             </IntroActions>
           </div>
           <WantedPoster data-horf-wanted-poster aria-label={`${seasonDisplayName} horse trader notice`}>
@@ -1588,9 +1590,9 @@ export function Horf() {
           </WantedPoster>
         </Masthead>}
 
-        {routeSection === "race" && <HorfSeasonArt />}
+        {routeSection === "home" && <HorfSeasonArt />}
 
-        {routeSection !== "stable" && <WalletStatus data-horf-wallet-status role="status">
+        {routeSection !== "stable" && routeSection !== "race" && <WalletStatus data-horf-wallet-status role="status">
           {address ? `${isGuest ? "Horf wallet verified" : "WTF OS wallet selected"}: ${shortAddress(address)} · Tezos Mainnet`
             : isGuest && guestSessionLoading ? "Checking for a saved Horf wallet proof…"
             : isGuest && localWalletAddress ? `Wallet ${shortAddress(localWalletAddress)} is connected locally. Verify it to unlock your Horf ledger and wallet actions.`
@@ -1598,10 +1600,10 @@ export function Horf() {
             : "Connect your Tezos wallet to use your personal Horf ledger and wallet actions."}
           {isGuest && address && <button data-horf-wallet-disconnect type="button" onClick={() => void disconnectWallet()} disabled={isConnecting}>{isConnecting ? "Disconnecting…" : "Disconnect Horf wallet"}</button>}
         </WalletStatus>}
-        {routeSection === "race" && claimAlert && <ClaimNotice data-horf-claim-alert role="status" aria-live="polite"><span>🐎 Claim alert: {formatHorseAmount(claimAlert.claimableRaw, 8)} HORSE is shown as earned from this wallet’s qualifying horse sends{claimAlert.status !== "ready" ? " (provisional while Horf scans Mainnet)" : ""}. {claimAlert.claimReady ? "Claim it from the Mainnet vault; your wallet pays XTZ gas." : "Vault claiming is waiting for its Mainnet setup or season scan."}</span><button type="button" onClick={() => navigateHorf("/horf/send-horse")}>See HORSE claim</button></ClaimNotice>}
+        {routeSection === "home" && claimAlert && <ClaimNotice data-horf-claim-alert role="status" aria-live="polite"><span>🐎 Claim alert: {formatHorseAmount(claimAlert.claimableRaw, 8)} HORSE is shown as earned from this wallet’s qualifying horse sends{claimAlert.status !== "ready" ? " (provisional while Horf scans Mainnet)" : ""}. {claimAlert.claimReady ? "Claim it from the Mainnet vault; your wallet pays XTZ gas." : "Vault claiming is waiting for its Mainnet setup or season scan."}</span><button type="button" onClick={() => navigateHorf("/horf/send-horse")}>See HORSE claim</button></ClaimNotice>}
         {walletError && <Warning role="alert">{walletError}</Warning>}
 
-        {(routeSection === "race" || routeSection === "stable" || routeSection === "traders" || routeSection === "profile") && <SeasonPicker data-horf-region="season" aria-label="Trading season">
+        {(routeSection === "race" || routeSection === "home" || routeSection === "stable" || routeSection === "traders" || routeSection === "profile") && <SeasonPicker data-horf-region="season" aria-label="Trading season">
           <div>
             <label htmlFor="horf-season-select">Trading season</label>
             <select

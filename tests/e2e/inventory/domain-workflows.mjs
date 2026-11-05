@@ -883,6 +883,16 @@ export const DOMAIN_WORKFLOWS = [
     ],
   },
   {
+    name: "horf welcome to race and horse market loop",
+    domain: "Market, Exchange, Inventory, and Commerce",
+    routes: ["/horf", "/horf/race", "/horf/horse-market"],
+    uiHandles: ["data-horf-horse-market-open", "data-horf-lane"],
+    eventHandles: ["horf.race.viewed", "horf.season.selected"],
+    apiProbes: [
+      { method: "GET", path: "/api/horf/season?season=current-2026", expectedStatuses: [200, 503] },
+    ],
+  },
+  {
     name: "horf open range public search and owner offer loop",
     domain: "Market, Exchange, Inventory, and Commerce",
     routes: ["/horf/open-range"],

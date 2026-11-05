@@ -14820,3 +14820,13 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: Traders could not consistently inspect the horse they would claim or swap, and mixed preview paths risked a shared Objkt collection thumbnail standing in for a different token. A stale browser build could hide the actual change during verification.
 
 **Rule**: Render public, staged, recovery, and private escrow art through one media component; prefer exact image artifacts on the large V3 cards, fall back to cached thumbnails, and attach video sources only when visible. Keep claim and return controls available when art is missing. Rebuild `dist/public` before the Playwright harness and use explicit string values for new `data-*` handles so React emits them.
+
+---
+
+## 2026-11-05 - Put the race standings before the welcome content
+
+**What happened**: `/horf/race` reused the Horf welcome masthead, wanted poster, rotating art, wallet notice, and claim alert, pushing its first race lane below a 900px desktop viewport. The welcome action also opened WTF Trade Boards instead of Horf Horse Market.
+
+**Why it mattered**: Riders opening the race could not see standings without scrolling, while the market action led them out of the horse trading flow. The root route had been serving both welcome and race, so several browser stories relied on that accidental overlap.
+
+**Rule**: Give `/horf` the no-wallet welcome and the connected-wallet Stable/profile, and let `/horf/race` lead with season selection and standings. Route public horse-market actions within Horf. Browser-check guest entry, connected entry, and the first race lane at the intended desktop viewport after a route split.
