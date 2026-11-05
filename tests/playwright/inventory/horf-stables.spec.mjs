@@ -182,6 +182,96 @@ test.describe("Horf Stables", () => {
     await expect(stables).not.toContainText("Group stable");
   });
 
+  test("shows exact horse artwork cards in Reciprocal, Honor, and Outlaw escrow rooms", async ({ page, request }) => {
+    await seedTrader(request);
+    await mockSeason(page);
+    const shared = "https://ipfs.fileship.xyz/QmOneCollectionThumbnail";
+    const roomListings = [
+      { id: "11", mode: 0, tokenId: "11", name: "Reciprocal Mare", photo: "horse-portrait-photo.jpg" },
+      { id: "12", mode: 1, tokenId: "12", name: "Honor Pony", photo: "horse-beach-photo.jpg" },
+      { id: "13", mode: 2, tokenId: "13", name: "Outlaw Mustang", photo: "horse-gallop-photo.jpg" },
+    ];
+    await page.route(/\/api\/horf\/rooms(?:\?.*)?$/, (route) => route.fulfill({
+      status: 200, contentType: "application/json", body: JSON.stringify({
+        network: "mainnet", chainId, contractAddress: stableContract, status: "ready",
+        permitReady: true, balanceStatus: null, onChainBlacklisted: null,
+        reciprocalCredits: "0", listings: roomListings.map((item) => ({
+          id: item.id, mode: item.mode, owner: otherTrader, ownerName: "Mare Force",
+          tokenContract, tokenId: item.tokenId, submitted: "2", remaining: "2",
+          claimedByWallet: null, ownedByWallet: null, publicVisible: true,
+          approvedForMarshalsMarket: item.mode !== 2,
+          token: { name: item.name, image: shared,
+            artifactUri: `https://ipfs.fileship.xyz/QmExactHorse${item.tokenId}`, mime: "image/png" },
+        })),
+      }),
+    }));
+    await page.route("**/api/cache/artifact?*", (route) => {
+      const source = new URL(route.request().url()).searchParams.get("url") || "";
+      const token = roomListings.find((item) => source.endsWith(`QmExactHorse${item.tokenId}`));
+      return route.fulfill({ status: 200, contentType: "image/jpeg",
+        path: `${process.cwd()}/public/horf-art/${token?.photo || "horse-gallop-photo.jpg"}` });
+    });
+
+    await page.goto("/horf/horse-market?market=marshals");
+    const inspected = page.locator('[data-horf-rooms-market="marshal"]');
+    for (const item of roomListings.slice(0, 2)) {
+      const card = inspected.locator(`[data-horf-room-id="${item.id}"]`);
+      await expect(card).toContainText(item.name);
+      await expect(card.locator("[data-horf-room-art] img")).toHaveAttribute("src", new RegExp(`api/cache/artifact.*QmExactHorse${item.tokenId}`));
+      await card.locator("[data-horf-room-art] img").scrollIntoViewIfNeeded();
+      await expect.poll(() => card.locator("[data-horf-room-art] img").evaluate((image) => image.naturalWidth)).toBeGreaterThan(0);
+      await expect(card.locator("[data-horf-room-claim]")).toBeVisible();
+    }
+    await expect(inspected.locator('[data-horf-room-id="13"]')).toHaveCount(0);
+    if (process.env.HORF_VISUAL_CAPTURE === "1") await inspected.screenshot({ path: "/tmp/horf-inspected-room-cards.png" });
+
+    await page.goto("/horf/horse-market?market=outlaw&outlaw=rooms");
+    const outlaw = page.locator('[data-horf-rooms-market="outlaw"] [data-horf-room-id="13"]');
+    await expect(outlaw).toContainText("Outlaw Mustang");
+    await expect(outlaw.locator("[data-horf-room-art] img")).toHaveAttribute("src", /api\/cache\/artifact.*QmExactHorse13/);
+    await outlaw.locator("[data-horf-room-art] img").scrollIntoViewIfNeeded();
+    await expect.poll(() => outlaw.locator("[data-horf-room-art] img").evaluate((image) => image.naturalWidth)).toBeGreaterThan(0);
+    await expect(outlaw.locator("[data-horf-room-swap]")).toBeVisible();
+  });
+
+  test("shows the pinned horse art in private escrow while keeping return available", async ({ page, request }) => {
+    await seedTrader(request);
+    await mockSeason(page);
+    await mockLinkedWallet(page);
+    await page.route("**/api/horf/trade-offers?*", (route) => route.fulfill({
+      status: 200, contentType: "application/json", body: JSON.stringify({ offers: [] }),
+    }));
+    await page.route(/\/api\/horf\/rooms(?:\?.*)?$/, (route) => route.fulfill({
+      status: 200, contentType: "application/json", body: JSON.stringify({
+        network: "mainnet", chainId, contractAddress: stableContract, status: "ready",
+        permitReady: true, balanceStatus: "ready", onChainBlacklisted: false,
+        reciprocalCredits: "0", listings: [],
+      }),
+    }));
+    const privateEntry = { listing: { id: "19", mode: 3, owner: traderWallet,
+      tokenContract, tokenId: "19", remaining: "1" },
+      terms: { offerer: otherTrader, inputTokenContract: tokenContract, inputTokenId: "20" } };
+    await page.route("**/api/horf/rooms/private?*", (route) => route.fulfill({
+      status: 200, contentType: "application/json", body: JSON.stringify({ listings: [privateEntry] }),
+    }));
+    await page.route("**/api/horf/rooms/private/19?*", (route) => route.fulfill({
+      status: 200, contentType: "application/json", body: JSON.stringify({ ...privateEntry,
+        token: { name: "Pinned Palomino", image: "https://ipfs.fileship.xyz/QmPinnedPalomino", mime: "image/png" },
+      }),
+    }));
+    await page.route("**/api/cache/media?*", (route) => route.fulfill({
+      status: 200, contentType: "image/svg+xml",
+      body: '<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180"><rect width="180" height="180" fill="#d3a84d"/></svg>',
+    }));
+    await page.goto("/horf/stable?private-listing=19");
+    const detail = page.locator("[data-horf-private-detail]");
+    await expect(detail).toContainText("Pinned Palomino");
+    await expect(detail.locator("[data-horf-private-art] img")).toHaveAttribute("src", /api\/cache\/media.*QmPinnedPalomino/);
+    await detail.locator("[data-horf-private-art] img").scrollIntoViewIfNeeded();
+    await expect(detail.locator("[data-horf-private-art] img")).toHaveJSProperty("naturalWidth", 180);
+    await expect(detail.locator("[data-horf-private-return]")).toBeVisible();
+  });
+
   test("keeps old V2 escrow claims and owner returns reachable without reopening deposits", async ({ page, request }) => {
     await seedTrader(request);
     await mockSeason(page);
@@ -191,8 +281,14 @@ test.describe("Horf Stables", () => {
       marketFilters.push(new URL(route.request().url()).searchParams.get("market"));
       return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({
         ...stableSnapshot(true), reciprocalCredits: "1",
+        listings: listings.map((listing) => listing.id === "1" ? { ...listing,
+          token: { contract: tokenContract, tokenId: "1", name: "Legacy Reciprocal Mare",
+            image: "https://ipfs.fileship.xyz/QmLegacyMare", artifactUri: null, mime: "image/jpeg" },
+        } : listing),
       }) });
     });
+    await page.route("**/api/cache/media?*", (route) => route.fulfill({ status: 200,
+      contentType: "image/jpeg", path: `${process.cwd()}/public/horf-art/horse-portrait-photo.jpg` }));
     let permitRequests = 0;
     await page.route("**/api/horf/stables/permit", (route) => {
       permitRequests += 1;
@@ -207,6 +303,10 @@ test.describe("Horf Stables", () => {
     await expect(recovery.locator("[data-horf-legacy-credits]")).toContainText("Unused Reciprocal claims: 1");
     await expect(recovery.locator("[data-horf-legacy-credits]")).toContainText("Unused former Group claims: 30");
     await expect(recovery.locator('[data-horf-legacy-listing-id="1"] [data-horf-legacy-claim]')).toBeEnabled();
+    const legacyArt = recovery.locator('[data-horf-legacy-listing-id="1"] [data-horf-stable-preview] img');
+    await expect(legacyArt).toHaveAttribute("src", /api\/cache\/media.*QmLegacyMare/);
+    await legacyArt.scrollIntoViewIfNeeded();
+    await expect.poll(() => legacyArt.evaluate((image) => image.naturalWidth)).toBeGreaterThan(0);
     await expect(recovery.locator('[data-horf-legacy-listing-id="3"] [data-horf-legacy-claim]')).toBeEnabled();
     await expect(recovery.locator('[data-horf-legacy-listing-id="5"]')).toContainText("Already claimed this token");
     await expect(recovery.locator('[data-horf-legacy-listing-id="6"] [data-horf-legacy-claim]')).toBeEnabled();
@@ -249,6 +349,7 @@ test.describe("Horf Stables", () => {
     await expect(room).toBeVisible();
     await expect(room).toHaveAttribute("data-horf-room-featured", "");
     await expect(room).toContainText("Outlaw Mustang");
+    await expect(room.locator("[data-horf-room-art] img")).toHaveAttribute("src", "/horf-art/horse-gallop-photo.jpg");
     await expect(room).toContainText("2 of 3 editions in escrow");
     await expect(room.locator("[data-horf-room-swap]")).toBeDisabled();
     await expect(corral.locator("[data-horf-outlaw-risk]")).toContainText("malicious contract");
@@ -289,6 +390,7 @@ test.describe("Horf Stables", () => {
     await deposit.locator("[data-horf-room-deposit-quantity]").fill("5");
     await deposit.locator("[data-horf-room-add]").click();
     await expect(deposit.locator("[data-horf-room-staged]")).toContainText("Five Hooves · 5 editions");
+    await expect(deposit.locator("[data-horf-room-staged-card] img")).toHaveAttribute("src", "/horf-art/horse-gallop-photo.jpg");
     await expect(deposit.locator("[data-horf-room-deposit-confirm]")).toHaveText("Deposit 5 editions in wallet");
     await expect(deposit).toContainText("malicious token contract");
   });

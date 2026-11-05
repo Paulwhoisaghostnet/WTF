@@ -142,11 +142,12 @@ test("a rider shares three editable received-horse stories and visitors see the 
   const profile = page.locator('[data-horf-region="trader-profile"]');
   await expect(profile).toBeVisible();
   await expect(profile.locator('[data-horf-profile-tab="received"]')).toHaveAttribute("aria-selected", "true");
-  await expect(profile.locator("[data-horf-profile-received-horse]")).toHaveCount(3);
-  await expect(profile).toContainText("Midnight Mare");
-  await expect(profile).toContainText("Blue Ribbon");
-  await expect(profile).toContainText("Crimson Canter");
-  await expect(profile).not.toContainText("Sent Stallion");
+  const receivedHorses = profile.locator("[data-horf-profile-received-horse]");
+  await expect(receivedHorses).toHaveCount(3);
+  await expect(receivedHorses.filter({ hasText: "Midnight Mare" })).toHaveCount(1);
+  await expect(receivedHorses.filter({ hasText: "Blue Ribbon" })).toHaveCount(1);
+  await expect(receivedHorses.filter({ hasText: "Crimson Canter" })).toHaveCount(1);
+  await expect(receivedHorses.filter({ hasText: "Sent Stallion" })).toHaveCount(0);
   await profile.locator('[data-horf-profile-tab="all-horses"]').click();
   await expect(profile.locator("[data-horf-profile-horse]")).toHaveCount(0);
 });

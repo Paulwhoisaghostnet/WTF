@@ -2,11 +2,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import styled from "styled-components";
 import { api } from "../../lib/api";
-import { advanceResolvedMediaFallback } from "../../lib/media-resolve";
 import { logClientSystemEvent } from "../../lib/system-log";
 import { cancelHorfRoomListing, claimHorfRoomHorse, depositHorfRoomHorses,
   swapHorfOutlawHorse, type HorfPublicRoomMode, type HorfRoomContract, type HorfRoomMode, type HorfRoomPermit } from "../../lib/tezos/horf-rooms";
-import { resolveHorfHorseArt, resolveHorfHorseVideo } from "./horse-media";
+import { HorfEscrowArtwork } from "./HorfEscrowArtwork";
 import { HorfOwnedHorsePicker, type HorfOwnedHorse } from "./HorfOwnedHorsePicker";
 import { objktTokenUrl } from "./token-input";
 
@@ -68,7 +67,8 @@ const RoomCard = styled.article`
   background: var(--horf-surface, #1b2a25); box-shadow: 0 8px 23px #0003;
   &[data-horf-room-featured] { border-color: var(--horf-gold, #d8a34a); box-shadow: 0 0 0 3px #d8a34a55; }
   .art { width: 100%; aspect-ratio: 1; background: #102019; display: grid; place-items: center; overflow: hidden; }
-  .art img, .art video { width: 100%; height: 100%; object-fit: contain; }
+  .art img, .art video { width: 100%; height: 100%; object-fit: contain; display: block; }
+  .art span { padding: 15px; color: var(--horf-muted, #b7b5a7); text-align: center; font-size: 13px; }
   .copy { padding: 14px; }
   .copy h3 { margin: 0 0 5px; font-size: 19px; }
   .copy p { margin: 6px 0; font-size: 13px; }
@@ -83,6 +83,13 @@ const Panel = styled.div`
   input { box-sizing: border-box; width: 100%; min-height: 40px; padding: 8px 10px; border: 1px solid var(--horf-line, #3d5148); border-radius: 8px; background: var(--horf-field, #24332d); color: var(--horf-ink, #f4ead6); }
   ul { list-style: none; padding: 0; }
   li { padding: 8px 0; border-bottom: 1px solid var(--horf-line, #3d5148); }
+  .staged-horses { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 185px), 1fr)); gap: 11px; }
+  .staged-horses li { min-width: 0; padding: 0; overflow: hidden; border: 1px solid var(--horf-line, #3d5148); border-radius: 10px; background: var(--horf-field, #24332d); }
+  .staged-horses .art { display: grid; place-items: center; width: 100%; aspect-ratio: 1; overflow: hidden; background: #102019; }
+  .staged-horses .art img, .staged-horses .art video { display: block; width: 100%; height: 100%; object-fit: contain; }
+  .staged-horses .art span { padding: 12px; color: var(--horf-muted, #b7b5a7); text-align: center; font-size: 12px; }
+  .staged-horses .staged-copy { padding: 10px; font-size: 13px; line-height: 1.4; }
+  .staged-horses .staged-copy strong { display: block; overflow-wrap: anywhere; }
 `;
 const Notice = styled.p<{ $error?: boolean }>`
   padding: 10px 12px; border: 1px solid ${(p) => p.$error ? "#b87060" : "var(--horf-line, #3d5148)"};
@@ -100,11 +107,6 @@ function validAmount(amount: string, owned: string): boolean {
 function abbreviated(address: string): string { return `${address.slice(0, 8)}…${address.slice(-6)}`; }
 
 function horseIdentity(horse: HorfOwnedHorse): string { return `${horse.contract}/${horse.tokenId}`; }
-
-function roomArt(listing: RoomListing) {
-  return { image: listing.token?.image ?? null, artifactUri: listing.token?.artifactUri ?? null,
-    mime: listing.token?.mime ?? null };
-}
 
 export function HorfRooms({ market, address, connectWallet, isConnecting, listingFromUrl }: {
   market: "marshal" | "outlaw";
@@ -241,9 +243,6 @@ export function HorfRooms({ market, address, connectWallet, isConnecting, listin
     <h3>{market === "outlaw" ? "For trade now" : "Horses in inspected escrow"}</h3>
     {listings.length ? <CardGrid data-horf-room-listings>{listings.map((listing) => {
       const name = listing.token?.name || `Horse token #${listing.tokenId}`;
-      const media = roomArt(listing);
-      const video = resolveHorfHorseVideo(media);
-      const art = resolveHorfHorseArt(media);
       const own = address === listing.owner;
       const canClaim = Boolean(address && configured && !busy && !own && !listing.claimedByWallet &&
         listing.ownedByWallet === false && !snapshot?.onChainBlacklisted &&
@@ -251,10 +250,10 @@ export function HorfRooms({ market, address, connectWallet, isConnecting, listin
       return <RoomCard key={listing.id} ref={(node) => { if (node) listingRefs.current.set(listing.id, node); else listingRefs.current.delete(listing.id); }}
         tabIndex={-1} data-horf-room-listing data-horf-room-id={listing.id}
         data-horf-room-featured={listing.id === listingFromUrl ? "" : undefined}>
-        <div className="art">{video ? <video src={video.src} muted loop playsInline autoPlay preload="metadata" aria-label={`${name} video preview`} />
-          : art ? <img src={art.src} alt={`${name} artwork`} loading="lazy" decoding="async"
-            onError={(event) => { if (!advanceResolvedMediaFallback(event.currentTarget, art)) event.currentTarget.src = "/horf-art/horse-gallop-photo.jpg"; }} />
-            : <img src="/horf-art/horse-gallop-photo.jpg" alt="Horse preview unavailable" />}</div>
+        <div className="art" data-horf-room-art=""><HorfEscrowArtwork
+          key={`${listing.tokenContract}/${listing.tokenId}/${listing.token?.image}/${listing.token?.artifactUri}`}
+          contract={listing.tokenContract} tokenId={listing.tokenId} name={name}
+          media={listing.token} preferExactArtwork /></div>
         <div className="copy">
           <h3><a href={objktTokenUrl(listing.tokenContract, listing.tokenId)} target="_blank" rel="noopener noreferrer">{name}</a></h3>
           <small>{listing.remaining} of {listing.submitted} {listing.submitted === "1" ? "edition" : "editions"} in escrow · {listing.mode === 0 ? "Reciprocal" : listing.mode === 1 ? "Honor" : "Outlaw"}</small>
@@ -286,7 +285,12 @@ export function HorfRooms({ market, address, connectWallet, isConnecting, listin
       {market === "marshal" && <Controls role="group" aria-label="Inspected room type"><Button data-horf-room-mode="0" type="button" $strong={depositMode === 0} onClick={() => { setDepositMode(0); setStaged([]); }}>Reciprocal pool</Button><Button data-horf-room-mode="1" type="button" $strong={depositMode === 1} onClick={() => { setDepositMode(1); setStaged([]); }}>Honor stable</Button></Controls>}
       <HorfOwnedHorsePicker address={address} selected={picked} onSelect={(horse) => { setPicked(horse); setQuantity("0"); }} id="horf-room-deposit-horse" label="Horse to deposit" marshalApprovedOnly={market === "marshal"} disabled={busy} />
       {picked && <><label htmlFor="horf-room-deposit-quantity">Exact editions to deposit (starts at 0)</label><input id="horf-room-deposit-quantity" data-horf-room-deposit-quantity inputMode="numeric" pattern="[0-9]+" value={quantity} onChange={(event) => setQuantity(event.target.value)} disabled={busy} /><p>You own {picked.balance} {picked.balance === "1" ? "edition" : "editions"}.</p><Button data-horf-room-add type="button" onClick={addStaged} disabled={busy || !validAmount(quantity, picked.balance)}>Add to deposit</Button></>}
-      {staged.length > 0 && <ul data-horf-room-staged>{staged.map(({ horse, amount }) => <li key={horseIdentity(horse)}>{horse.name || `Horse #${horse.tokenId}`} · {amount} {amount === "1" ? "edition" : "editions"} <Button type="button" onClick={() => setStaged((current) => current.filter((item) => horseIdentity(item.horse) !== horseIdentity(horse)))} disabled={busy}>Remove</Button></li>)}</ul>}
+      {staged.length > 0 && <ul className="staged-horses" data-horf-room-staged>{staged.map(({ horse, amount }) => <li key={horseIdentity(horse)} data-horf-room-staged-card="">
+        <div className="art"><HorfEscrowArtwork contract={horse.contract} tokenId={horse.tokenId}
+          name={horse.name || `Horse #${horse.tokenId}`} media={horse} preferExactArtwork /></div>
+        <div className="staged-copy"><strong>{horse.name || `Horse #${horse.tokenId}`} · {amount} {amount === "1" ? "edition" : "editions"}</strong>
+          <Button type="button" onClick={() => setStaged((current) => current.filter((item) => horseIdentity(item.horse) !== horseIdentity(horse)))} disabled={busy}>Remove</Button></div>
+      </li>)}</ul>}
       <Controls><Button data-horf-room-deposit-confirm type="button" $strong onClick={() => void deposit()} disabled={!staged.length || busy || !snapshot?.permitReady || snapshot.onChainBlacklisted === true}>Deposit {staged.reduce((sum, item) => sum + BigInt(item.amount), 0n).toString()} editions in wallet</Button></Controls>
       {snapshot?.permitReady === false && <p role="status">Deposit signing is being connected. Existing rooms remain visible.</p>}
     </Panel>}

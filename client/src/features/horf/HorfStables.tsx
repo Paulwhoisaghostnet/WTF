@@ -4,9 +4,9 @@ import styled from "styled-components";
 import { api, isApiRequestError } from "../../lib/api";
 import { logClientSystemEvent } from "../../lib/system-log";
 import { toNatString } from "../../lib/tezos/nat";
-import { advanceResolvedMediaFallback, type ResolvedThumbnail } from "../../lib/media-resolve";
 import { objktTokenUrl as tokenUrl, parseObjktToken } from "./token-input";
-import { resolveHorfHorseCardArt, resolveHorfHorseVideo, uniqueHorfThumbnailIdentities } from "./horse-media";
+import { uniqueHorfThumbnailIdentities } from "./horse-media";
+import { HorfEscrowArtwork } from "./HorfEscrowArtwork";
 import {
   HORF_STABLES_CHAIN_ID,
   cancelHorfListing,
@@ -341,48 +341,15 @@ const TradeGuide = styled.div`
   .actions { display: flex; flex-wrap: wrap; gap: 8px; }
 `;
 
-function StableVideoPreview({ video, poster }: { video: ResolvedThumbnail; poster: ResolvedThumbnail | null }) {
-  const ref = useRef<HTMLVideoElement>(null);
-  const [visible, setVisible] = useState(false);
-  const [failed, setFailed] = useState(false);
-
-  useEffect(() => {
-    const element = ref.current;
-    if (!element) return;
-    if (typeof IntersectionObserver === "undefined") { setVisible(true); return; }
-    const observer = new IntersectionObserver((entries) => {
-      if (entries.some((entry) => entry.isIntersecting)) { setVisible(true); observer.disconnect(); }
-    });
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, []);
-
-  useEffect(() => {
-    if (!visible || failed) return;
-    void ref.current?.play().catch(() => { /* The poster stays visible when autoplay is blocked. */ });
-  }, [visible, failed, video.src]);
-
-  if (failed) return poster ? <img src={poster.src} alt="" onError={(event) => { advanceResolvedMediaFallback(event.currentTarget, poster); }} /> : <span>Preview unavailable</span>;
-  return <video ref={ref} data-horf-stable-preview-video src={visible ? video.src : undefined} poster={poster?.src} muted autoPlay loop playsInline preload={visible ? "metadata" : "none"} aria-hidden="true" onError={(event) => { if (!advanceResolvedMediaFallback(event.currentTarget, video)) setFailed(true); }} />;
-}
-
 function StableHorsePreview({ listing, uniqueThumbnails }: { listing: StableListing; uniqueThumbnails: ReadonlySet<string> }) {
   const token = listing.token;
   const media = token && token.contract === listing.tokenContract && token.tokenId === listing.tokenId
     ? token : null;
-  const mime = media?.mime?.trim().toLowerCase() || "";
-  // Non-image artifacts such as HTML directories cannot be displayed in an art card.
-  const cardMedia = media && !mime.startsWith("image/") && !mime.startsWith("video/")
-    ? { ...media, artifactUri: null } : media;
-  const art = cardMedia ? resolveHorfHorseCardArt(cardMedia, uniqueThumbnails) : null;
-  const video = media ? resolveHorfHorseVideo(media) : null;
-  const [imageFailed, setImageFailed] = useState(false);
   const name = media?.name?.trim() || `Horse token #${listing.tokenId}`;
 
-  return <ListingPreview data-horf-stable-preview href={tokenUrl(listing.tokenContract, listing.tokenId)} target="_blank" rel="noopener noreferrer" aria-label={`View ${name} on Objkt`}>
-    {video ? <StableVideoPreview video={video} poster={art} /> : art && !imageFailed
-      ? <img src={art.src} alt={name} loading="lazy" decoding="async" onError={(event) => { if (!advanceResolvedMediaFallback(event.currentTarget, art)) setImageFailed(true); }} />
-      : <span>Preview unavailable</span>}
+  return <ListingPreview data-horf-stable-preview="" href={tokenUrl(listing.tokenContract, listing.tokenId)} target="_blank" rel="noopener noreferrer" aria-label={`View ${name} on Objkt`}>
+    <HorfEscrowArtwork key={`${media?.image}:${media?.artifactUri}`} contract={listing.tokenContract} tokenId={listing.tokenId}
+      name={name} media={media} uniqueThumbnails={uniqueThumbnails} />
   </ListingPreview>;
 }
 

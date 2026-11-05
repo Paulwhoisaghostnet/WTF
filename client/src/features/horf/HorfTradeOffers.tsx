@@ -5,6 +5,7 @@ import { api } from "../../lib/api";
 import { logClientSystemEvent } from "../../lib/system-log";
 import { cancelHorfRoomListing, createPrivateHorfOffer, fulfillPrivateHorfOffer, type HorfRoomContract, type HorfRoomPermit } from "../../lib/tezos/horf-rooms";
 import { HorfOwnedHorsePicker, type HorfOwnedHorse } from "./HorfOwnedHorsePicker";
+import { HorfEscrowArtwork } from "./HorfEscrowArtwork";
 import { objktTokenUrl } from "./token-input";
 
 export type HorfTradeSign = {
@@ -90,8 +91,13 @@ const Inbox = styled.section`
   .offer p { font-size: 13px; }
   .offer .actions { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 8px; }
   .offer .status { color: var(--horf-gold, #d8a34a); font-weight: 800; text-transform: capitalize; }
+  .private-horse-card { display: grid; grid-template-columns: minmax(180px, 260px) minmax(0, 1fr); align-items: start; gap: 18px; margin-top: 12px; }
+  .private-art { aspect-ratio: 1; display: grid; place-items: center; overflow: hidden; border-radius: 12px; background: #102019; }
+  .private-art img, .private-art video { display: block; width: 100%; height: 100%; object-fit: contain; }
+  .private-art span { padding: 15px; color: var(--horf-muted, #b7b5a7); text-align: center; font-size: 13px; }
   [role="alert"] { color: #e6a18c; }
   @container (max-width: 720px) { .columns { grid-template-columns: 1fr; } }
+  @container (max-width: 560px) { .private-horse-card { grid-template-columns: 1fr; } .private-art { max-width: 360px; } }
 `;
 
 function short(address: string): string { return `${address.slice(0, 8)}…${address.slice(-6)}`; }
@@ -174,7 +180,7 @@ export function HorfTradeOfferInbox({ address }: { address: string | null }) {
     queryFn: () => api.get<{ contractAddress: string | null; chainId?: string; listings: PrivateEscrow[] }>(`/api/horf/rooms/private?address=${encodeURIComponent(address!)}`),
     enabled: Boolean(address), refetchOnWindowFocus: true });
   const privateDetailQuery = useQuery({ queryKey: ["horf", "private-room", address, privateId],
-    queryFn: () => api.get<PrivateEscrow & { token: { name: string; image: string | null } | null }>(`/api/horf/rooms/private/${encodeURIComponent(privateId!)}?address=${encodeURIComponent(address!)}`),
+    queryFn: () => api.get<PrivateEscrow & { token: { name: string; image: string | null; artifactUri?: string | null; mime?: string | null } | null }>(`/api/horf/rooms/private/${encodeURIComponent(privateId!)}?address=${encodeURIComponent(address!)}`),
     enabled: Boolean(address && privateId && /^\d+$/.test(privateId)), refetchOnWindowFocus: true });
   const room = roomQuery.data;
   const contract: HorfRoomContract | null = room?.status === "ready" && room.permitReady &&
@@ -343,11 +349,19 @@ export function HorfTradeOfferInbox({ address }: { address: string | null }) {
     {privateId && <div id="horf-private-escrow-detail" className="box" data-horf-private-detail>
       <h3>Private horse escrow #{privateId}</h3>
       {privateDetailQuery.isPending ? <p>Reading this horse’s pinned terms…</p> : privateDetailQuery.isError ? <p role="alert">This private escrow could not be opened. <Button type="button" onClick={() => void privateDetailQuery.refetch()}>Retry</Button></p> : detail && <>
-        <p><a href={objktTokenUrl(detail.listing.tokenContract, detail.listing.tokenId)} target="_blank" rel="noopener noreferrer">{detail.token?.name || `Horse #${detail.listing.tokenId}`}</a> · 1 edition held for {short(detail.terms.offerer)}.</p>
-        <p>Only <a href={objktTokenUrl(detail.terms.inputTokenContract, detail.terms.inputTokenId)} target="_blank" rel="noopener noreferrer">horse #{detail.terms.inputTokenId}</a> from that rider can complete this swap.</p>
-        <div className="actions">
-          {detailOffer?.status === "accepted" && detail.terms.offerer === address && <Button data-horf-private-fulfill type="button" $strong disabled={!contract || busyId != null} onClick={() => void fulfill(detailOffer)}>Complete checked swap</Button>}
-          {detail.listing.owner === address && <Button data-horf-private-return type="button" disabled={!contract || busyId != null} onClick={() => void (detailOffer?.status === "accepted" ? cancelEscrow(detailOffer) : cancelUnmatchedEscrow(detail))}>Return my escrowed horse</Button>}
+        <div className="private-horse-card">
+          <div className="private-art" data-horf-private-art=""><HorfEscrowArtwork
+            key={`${detail.listing.tokenContract}/${detail.listing.tokenId}/${detail.token?.image}/${detail.token?.artifactUri}`}
+            contract={detail.listing.tokenContract} tokenId={detail.listing.tokenId}
+            name={detail.token?.name || `Horse #${detail.listing.tokenId}`} media={detail.token} preferExactArtwork /></div>
+          <div>
+            <p><a href={objktTokenUrl(detail.listing.tokenContract, detail.listing.tokenId)} target="_blank" rel="noopener noreferrer">{detail.token?.name || `Horse #${detail.listing.tokenId}`}</a> · 1 edition held for {short(detail.terms.offerer)}.</p>
+            <p>Only <a href={objktTokenUrl(detail.terms.inputTokenContract, detail.terms.inputTokenId)} target="_blank" rel="noopener noreferrer">horse #{detail.terms.inputTokenId}</a> from that rider can complete this swap.</p>
+            <div className="actions">
+              {detailOffer?.status === "accepted" && detail.terms.offerer === address && <Button data-horf-private-fulfill type="button" $strong disabled={!contract || busyId != null} onClick={() => void fulfill(detailOffer)}>Complete checked swap</Button>}
+              {detail.listing.owner === address && <Button data-horf-private-return type="button" disabled={!contract || busyId != null} onClick={() => void (detailOffer?.status === "accepted" ? cancelEscrow(detailOffer) : cancelUnmatchedEscrow(detail))}>Return my escrowed horse</Button>}
+            </div>
+          </div>
         </div>
       </>}
     </div>}

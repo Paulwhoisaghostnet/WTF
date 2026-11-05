@@ -12107,9 +12107,9 @@
     },
     {
       "id": "WTF-BB-800",
-      "status": "Fixed",
-      "owner": "Codex Horf return-ride browser correction",
-      "lastTouched": "2026-11-04",
+      "status": "Verified",
+      "owner": "Codex Horf posse signer-first browser correction",
+      "lastTouched": "2026-11-05",
       "category": "E2E / Horf horse-send signer preflight",
       "priority": "P2",
       "complexity": 1,
@@ -12118,7 +12118,7 @@
       "points": 6,
       "rank": 754,
       "title": "Horf gift browser stories expect eligibility after a send without an active signer",
-      "body": "- Evidence (2026-11-04): The full inventory reached 413 passing cases but failed two Horf social stories after the Octez signer-first send correction. Both fixtures seed only `wtf:wallet-session`, with no active Octez account, then expect token eligibility to run after Confirm. The corrected app instead blocks at signer preflight and offers Reconnect wallet before any eligibility read.\n- Correction direction: Keep the production signer-first order and update the owning browser stories to prove review terms, the reconnect recovery control, and zero eligibility calls when no signer is active. Retain separate token-eligibility server coverage.\n- Verification idea: Run the two affected Horf social stories, the Horf social suite, and inventory coverage against the corrected fixture.\n- Local verification (2026-11-04): The two corrected no-signer gift stories pass with Reconnect wallet before token eligibility. The complete Horf social and ledger browser suites pass 22/22, including the new in-place return-ride popup, exact recipient and quantity review, focus return, route preservation, and narrow layout. Inventory coverage passes 284/284 rows, 1059 handles, 138 routes, and 29 workflows. No wallet transaction was submitted; production verification follows deployment."
+      "body": "- Evidence (2026-11-04): The full inventory reached 413 passing cases but failed two Horf social stories after the Octez signer-first send correction. Both fixtures seed only `wtf:wallet-session`, with no active Octez account, then expect token eligibility to run after Confirm. The corrected app instead blocks at signer preflight and offers Reconnect wallet before any eligibility read.\n- Correction direction: Keep the production signer-first order and update the owning browser stories to prove review terms, the reconnect recovery control, and zero eligibility calls when no signer is active. Retain separate token-eligibility server coverage.\n- Verification idea: Run the two affected Horf social stories, the Horf social suite, and inventory coverage against the corrected fixture.\n- Local verification (2026-11-04): The two corrected no-signer gift stories pass with Reconnect wallet before token eligibility. The complete Horf social and ledger browser suites pass 22/22, including the new in-place return-ride popup, exact recipient and quantity review, focus return, route preservation, and narrow layout. Inventory coverage passes 284/284 rows, 1059 handles, 138 routes, and 29 workflows. No wallet transaction was submitted; production verification follows deployment.\n- Follow-up evidence (2026-11-05): Quality Gates 42093303351 completed 997/998 inventory tests; the posse batch test expected a changed-holder alert from a persisted wallet address without an active Octez signer. The production flow correctly activates the signer on Confirm before asynchronous holder reads, preserving the browser user gesture and the documented Octez recovery path.\n- Correction: The browser story now checks the preselected one-edition recipient, then expects Reconnect wallet and no refreshed holder call when no signer is active. The actual fresh-holder check remains in the send path after signer activation and before token transfer.\n- Verification (2026-11-05): The focused Chromium posse story passes 1/1 in 32.4s. The existing wallet-connect policy test enforces signer-first ordering; no wallet transfer was submitted."
     },
     {
       "id": "WTF-BB-801",
@@ -12167,8 +12167,8 @@
     },
     {
       "id": "WTF-BB-804",
-      "status": "Verified",
-      "owner": "Codex HORF stable artwork repair",
+      "status": "Fixed",
+      "owner": "Codex HORF all-stables artwork follow-up",
       "lastTouched": "2026-11-05",
       "category": "HORF / Marshal Market stable previews",
       "priority": "P3",
@@ -12178,7 +12178,7 @@
       "points": 5,
       "rank": 771,
       "title": "Marshal Market escrow listings show only token identifiers instead of horse artwork",
-      "body": "- Evidence (2026-11-05): The live Marshal Market stable API returns chain listing identifiers and edition counts without token media. Reciprocal, Honor, and Group listing cards consequently render text only, including an active Makiuma listing whose inspected token has image metadata.\n- Correction direction: Attach the exact token’s cached Marshal inspection name and media to stable listings without a new Objkt lookup, and render small cards with the wtfOS media resolver and distinct-token artifact fallback. Keep claims and owner cancellations functional when artwork is unavailable.\n- Verification idea: In focused browser coverage, verify each stable mode and owned listing displays its token name and loaded artwork; two tokens sharing one Objkt thumbnail must use distinct exact artifacts. Confirm the public live listing displays media after deployment.\n- Local verification (2026-11-05): Focused Stables server tests passed 11/11. The full HORF Stables Chromium browser spec passed 13/13, including public and owner previews in all three modes, distinct exact artwork when Objkt thumbnails match, muted video playback after lazy load, and a non-renderable directory artifact falling back to its thumbnail. Inventory coverage passes 285/285 rows, 1065/1065 handles, 138/138 routes, and 30/30 workflows. Production smoke follows deployment."
+      "body": "- Evidence (2026-11-05): The live Marshal Market stable API returns chain listing identifiers and edition counts without token media. Reciprocal, Honor, and Group listing cards consequently render text only, including an active Makiuma listing whose inspected token has image metadata.\n- Correction direction: Attach the exact token’s cached Marshal inspection name and media to stable listings without a new Objkt lookup, and render small cards with the wtfOS media resolver and distinct-token artifact fallback. Keep claims and owner cancellations functional when artwork is unavailable.\n- Verification idea: In focused browser coverage, verify each stable mode and owned listing displays its token name and loaded artwork; two tokens sharing one Objkt thumbnail must use distinct exact artifacts. Confirm the public live listing displays media after deployment.\n- Local verification (2026-11-05): Focused Stables server tests passed 11/11. The full HORF Stables Chromium browser spec passed 13/13, including public and owner previews in all three modes, distinct exact artwork when Objkt thumbnails match, muted video playback after lazy load, and a non-renderable directory artifact falling back to its thumbnail. Inventory coverage passes 285/285 rows, 1065/1065 handles, 138/138 routes, and 30/30 workflows. Production smoke follows deployment.\n- Follow-up evidence (2026-11-05): V3 public room cards used a separate eager video path, and a pinned private escrow detail returned media but showed text only. The still-open V2 Reciprocal listings already loaded their artwork after the initial image request; their first blank screenshot was a loading transient.\n- Follow-up correction (2026-11-05): Public Reciprocal, Honor, and Outlaw rooms, staged deposits, V2 recovery cards, and pinned private escrow now share one resilient preview component. Large V3 cards use exact image artifacts with cached thumbnail fallback; videos attach when visible. Claim, swap, and owner-return controls stay independent of preview availability.\n- Local verification (2026-11-05): `npm run build` passed; focused HORF Stables Chromium browser coverage passed 8/8, including distinct exact artwork for two shared-thumbnail room tokens, Outlaw artwork, private pinned art, and staged deposit preview. `npm run test:e2e:inventory:coverage` passed all inventory rows/handles/routes/workflows. Production smoke remains pending."
     },
     {
       "id": "WTF-BB-805",
@@ -12198,7 +12198,7 @@
     {
       "id": "WTF-BB-806",
       "status": "Verified",
-      "owner": "Codex HORF completed trade stats",
+      "owner": "Codex HORF trader profile browser correction",
       "lastTouched": "2026-11-05",
       "category": "HORF / personal trade statistics",
       "priority": "P2",
@@ -12208,7 +12208,7 @@
       "points": 7,
       "rank": 715,
       "title": "My Stable labels all sent and received horse transfers as completed trades, including gifts",
-      "body": "- Evidence (2026-11-05): The live Neighvember ledger for paulwhoisaghost reports 7 received, 6 sent, and 13 trades. Its public recent transfers comprise 6 direct receipts, 6 direct sends, and 1 gift receipt, with no outstanding return rides. The user correctly identifies 6 completed reciprocal trades; 13 is transfer activity.\n- Correction direction: Keep race ranking and sender-only HORSE rewards based on existing transfer activity, as the owner explicitly selected. Add a separate completed-trades metric to My Stable from matched opposite-direction direct sends between the same two wallets; exclude gifts and incomplete direct sends. Preserve truthful totals for escrow and verified paid settlements, and all-time matches across seasons.\n- Verification idea: Unit-test six reciprocal returns plus one gift as completed=6 while activity=13, test unmatched and cross-season cases, and smoke the exact public wallet after deployment.\n- Local verification (2026-11-05): 27/27 focused HORF server tests pass, including six reciprocal trades plus one gift and unmatched/cross-season cases. HORF browser coverage passed 83/83 across the initial run and targeted rerun, including the exact 7 received / 6 sent / 6 completed versus 13 race transfers fixture and gift/trade receipt split. Production smoke follows deployment."
+      "body": "- Evidence (2026-11-05): The live Neighvember ledger for paulwhoisaghost reports 7 received, 6 sent, and 13 trades. Its public recent transfers comprise 6 direct receipts, 6 direct sends, and 1 gift receipt, with no outstanding return rides. The user correctly identifies 6 completed reciprocal trades; 13 is transfer activity.\n- Correction direction: Keep race ranking and sender-only HORSE rewards based on existing transfer activity, as the owner explicitly selected. Add a separate completed-trades metric to My Stable from matched opposite-direction direct sends between the same two wallets; exclude gifts and incomplete direct sends. Preserve truthful totals for escrow and verified paid settlements, and all-time matches across seasons.\n- Verification idea: Unit-test six reciprocal returns plus one gift as completed=6 while activity=13, test unmatched and cross-season cases, and smoke the exact public wallet after deployment.\n- Local verification (2026-11-05): 27/27 focused HORF server tests pass, including six reciprocal trades plus one gift and unmatched/cross-season cases. HORF browser coverage passed 83/83 across the initial run and targeted rerun, including the exact 7 received / 6 sent / 6 completed versus 13 race transfers fixture and gift/trade receipt split. Production smoke follows deployment.\n- Follow-up browser correction (2026-11-05): Public trader profiles now include an outbound transfer trail, so the received-horses share story incorrectly asserted that the entire profile lacked “Sent Stallion.” Scoped its three inbound horse names and outbound exclusion to `data-horf-profile-received-horse` cards. The focused Chromium share story passes 1/1; outbound activity remains visible in the profile trail."
     },
     {
       "id": "WTF-BB-807",
@@ -12287,7 +12287,7 @@
     },
     {
       "id": "WTF-BB-812",
-      "status": "Fixed",
+      "status": "Verified",
       "owner": "Codex HORF Open Range burn-only correction",
       "lastTouched": "2026-11-05",
       "category": "HORF / Open Range holder visibility",
@@ -12298,11 +12298,11 @@
       "points": 10,
       "rank": 501,
       "title": "Open Range displays burned-only horse mints as available discovery cards",
-      "body": "- Evidence (2026-11-05): Open Range shows Makiuma token IDs 4, 5, and 6 from KT1EKNnM4kKS7k6CMMsEtMYvPDPawnTtsdeK as three cards. TzKT reports IDs 4 and 5 each have 100/100 editions held by tz1burnburnburnburnburnburnburjAYjjX, while ID 6 has live holders. Discovery uses qualifying mint tags and cached mint pages without checking current owners.\n- Why it matters: Burning and reminting one artwork leaves duplicate public cards for inaccessible editions.\n- Correction (2026-11-05): Filter every cached Open Range page by exact contract/token ID, excluding only tokens whose current total supply equals the burn-wallet balance. Group TzKT reads by contract, coalesce them for one Mainnet block, and retain verified exclusions with a visible stale status during index outages.\n- Verification (2026-11-05): Four focused holder tests cover the three Makiuma IDs, mixed holdings, cached-page refresh, Mainnet guard, bounded queries, and stale fallback. Fourteen combined Open Range server tests pass. A live-data dry run returned 24/26 cards with only Makiuma ID 6 in 1.86 seconds. Production smoke remains pending deployment."
+      "body": "- Evidence (2026-11-05): Open Range shows Makiuma token IDs 4, 5, and 6 from KT1EKNnM4kKS7k6CMMsEtMYvPDPawnTtsdeK as three cards. TzKT reports IDs 4 and 5 each have 100/100 editions held by tz1burnburnburnburnburnburnburjAYjjX, while ID 6 has live holders. Discovery uses qualifying mint tags and cached mint pages without checking current owners.\n- Why it matters: Burning and reminting one artwork leaves duplicate public cards for inaccessible editions.\n- Correction (2026-11-05): Filter every cached Open Range page by exact contract/token ID, excluding only tokens whose current total supply equals the burn-wallet balance. Group TzKT reads by contract, coalesce them for one Mainnet block, and retain verified exclusions with a visible stale status during index outages.\n- Verification (2026-11-05): Four focused holder tests cover the three Makiuma IDs, mixed holdings, cached-page refresh, Mainnet guard, bounded queries, and stale fallback. Fourteen combined Open Range server tests pass. A live-data dry run returned 24/26 cards with only Makiuma ID 6 in 1.86 seconds. Production smoke remains pending deployment.\n- Production verification (2026-11-05): Hetzner deploy 42098951639 succeeded, public health reports commit 2ca0ab66, and the Neighvember Open Range API returns 24 cards with holderStatus=ready. Makiuma #6 remains; burn-wallet-only token IDs #4 and #5 are absent. A fresh public browser load shows one Makiuma card."
     },
     {
       "id": "WTF-BB-813",
-      "status": "Fixed",
+      "status": "Verified",
       "owner": "Codex HORF Open Range media correction",
       "lastTouched": "2026-11-05",
       "category": "HORF / Open Range media fallback",
@@ -12313,7 +12313,7 @@
       "points": 8,
       "rank": 656,
       "title": "Open Range retries non-image directory artifacts across gateways and floods the console",
-      "body": "- Evidence (2026-11-05): Makiuma tokens publish an application/x-directory artifact. The Open Range card treats its URL as an image, /api/cache/artifact returns 415 for the HTML directory, then the media fallback tries seven external gateways, producing ORB, 403, and DNS failures. The live 26-card page produced at least 16 failed media requests in the first nine seconds.\n- Why it matters: Cards load slowly, browser diagnostics flood with avoidable errors, and valid token thumbnails can be missed.\n- Correction (2026-11-05): Use Objkt image thumbnails for explicitly non-image artifacts; retain the shared thumbnail if exact artifact cannot render, avoiding inappropriate directory fetches and gateway retries.\n- Verification (2026-11-05): Media unit tests pass 4/4, Open Range Chromium spec passes 16/16, build and inventory coverage pass. Production smoke remains pending deployment."
+      "body": "- Evidence (2026-11-05): Makiuma tokens publish an application/x-directory artifact. The Open Range card treats its URL as an image, /api/cache/artifact returns 415 for the HTML directory, then the media fallback tries seven external gateways, producing ORB, 403, and DNS failures. The live 26-card page produced at least 16 failed media requests in the first nine seconds.\n- Why it matters: Cards load slowly, browser diagnostics flood with avoidable errors, and valid token thumbnails can be missed.\n- Correction (2026-11-05): Use Objkt image thumbnails for explicitly non-image artifacts; retain the shared thumbnail if exact artifact cannot render, avoiding inappropriate directory fetches and gateway retries.\n- Verification (2026-11-05): Media unit tests pass 4/4, Open Range Chromium spec passes 16/16, build and inventory coverage pass. Production smoke remains pending deployment.\n- Production verification (2026-11-05): Hetzner deploy 42098951639 succeeded and public health reports commit 2ca0ab66. A fresh public Open Range browser load displays Makiuma once and records zero failed media-cache requests for its page; the directory artifacts are not probed as image sources."
     }
   ]
 }

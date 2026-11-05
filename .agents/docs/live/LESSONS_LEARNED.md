@@ -14790,3 +14790,23 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: Mint history and current availability are different facts. A page can retain genuine historical mints while showing inaccessible burned editions as possible horses to inspect or trade.
 
 **Rule**: Keep exact mint identities in discovery history, then check current Mainnet burn-wallet balance against total supply on each cached page read. Coalesce and cache holder verdicts for one chain block, retain verified burn exclusions during an index outage with a visible stale status, and use exact contract-group queries to avoid cross-product scans.
+
+---
+
+## 2026-11-05 - Browser send fixtures need an active signer before holder rechecks
+
+**What happened**: The Posse batch browser story seeded a saved Octez wallet address, then expected a changed-holder warning immediately after Confirm. The product correctly asked Octez for an active signer first, so the fixture never reached its refreshed holder response.
+
+**Why it mattered**: Moving the holder request ahead of the wallet prompt would lose the click gesture that Octez needs to open a signer, repeating a real send failure. The stale browser assertion blocked a full inventory run after 997 tests passed.
+
+**Rule**: In no-signer browser stories, assert the reconnect path and no downstream eligibility or holder refresh. Test changed-holder protection with an active signer fixture; keep signer activation as the first awaited action after Confirm.
+
+---
+
+## 2026-11-05 - Use the same exact horse preview across escrow rooms
+
+**What happened**: V2 public and recovery listings already had art cards, but V3 room cards loaded videos eagerly and used a separate media path, while a pinned private escrow showed only token text despite returning its artwork. The V3 test harness initially served an old `dist/public` build, so new selectors appeared absent even while old images rendered.
+
+**Why it mattered**: Traders could not consistently inspect the horse they would claim or swap, and mixed preview paths risked a shared Objkt collection thumbnail standing in for a different token. A stale browser build could hide the actual change during verification.
+
+**Rule**: Render public, staged, recovery, and private escrow art through one media component; prefer exact image artifacts on the large V3 cards, fall back to cached thumbnails, and attach video sources only when visible. Keep claim and return controls available when art is missing. Rebuild `dist/public` before the Playwright harness and use explicit string values for new `data-*` handles so React emits them.

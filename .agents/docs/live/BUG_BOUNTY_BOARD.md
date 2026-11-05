@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **779** · Open: **9** · Claimed: **42** · In Progress: **19** · Blocked: **4** · Fixed: **156** · Verified: **544** · Archived: **5**
+Total: **779** · Open: **9** · Claimed: **42** · In Progress: **19** · Blocked: **4** · Fixed: **154** · Verified: **546** · Archived: **5**
 
 ## Canonical Board
 
@@ -202,7 +202,6 @@ Total: **779** · Open: **9** · Claimed: **42** · In Progress: **19** · Block
 | WTF-BB-122 | Fixed | Codex wallet/RPC emergency pass | 2026-05-08 | Tezos wallet / checkout | P1 | 11 | 402 | 2 | 4 | 1 | Persisted wallet address can reach checkout without Taquito wallet provider |
 | WTF-BB-093 | Fixed | Codex TV creator workflow pass | 2026-05-04 | TV microapp / creator workflow UX | P1 | 11 | 402 | 3 | 4 | 0 | Playlist editing is trapped behind the active-playlist path, media management conflates detach with delete, and public bumper-pool removal is exposed only as destructive delete |
 | WTF-BB-091 | Fixed | Codex TV overlay metadata pass | 2026-05-04 | TV microapp / metadata UX | P1 | 11 | 402 | 3 | 4 | 0 | TV overlay credits fall back to wallet addresses, imported library tokens lose title-card metadata, and uploaded media cannot carry editable creator credits or Objkt links |
-| WTF-BB-812 | Fixed | Codex HORF Open Range burn-only correction | 2026-11-05 | HORF / Open Range holder visibility | P1 | 10 | 501 | 2 | 4 | 0 | Open Range displays burned-only horse mints as available discovery cards |
 | WTF-BB-799 | Fixed | Codex HORF Octez quick-send recovery | 2026-11-04 | HORF / Tezos wallet sends | P1 | 10 | 501 | 2 | 4 | 0 | HORF quick horse trade loses Octez signing session during RPC fallback |
 | WTF-BB-769 | Fixed | Codex coLILseum escrow completion | 2026-11-03 | coLILseum / sponsored prize settlement | P1 | 10 | 501 | 1 | 4 | 1 | Random sponsored prize allocation attempts to sort a frozen list |
 | WTF-BB-759 | Fixed | Codex coLILseum sponsored-room recovery | 2026-11-03 | coLILseum / optional treasure combat | P1 | 10 | 501 | 2 | 4 | 0 | Ancient mode stalls at round five because combat requires disabled treasure chests |
@@ -244,7 +243,6 @@ Total: **779** · Open: **9** · Claimed: **42** · In Progress: **19** · Block
 | WTF-BB-048 | Fixed | Codex TV telemetry hardening pass | 2026-05-04 | TV microapp / availability | P2 | 9 | 577 | 2 | 3 | 1 | TV telemetry endpoint can grow session-tracking memory under spam |
 | WTF-BB-010 | Fixed | Swarm A1 | 2026-04-28 | Startup performance | P2 | 9 | 577 | 2 | 3 | 1 | Entrypoint recursively `chown -R`s mounted volumes every boot |
 | WTF-BB-009 | Fixed | Codex warning cleanup pass | 2026-05-06 | Build config | P2 | 9 | 577 | 2 | 2 | 2 | Vite build loads `.env` with unsupported `NODE_ENV=production` |
-| WTF-BB-813 | Fixed | Codex HORF Open Range media correction | 2026-11-05 | HORF / Open Range media fallback | P2 | 8 | 656 | 2 | 3 | 0 | Open Range retries non-image directory artifacts across gateways and floods the console |
 | WTF-BB-793 | Fixed | Codex Horf preview performance correction | 2026-11-04 | Horf / token preview performance | P2 | 8 | 656 | 2 | 3 | 0 | Horf card grids load full-size horse artifacts and offscreen media eagerly |
 | WTF-BB-307 | Fixed | Codex local SSH bootstrap pass | 2026-06-21 | Ops / local SSH access | P2 | 8 | 656 | 2 | 3 | 0 | Codex repeatedly tried the wrong SSH path for Hetzner checks because the GitHub publish key path differs from this Mac's normal `ssh wtf` alias and Codex could not see the passphrase-loaded local identity; fixed with ignored `.codex/machine-ssh.env`, tracked `scripts/wtf-ssh.sh`, and project rules that force future agents through the local alias/agent bootstrap |
 | WTF-BB-170 | Fixed | Codex Skywire profile disconnect pass | 2026-05-24 | Profile / Identity bridge UX | P2 | 8 | 656 | 1 | 4 | 0 | Profile shows linked Skywire identity but lacks a manual disconnect action |
@@ -253,10 +251,10 @@ Total: **779** · Open: **9** · Claimed: **42** · In Progress: **19** · Block
 | WTF-BB-801 | Fixed | Codex Horf inspection and Market action repair | 2026-11-04 | HORF / inspection and purchase wayfinding | P2 | 7 | 715 | 1 | 3 | 0 | HORF inspect actions change state below the viewport without revealing the next step |
 | WTF-BB-773 | Fixed | Codex coLILseum escrow completion | 2026-11-03 | coLILseum / prepaid payout clarity | P2 | 7 | 715 | 1 | 2 | 1 | Prepaid tie receipt says XTZ paid when the guest receives credit |
 | WTF-BB-348 | Fixed | Codex Pasta CI smoke heartbeat | 2026-11-05 | E2E / Quality Gates observability | P2 | 7 | 715 | 1 | 3 | 0 | Main Quality Gates inventory smoke can run for ~14 minutes with no CLI-visible progress before a production push is fully proven, making healthy CI hard to distinguish from a wedged release gate; verified by branch, PR, and main Quality Gates through PR #23 with 60-second heartbeat output through the long smoke step |
-| WTF-BB-800 | Fixed | Codex Horf return-ride browser correction | 2026-11-04 | E2E / Horf horse-send signer preflight | P2 | 6 | 754 | 1 | 2 | 0 | Horf gift browser stories expect eligibility after a send without an active signer |
 | WTF-BB-755 | Fixed | Codex release integration | 2026-11-02 | AT Protocol / Profile OAuth CI test precondition | P2 | 6 | 754 | 1 | 2 | 0 | Profile AT OAuth client metadata tests reject a clean CI local origin before assertions |
 | WTF-BB-747 | Fixed | Codex Pasta mainnet alpha integration | 2026-10-29 | Pasta Protocol / IPFS Pinning inventory test | P2 | 6 | 754 | 1 | 2 | 0 | Gamma pinning inventory waits for obsolete Connect Porcupin button |
 | WTF-BB-011 | Fixed | Codex warning cleanup pass | 2026-05-06 | Frontend bundle | P3 | 9 | 577 | 4 | 2 | 1 | Wallet/Tezos bundle chunks are huge and pull Node core externals |
+| WTF-BB-804 | Fixed | Codex HORF all-stables artwork follow-up | 2026-11-05 | HORF / Marshal Market stable previews | P3 | 5 | 771 | 1 | 2 | 0 | Marshal Market escrow listings show only token identifiers instead of horse artwork |
 | WTF-BB-803 | Fixed | Codex HORF Posse name repair | 2026-11-04 | HORF / Posse identity display | P3 | 5 | 771 | 1 | 2 | 0 | Known trader loses display name after joining Posse |
 | WTF-BB-802 | Fixed | Codex Horf Market media playback | 2026-11-04 | HORF / token media playback | P3 | 5 | 771 | 1 | 2 | 0 | HORSE Market video card loads but remains paused |
 | WTF-BB-508 | Verified | Codex wtfOS contract deployment pass | - | Tezos / WTF reward claims and contract ownership | P0 | 19 | 3 | 5 | 5 | 4 | Reward escrow is tested but absent from the live reward path |
@@ -583,6 +581,7 @@ Total: **779** · Open: **9** · Claimed: **42** · In Progress: **19** · Block
 | WTF-BB-047 | Verified | Swarm A5 | 2026-04-28 | Runtime / DB access path | P1 | 11 | 402 | 2 | 3 | 2 | W timeline actor cache grows without eviction |
 | WTF-BB-044 | Verified | Codex W identity ambiguity reconciliation | 2026-09-01 | Data integrity / identity | P1 | 11 | 402 | 3 | 3 | 1 | W identity resolution can collapse duplicate Twitter IDs into one row |
 | WTF-BB-034 | Verified | Codex stale security bounty reconciliation | 2026-09-01 | Data integrity / auth lifecycle | P1 | 11 | 402 | 2 | 3 | 2 | X token refresh updates users table without serialization |
+| WTF-BB-812 | Verified | Codex HORF Open Range burn-only correction | 2026-11-05 | HORF / Open Range holder visibility | P1 | 10 | 501 | 2 | 4 | 0 | Open Range displays burned-only horse mints as available discovery cards |
 | WTF-BB-776 | Verified | Codex Horf Stable wallet-token response correction | 2026-11-03 | Horf / wallet-token profile display | P1 | 10 | 501 | 1 | 5 | 0 | Horf rejects nonempty wallet-token pages and leaves linked riders with an empty Stable |
 | WTF-BB-775 | Verified | Codex Horf HORSE Market origination correction | 2026-11-03 | Horf HORSE Market / Mainnet origination | P1 | 10 | 501 | 1 | 5 | 0 | An overlong event tag blocks HORSE Market origination |
 | WTF-BB-767 | Verified | Codex Horf production Open Range recovery | 2026-11-03 | Horf / Open Range historical pagination | P1 | 10 | 501 | 2 | 4 | 0 | All-seasons horse market returns 503 on the live Objkt archive query |
@@ -710,6 +709,7 @@ Total: **779** · Open: **9** · Claimed: **42** · In Progress: **19** · Block
 | WTF-BB-033 | Verified | Codex W groupchat settings hardening | 2026-09-02 | Data integrity / ops | P2 | 9 | 577 | 2 | 3 | 1 | Unbounded `platform_settings` value payload allows oversized conversation lists |
 | WTF-BB-026 | Verified | Codex TzKT upstream consolidation | 2026-09-02 | API / reliability | P2 | 9 | 577 | 3 | 2 | 1 | Profile and metadata fetchers duplicate hardcoded upstream paths |
 | WTF-BB-022 | Verified | Codex Supabase boot-backfill reconciliation | 2026-09-02 | Deploy / DB operations | P2 | 9 | 577 | 2 | 3 | 1 | Backfill pipeline defaults to `us-west-2` when Supabase region is missing |
+| WTF-BB-813 | Verified | Codex HORF Open Range media correction | 2026-11-05 | HORF / Open Range media fallback | P2 | 8 | 656 | 2 | 3 | 0 | Open Range retries non-image directory artifacts across gateways and floods the console |
 | WTF-BB-805 | Verified | Codex HORF market trade path | 2026-11-05 | HORF / escrow and direct-trade entry points | P2 | 8 | 656 | 2 | 3 | 0 | Interested riders cannot start a listed horse trade from its card, and Outlaw Corral omits active offers |
 | WTF-BB-784 | Verified | Codex first-login desktop pass | 2026-11-04 | Desktop OS / Wastebasket shortcuts | P2 | 8 | 656 | 2 | 3 | 0 | Recycle Bin is inert and desktop shortcut deletion has no restore path |
 | WTF-BB-781 | Verified | Codex Reggie release window-sync correction | 2026-11-03 | Desktop OS / query route window sync | P2 | 8 | 656 | 2 | 3 | 0 | Query navigation opens duplicate windows for the same app route |
@@ -752,7 +752,7 @@ Total: **779** · Open: **9** · Claimed: **42** · In Progress: **19** · Block
 | WTF-BB-079 | Verified | Codex deploy hardening pass | 2026-05-03 | Deploy / release metadata | P2 | 8 | 656 | 2 | 3 | 0 | `server-deploy.sh` can inherit a stale `COMMIT_SHA` and mislabel the live revision |
 | WTF-BB-043 | Verified | Codex TV refresh query reconciliation | 2026-09-02 | TV microapp / refresh scale | P2 | 8 | 656 | 2 | 2 | 1 | WTF TV refresh currently sorts all wallet rows randomly |
 | WTF-BB-807 | Verified | Codex HORF horse-selector correction | 2026-11-05 | HORF / owned horse selectors | P2 | 7 | 715 | 1 | 3 | 0 | Raw wallet-token selectors offer non-horses and unreviewed HAHA-only art |
-| WTF-BB-806 | Verified | Codex HORF completed trade stats | 2026-11-05 | HORF / personal trade statistics | P2 | 7 | 715 | 1 | 3 | 0 | My Stable labels all sent and received horse transfers as completed trades, including gifts |
+| WTF-BB-806 | Verified | Codex HORF trader profile browser correction | 2026-11-05 | HORF / personal trade statistics | P2 | 7 | 715 | 1 | 3 | 0 | My Stable labels all sent and received horse transfers as completed trades, including gifts |
 | WTF-BB-795 | Verified | Codex Horf actor-backed moderation proof | 2026-11-04 | E2E / Horf local puppet database parity | P2 | 7 | 715 | 1 | 3 | 0 | Local Horf moderation puppets omit durable Open Range and nonhorse tables |
 | WTF-BB-790 | Verified | Codex starter desktop release-gate repair | 2026-11-04 | Desktop telemetry / shortcut policy ownership | P2 | 7 | 715 | 2 | 2 | 0 | Shortcut deletion policy scans the old desktop file after Wastebasket takes ownership |
 | WTF-BB-774 | Verified | Codex Paul portrait ghost correction | 2026-11-03 | Desktop OS / Paul character silhouette | P2 | 7 | 715 | 2 | 2 | 0 | Paul needs the approved compact portrait ghost and 90-pose desktop animation |
@@ -780,6 +780,7 @@ Total: **779** · Open: **9** · Claimed: **42** · In Progress: **19** · Block
 | WTF-BB-121 | Verified | Codex release-readiness pass | 2026-05-08 | Deploy / DB migrations | P2 | 7 | 715 | 1 | 3 | 0 | Arcade migrations reused existing migration numbers |
 | WTF-BB-118 | Verified | Codex arcade/console split pass | 2026-05-08 | Console catalog / dedupe | P2 | 7 | 715 | 1 | 3 | 0 | DB-backed stock rows duplicated installed Console cartridges |
 | WTF-BB-114 | Verified | Codex arcade/console split pass | 2026-05-08 | Console catalog / manifest parity | P2 | 7 | 715 | 1 | 3 | 0 | Console stock classifier and installed manifest drifted |
+| WTF-BB-800 | Verified | Codex Horf posse signer-first browser correction | 2026-11-05 | E2E / Horf horse-send signer preflight | P2 | 6 | 754 | 1 | 2 | 0 | Horf gift browser stories expect eligibility after a send without an active signer |
 | WTF-BB-797 | Verified | Codex Horf browser release gate correction | 2026-11-04 | E2E / Horf Marshal approval assertion | P2 | 6 | 754 | 1 | 2 | 0 | Horf batch approval browser test expects obsolete contiguous 422 error copy |
 | WTF-BB-783 | Verified | Codex Reggie contestant visibility pass | 2026-11-03 | Desktop OS / Reggie role visibility | P2 | 6 | 754 | 1 | 2 | 0 | Reggie appears and offers challenge guidance to accounts without the contestant role |
 | WTF-BB-779 | Verified | Codex Horf race direction correction | 2026-11-03 | Horf / race presentation | P2 | 6 | 754 | 1 | 2 | 0 | Horse icons run away from the finish line on the Horf race board |
@@ -796,7 +797,6 @@ Total: **779** · Open: **9** · Claimed: **42** · In Progress: **19** · Block
 | WTF-BB-511 | Verified | Codex wtfOS contract release | - | Rewards / in-app market reconciliation | P3 | 11 | 402 | 3 | 3 | 3 | Numeric TzKT transaction ids were queried as operation hashes |
 | WTF-BB-317 | Verified | Codex challenge automation harness parity verification | 2026-09-02 | E2E / Playwright harness parity | P3 | 7 | 715 | 2 | 3 | 0 | Local Playwright harness returns `/api/admin/challenge-automation/registry` with legacy `actions` instead of production-shaped `rewardActions`, so direct Automation tab proofs need local route stubs or can crash the admin UI under harness data despite the real server route returning `rewardActions`; likely correction is to align `tests/playwright/harness.mjs` with `server/challenges/routes/admin.ts` and add a focused harness contract assertion |
 | WTF-BB-230 | Verified | Codex WTF LIVE chat toolbox pass | 2026-06-09 | WTF LIVE / room chat style controls | P3 | 6 | 754 | 2 | 2 | 0 | WTF LIVE chat now has a compact one-row style toolbox with bounded font, color, 8-14 size, bold/italic, and reset controls, plus sanitized realtime style relay |
-| WTF-BB-804 | Verified | Codex HORF stable artwork repair | 2026-11-05 | HORF / Marshal Market stable previews | P3 | 5 | 771 | 1 | 2 | 0 | Marshal Market escrow listings show only token identifiers instead of horse artwork |
 | WTF-BB-735 | Verified | Codex Pasta alpha remaining release gates | 2026-10-27 | E2E / Gamma IPFS Pinning route coverage | P3 | 5 | 771 | 1 | 2 | 0 | Gamma media infrastructure inventory story waits for a retired Own-node setup button |
 | WTF-BB-721 | Verified | Codex October 28 security full send | 2026-10-28 | Dependencies / conditional and build-only leaf advisories | P3 | 5 | 771 | 1 | 1 | 1 | New qs and desktop fast-uri advisory matches have compatible leaf patches |
 | WTF-BB-672 | Verified | Codex profile picture preview repair | 2026-09-03 | Profile / IPFS preview reliability | P3 | 5 | 771 | 1 | 2 | 0 | Profile picture picker bypassed FileShip and had no alternate gateway recovery |
@@ -4375,19 +4375,6 @@ Total: **779** · Open: **9** · Claimed: **42** · In Progress: **19** · Block
 - Verification note: repo-wide `npm run check` is currently blocked by unrelated existing Desktop worktree errors in `client/src/components/layout/Desktop.tsx` (missing hamster/pet UI symbols), not by the TV overlay patch.
 - Verification idea: Imported token media added through the library should show human-readable creator credit plus Objkt links in TV, upload-backed media without custom credit should show `from <username>'s media`, and overlays should appear at viewer start and viewer end without sticking on screen the whole time.
 
-### WTF-BB-812 - Open Range displays burned-only horse mints as available discovery cards
-
-- Category: HORF / Open Range holder visibility
-- Priority: P1
-- Status: Fixed
-- Owner/Session: Codex HORF Open Range burn-only correction
-- Last touched: 2026-11-05
-- Score: C2 + F4 + S0 + P1(4) = 10
-- Evidence (2026-11-05): Open Range shows Makiuma token IDs 4, 5, and 6 from KT1EKNnM4kKS7k6CMMsEtMYvPDPawnTtsdeK as three cards. TzKT reports IDs 4 and 5 each have 100/100 editions held by tz1burnburnburnburnburnburnburjAYjjX, while ID 6 has live holders. Discovery uses qualifying mint tags and cached mint pages without checking current owners.
-- Why it matters: Burning and reminting one artwork leaves duplicate public cards for inaccessible editions.
-- Correction (2026-11-05): Filter every cached Open Range page by exact contract/token ID, excluding only tokens whose current total supply equals the burn-wallet balance. Group TzKT reads by contract, coalesce them for one Mainnet block, and retain verified exclusions with a visible stale status during index outages.
-- Verification (2026-11-05): Four focused holder tests cover the three Makiuma IDs, mixed holdings, cached-page refresh, Mainnet guard, bounded queries, and stale fallback. Fourteen combined Open Range server tests pass. A live-data dry run returned 24/26 cards with only Makiuma ID 6 in 1.86 seconds. Production smoke remains pending deployment.
-
 ### WTF-BB-799 - HORF quick horse trade loses Octez signing session during RPC fallback
 
 - Category: HORF / Tezos wallet sends
@@ -5203,19 +5190,6 @@ Total: **779** · Open: **9** · Claimed: **42** · In Progress: **19** · Block
 - 2026-05-06 fix note: Removed `NODE_ENV=production` from `.env`; runtime production mode remains controlled by scripts/process env.
 - Verification: `npm run build` completed without the Vite `NODE_ENV` warning.
 
-### WTF-BB-813 - Open Range retries non-image directory artifacts across gateways and floods the console
-
-- Category: HORF / Open Range media fallback
-- Priority: P2
-- Status: Fixed
-- Owner/Session: Codex HORF Open Range media correction
-- Last touched: 2026-11-05
-- Score: C2 + F3 + S0 + P2(3) = 8
-- Evidence (2026-11-05): Makiuma tokens publish an application/x-directory artifact. The Open Range card treats its URL as an image, /api/cache/artifact returns 415 for the HTML directory, then the media fallback tries seven external gateways, producing ORB, 403, and DNS failures. The live 26-card page produced at least 16 failed media requests in the first nine seconds.
-- Why it matters: Cards load slowly, browser diagnostics flood with avoidable errors, and valid token thumbnails can be missed.
-- Correction (2026-11-05): Use Objkt image thumbnails for explicitly non-image artifacts; retain the shared thumbnail if exact artifact cannot render, avoiding inappropriate directory fetches and gateway retries.
-- Verification (2026-11-05): Media unit tests pass 4/4, Open Range Chromium spec passes 16/16, build and inventory coverage pass. Production smoke remains pending deployment.
-
 ### WTF-BB-793 - Horf card grids load full-size horse artifacts and offscreen media eagerly
 
 - Category: Horf / token preview performance
@@ -5387,19 +5361,6 @@ Total: **779** · Open: **9** · Claimed: **42** · In Progress: **19** · Block
   - Workflow syntax and board generation checks passed locally; a new full Quality Gates run must verify the step finishes on GitHub.
 - Follow-up (2026-11-05): Main Quality Gates `42092599661` stopped in Aggregate unit tests because `tests/e2e/inventory/pixalerce-timeout-policy.test.mjs` still required `timeout-minutes: 30`. Updated that single policy assertion to the evidence-derived 40-minute workflow limit; focused unit test, inventory coverage, board check, and diff check pass locally. Full Quality Gates rerun remains pending.
 
-### WTF-BB-800 - Horf gift browser stories expect eligibility after a send without an active signer
-
-- Category: E2E / Horf horse-send signer preflight
-- Priority: P2
-- Status: Fixed
-- Owner/Session: Codex Horf return-ride browser correction
-- Last touched: 2026-11-04
-- Score: C1 + F2 + S0 + P2(3) = 6
-- Evidence (2026-11-04): The full inventory reached 413 passing cases but failed two Horf social stories after the Octez signer-first send correction. Both fixtures seed only `wtf:wallet-session`, with no active Octez account, then expect token eligibility to run after Confirm. The corrected app instead blocks at signer preflight and offers Reconnect wallet before any eligibility read.
-- Correction direction: Keep the production signer-first order and update the owning browser stories to prove review terms, the reconnect recovery control, and zero eligibility calls when no signer is active. Retain separate token-eligibility server coverage.
-- Verification idea: Run the two affected Horf social stories, the Horf social suite, and inventory coverage against the corrected fixture.
-- Local verification (2026-11-04): The two corrected no-signer gift stories pass with Reconnect wallet before token eligibility. The complete Horf social and ledger browser suites pass 22/22, including the new in-place return-ride popup, exact recipient and quantity review, focus return, route preservation, and narrow layout. Inventory coverage passes 284/284 rows, 1059 handles, 138 routes, and 29 workflows. No wallet transaction was submitted; production verification follows deployment.
-
 ### WTF-BB-755 - Profile AT OAuth client metadata tests reject a clean CI local origin before assertions
 
 - Category: AT Protocol / Profile OAuth CI test precondition
@@ -5446,6 +5407,22 @@ Total: **779** · Open: **9** · Claimed: **42** · In Progress: **19** · Block
 - Verification idea: Main route loads without wallet mega-chunks; wallet flows still work after lazy import.
 - 2026-05-06 fix note: Added browser-safe aliases for `fs`/`crypto` side-effect imports from wallet UI packages, split wallet dependencies into `vendor-taquito`, `vendor-octez`, `vendor-beacon`, and `vendor-crypto`, and set an explicit 2 MB Vite chunk budget for those lazy wallet chunks.
 - Verification: `npm run build` completed without browser-externalized Node core warnings or the generic Vite chunk-size warning.
+
+### WTF-BB-804 - Marshal Market escrow listings show only token identifiers instead of horse artwork
+
+- Category: HORF / Marshal Market stable previews
+- Priority: P3
+- Status: Fixed
+- Owner/Session: Codex HORF all-stables artwork follow-up
+- Last touched: 2026-11-05
+- Score: C1 + F2 + S0 + P3(2) = 5
+- Evidence (2026-11-05): The live Marshal Market stable API returns chain listing identifiers and edition counts without token media. Reciprocal, Honor, and Group listing cards consequently render text only, including an active Makiuma listing whose inspected token has image metadata.
+- Correction direction: Attach the exact token’s cached Marshal inspection name and media to stable listings without a new Objkt lookup, and render small cards with the wtfOS media resolver and distinct-token artifact fallback. Keep claims and owner cancellations functional when artwork is unavailable.
+- Verification idea: In focused browser coverage, verify each stable mode and owned listing displays its token name and loaded artwork; two tokens sharing one Objkt thumbnail must use distinct exact artifacts. Confirm the public live listing displays media after deployment.
+- Local verification (2026-11-05): Focused Stables server tests passed 11/11. The full HORF Stables Chromium browser spec passed 13/13, including public and owner previews in all three modes, distinct exact artwork when Objkt thumbnails match, muted video playback after lazy load, and a non-renderable directory artifact falling back to its thumbnail. Inventory coverage passes 285/285 rows, 1065/1065 handles, 138/138 routes, and 30/30 workflows. Production smoke follows deployment.
+- Follow-up evidence (2026-11-05): V3 public room cards used a separate eager video path, and a pinned private escrow detail returned media but showed text only. The still-open V2 Reciprocal listings already loaded their artwork after the initial image request; their first blank screenshot was a loading transient.
+- Follow-up correction (2026-11-05): Public Reciprocal, Honor, and Outlaw rooms, staged deposits, V2 recovery cards, and pinned private escrow now share one resilient preview component. Large V3 cards use exact image artifacts with cached thumbnail fallback; videos attach when visible. Claim, swap, and owner-return controls stay independent of preview availability.
+- Local verification (2026-11-05): `npm run build` passed; focused HORF Stables Chromium browser coverage passed 8/8, including distinct exact artwork for two shared-thumbnail room tokens, Outlaw artwork, private pinned art, and staged deposit preview. `npm run test:e2e:inventory:coverage` passed all inventory rows/handles/routes/workflows. Production smoke remains pending.
 
 ### WTF-BB-803 - Known trader loses display name after joining Posse
 
@@ -12683,6 +12660,20 @@ Copy this when adding a new issue:
   - `server/lib/x-oauth2-refresh-policy.test.ts` passes and proves the lock, locked re-read, freshness short-circuit, transactional write, and absence of the former unlocked helper.
   - Current route consumers use this serialized helper, satisfying the original stable-final-token criterion.
 
+### WTF-BB-812 - Open Range displays burned-only horse mints as available discovery cards
+
+- Category: HORF / Open Range holder visibility
+- Priority: P1
+- Status: Verified
+- Owner/Session: Codex HORF Open Range burn-only correction
+- Last touched: 2026-11-05
+- Score: C2 + F4 + S0 + P1(4) = 10
+- Evidence (2026-11-05): Open Range shows Makiuma token IDs 4, 5, and 6 from KT1EKNnM4kKS7k6CMMsEtMYvPDPawnTtsdeK as three cards. TzKT reports IDs 4 and 5 each have 100/100 editions held by tz1burnburnburnburnburnburnburjAYjjX, while ID 6 has live holders. Discovery uses qualifying mint tags and cached mint pages without checking current owners.
+- Why it matters: Burning and reminting one artwork leaves duplicate public cards for inaccessible editions.
+- Correction (2026-11-05): Filter every cached Open Range page by exact contract/token ID, excluding only tokens whose current total supply equals the burn-wallet balance. Group TzKT reads by contract, coalesce them for one Mainnet block, and retain verified exclusions with a visible stale status during index outages.
+- Verification (2026-11-05): Four focused holder tests cover the three Makiuma IDs, mixed holdings, cached-page refresh, Mainnet guard, bounded queries, and stale fallback. Fourteen combined Open Range server tests pass. A live-data dry run returned 24/26 cards with only Makiuma ID 6 in 1.86 seconds. Production smoke remains pending deployment.
+- Production verification (2026-11-05): Hetzner deploy 42098951639 succeeded, public health reports commit 2ca0ab66, and the Neighvember Open Range API returns 24 cards with holderStatus=ready. Makiuma #6 remains; burn-wallet-only token IDs #4 and #5 are absent. A fresh public browser load shows one Makiuma card.
+
 ### WTF-BB-776 - Horf rejects nonempty wallet-token pages and leaves linked riders with an empty Stable
 
 - Category: Horf / wallet-token profile display
@@ -15351,6 +15342,20 @@ Copy this when adding a new issue:
   - Focused policy suite passes 2/2. A real missing-region invocation with a dummy project reference/password exits 1 and reports `SUPABASE_REGION is required ... refusing to guess a pooler region`, before importing the backfill/database layer.
   - `38f806e3` is an ancestor of live production commit `3775bbe2`, whose Quality Gates and Hetzner deploy succeeded and whose public health is alive. WTF-BB-022 is Verified.
 
+### WTF-BB-813 - Open Range retries non-image directory artifacts across gateways and floods the console
+
+- Category: HORF / Open Range media fallback
+- Priority: P2
+- Status: Verified
+- Owner/Session: Codex HORF Open Range media correction
+- Last touched: 2026-11-05
+- Score: C2 + F3 + S0 + P2(3) = 8
+- Evidence (2026-11-05): Makiuma tokens publish an application/x-directory artifact. The Open Range card treats its URL as an image, /api/cache/artifact returns 415 for the HTML directory, then the media fallback tries seven external gateways, producing ORB, 403, and DNS failures. The live 26-card page produced at least 16 failed media requests in the first nine seconds.
+- Why it matters: Cards load slowly, browser diagnostics flood with avoidable errors, and valid token thumbnails can be missed.
+- Correction (2026-11-05): Use Objkt image thumbnails for explicitly non-image artifacts; retain the shared thumbnail if exact artifact cannot render, avoiding inappropriate directory fetches and gateway retries.
+- Verification (2026-11-05): Media unit tests pass 4/4, Open Range Chromium spec passes 16/16, build and inventory coverage pass. Production smoke remains pending deployment.
+- Production verification (2026-11-05): Hetzner deploy 42098951639 succeeded and public health reports commit 2ca0ab66. A fresh public Open Range browser load displays Makiuma once and records zero failed media-cache requests for its page; the directory artifacts are not probed as image sources.
+
 ### WTF-BB-805 - Interested riders cannot start a listed horse trade from its card, and Outlaw Corral omits active offers
 
 - Category: HORF / escrow and direct-trade entry points
@@ -16174,13 +16179,14 @@ Copy this when adding a new issue:
 - Category: HORF / personal trade statistics
 - Priority: P2
 - Status: Verified
-- Owner/Session: Codex HORF completed trade stats
+- Owner/Session: Codex HORF trader profile browser correction
 - Last touched: 2026-11-05
 - Score: C1 + F3 + S0 + P2(3) = 7
 - Evidence (2026-11-05): The live Neighvember ledger for paulwhoisaghost reports 7 received, 6 sent, and 13 trades. Its public recent transfers comprise 6 direct receipts, 6 direct sends, and 1 gift receipt, with no outstanding return rides. The user correctly identifies 6 completed reciprocal trades; 13 is transfer activity.
 - Correction direction: Keep race ranking and sender-only HORSE rewards based on existing transfer activity, as the owner explicitly selected. Add a separate completed-trades metric to My Stable from matched opposite-direction direct sends between the same two wallets; exclude gifts and incomplete direct sends. Preserve truthful totals for escrow and verified paid settlements, and all-time matches across seasons.
 - Verification idea: Unit-test six reciprocal returns plus one gift as completed=6 while activity=13, test unmatched and cross-season cases, and smoke the exact public wallet after deployment.
 - Local verification (2026-11-05): 27/27 focused HORF server tests pass, including six reciprocal trades plus one gift and unmatched/cross-season cases. HORF browser coverage passed 83/83 across the initial run and targeted rerun, including the exact 7 received / 6 sent / 6 completed versus 13 race transfers fixture and gift/trade receipt split. Production smoke follows deployment.
+- Follow-up browser correction (2026-11-05): Public trader profiles now include an outbound transfer trail, so the received-horses share story incorrectly asserted that the entire profile lacked “Sent Stallion.” Scoped its three inbound horse names and outbound exclusion to `data-horf-profile-received-horse` cards. The focused Chromium share story passes 1/1; outbound activity remains visible in the profile trail.
 
 ### WTF-BB-795 - Local Horf moderation puppets omit durable Open Range and nonhorse tables
 
@@ -16704,6 +16710,22 @@ Copy this when adding a new issue:
 - Verification: `node --import tsx --test server/features/console/manifest.test.ts server/features/console/surfaces.test.ts server/features/arcade/source-import.test.ts server/features/arcade/payment.test.ts shared/types.test.ts server/lib/wtf-mcp.test.ts` and `npm run check -- --pretty false` passed locally.
 - Verification idea: Keep manifest parity tests in the standard Console/Arcade focused suite whenever stock slugs or installed cartridge files change.
 
+### WTF-BB-800 - Horf gift browser stories expect eligibility after a send without an active signer
+
+- Category: E2E / Horf horse-send signer preflight
+- Priority: P2
+- Status: Verified
+- Owner/Session: Codex Horf posse signer-first browser correction
+- Last touched: 2026-11-05
+- Score: C1 + F2 + S0 + P2(3) = 6
+- Evidence (2026-11-04): The full inventory reached 413 passing cases but failed two Horf social stories after the Octez signer-first send correction. Both fixtures seed only `wtf:wallet-session`, with no active Octez account, then expect token eligibility to run after Confirm. The corrected app instead blocks at signer preflight and offers Reconnect wallet before any eligibility read.
+- Correction direction: Keep the production signer-first order and update the owning browser stories to prove review terms, the reconnect recovery control, and zero eligibility calls when no signer is active. Retain separate token-eligibility server coverage.
+- Verification idea: Run the two affected Horf social stories, the Horf social suite, and inventory coverage against the corrected fixture.
+- Local verification (2026-11-04): The two corrected no-signer gift stories pass with Reconnect wallet before token eligibility. The complete Horf social and ledger browser suites pass 22/22, including the new in-place return-ride popup, exact recipient and quantity review, focus return, route preservation, and narrow layout. Inventory coverage passes 284/284 rows, 1059 handles, 138 routes, and 29 workflows. No wallet transaction was submitted; production verification follows deployment.
+- Follow-up evidence (2026-11-05): Quality Gates 42093303351 completed 997/998 inventory tests; the posse batch test expected a changed-holder alert from a persisted wallet address without an active Octez signer. The production flow correctly activates the signer on Confirm before asynchronous holder reads, preserving the browser user gesture and the documented Octez recovery path.
+- Correction: The browser story now checks the preselected one-edition recipient, then expects Reconnect wallet and no refreshed holder call when no signer is active. The actual fresh-holder check remains in the send path after signer activation and before token transfer.
+- Verification (2026-11-05): The focused Chromium posse story passes 1/1 in 32.4s. The existing wallet-connect policy test enforces signer-first ordering; no wallet transfer was submitted.
+
 ### WTF-BB-797 - Horf batch approval browser test expects obsolete contiguous 422 error copy
 
 - Category: E2E / Horf Marshal approval assertion
@@ -16971,19 +16993,6 @@ Copy this when adding a new issue:
   - `npx playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs` passed, 9/9, after shrinking the themed toolbar from 46px to a capped 36px row.
   - `npm run test:e2e:inventory` ran after the fix; WTF LIVE passed inside the full suite and the suite ended 294/295 because `/trade-boards` hit a transient `dist/public/index.html` 404 resource read unrelated to WTF LIVE. The exact failed route then passed with `npx playwright test tests/playwright/inventory/routes.spec.mjs -g "Trade boards/barter"`.
   - `git diff --check` passed.
-
-### WTF-BB-804 - Marshal Market escrow listings show only token identifiers instead of horse artwork
-
-- Category: HORF / Marshal Market stable previews
-- Priority: P3
-- Status: Verified
-- Owner/Session: Codex HORF stable artwork repair
-- Last touched: 2026-11-05
-- Score: C1 + F2 + S0 + P3(2) = 5
-- Evidence (2026-11-05): The live Marshal Market stable API returns chain listing identifiers and edition counts without token media. Reciprocal, Honor, and Group listing cards consequently render text only, including an active Makiuma listing whose inspected token has image metadata.
-- Correction direction: Attach the exact token’s cached Marshal inspection name and media to stable listings without a new Objkt lookup, and render small cards with the wtfOS media resolver and distinct-token artifact fallback. Keep claims and owner cancellations functional when artwork is unavailable.
-- Verification idea: In focused browser coverage, verify each stable mode and owned listing displays its token name and loaded artwork; two tokens sharing one Objkt thumbnail must use distinct exact artifacts. Confirm the public live listing displays media after deployment.
-- Local verification (2026-11-05): Focused Stables server tests passed 11/11. The full HORF Stables Chromium browser spec passed 13/13, including public and owner previews in all three modes, distinct exact artwork when Objkt thumbnails match, muted video playback after lazy load, and a non-renderable directory artifact falling back to its thumbnail. Inventory coverage passes 285/285 rows, 1065/1065 handles, 138/138 routes, and 30/30 workflows. Production smoke follows deployment.
 
 ### WTF-BB-735 - Gamma media infrastructure inventory story waits for a retired Own-node setup button
 

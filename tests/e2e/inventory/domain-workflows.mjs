@@ -991,6 +991,7 @@ export const DOMAIN_WORKFLOWS = [
     name: "horf V2 stable recovery loop",
     domain: "Market, Exchange, Inventory, and Commerce",
     routes: ["/horf/legacy-stables"],
+    uiHandles: ["data-horf-stable-preview"],
     eventHandles: [
       "horf.stable.deposited",
       "horf.stable.claimed",
@@ -1012,6 +1013,7 @@ export const DOMAIN_WORKFLOWS = [
     name: "horf V3 inspected and outlaw escrow rooms",
     domain: "Market, Exchange, Inventory, and Commerce",
     routes: ["/horf/horse-market?market=marshals", "/horf/horse-market?market=outlaw&outlaw=rooms", "/horf/horse-market?market=outlaw&outlaw=rooms&listing=9"],
+    uiHandles: ["data-horf-room-art", "data-horf-room-staged-card"],
     eventHandles: ["horf.room.deposited", "horf.room.claimed", "horf.room.swapped", "horf.room.cancelled"],
     apiProbes: [
       { method: "GET", path: "/api/horf/rooms?market=marshal", expectedStatuses: [200, 503] },
@@ -1023,7 +1025,7 @@ export const DOMAIN_WORKFLOWS = [
     name: "horf wallet-held horse offer messages",
     domain: "Market, Exchange, Inventory, and Commerce",
     routes: ["/horf/horse-market?market=outlaw&outlaw=available", "/horf/horse-market?market=outlaw&outlaw=available&offer=71", "/horf/stable", "/horf/stable?private-listing=19"],
-    uiHandles: ["data-horf-private-detail", "data-horf-private-recovery"],
+    uiHandles: ["data-horf-private-detail", "data-horf-private-art", "data-horf-private-recovery"],
     eventHandles: [
       "horf.trade_offer.inbox_viewed",
       "horf.trade_offer.proposed",

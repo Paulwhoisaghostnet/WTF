@@ -162,7 +162,8 @@ test.describe("Horf HORSE, posse, and horse gifts", () => {
     await expect(batch.locator("[data-horf-gift-submit]")).toBeDisabled();
   });
 
-  test("posse horse batch preselects one edition each and refreshes holders before wallet signing", async ({ page, request }) => {
+  test("posse horse batch preselects one edition and asks for an active signer before refreshing holders", async ({ page, request }) => {
+    test.slow(); // A saved address without an active Octez account must reach the wallet timeout.
     await seedTrader(request);
     await mockHorf(page, {
       ownedBalance: "2",
@@ -190,9 +191,9 @@ test.describe("Horf HORSE, posse, and horse gifts", () => {
     await expect(review).toContainText(thirdWallet);
     await expect(review).not.toContainText(leadWallet);
     await review.locator("[data-horf-gift-confirm]").click();
-    await expect(batch.getByRole("alert")).toContainText("holders changed");
-    await expect(review).toHaveCount(0);
-    expect(holderReads).toBeGreaterThanOrEqual(2);
+    await expect(batch.locator("[data-horf-gift-reconnect]")).toBeVisible({ timeout: 45_000 });
+    await expect(batch.getByRole("alert")).toContainText("wallet");
+    expect(holderReads).toBe(1);
   });
 
   test("shows a selected known trader's name on the saved posse card after reload", async ({ page, request }) => {
