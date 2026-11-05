@@ -106,7 +106,7 @@ test.describe("Horf trader discovery and horse test", () => {
     await expect(page.locator("[data-horf-app]")).toHaveAttribute("data-horf-page", "traders");
     await expect(directory.locator("[data-horf-trader-card]")).toHaveCount(2);
     await expect(directory).toContainText("Sir Canter");
-    await expect(directory).toContainText("Rider with a trade sign");
+    await expect(directory).toContainText("Horse for trade");
     await expect(directory).toContainText(`${offerOnlyWallet.slice(0, 8)}…${offerOnlyWallet.slice(-6)}`);
     await expect(page.locator('[data-horf-region="race"]')).toHaveCount(0);
     const leadCard = directory.locator("[data-horf-trader-card]").filter({ hasText: "Sir Canter" });
@@ -158,6 +158,30 @@ test.describe("Horf trader discovery and horse test", () => {
     await expect(profile.locator("[data-horf-profile-horse-detail]")).toContainText(`${contract} / #92`);
     await profile.locator("[data-horf-profile-horse-detail]").getByRole("button", { name: "Close horse card" }).click();
     await expect(page.locator('[data-horf-region="trader-directory"]')).toHaveCount(0);
+  });
+
+  test("shows offered horse art first and keeps riders without offers compact", async ({ page, request }) => {
+    expect((await request.post("/__test/state", { data: { userRole: "anonymous" } })).ok()).toBeTruthy();
+    await mockPublicHorf(page);
+    await page.route("**/api/horf/season*", (route) => json(route, {
+      season, seasons: [season, archiveSeason], asOf: "2026-11-05T12:00:00.000Z", status: "ready",
+      leaderboard: [
+        { address: viewerWallet, name: "First Finisher", trades: 9, received: 4, sent: 5 },
+        { address: leadWallet, name: "Sir Canter", trades: 7, received: 4, sent: 3 },
+      ],
+    }));
+    await page.goto("/horf/traders?season=current-2026");
+    const cards = page.locator('[data-horf-region="trader-directory"] [data-horf-trader-card]');
+    await expect(cards).toHaveCount(3);
+    await expect(cards.first()).toContainText("Sir Canter");
+    await expect(cards.first()).toContainText("Race #2");
+    await expect(cards.first().locator("[data-horf-trader-offer-carousel]")).toBeVisible();
+    const riderWithoutOffers = cards.filter({ hasText: "First Finisher" });
+    await expect(riderWithoutOffers).toHaveAttribute("data-horf-active-offers", "false");
+    await expect(riderWithoutOffers.locator("[data-horf-trader-offer-carousel]")).toHaveCount(0);
+    await expect(riderWithoutOffers).toContainText("Race #1");
+    await expect(riderWithoutOffers.locator("[data-horf-trader-profile-link]")).toBeVisible();
+    await expect(riderWithoutOffers.locator("[data-horf-trader-quick-send]")).toBeVisible();
   });
 
   test("offers one owned horse from wallet-held signs without moving a token", async ({ page, request }) => {

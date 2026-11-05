@@ -119,6 +119,12 @@ const Panel = styled.div`
   background: var(--horf-surface, #1b2723);
 `;
 
+const HorsePaddock = styled(Panel)`
+  padding: 0;
+  border: 0;
+  background: transparent;
+`;
+
 const Row = styled.div`
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -220,19 +226,24 @@ const HorseArt = styled.img`
 
 const HorseGallery = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(215px, 1fr));
   gap: 14px;
-  margin: 16px 0;
+  margin: 12px 0 16px;
   article { min-width: 0; overflow: hidden; border: 1px solid var(--horf-line); border-radius: 13px; background: var(--horf-elevated); }
   .art { display: grid; place-items: center; aspect-ratio: 1; background: var(--horf-field); }
   img, video { display: block; width: 100%; height: 100%; object-fit: contain; }
-  .copy { padding: 13px; }
+  .copy { padding: 11px 12px 12px; }
   h4 { margin: 0 0 5px; color: var(--horf-ink); font: 700 18px/1.2 var(--horf-display); overflow-wrap: anywhere; }
-  p { margin: 0 0 9px; font-size: 12px; }
+  p { margin: 0 0 7px; font-size: 12px; }
   a { color: var(--horf-teal); font-size: 12px; font-weight: 800; }
   button { display: block; min-height: 38px; margin-top: 10px; padding: 7px 12px; border: 1px solid var(--horf-gold); border-radius: 9px; background: var(--horf-gold); color: var(--horf-deep); cursor: pointer; font: 800 12px var(--horf-font); }
   .art-open { width: 100%; height: 100%; min-height: 0; margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; }
   .title-open { width: auto; min-height: 0; margin: 0; padding: 0; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; }
+  .card-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 5px 7px; margin-top: 10px; }
+  .card-actions button { display: inline-flex; align-items: center; min-height: 32px; margin: 0; padding: 5px 9px; font-size: 11px; }
+  .card-actions .secondary-action { border-color: var(--horf-line); background: transparent; color: var(--horf-ink); }
+  .card-actions .quiet-action { border-color: transparent; background: transparent; color: var(--horf-muted); }
+  .card-actions .secondary-action:hover, .card-actions .quiet-action:hover { border-color: var(--horf-teal); color: var(--horf-teal); }
 `;
 
 const HorseGroup = styled.section`
@@ -578,9 +589,11 @@ export function HorfPersonalStable({ address, connectWallet, isConnecting, seaso
         <div className="copy"><h4><button className="title-open" type="button" onClick={() => setDetailHorse(horse)}>{name}</button></h4>{mintedSeason && <MintBadge data-horf-mint-badge><img src="/horf-art/horseshoe.svg" alt="" aria-hidden="true" />{mintedSeason.label}</MintBadge>}<p data-horf-edition-holdings>You own {horse.balance} {horse.balance === "1" ? "edition" : "editions"} · #{horse.tokenId}</p>
           {tradingPaths.map((path) => <a data-horf-stable-for-trade-now key={`${path.kind}:${path.id}`} href={path.href}>{path.label} ↗</a>)}
           {availabilitySign && <p data-horf-stable-available-status>Available · {availabilitySign.amount} {availabilitySign.amount === "1" ? "edition" : "editions"}</p>}
-          <button data-horf-stable-mark-available type="button" onClick={() => markAvailable(horse)}>{availabilitySign ? "Update availability" : "Mark available for trade"}</button>
-          {availabilitySign && <button data-horf-stable-remove-availability type="button" onClick={() => void removeAvailabilitySign(availabilitySign.id)} disabled={busy}>Remove availability sign</button>}
-          <button data-horf-stable-select-inspection type="button" aria-pressed={selectedKey === `${horse.contract}:${horse.tokenId}`} onClick={() => selectFromGallery(horse)}>{selectedKey === `${horse.contract}:${horse.tokenId}` ? "Selected for inspection ✓" : "Select for inspection"}</button>
+          <div className="card-actions">
+            <button data-horf-stable-mark-available type="button" onClick={() => markAvailable(horse)}>{availabilitySign ? "Update availability" : "Mark available for trade"}</button>
+            <button className="secondary-action" data-horf-stable-select-inspection type="button" aria-pressed={selectedKey === `${horse.contract}:${horse.tokenId}`} onClick={() => selectFromGallery(horse)}>{selectedKey === `${horse.contract}:${horse.tokenId}` ? "Selected for inspection ✓" : "Select for inspection"}</button>
+            {availabilitySign && <button className="quiet-action" data-horf-stable-remove-availability type="button" onClick={() => void removeAvailabilitySign(availabilitySign.id)} disabled={busy}>Remove availability sign</button>}
+          </div>
         </div>
       </article>;
     })}</HorseGallery>;
@@ -593,14 +606,14 @@ export function HorfPersonalStable({ address, connectWallet, isConnecting, seaso
     </WalletGuide>
     {address && <HorfProfileEditor address={address} seasonKey={seasonKey} seasonLabel={seasonLabel} />}
     <Header>
-      <div><small>Your paddock · 🪢</small><h2>{address ? "Wallet horses" : "Your stable & profile"} <span aria-hidden="true">🐎</span></h2><p>{address ? "Current holdings that pass Horf’s horse test." : "Connect a wallet above to open your stable."}</p></div>
+      <div><small>Your paddock · 🪢</small><h2>{address ? "Wallet horses" : "Your stable & profile"} <span aria-hidden="true">🐎</span></h2></div>
       <HeaderActions><HorfStableShare address={address} seasonKey={shareSeasonKey} seasonLabel={shareSeasonLabel} stats={shareStats} /><Action data-horf-stable-refresh type="button" onClick={refreshStable} disabled={!address || qualifyingQuery.isFetching || selectionsQuery.isFetching}>Refresh stable</Action></HeaderActions>
     </Header>
     <HorfTradeOfferInbox address={address} />
-    {address && <Panel data-horf-qualifying-horses>
+    {address && <HorsePaddock data-horf-qualifying-horses>
       <MintFilter data-horf-mint-season-filter>
         <label htmlFor="horf-mint-season">Mint season
-          <select id="horf-mint-season" data-horf-mint-season value={mintSeasonKey} onChange={(event) => {
+          <select id="horf-mint-season" data-horf-mint-season aria-description="Season follows mint date. Unknown dates appear under All horses." value={mintSeasonKey} onChange={(event) => {
             setMintSeasonKey(event.currentTarget.value);
             logClientSystemEvent({ eventType: "horf.stable.mint_season_selected", message: "Horf Stable mint season selected", metadata: { mintSeasonKey: event.currentTarget.value, address } });
           }}>
@@ -608,7 +621,6 @@ export function HorfPersonalStable({ address, connectWallet, isConnecting, seaso
             {mintSeasons.map((season) => <option key={season.key} value={season.key}>{season.label}</option>)}
           </select>
         </label>
-        <small>Mint date sets the season. Unknown dates appear under All horses.</small>
       </MintFilter>
       {availabilityHorse && <Panel ref={availabilityRef} data-horf-stable-availability>
         <h3>Mark {availabilityHorse.name || `horse #${availabilityHorse.tokenId}`} available</h3>
@@ -628,11 +640,11 @@ export function HorfPersonalStable({ address, connectWallet, isConnecting, seaso
       {visibleHorses.length > 0 && <>
         <HorseGroup data-horf-stable-created aria-label="Horses created by you">
           <h3>Created by you · {createdHorses.length}</h3>
-          {createdHorses.length ? renderHorseGallery(createdHorses) : <p>No horses credited to you as creator in this view.</p>}
+          {createdHorses.length > 0 && renderHorseGallery(createdHorses)}
         </HorseGroup>
         <HorseGroup data-horf-stable-received aria-label="Horses received from other creators">
           <h3>Received from other creators · {receivedHorses.length}</h3>
-          {receivedHorses.length ? renderHorseGallery(receivedHorses) : <p>No horses credited to other creators in this view.</p>}
+          {receivedHorses.length > 0 && renderHorseGallery(receivedHorses)}
         </HorseGroup>
         {uncreditedHorses.length > 0 && <HorseGroup data-horf-stable-uncredited aria-label="Horses without a credited creator">
           <h3>Creator unknown · {uncreditedHorses.length}</h3>
@@ -645,7 +657,7 @@ export function HorfPersonalStable({ address, connectWallet, isConnecting, seaso
         </>}
       </StableHorseDetail>
       {scanComplete && <p data-horf-stable-scan-complete role="status">{visibleHorses.length ? `Showing ${visibleHorses.length} ${visibleHorses.length === 1 ? "horse" : "horses"} · scan complete.` : mintSeasonKey === "all" ? "Scan complete. No qualifying horses found in this wallet." : `Scan complete. No held horses minted in ${selectedMintSeason?.label ?? "this season"}.`}</p>}
-    </Panel>}
+    </HorsePaddock>}
     <Columns>
       <Panel data-horf-personal-owned>
         <h3>Inspection lineup</h3>
@@ -669,7 +681,6 @@ export function HorfPersonalStable({ address, connectWallet, isConnecting, seaso
       </Panel>
       <Panel data-horf-personal-saved>
         <h3>Saved horses</h3>
-        <p>Saved horses may have moved. Horf checks your balance before inspection or escrow.</p>
         {selectionsQuery.isPending && address && <p>Opening your personal stable…</p>}
         {selectionsDenied ? <Note $error role="alert">{restricted ? "This wallet is restricted from Horf private features. Check Trader standing by the race board." : "Your Horf wallet proof is missing or expired. Reconnect and verify this wallet."} {!restricted && <Action type="button" onClick={() => void connectWallet()} disabled={isConnecting}>{isConnecting ? "Connecting…" : "Reconnect and verify wallet"}</Action>}</Note> : selectionsQuery.isError && <Note $error role="alert">Saved horses are unavailable. Refresh this section to try again.</Note>}
         {selections.length ? <StableList>{selections.map((item) => {

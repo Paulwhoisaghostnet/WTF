@@ -132,6 +132,24 @@ async function mockSeason(page, observedAddresses, observedSeasons = []) {
 }
 
 test.describe("Horf horse trading", () => {
+  test("shows a compact Neighvember banner across Horf during November", async ({ page, request }) => {
+    expect((await request.post("/__test/state", { data: { userRole: "anonymous" } })).ok()).toBeTruthy();
+    await page.clock.setFixedTime(new Date("2026-11-05T12:00:00.000Z"));
+    await mockSeason(page, []);
+    await page.goto("/horf?season=current-2026");
+    const banner = page.locator("[data-horf-neighvember-banner]");
+    await expect(banner).toBeVisible();
+    await expect(banner).toContainText("Neighvember 2026 is live!");
+    await expect(banner).toContainText("November 1st–30th");
+    await page.locator('[data-horf-nav="race"]').click();
+    await expect(banner).toBeVisible();
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect(banner).toBeInViewport();
+    await page.clock.setFixedTime(new Date("2026-12-01T00:00:00.000Z"));
+    await page.reload();
+    await expect(banner).toHaveCount(0);
+  });
+
   test("keeps HORF controls visually consistent across WTF OS appearances", async ({ page, request }) => {
     expect((await request.post("/__test/state", { data: { userRole: "anonymous" } })).ok()).toBeTruthy();
     await mockSeason(page, []);
@@ -564,7 +582,8 @@ test.describe("Horf horse trading", () => {
     await updates.focus();
     await page.keyboard.press("Enter");
     await expect(updates).toHaveAttribute("aria-expanded", "true");
-    await expect(rightRail).toContainText("Guest rider");
+    await expect(rightRail).toContainText("Race leader");
+    await expect(rightRail).not.toContainText("Guest rider");
     await expect(rightRail).toBeVisible();
     await page.screenshot({ path: "test-results/horf-race-narrow-rail.png" });
     await page.keyboard.press("Escape");

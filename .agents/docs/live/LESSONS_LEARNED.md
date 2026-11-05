@@ -14850,3 +14850,23 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: Riders saw different horse ordering and controls depending on the page or appearance preference, and the artwork they came to browse was hidden behind generic presentation. Exact-copy tests blocked a visual simplification even when the underlying action and safety terms remained intact.
 
 **Rule**: Render qualifying owned-horse choices through one grouped component, with creator mints first and exact token ID and held editions visible. Feature current mint media before credited photography, keep stock for genuine empty or failed media states, and exempt Horf descendants from global appearance chrome. Keep card labels short while preserving exact token and trade terms in detail and signing views. Assert user-visible meaning and behavior in browser tests, updating only stale wording expectations when the behavior is unchanged.
+
+---
+
+## 2026-11-05 - Keep horse art visible and empty trader cards small
+
+**What happened**: Find Other Traders loaded an artwork carousel for every rider, including the 75 of 78 live riders without active offers. Empty panels, repeated wallet notices, and a second provisional-count warning pushed the first real horse artwork down the page.
+
+**Why it mattered**: The directory appeared slow and text-heavy even when the trade listings had usable art. It also made unnecessary per-rider offer requests.
+
+**Rule**: Render offer carousels only for riders with an active offer, put those riders first while preserving their true race rank, and keep zero-offer riders accessible as compact cards. Keep wallet connection and live-count status in the few places where they guide the next action. Verify the public and narrow layouts as well as quick-send and posse actions.
+
+---
+
+## 2026-11-05 - A future season end must not look like a closed season
+
+**What happened**: The new November 1–30 announcement revealed that HORF and HAHA still store the current season with no end. A direct change to December 1 would make the ledger and market snapshot code treat the season as closed immediately, even in November, and stop scheduling live refreshes.
+
+**Why it mattered**: Setting the correct end date in one manifest line could freeze race and reward updates during the live event.
+
+**Rule**: Compare a configured end with the current time wherever refresh and closure are decided, then align HORF and HAHA boundaries and prove both before-boundary updates and after-boundary lock. A time-limited announcement may ship independently while season-close behavior is tracked as its own correction.

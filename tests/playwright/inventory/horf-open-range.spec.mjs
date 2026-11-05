@@ -417,6 +417,7 @@ test.describe("Horf Open Range", () => {
     await expect(range.locator("[data-horf-open-range-horse]")).toHaveCount(1);
     const first = range.locator("[data-horf-open-range-horse]").first();
     await expect(first).toContainText("Horse #1");
+    await expect(first.locator("[data-horf-open-range-view-horse]")).toBeInViewport({ ratio: 0.1 });
     await expect(first.locator("[data-horf-open-range-flags]")).toHaveCount(0);
     await expect(first.locator("[data-horf-open-range-approve]")).toHaveCount(0);
     await expect(first.locator("[data-horf-open-range-trade-owned]")).toHaveCount(0);
@@ -530,8 +531,7 @@ test.describe("Horf Open Range", () => {
     await expect(card.locator("[data-horf-open-range-view-availability]")).toHaveText("View availability");
     await expect(card.locator("[data-horf-open-range-for-trade-now]")).toHaveCount(2);
     await expect(card.locator("[data-horf-open-range-for-trade-now]").first()).toHaveText("For trade now · Outlaw room →");
-    const sign = card.locator("[data-horf-open-range-find-offer]");
-    await expect(sign).toHaveText("See wallet-held availability →");
+    await expect(card.locator("[data-horf-open-range-find-offer]")).toHaveCount(0);
     await card.locator("[data-horf-open-range-view-horse]").click();
     await expect(page.locator("[data-horf-open-range-detail-find-offer]")).toHaveText("Offer 1 of yours →");
     await expect(page.locator("[data-horf-open-range-detail]")).toContainText("private escrow");
@@ -566,8 +566,7 @@ test.describe("Horf Open Range", () => {
     const start = card.locator("[data-horf-open-range-view-availability]");
     await expect(start).toHaveText("View availability");
     await expect(card.locator("[data-horf-open-range-owned]")).toHaveCount(0);
-    await expect(card.locator("[data-horf-open-range-find-offer]")).toHaveText("See wallet-held availability →");
-    await expect(card).toContainText("outside escrow");
+    await expect(card.locator('[data-horf-open-range-status="offered"]')).toHaveAttribute("title", /not in escrow/);
     await start.click();
     await expect(page).toHaveURL(/\/horf\/horse-market\?season=current-2026&market=outlaw&outlaw=available$/);
     await expect(page.locator('[data-horf-region="outlaw-corral"]')).toBeVisible();

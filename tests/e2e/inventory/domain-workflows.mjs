@@ -886,7 +886,7 @@ export const DOMAIN_WORKFLOWS = [
     name: "horf welcome to race and horse market loop",
     domain: "Market, Exchange, Inventory, and Commerce",
     routes: ["/horf", "/horf/race", "/horf/horse-market"],
-    uiHandles: ["data-horf-horse-market-open", "data-horf-wanted-mint", "data-horf-season-art", "data-horf-lane"],
+    uiHandles: ["data-horf-neighvember-banner", "data-horf-horse-market-open", "data-horf-wanted-mint", "data-horf-season-art", "data-horf-lane"],
     eventHandles: ["horf.race.viewed", "horf.season.selected"],
     apiProbes: [
       { method: "GET", path: "/api/horf/season?season=current-2026", expectedStatuses: [200, 503] },
@@ -917,6 +917,7 @@ export const DOMAIN_WORKFLOWS = [
     name: "horf trader directory, return-ride ledger, profile, and horse criteria loop",
     domain: "Market, Exchange, Inventory, and Commerce",
     routes: ["/horf/traders", "/horf/stable", "/horf/traders/tz1VSUr8wwNhLAzempoch5d6hLRiTh8Cjcjb", "/horf/info"],
+    uiHandles: ["data-horf-trader-card", "data-horf-active-offers", "data-horf-trader-offer-carousel", "data-horf-trader-quick-send"],
     eventHandles: ["horf.traders.viewed", "horf.trader.quick_send_opened", "horf.trader_profile.viewed", "horf.trader_profile.tab_selected", "horf.trader_profile.address_copied", "horf.trader_offer.selected", "horf.posse.added", "horf.posse.removed", "horf.info.viewed"],
     apiProbes: [
       { method: "GET", path: "/api/horf/traders/tz1VSUr8wwNhLAzempoch5d6hLRiTh8Cjcjb/profile?season=current-2026", expectedStatuses: [200, 503] },

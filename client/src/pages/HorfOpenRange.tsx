@@ -95,25 +95,25 @@ const Shell = styled.div`
 
 const Masthead = styled.header`
   position: relative;
-  padding: 20px 0 36px;
-  .range-topline { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; padding-bottom: 20px; border-bottom: 1px solid var(--range-line); }
+  padding: 14px 0 20px;
+  .range-topline { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; padding-bottom: 14px; border-bottom: 1px solid var(--range-line); }
   .range-path { color: var(--range-muted); font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
   .range-path strong { color: var(--range-ink); }
-  .range-hero { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(180px, .7fr); align-items: center; gap: 16px; min-height: 168px; padding: 16px 0 0; }
+  .range-hero { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(180px, .7fr); align-items: center; gap: 16px; min-height: 140px; padding: 12px 0 0; }
   .range-eyebrow { display: inline-flex; align-items: center; gap: 8px; color: var(--range-teal); font-size: 12px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
   .range-eyebrow::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--range-orange); }
-  h1 { margin: 9px 0 12px; font-family: var(--horf-display, "Avenir Next", sans-serif); font-size: clamp(44px, 6cqw, 78px); line-height: .98; font-weight: 700; letter-spacing: -.035em; text-wrap: balance; }
+  h1 { margin: 9px 0 0; font-family: var(--horf-display, "Avenir Next", sans-serif); font-size: clamp(44px, 6cqw, 70px); line-height: .98; font-weight: 700; letter-spacing: -.035em; text-wrap: balance; }
   h1 span { display: inline-block; margin-left: 12px; font-size: .58em; vertical-align: 8%; transform: rotate(-10deg); }
   p { max-width: 65ch; margin: 0; color: var(--range-muted); font-size: 16px; line-height: 1.55; text-wrap: pretty; }
-  .range-hero-art { position: relative; display: grid; place-items: center; align-self: stretch; min-height: 150px; margin: 0; border-radius: 18px; overflow: hidden; background: #1c2d2d; }
+  .range-hero-art { position: relative; display: grid; place-items: center; align-self: stretch; min-height: 128px; margin: 0; border-radius: 18px; overflow: hidden; background: #1c2d2d; }
   .range-hero-art button { display: block; width: 100%; height: 100%; padding: 0; border: 0; background: transparent; cursor: zoom-in; }
   .range-hero-art button:focus-visible { outline: 3px solid var(--horf-focus); outline-offset: -3px; }
-  .range-hero-art img { display: block; width: 100%; height: 100%; min-height: 150px; object-fit: contain; }
+  .range-hero-art img { display: block; width: 100%; height: 100%; min-height: 128px; object-fit: contain; }
   .range-hero-art img.range-stock-photo { object-fit: cover; object-position: 50% 60%; }
-  .range-hero-loading { display: grid; place-content: center; gap: 4px; width: 100%; min-height: 150px; color: var(--range-muted); text-align: center; font-size: 11px; font-weight: 800; }
+  .range-hero-loading { display: grid; place-content: center; gap: 4px; width: 100%; min-height: 128px; color: var(--range-muted); text-align: center; font-size: 11px; font-weight: 800; }
   .range-hero-loading span { color: var(--range-teal); font-size: 30px; line-height: 1; }
   .range-hero-art figcaption { position: absolute; right: 8px; bottom: 8px; left: 8px; padding: 5px 7px; border-radius: 4px; background: #102b2bb8; color: #fff; font-size: 9px; font-weight: 700; line-height: 1.2; }
-  @container (max-width: 640px) { .range-hero { grid-template-columns: minmax(0, 1fr) 110px; min-height: 132px; } .range-hero-art { min-height: 112px; } .range-hero-art img { min-height: 112px; } .range-hero-art figcaption { display: none; } h1 { font-size: clamp(36px, 7cqw, 58px); } }
+  @container (max-width: 640px) { .range-hero { grid-template-columns: minmax(0, 1fr) 110px; min-height: 120px; } .range-hero-art { min-height: 112px; } .range-hero-art img { min-height: 112px; } .range-hero-art figcaption { display: none; } h1 { font-size: clamp(36px, 7cqw, 58px); } }
   @container (max-width: 460px) { .range-hero { grid-template-columns: minmax(0, 1fr) 92px; } .range-topline { align-items: flex-start; } }
 `;
 
@@ -181,7 +181,7 @@ const GalleryHeading = styled.div`
   justify-content: space-between;
   gap: 14px;
   flex-wrap: wrap;
-  margin: 18px 0 6px;
+  margin: 14px 0 6px;
   h2 { margin: 0; font-family: var(--horf-display, "Avenir Next", sans-serif); font-size: clamp(24px, 3cqw, 34px); font-weight: 700; letter-spacing: -.03em; }
   p { margin: 5px 0 0; color: var(--range-muted); font-size: 13px; line-height: 1.45; }
   small { color: var(--range-muted); font-size: 12px; }
@@ -210,7 +210,7 @@ const AvailabilityBadge = styled(StatusFrame).attrs({ as: "button", type: "butto
 const Grid = styled.div`
   columns: 265px;
   column-gap: 26px;
-  margin-top: 24px;
+  margin-top: 12px;
 `;
 
 const Card = styled.article`
@@ -218,7 +218,7 @@ const Card = styled.article`
   display: inline-block;
   width: 100%;
   break-inside: avoid;
-  margin-bottom: 32px;
+  margin-bottom: 24px;
   padding: 0;
   background: transparent;
   color: var(--range-ink);
@@ -232,6 +232,8 @@ const Card = styled.article`
   .horse-meta a:hover { text-decoration: underline; }
   small { display: block; margin-top: 5px; color: var(--range-muted); font-size: 12px; line-height: 1.4; overflow-wrap: anywhere; }
   & > button:not([data-horf-open-range-view-horse]) { margin-top: 10px; padding-inline: 13px; min-height: 34px; }
+  & > button[data-horf-open-range-not-horse] { display: block; min-height: 36px; padding: 7px 0; border: 0; background: transparent; color: var(--range-muted); font-size: 11px; text-align: left; }
+  & > button[data-horf-open-range-not-horse]:hover:not(:disabled) { color: var(--range-ink); text-decoration: underline; transform: none; }
 `;
 
 const Art = styled.img`
@@ -646,13 +648,10 @@ export function HorfOpenRange() {
       <span className="aside-eyebrow">Range report</span>
       <strong className="aside-count">{horses.length}</strong>
       <h3>{shownSeason?.label || "Horses on the range"}</h3>
-      <p>Select a horse to see its papers.</p>
       {rangeQuery.isPending && <p role="status">Rounding up horses…</p>}
       {rangeQuery.isError && <p role="alert">This range is unavailable. Refresh the gallery to try again.</p>}
       <div className="aside-rule" />
       <Legend data-horf-open-range-legend><strong>Status key</strong><StatusFrame $kind="traded" $active>Traded before on Horf</StatusFrame><StatusFrame $kind="offered" $active>Available in a wallet</StatusFrame><StatusFrame $kind="approved" $active>Marshal approved</StatusFrame></Legend>
-      <div className="aside-rule" />
-      <p>{address ? `${myOffers.length} wallet-held availability ${myOffers.length === 1 ? "sign" : "signs"}.` : "Connect your wallet to mark a horse available."} These signs are separate from escrow rooms.</p>
     </>}
   </RangeAside>;
 
@@ -664,7 +663,7 @@ export function HorfOpenRange() {
           <Actions><Action type="button" onClick={() => windowManager.openPage(`/horf?season=${encodeURIComponent(seasonKey === "all-horse-search" || seasonKey === "all-seasons" ? "all-time" : seasonKey)}`)}>← Horf home</Action>{!address && <Action data-horf-open-range-connect type="button" $primary onClick={() => void connectWallet()} disabled={isConnecting}>{isConnecting ? "Connecting…" : isGuest ? "Connect and verify wallet" : "Connect wallet"}</Action>}</Actions>
         </div>
         <div className="range-hero">
-          <div><span className="range-eyebrow">Public horse art · Tezos Mainnet</span><h1>The Open Range<span aria-hidden="true">🐎</span></h1><p>Find horses, check their papers, and meet their traders.</p></div>
+          <div><span className="range-eyebrow">Horse art · Tezos Mainnet</span><h1>The Open Range<span aria-hidden="true">🐎</span></h1></div>
           <figure className="range-hero-art">{showFeaturedMint && featuredHorse && featuredArt ? <button data-horf-open-range-featured-mint type="button" aria-label={`View featured mint ${featuredHorse.name}`} onClick={() => viewHorse(featuredHorse)}><img src={featuredArt.src} alt="" fetchPriority="high" decoding="async" onError={(event) => { if (!advanceResolvedMediaFallback(event.currentTarget, featuredArt) && featuredKey) setFeaturedArtFailedKeys((current) => new Set(current).add(featuredKey)); }} /></button> : rangeQuery.isPending || (rangeQuery.isError && !horses.length) ? <div className="range-hero-loading" role="status"><span aria-hidden="true">🐎</span>Rounding up mints…</div> : <img className="range-stock-photo" src="/horf-art/horse-beach-photo.jpg" alt="Horses crossing a beach at sunset" />}{!(rangeQuery.isPending || (rangeQuery.isError && !horses.length)) && <figcaption>{showFeaturedMint && featuredHorse ? `On the range · ${featuredHorse.name}` : "Yudi Susilo · CC0 horse photograph"}</figcaption>}</figure>
         </div>
       </Masthead>
@@ -694,7 +693,6 @@ export function HorfOpenRange() {
           {(horse.tradedThroughHorf || horse.activelyForTradeOnHorf || horse.approvedForMarshalsMarket) && <CardFlags data-horf-open-range-flags>{horse.tradedThroughHorf && <StatusFrame data-horf-open-range-status="traded" $kind="traded" $active title="This token has been traded through Horf">Traded before on Horf</StatusFrame>}{horse.activelyForTradeOnHorf && horse.offers.length ? <AvailabilityBadge data-horf-open-range-status="offered" $kind="offered" $active title="Wallet-held availability; this horse is not in escrow" onClick={() => windowManager.openPage(horseAvailabilityUrl(horse))}>Available in a wallet ↗</AvailabilityBadge> : horse.activelyForTradeOnHorf && <StatusFrame data-horf-open-range-status="offered" $kind="offered" $active>Available in a wallet</StatusFrame>}{horse.approvedForMarshalsMarket && <StatusFrame data-horf-open-range-status="approved" $kind="approved" $active>Marshal approved</StatusFrame>}</CardFlags>}
           {horse.inspectionStatus === "rejected" && <StatusFrame $kind="traded" $active>Marshal reviewed · rejected for trade</StatusFrame>}
           {horse.inspectionStatus === "reviewed" && <StatusFrame $kind="approved" $active>Marshal reviewed · kept</StatusFrame>}
-          {horse.offers.length > 0 && <><p>{horse.offers.map((offer, index) => <span key={offer.id}>{index > 0 ? " · " : ""}<a href={`https://objkt.com/profile/${encodeURIComponent(offer.ownerAddress)}`} target="_blank" rel="noopener noreferrer">{shortAddress(offer.ownerAddress)}</a> marks {offer.amount} {offer.amount === "1" ? "edition" : "editions"} available · {policyLabel(offer.acceptedTokenPolicy)}</span>)}. These horses remain in their owners’ wallets, outside escrow.</p><Action data-horf-open-range-find-offer type="button" onClick={() => windowManager.openPage(availabilityUrl(horse.offers.length === 1 ? horse.offers[0]!.id : undefined))}>See wallet-held availability →</Action></>}
           {tradingPaths.map((path) => <Action data-horf-open-range-for-trade-now type="button" key={`${path.kind}:${path.id}`} $primary onClick={() => windowManager.openPage(path.href)}>{path.label} →</Action>)}
           {address && ownsHorse(horse.viewerBalance) ? <OwnedMarker data-horf-open-range-owned>You own this horse</OwnedMarker> : horse.activelyForTradeOnHorf && horse.offers.some((offer) => offer.ownerAddress !== address) ? <Action data-horf-open-range-view-availability type="button" $primary onClick={() => windowManager.openPage(availabilityUrl(horse.offers.length === 1 ? horse.offers[0]!.id : undefined))}>View availability</Action> : null}
           {marshalStatusQuery.data?.active && !horse.approvedForMarshalsMarket && <Action data-horf-open-range-approve type="button" disabled={busy} onClick={() => void approveHorseNow(horse)}>{busy ? "Checking horse…" : "Approve for Marshal’s Market"}</Action>}

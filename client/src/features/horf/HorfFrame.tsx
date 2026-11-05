@@ -145,6 +145,25 @@ const Primary = styled.div`
   background: var(--horf-canvas);
 `;
 
+const SeasonBanner = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 31px;
+  padding: 5px 12px;
+  border-bottom: 1px solid #79583b;
+  background: linear-gradient(100deg, #213b31, #3a2b20);
+  color: #f7d58d;
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: .055em;
+  text-align: center;
+  text-transform: uppercase;
+  .dates { color: var(--horf-ink); font-weight: 650; letter-spacing: .015em; }
+  @media (max-width: 600px) { gap: 5px; font-size: 10px; letter-spacing: .025em; }
+`;
+
 const Topline = styled.header`
   position: sticky;
   top: 0;
@@ -259,6 +278,8 @@ export function HorfFrame({ title, children, aside, walletAddress, onConnectWall
   const season = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("season") : null;
   const ledgerSeason = season === "all-horse-search" || season === "all-seasons" ? "all-time" : season || "current-2026";
   const rangeSeason = season === "all-time" ? "all-horse-search" : season || "current-2026";
+  const now = Date.now();
+  const neighvemberLive = now >= Date.UTC(2026, 10, 1) && now < Date.UTC(2026, 11, 1);
 
   useEffect(() => {
     document.title = `${title} · Horf`;
@@ -322,6 +343,7 @@ export function HorfFrame({ title, children, aside, walletAddress, onConnectWall
       <a className="exit" href="/" aria-label="Back to WTF OS" title="Back to WTF OS"><span className="nav-icon" aria-hidden="true">↙</span><span className="nav-label">WTF OS</span></a>
     </Rail>
     <Primary data-horf-primary ref={primaryRef} inert={asideOpen}>
+      {neighvemberLive && <SeasonBanner data-horf-neighvember-banner><span aria-hidden="true">🐎</span><strong>Neighvember 2026 is live!</strong><span className="dates">November 1st–30th</span></SeasonBanner>}
       <Topline><div><span className="micro">Tezos horse trading</span><h1>{title}</h1></div><div className="top-actions">
         {walletAddress && onDisconnectWallet ? <button data-horf-header-wallet data-horf-header-wallet-disconnect className="wallet-state connected" type="button" title={`Connected Tezos Mainnet wallet ${walletAddress} — click to disconnect`} aria-label={`Disconnect Tezos Mainnet wallet ${walletAddress}`} onClick={() => void onDisconnectWallet()} disabled={walletConnecting}>Wallet · {walletAddress.slice(0, 8)}…{walletAddress.slice(-6)} <span className="wallet-action">{walletConnecting ? "Working…" : "Disconnect"}</span></button>
           : walletAddress ? <span data-horf-header-wallet className="wallet-state" title={walletAddress} aria-label={"Connected Tezos wallet " + walletAddress}>Wallet · {walletAddress.slice(0, 8)}…{walletAddress.slice(-6)}</span>

@@ -40,7 +40,7 @@ type ListingReview = { address: string; tokenContract: string; tokenId: string; 
 const Page = styled.section`
   width: min(100%, 1400px);
   margin: 0 auto;
-  padding: clamp(18px, 3vw, 42px);
+  padding: clamp(16px, 2vw, 28px);
   color: var(--horf-ink);
   h2, h3, p { margin-top: 0; }
   button { cursor: pointer; }
@@ -48,7 +48,7 @@ const Page = styled.section`
 `;
 const Hero = styled.header`
   position: relative;
-  min-height: 170px;
+  min-height: 132px;
   display: grid;
   grid-template-columns: minmax(0, 1.3fr) minmax(180px, .7fr);
   overflow: hidden;
@@ -57,25 +57,24 @@ const Hero = styled.header`
   color: var(--horf-ink, #f4ead6);
   border: 1px solid var(--horf-line, #3d5148);
   box-shadow: 0 18px 45px #0000003d;
-  .copy { position: relative; z-index: 1; align-self: center; padding: clamp(18px, 3vw, 30px); }
+  .copy { position: relative; z-index: 1; align-self: center; padding: clamp(16px, 2.2vw, 25px); }
   .kicker { color: #ffc363; font-weight: 850; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; }
-  h2 { max-width: 15ch; margin: 8px 0 9px; color: var(--horf-ink, #f4ead6); font: 700 clamp(32px, 3.3cqw, 52px)/1 var(--horf-display); letter-spacing: -.045em; }
-  p { max-width: 62ch; margin: 0; color: var(--horf-muted, #b7b5a7); font-size: 14px; line-height: 1.55; }
-  .photo { position: relative; display: block; width: 100%; min-height: 170px; padding: 0; border: 0; background: #24332d; overflow: hidden; }
+  h2 { max-width: 15ch; margin: 5px 0 6px; color: var(--horf-ink, #f4ead6); font: 700 clamp(30px, 3cqw, 44px)/1 var(--horf-display); letter-spacing: -.045em; }
+  p { max-width: 62ch; margin: 0; color: var(--horf-muted, #b7b5a7); font-size: 13px; line-height: 1.45; }
+  .photo { position: relative; display: block; width: 100%; min-height: 132px; padding: 0; border: 0; background: #24332d; overflow: hidden; }
   button.photo { cursor: zoom-in; }
   button.photo:focus-visible { outline: 3px solid var(--horf-teal); outline-offset: -4px; }
-  .photo img { display: block; width: 100%; height: 170px; object-fit: contain; }
+  .photo img { display: block; width: 100%; height: 132px; object-fit: contain; }
   .photo img.stock-photo { object-fit: cover; object-position: center 35%; }
   .photo-loading { display: grid; place-content: center; gap: 4px; color: var(--horf-muted); text-align: center; font-size: 11px; font-weight: 800; }
   .photo-loading span { color: var(--horf-teal); font-size: 30px; line-height: 1; }
   .seal { position: absolute; right: 10px; bottom: 10px; padding: 6px 9px; border: 1px solid #ffd187; border-radius: 999px; background: #132b2de8; color: #ffcf73; font: 850 10px/1.2 var(--horf-font); text-transform: uppercase; }
-  @container (max-width: 660px) { grid-template-columns: minmax(0, 1fr) 125px; .photo { min-height: 150px; } .photo img { height: 150px; } .seal { right: 4px; bottom: 4px; padding: 4px 5px; font-size: 8px; } .copy p { display: none; } }
+  @container (max-width: 660px) { grid-template-columns: minmax(0, 1fr) 125px; .photo { min-height: 132px; } .photo img { height: 132px; } .seal { right: 4px; bottom: 4px; padding: 4px 5px; font-size: 8px; } .copy p { display: none; } }
 `;
 const Toolbar = styled.div`
   display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;
-  margin: 28px 0 16px;
-  h3 { margin: 0; font: 700 27px/1.1 var(--horf-display); }
-  p { margin: 3px 0 0; color: var(--horf-muted); font-size: 13px; }
+  margin: 18px 0 12px;
+  h3 { margin: 0; font: 700 25px/1.1 var(--horf-display); }
 `;
 const Action = styled.button<{ $strong?: boolean; $gold?: boolean }>`
   display: inline-flex; align-items: center; justify-content: center; gap: 7px;
@@ -118,20 +117,24 @@ const Card = styled.article<{ $selected: boolean }>`
   border-radius: 18px; background: var(--horf-surface, #1b2723); box-shadow: ${(p) => p.$selected ? '0 10px 30px #00000040' : '0 3px 12px #00000026'};
   &[data-horf-horse-market-featured] { border-color: var(--horf-gold, #d8a34a); box-shadow: 0 0 0 3px #d8a34a55, 0 12px 36px #0005; }
   &:focus { outline: 3px solid var(--horf-teal, #71b7a0); outline-offset: 4px; }
-  .art { position: relative; aspect-ratio: 1.35; overflow: hidden; background: #2b3d34; }
+  .art { position: relative; aspect-ratio: 1.15; overflow: hidden; background: #2b3d34; }
   .art-open { width: 100%; height: 100%; padding: 0; border: 0; background: transparent; cursor: zoom-in; }
   .art-open:focus-visible { outline: 3px solid var(--horf-teal, #71b7a0); outline-offset: -4px; }
   .art img, .art video { width: 100%; height: 100%; object-fit: contain; display: block; }
   .art .photo { object-fit: cover; }
-  .tag { position: absolute; top: 11px; left: 11px; padding: 6px 9px; border-radius: 999px; background: #ffcf76; color: #382a17; font: 850 10px/1 var(--horf-font); text-transform: uppercase; pointer-events: none; }
-  .expand { position: absolute; right: 11px; bottom: 11px; padding: 6px 9px; border-radius: 999px; background: #101816d9; color: var(--horf-ink, #f4ead6); font: 800 11px/1.2 var(--horf-font); pointer-events: none; }
-  .body { padding: 15px; }
+  .tag { position: absolute; top: 10px; left: 10px; padding: 5px 8px; border-radius: 999px; background: #ffcf76; color: #382a17; font: 850 10px/1 var(--horf-font); text-transform: uppercase; pointer-events: none; }
+  .expand { position: absolute; right: 10px; bottom: 10px; padding: 5px 8px; border-radius: 999px; background: #101816d9; color: var(--horf-ink, #f4ead6); font: 800 11px/1.2 var(--horf-font); pointer-events: none; opacity: 0; transition: opacity .16s ease; }
+  .art:hover .expand, .art:focus-within .expand { opacity: 1; }
+  @media (hover: none) { .expand { opacity: 1; } }
+  .body { padding: 13px; }
   h4 { margin: 0 0 4px; font: 700 20px/1.15 var(--horf-display); overflow-wrap: anywhere; }
   p { margin: 0; color: var(--horf-muted); font-size: 12px; }
-  .price { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 7px; margin: 17px 0; }
+  .price { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 7px; margin: 12px 0; }
   .price strong { font: 750 24px/1 var(--horf-display); color: var(--horf-gold, #d8a34a); }
   .price span { color: var(--horf-muted); font-size: 11px; }
   .body > button { width: 100%; }
+  .body > a:last-child { display: inline-block; margin-top: 9px; color: var(--horf-muted); font-size: 11px; text-decoration: none; }
+  .body > a:last-child:hover { color: var(--horf-teal); text-decoration: underline; }
 `;
 const ArtDialog = styled.dialog`
   position: fixed; inset: 0; width: 100vw; height: 100dvh; max-width: none; max-height: none;
@@ -430,19 +433,18 @@ export function HorfHorseMarket({ address, connectWallet, isConnecting }: {
   }
   return <Page data-horf-region="horse-market" aria-label="Horf HORSE Market">
     <Hero>
-      <div className="copy"><span className="kicker">Marshal’s seal · 🪢 The HORSE Market</span><h2>Fine horses. Fair HORSE.</h2><p>List inspected horses for HORSE. The full price goes to the seller. 🤠</p></div>
+      <div className="copy"><span className="kicker">✦ Marshal-approved market</span><h2>Horse4HORSE</h2><p>Inspected horses. Full price to the seller.</p></div>
       {showFeaturedImage && featuredListing && featuredImage ? <button className="photo" data-horf-horse-market-featured-mint type="button" aria-label={`View larger artwork for ${featuredListing.token?.name || `Horse #${featuredListing.tokenId}`}`} onClick={(event) => openArtwork(featuredListing, event.currentTarget)}><img src={featuredImage.src} alt="" fetchPriority="high" decoding="async" onError={(event) => { if (!advanceResolvedMediaFallback(event.currentTarget, featuredImage)) setFeaturedImageFailedKeys((current) => new Set(current).add(featuredListing.id)); }} /><span className="seal">✦ Marshal approved</span></button> : listingQuery.isPending || (listingQuery.isError && !listings.length) ? <div className="photo photo-loading" role="status"><span aria-hidden="true">🐎</span>Rounding up listings…</div> : <div className="photo"><img className="stock-photo" src="/horf-art/horse-portrait-photo.jpg" alt="Horse photograph" /></div>}
     </Hero>
     {configQuery.isPending && <Notice role="status">Checking the HORSE Market contract…</Notice>}
     {configQuery.isError && <Notice $error role="alert">Market configuration is unavailable. Refresh before signing a transaction.</Notice>}
     {snapshot?.status === "unconfigured" && <Notice role="status">The HORSE Market is being prepared for Mainnet. Listings and purchases will open when its contract is deployed and verified.</Notice>}
     {snapshot?.status === "ready" && !configured && <Notice $error role="alert">Market configuration does not match Tezos Mainnet. Signing is paused.</Notice>}
-    {!address && <Notice>Connect a Tezos wallet to list or buy. <Action type="button" onClick={() => void connectWallet()} disabled={isConnecting}>{isConnecting ? "Connecting…" : "Connect my wallet"}</Action></Notice>}
     {pending && <Notice role="status" aria-live="polite">{pendingText(pending)} {pending.opHash && <a href={`https://tzkt.io/${encodeURIComponent(pending.opHash)}`} target="_blank" rel="noopener noreferrer">View submitted operation</a>}</Notice>}
     {error && <Notice $error role="alert">{error}</Notice>}
     {success && <Notice role="status">{success.text} <a href={`https://tzkt.io/${encodeURIComponent(success.opHash)}`} target="_blank" rel="noopener noreferrer">View operation</a></Notice>}
 
-    <Toolbar><div><h3>Horses on the block 🐎</h3><p>Inspected editions priced in HORSE by their owners.</p></div><Action type="button" onClick={() => { setFeaturedImageFailedKeys(new Set()); void Promise.all([listingQuery.refetch(), configQuery.refetch()]); }} disabled={listingQuery.isFetching || configQuery.isFetching}>↻ Refresh market</Action></Toolbar>
+    <Toolbar><h3>Horses on the block 🐎</h3><Action type="button" onClick={() => { setFeaturedImageFailedKeys(new Set()); void Promise.all([listingQuery.refetch(), configQuery.refetch()]); }} disabled={listingQuery.isFetching || configQuery.isFetching}>↻ Refresh</Action></Toolbar>
     <Layout>
       <div>
         {listingQuery.isPending && <Notice role="status">Rounding up the live listings…</Notice>}
@@ -455,7 +457,7 @@ export function HorfHorseMarket({ address, connectWallet, isConnecting }: {
           const { art, hasGifPreview } = listingPreview(listing);
           return <Card key={listing.id} ref={listing.id === listingFromUrl ? linkedCardRef : undefined} $selected={selected?.id === listing.id} data-horf-horse-market-listing data-horf-horse-market-listing-id={listing.id} data-horf-horse-market-featured={listing.id === listingFromUrl ? "" : undefined} tabIndex={-1}>
             <div className="art"><button className="art-open" type="button" data-horf-horse-market-art-trigger aria-haspopup="dialog" aria-label={`View larger artwork for ${name}`} onClick={(event) => openArtwork(listing, event.currentTarget)}>{video ? <MarketVideoPreview video={video} poster={art} /> : art ? <img data-horf-horse-market-card-gif={hasGifPreview ? "" : undefined} src={art.src} alt="" loading={index === 0 ? "eager" : "lazy"} decoding="async" fetchPriority={index === 0 ? "high" : "auto"} onError={(event) => { if (!advanceResolvedMediaFallback(event.currentTarget, art)) { event.currentTarget.src = "/horf-art/horse-portrait-photo.jpg"; event.currentTarget.classList.add("photo"); } }} /> : <img className="photo" src="/horf-art/horse-portrait-photo.jpg" alt="" loading="lazy" decoding="async" />}</button><span className="tag">✦ Marshal approved</span><span className="expand" aria-hidden="true">⤢ View art</span></div>
-            <div className="body"><h4>{name}</h4><p>{listing.remaining} {listing.remaining === "1" ? "edition" : "editions"} in escrow · Seller <a href={`/horf/traders/${listing.sellerAddress}`} title={`Seller ${listing.sellerAddress}`}>{shortAddress(listing.sellerAddress)}</a></p><div className="price"><div><span>Per edition</span><br /><strong>{formatHorseRaw(listing.unitPriceHorseRaw)}</strong> <span>HORSE</span></div></div><Action type="button" $strong={selected?.id === listing.id} onClick={() => inspectListing(listing)} aria-label={`View buying options for ${name}`}>View buying options →</Action><a href={objktTokenUrl(listing.tokenContract, listing.tokenId)} target="_blank" rel="noopener noreferrer">View full artwork on Objkt ↗</a></div>
+            <div className="body"><h4>{name}</h4><p>{listing.remaining} {listing.remaining === "1" ? "edition" : "editions"} in escrow · Seller <a href={`/horf/traders/${listing.sellerAddress}`} title={`Seller ${listing.sellerAddress}`}>{shortAddress(listing.sellerAddress)}</a></p><div className="price"><div><span>Per edition</span><br /><strong>{formatHorseRaw(listing.unitPriceHorseRaw)}</strong> <span>HORSE</span></div></div><Action type="button" $strong={selected?.id === listing.id} onClick={() => inspectListing(listing)} aria-label={`View buying options for ${name}`}>View buying options →</Action><a href={objktTokenUrl(listing.tokenContract, listing.tokenId)} target="_blank" rel="noopener noreferrer" aria-label="View full artwork on Objkt">Objkt ↗</a></div>
           </Card>;
         })}</Grid>
       </div>

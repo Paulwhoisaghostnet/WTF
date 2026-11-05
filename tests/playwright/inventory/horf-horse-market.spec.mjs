@@ -96,7 +96,7 @@ test.describe("HORSE market", () => {
     await expect(page.locator('[data-horf-app]')).toHaveAttribute("data-horf-page", "horse-market");
     await expect(page.locator('[data-horf-nav="horse-market"]')).toHaveAttribute("aria-current", "page");
     await expect(page.locator('[data-horf-region="horse-market"]')).toContainText("being prepared for Mainnet");
-    await expect(page.locator('[data-horf-region="horse-market"]')).toContainText("Connect a Tezos wallet to list or buy");
+    await expect(page.locator('[data-horf-horse-market-list-form]').getByRole("button", { name: "Connect to list" })).toBeVisible();
     await expect(page.locator('[data-horf-horse-market-listing]')).toHaveCount(0);
   });
 
