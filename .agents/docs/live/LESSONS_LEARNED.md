@@ -14723,6 +14723,16 @@ When shop and board are visible together, contextual help must prioritize a sele
 
 ---
 
+## 2026-11-05 - Live Open Range fixtures must respect horse eligibility
+
+**What happened**: An actor-backed Open Range test inserted a made-up token ID and expected the public offers API to display it. The current API correctly omits tokens that fail the Objkt horse test.
+
+**Why it mattered**: The live puppet harness reported a HORF failure even though the visibility rule protected riders from an unindexed offer.
+
+**Rule**: Use a proven qualifying token when testing public horse-card visibility. Keep synthetic tokens for authorization and database-policy checks, and assert that they stay hidden from public horse lists.
+
+---
+
 ## 2026-11-05 - Stub external popup destinations in local browser journeys
 
 **What happened**: The WTF LIVE schedule test opened a real TTC submission URL, and local Chromium reported `chrome-error://chromewebdata/` when the external page failed to load.

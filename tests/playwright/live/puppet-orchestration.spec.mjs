@@ -1191,7 +1191,7 @@ test.describe("live E2E puppet orchestration", () => {
     }
   });
 
-  test("Horf Open Range offers are public but only the verified owner may remove one", async ({ playwright, baseURL }) => {
+  test("Horf Open Range hides unindexed offers and only the verified owner may remove one", async ({ playwright, baseURL }) => {
     test.skip(!isLocalHorfLiveTarget(baseURL), "Synthetic Open Range offers are limited to the local live puppet database.");
     const trader = actorByRole(puppetCredentials, "contestant");
     const witness = actorByRole(puppetCredentials, "witness");
@@ -1218,8 +1218,9 @@ test.describe("live E2E puppet orchestration", () => {
       );
       openOfferId = Number(defaultInserted.rows[0].id);
       const publicOffers = await expectOkJson(await anonymous.get("/api/horf/open-range/offers"), "public Open Range offers");
-      expect(publicOffers.offers.some((offer) => offer.id === offerId && offer.ownerAddress === trader.walletAddress && offer.acceptedTokenPolicy === "marshal_only")).toBe(true);
-      expect(publicOffers.offers.some((offer) => offer.id === openOfferId && offer.acceptedTokenPolicy === "any_qualifying")).toBe(true);
+      expect(publicOffers.offers.some((offer) => offer.id === offerId || offer.id === openOfferId)).toBe(false);
+      const defaultPolicy = await pool.query("SELECT accepted_token_policy FROM horf_open_range_offers WHERE id = $1", [openOfferId]);
+      expect(defaultPolicy.rows[0].accepted_token_policy).toBe("any_qualifying");
       const invalidPolicy = await anonymous.post("/api/horf/open-range/offers", {
         data: { address: trader.walletAddress, tokenContract: "KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton", tokenId, amount: "1", acceptedTokenPolicy: "unrecognized" },
         headers: await csrfHeaders(anonymous),
@@ -1249,7 +1250,7 @@ test.describe("live E2E puppet orchestration", () => {
       expect(stored.rows[0].accepted_token_policy).toBe("marshal_only");
       const after = await expectOkJson(await anonymous.get("/api/horf/open-range/offers"), "public Open Range offers after removal");
       expect(after.offers.some((offer) => offer.id === offerId)).toBe(false);
-      expect(after.offers.some((offer) => offer.id === openOfferId && offer.acceptedTokenPolicy === "any_qualifying")).toBe(true);
+      expect(after.offers.some((offer) => offer.id === openOfferId)).toBe(false);
     } finally {
       if (offerId !== null) await pool.query("DELETE FROM horf_open_range_offers WHERE id = $1", [offerId]);
       if (openOfferId !== null) await pool.query("DELETE FROM horf_open_range_offers WHERE id = $1", [openOfferId]);

@@ -1864,6 +1864,7 @@ Total: **777** · Open: **9** · Claimed: **42** · In Progress: **19** · Block
 - Correction direction: Originate a V3 Mainnet custody contract with atomic Outlaw horse-for-horse rooms, 1:1 Reciprocal credit/claim limits, one claim per exact token per wallet, current-balance rejection, and no new Group mode. Preserve access to existing V2 escrow until owners resolve it; align UI, permits, indexers, stats, and HORSE rewards.
 - Verification idea: SmartPy scenarios prove both Outlaw transfer legs or neither, reject existing balance and repeat exact-token claims, and bound Reciprocal withdrawals by total deposited editions. Browser and actor-backed flows prove room creation, claim, cancellation, and legacy recovery. Live proof requires a signed V3 origination and real wallet exchange; local simulation alone is not deployment evidence.
 - Mainnet cutover verification (2026-11-05): V3 origination op6wfKbjk8SzNEyvyyCgECfLZVfgUeSSq2DaocPTXs8ysAcDPJt applied at KT1PGhfmETCoE79Pg6BNSZWJfwFHRKscb5gi with compiled Micheline and wtf.tez admin verified. Production reports V3 ready with permits enabled; the old V2 contract still exposes three recoverable listings and issues no new deposit permits. A real wallet exchange remains unproven.
+- Actor verification (2026-11-05): The local live puppet HORF wallet-scope, posse, gift, blacklist, Marshal, V2 permit, and profile cases passed. The corrected Open Range case passed with synthetic unindexed offers hidden. No real V3 wallet swap was attempted.
 
 ### WTF-BB-138 - Casino wagering must stay fail-closed until compliance, settlement, and house accounting exist
 
@@ -5292,7 +5293,7 @@ Total: **777** · Open: **9** · Claimed: **42** · In Progress: **19** · Block
 - Score: C1 + F3 + S0 + P2(3) = 7
 - Evidence (2026-11-05): Horse-art FA2 recipient validation and send helper reused the HORSE currency's 50-recipient cap, so sending one edition to every eligible posse holder could omit riders after 50.
 - Correction: Removed the cap from horse-art validation, manual art rows, and FA2 transfer helper. HORSE currency payout recipient limits remain separate.
-- Verification (2026-11-05): Five focused art-send and posse-holder tests pass, including 51 distinct Tezos recipients. The CI wallet policy caught a posse regression that awaited balance and holder checks before opening Octez Connect; signer activation now precedes every asynchronous check, with the focused policy test passing 4/4. Browser and production checks remain pending.
+- Verification (2026-11-05): Five focused art-send and posse-holder tests pass, including 51 distinct Tezos recipients. The CI wallet policy caught a posse regression that awaited balance and holder checks before opening Octez Connect; signer activation now precedes every asynchronous check, with the focused policy test passing 4/4. Focused browser posse checks pass and the production Posse route returns 200 on the deployed commit. A real wallet batch transfer remains unproven.
 
 ### WTF-BB-801 - HORF inspect actions change state below the viewport without revealing the next step
 
