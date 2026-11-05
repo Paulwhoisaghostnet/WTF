@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **780** · Open: **9** · Claimed: **42** · In Progress: **19** · Blocked: **4** · Fixed: **156** · Verified: **545** · Archived: **5**
+Total: **781** · Open: **9** · Claimed: **42** · In Progress: **19** · Blocked: **4** · Fixed: **157** · Verified: **545** · Archived: **5**
 
 ## Canonical Board
 
@@ -253,12 +253,13 @@ Total: **780** · Open: **9** · Claimed: **42** · In Progress: **19** · Block
 | WTF-BB-801 | Fixed | Codex Horf inspection and Market action repair | 2026-11-04 | HORF / inspection and purchase wayfinding | P2 | 7 | 715 | 1 | 3 | 0 | HORF inspect actions change state below the viewport without revealing the next step |
 | WTF-BB-773 | Fixed | Codex coLILseum escrow completion | 2026-11-03 | coLILseum / prepaid payout clarity | P2 | 7 | 715 | 1 | 2 | 1 | Prepaid tie receipt says XTZ paid when the guest receives credit |
 | WTF-BB-348 | Fixed | Codex Pasta CI smoke heartbeat | 2026-11-05 | E2E / Quality Gates observability | P2 | 7 | 715 | 1 | 3 | 0 | Main Quality Gates inventory smoke can run for ~14 minutes with no CLI-visible progress before a production push is fully proven, making healthy CI hard to distinguish from a wedged release gate; verified by branch, PR, and main Quality Gates through PR #23 with 60-second heartbeat output through the long smoke step |
+| WTF-BB-815 | Fixed | Codex HORF Open Range frame cleanup | 2026-11-05 | HORF / Open Range cross-theme artwork | P2 | 6 | 755 | 1 | 2 | 0 | Open Range status borders change or disappear under WTF appearance themes |
 | WTF-BB-755 | Fixed | Codex release integration | 2026-11-02 | AT Protocol / Profile OAuth CI test precondition | P2 | 6 | 755 | 1 | 2 | 0 | Profile AT OAuth client metadata tests reject a clean CI local origin before assertions |
 | WTF-BB-747 | Fixed | Codex Pasta mainnet alpha integration | 2026-10-29 | Pasta Protocol / IPFS Pinning inventory test | P2 | 6 | 755 | 1 | 2 | 0 | Gamma pinning inventory waits for obsolete Connect Porcupin button |
 | WTF-BB-011 | Fixed | Codex warning cleanup pass | 2026-05-06 | Frontend bundle | P3 | 9 | 577 | 4 | 2 | 1 | Wallet/Tezos bundle chunks are huge and pull Node core externals |
-| WTF-BB-804 | Fixed | Codex HORF all-stables artwork follow-up | 2026-11-05 | HORF / Marshal Market stable previews | P3 | 5 | 772 | 1 | 2 | 0 | Marshal Market escrow listings show only token identifiers instead of horse artwork |
-| WTF-BB-803 | Fixed | Codex HORF Posse name repair | 2026-11-04 | HORF / Posse identity display | P3 | 5 | 772 | 1 | 2 | 0 | Known trader loses display name after joining Posse |
-| WTF-BB-802 | Fixed | Codex Horf Market media playback | 2026-11-04 | HORF / token media playback | P3 | 5 | 772 | 1 | 2 | 0 | HORSE Market video card loads but remains paused |
+| WTF-BB-804 | Fixed | Codex HORF all-stables artwork follow-up | 2026-11-05 | HORF / Marshal Market stable previews | P3 | 5 | 773 | 1 | 2 | 0 | Marshal Market escrow listings show only token identifiers instead of horse artwork |
+| WTF-BB-803 | Fixed | Codex HORF Posse name repair | 2026-11-04 | HORF / Posse identity display | P3 | 5 | 773 | 1 | 2 | 0 | Known trader loses display name after joining Posse |
+| WTF-BB-802 | Fixed | Codex Horf Market media playback | 2026-11-04 | HORF / token media playback | P3 | 5 | 773 | 1 | 2 | 0 | HORSE Market video card loads but remains paused |
 | WTF-BB-508 | Verified | Codex wtfOS contract deployment pass | - | Tezos / WTF reward claims and contract ownership | P0 | 19 | 3 | 5 | 5 | 4 | Reward escrow is tested but absent from the live reward path |
 | WTF-BB-218 | Verified | Codex Marketplace V2 production cutover | 2026-07-24 | Tezos / WTF marketplace contract | P0 | 19 | 3 | 4 | 5 | 5 | Marketplace V2 is Shadownet-proven, separately administered, live on mainnet, and active on wtfOS; legacy V1 remains unmodified with its abandoned offer for later human recovery |
 | WTF-BB-509 | Verified | Codex Ravioli v3 Shadownet proof | - | Pasta Protocol / deployment artifact identity | P0 | 18 | 12 | 5 | 5 | 3 | Ravioli's deployment certificate authenticated only half of its four-contract product |
@@ -794,15 +795,15 @@ Total: **780** · Open: **9** · Claimed: **42** · In Progress: **19** · Block
 | WTF-BB-385 | Verified | Codex full-send cleanup pass | 2026-07-15 | E2E / Gamma Colander selector ownership | P2 | 6 | 755 | 1 | 2 | 0 | Gamma presentation proof targets the canonical contract-address test id while retaining the control-panel and placeholder assertions; the focused Gamma Pasta/Colander story passes |
 | WTF-BB-382 | Verified | Codex full-send cleanup pass | 2026-07-15 | Developer experience / generated configuration docs | P2 | 6 | 755 | 1 | 2 | 0 | The release unit gate caught a stale checked-in environment inventory after final env-reading edits; deterministic regeneration and the inventory check now agree on 1,076 variables across 2,149 source files |
 | WTF-BB-301 | Verified | Codex live user-story gap loop | 2026-06-22 | Public site / SEO and installability | P2 | 6 | 755 | 1 | 2 | 0 | SEO/PWA static discovery paths fell through to SPA HTML; fixed in `6fb5351` with explicit typed robots, sitemap, and web manifest handlers plus inventory-owned regression coverage, then verified live on `https://wtfos.app` |
-| WTF-BB-695 | Verified | Codex October desktop security activation | 2026-10-22 | Desktop release verification / legacy manifest compatibility | P2 | 5 | 772 | 1 | 1 | 0 | Macaroni live verifier incorrectly requires a product field absent from the established direct manifest |
+| WTF-BB-695 | Verified | Codex October desktop security activation | 2026-10-22 | Desktop release verification / legacy manifest compatibility | P2 | 5 | 773 | 1 | 1 | 0 | Macaroni live verifier incorrectly requires a product field absent from the established direct manifest |
 | WTF-BB-511 | Verified | Codex wtfOS contract release | - | Rewards / in-app market reconciliation | P3 | 11 | 402 | 3 | 3 | 3 | Numeric TzKT transaction ids were queried as operation hashes |
 | WTF-BB-317 | Verified | Codex challenge automation harness parity verification | 2026-09-02 | E2E / Playwright harness parity | P3 | 7 | 715 | 2 | 3 | 0 | Local Playwright harness returns `/api/admin/challenge-automation/registry` with legacy `actions` instead of production-shaped `rewardActions`, so direct Automation tab proofs need local route stubs or can crash the admin UI under harness data despite the real server route returning `rewardActions`; likely correction is to align `tests/playwright/harness.mjs` with `server/challenges/routes/admin.ts` and add a focused harness contract assertion |
 | WTF-BB-230 | Verified | Codex WTF LIVE chat toolbox pass | 2026-06-09 | WTF LIVE / room chat style controls | P3 | 6 | 755 | 2 | 2 | 0 | WTF LIVE chat now has a compact one-row style toolbox with bounded font, color, 8-14 size, bold/italic, and reset controls, plus sanitized realtime style relay |
-| WTF-BB-735 | Verified | Codex Pasta alpha remaining release gates | 2026-10-27 | E2E / Gamma IPFS Pinning route coverage | P3 | 5 | 772 | 1 | 2 | 0 | Gamma media infrastructure inventory story waits for a retired Own-node setup button |
-| WTF-BB-721 | Verified | Codex October 28 security full send | 2026-10-28 | Dependencies / conditional and build-only leaf advisories | P3 | 5 | 772 | 1 | 1 | 1 | New qs and desktop fast-uri advisory matches have compatible leaf patches |
-| WTF-BB-672 | Verified | Codex profile picture preview repair | 2026-09-03 | Profile / IPFS preview reliability | P3 | 5 | 772 | 1 | 2 | 0 | Profile picture picker bypassed FileShip and had no alternate gateway recovery |
-| WTF-BB-120 | Verified | Codex arcade/console boundary pass | 2026-05-08 | SDK / domain boundaries | P3 | 5 | 772 | 1 | 2 | 0 | Regular Console SDK exposed source compatibility alias |
-| WTF-BB-117 | Verified | Codex arcade/console split pass | 2026-05-08 | Game Studio / domain boundaries | P3 | 5 | 772 | 1 | 2 | 0 | Studio publish handoff leaked Console ownership after Arcade split |
+| WTF-BB-735 | Verified | Codex Pasta alpha remaining release gates | 2026-10-27 | E2E / Gamma IPFS Pinning route coverage | P3 | 5 | 773 | 1 | 2 | 0 | Gamma media infrastructure inventory story waits for a retired Own-node setup button |
+| WTF-BB-721 | Verified | Codex October 28 security full send | 2026-10-28 | Dependencies / conditional and build-only leaf advisories | P3 | 5 | 773 | 1 | 1 | 1 | New qs and desktop fast-uri advisory matches have compatible leaf patches |
+| WTF-BB-672 | Verified | Codex profile picture preview repair | 2026-09-03 | Profile / IPFS preview reliability | P3 | 5 | 773 | 1 | 2 | 0 | Profile picture picker bypassed FileShip and had no alternate gateway recovery |
+| WTF-BB-120 | Verified | Codex arcade/console boundary pass | 2026-05-08 | SDK / domain boundaries | P3 | 5 | 773 | 1 | 2 | 0 | Regular Console SDK exposed source compatibility alias |
+| WTF-BB-117 | Verified | Codex arcade/console split pass | 2026-05-08 | Game Studio / domain boundaries | P3 | 5 | 773 | 1 | 2 | 0 | Studio publish handoff leaked Console ownership after Arcade split |
 | WTF-BB-513 | Verified | Codex wtfOS contract release | - | Club Dues / contract authority | P4 | 13 | 194 | 4 | 4 | 4 | Club Dues V1 had immutable legacy authority and payable admin traps |
 | WTF-BB-154 | Archived | Codex dirty-worktree duplicate reconciliation | 2026-09-01 | Build / dirty worktree isolation | P1 | 12 | 287 | 3 | 4 | 1 | Unrelated dirty Mastodon/Subdomains work can block scoped W verification |
 | WTF-BB-386 | Archived | Codex full-send cleanup pass | 2026-07-15 | Pasta Suite Desktop / native Colander | P1 | 11 | 402 | 3 | 4 | 0 | A failure captured while the same generated source was still changing could not reproduce on the settled tree; fresh asset preparation proves native project persistence, contract detection, sale configuration, and attachment, with runtime-error monitoring added |
@@ -5389,6 +5390,19 @@ Total: **780** · Open: **9** · Claimed: **42** · In Progress: **19** · Block
 - Verification pending:
   - Workflow syntax and board generation checks passed locally; a new full Quality Gates run must verify the step finishes on GitHub.
 - Follow-up (2026-11-05): Main Quality Gates `42092599661` stopped in Aggregate unit tests because `tests/e2e/inventory/pixalerce-timeout-policy.test.mjs` still required `timeout-minutes: 30`. Updated that single policy assertion to the evidence-derived 40-minute workflow limit; focused unit test, inventory coverage, board check, and diff check pass locally. Full Quality Gates rerun remains pending.
+
+### WTF-BB-815 - Open Range status borders change or disappear under WTF appearance themes
+
+- Category: HORF / Open Range cross-theme artwork
+- Priority: P2
+- Status: Fixed
+- Owner/Session: Codex HORF Open Range frame cleanup
+- Last touched: 2026-11-05
+- Score: C1 + F2 + S0 + P2(3) = 6
+- Evidence (2026-11-05): Open Range styles artwork buttons with coral, gold, and teal box-shadow status rings, while global WTF XP, Aqua, and Zine appearance selectors have higher specificity and replace that shadow. Zine also adds a black border, matching the user's screenshot. The same token can therefore show different artwork frames across browser profiles despite identical status pills.
+- Correction direction: Remove Open Range artwork status rings at the user's request, keep the status pills, and exempt the artwork button from global appearance button chrome so it renders consistently.
+- Verification idea: Check an approved/traded/offered card under default and WTF Zine styles: no colored or black artwork frame, status pills remain, artwork detail still opens.
+- Local verification (2026-11-05): `npm run build` passes. All 16 Open Range Chromium stories pass, including a computed-style check that the artwork button has zero border and no shadow under default, WTF Zine, XP, and Aqua appearances while active status pills remain visible and the artwork detail opens. `npm run test:e2e:inventory:coverage` passes. `NODE_OPTIONS=--max-old-space-size=6144 npm run check` passes; the default 4GB heap was insufficient for the repository-wide TypeScript pass.
 
 ### WTF-BB-755 - Profile AT OAuth client metadata tests reject a clean CI local origin before assertions
 

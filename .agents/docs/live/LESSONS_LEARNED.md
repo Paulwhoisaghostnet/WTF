@@ -14830,3 +14830,13 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: Riders opening the race could not see standings without scrolling, while the market action led them out of the horse trading flow. The root route had been serving both welcome and race, so several browser stories relied on that accidental overlap.
 
 **Rule**: Give `/horf` the no-wallet welcome and the connected-wallet Stable/profile, and let `/horf/race` lead with season selection and standings. Route public horse-market actions within Horf. Browser-check guest entry, connected entry, and the first race lane at the intended desktop viewport after a route split.
+
+---
+
+## 2026-11-05 - Global appearance styles can override app artwork controls
+
+**What happened**: Open Range added status-colored box shadows to the clickable horse artwork, but WTF OS appearance themes style all ordinary buttons with a more specific selector. A rider using WTF Zine saw a black border and shadow instead of the colored rings; other appearance preferences could replace the rings differently. The status pills still showed the correct horse state.
+
+**Why it mattered**: The same token looked inconsistent across browser profiles, and the artwork acquired distracting button chrome despite the Horf page's own styling.
+
+**Rule**: Keep horse status in explicit text and color pills. Mark artwork buttons as exempt from the global appearance button chrome, and browser-check computed borders and shadows under both the default and alternate WTF OS appearances when a sub-app needs a consistent design.

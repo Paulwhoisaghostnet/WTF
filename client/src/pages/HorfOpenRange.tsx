@@ -200,7 +200,7 @@ const Grid = styled.div`
   margin-top: 24px;
 `;
 
-const Card = styled.article<{ $traded: boolean; $offered: boolean; $approved: boolean }>`
+const Card = styled.article`
   min-width: 0;
   display: inline-block;
   width: 100%;
@@ -215,7 +215,6 @@ const Card = styled.article<{ $traded: boolean; $offered: boolean; $approved: bo
   p { margin: 7px 0; color: var(--range-muted); font-size: 13px; line-height: 1.45; }
   .horse-description { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   small { display: block; margin-top: 5px; color: var(--range-muted); font-size: 12px; line-height: 1.4; overflow-wrap: anywhere; }
-  & > button[data-horf-open-range-view-horse] { box-shadow: 0 0 0 2px ${(p) => p.$traded ? "#e5653f" : "transparent"}, 0 0 0 4px ${(p) => p.$offered ? "#f0b65a" : "transparent"}, 0 0 0 6px ${(p) => p.$approved ? "#42a99b" : "transparent"}; }
   & > button:not([data-horf-open-range-view-horse]) { margin-top: 10px; padding-inline: 13px; min-height: 34px; }
 `;
 
@@ -254,6 +253,7 @@ const ArtButton = styled.button`
   border: 0;
   border-radius: 10px;
   background: var(--horf-field);
+  box-shadow: none;
   cursor: zoom-in;
   overflow: hidden;
   &:hover img { transform: scale(1.035); }
@@ -626,7 +626,7 @@ export function HorfOpenRange() {
       {rangeQuery.isPending && <p role="status">Rounding up horses…</p>}
       {rangeQuery.isError && <p role="alert">This range is unavailable. Refresh the gallery to try again.</p>}
       <div className="aside-rule" />
-      <Legend data-horf-open-range-legend><strong>Color key</strong><StatusFrame $kind="traded" $active>Traded before on Horf</StatusFrame><StatusFrame $kind="offered" $active>Available in a wallet</StatusFrame><StatusFrame $kind="approved" $active>Marshal approved</StatusFrame></Legend>
+      <Legend data-horf-open-range-legend><strong>Status key</strong><StatusFrame $kind="traded" $active>Traded before on Horf</StatusFrame><StatusFrame $kind="offered" $active>Available in a wallet</StatusFrame><StatusFrame $kind="approved" $active>Marshal approved</StatusFrame></Legend>
       <div className="aside-rule" />
       <p>{address ? `${myOffers.length} wallet-held availability ${myOffers.length === 1 ? "sign" : "signs"}.` : "Connect your wallet to mark a horse available."} These signs are separate from escrow rooms.</p>
     </>}
@@ -654,13 +654,13 @@ export function HorfOpenRange() {
       {rangeQuery.isPending && <Note role="status">Rounding up the season’s minted horses…</Note>}
       {rangeQuery.isError && <Note $error role="alert">{rangeQuery.error instanceof Error ? rangeQuery.error.message : "The Open Range is unavailable."} Refresh to try again.</Note>}
       {holderStatusStale && <Note role="status">Holder check is delayed; last verified ownership shown.</Note>}
-      <GalleryHeading><div><h2>{shownSeason?.label || "Horses on the range"}</h2><p>{horses.length} in view · frames show trades, wallet availability, and Marshal approval.</p></div>{asOf && <small>Indexed {new Date(asOf).toLocaleString()}</small>}</GalleryHeading>
+      <GalleryHeading><div><h2>{shownSeason?.label || "Horses on the range"}</h2><p>{horses.length} in view · status pills show trades, wallet availability, and Marshal approval.</p></div>{asOf && <small>Indexed {new Date(asOf).toLocaleString()}</small>}</GalleryHeading>
       <Grid data-horf-open-range-grid tabIndex={-1}>{horses.map((horse, index) => {
         const art = marshalStatusQuery.data?.active ? horseArt(horse) : resolveHorfHorseCardArt(horse, uniqueThumbnails);
         const video = resolveHorfHorseVideo(horse);
         const tradingPaths = listedHorsePaths.paths.get(`${horse.contract}/${horse.tokenId}`) ?? [];
-        return <Card key={`${horse.contract}:${horse.tokenId}`} data-horf-open-range-horse data-horf-frame-traded={horse.tradedThroughHorf} data-horf-frame-offered={horse.activelyForTradeOnHorf} data-horf-frame-approved={horse.approvedForMarshalsMarket} $traded={horse.tradedThroughHorf} $offered={horse.activelyForTradeOnHorf} $approved={horse.approvedForMarshalsMarket}>
-          <ArtButton data-horf-open-range-view-horse type="button" onClick={() => viewHorse(horse)} aria-label={`View ${horse.name || `horse token #${horse.tokenId}`} details`}>
+        return <Card key={`${horse.contract}:${horse.tokenId}`} data-horf-open-range-horse>
+          <ArtButton data-horf-open-range-view-horse data-compact-control="true" type="button" onClick={() => viewHorse(horse)} aria-label={`View ${horse.name || `horse token #${horse.tokenId}`} details`}>
             {art ? <Art src={art.src} alt="" loading={index === 0 ? "eager" : "lazy"} decoding="async" fetchPriority={index === 0 ? "high" : "auto"} onError={(event) => { if (!advanceResolvedMediaFallback(event.currentTarget, art)) event.currentTarget.src = "/horf-art/horse-gallop-photo.jpg"; }} /> : <Glyph aria-hidden="true"><img src="/horf-art/horse-gallop-photo.jpg" alt="" loading="lazy" decoding="async" /></Glyph>}
             {video && <span className="video-cue">▶ Video artwork</span>}
           </ArtButton>
