@@ -100,6 +100,22 @@ test.describe("HORSE market", () => {
     await expect(page.locator('[data-horf-horse-market-listing]')).toHaveCount(0);
   });
 
+  test("features a live listing mint before the sale cards and opens its artwork by keyboard", async ({ page, request }) => {
+    expect((await request.post("/__test/state", { data: { userRole: "anonymous" } })).ok()).toBeTruthy();
+    await mockMarket(page, true, { name: "Galloping Mare", image: "/horf-art/horse-gallop-photo.jpg" });
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("/horf/horse-market");
+    const featured = page.locator("[data-horf-horse-market-featured-mint]");
+    await expect(featured).toBeVisible();
+    await expect(featured.locator("img")).toHaveAttribute("src", /horse-gallop-photo\.jpg/);
+    await expect(page.locator("[data-horf-horse-market-listing]").first()).toBeInViewport({ ratio: 0.1 });
+    await featured.focus();
+    await page.keyboard.press("Enter");
+    await expect(page.locator("[data-horf-horse-market-art-modal]")).toContainText("Galloping Mare");
+    await page.keyboard.press("Escape");
+    await expect(page.locator("[data-horf-horse-market-art-modal]")).toBeHidden();
+  });
+
   test("shows separate HORSE and Objkt XTZ purchase choices with exact prices", async ({ page, request }) => {
     expect((await request.post("/__test/state", { data: { userRole: "anonymous" } })).ok()).toBeTruthy();
     await mockMarket(page, true);

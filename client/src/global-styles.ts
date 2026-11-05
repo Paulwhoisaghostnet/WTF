@@ -374,57 +374,58 @@ export const GlobalStyles = createGlobalStyle`
     color-scheme: light;
   }
 
-  html[data-wtf-appearance-style] button,
-  html[data-wtf-appearance-style] [role="button"],
-  html[data-wtf-appearance-style] input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
-  html[data-wtf-appearance-style] select,
-  html[data-wtf-appearance-style] textarea {
+  /* Horf owns a single dark control system across every WTF OS appearance. */
+  html[data-wtf-appearance-style] button:not(:where([data-horf-frame] *)),
+  html[data-wtf-appearance-style] [role="button"]:not(:where([data-horf-frame] *)),
+  html[data-wtf-appearance-style] input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not(:where([data-horf-frame] *)),
+  html[data-wtf-appearance-style] select:not(:where([data-horf-frame] *)),
+  html[data-wtf-appearance-style] textarea:not(:where([data-horf-frame] *)) {
     border-radius: var(--wtf-control-radius, 0);
     transition: var(--wtf-chrome-transition, none);
   }
 
-  html[data-wtf-appearance-style] button:not([data-compact-control="true"]),
-  html[data-wtf-appearance-style] [role="button"]:not([data-compact-control="true"]) {
+  html[data-wtf-appearance-style] button:not([data-compact-control="true"]):not(:where([data-horf-frame] *)),
+  html[data-wtf-appearance-style] [role="button"]:not([data-compact-control="true"]):not(:where([data-horf-frame] *)) {
     border-radius: var(--wtf-button-radius, var(--wtf-control-radius, 0));
   }
 
-  html[data-wtf-appearance-style="wtf-xp"] button:not([data-compact-control="true"]),
-  html[data-wtf-appearance-style="wtf-xp"] [role="button"]:not([data-compact-control="true"]) {
+  html[data-wtf-appearance-style="wtf-xp"] button:not([data-compact-control="true"]):not(:where([data-horf-frame] *)),
+  html[data-wtf-appearance-style="wtf-xp"] [role="button"]:not([data-compact-control="true"]):not(:where([data-horf-frame] *)) {
     background-image:
       linear-gradient(180deg, rgba(255,255,255,0.62), rgba(255,255,255,0.16) 45%, rgba(0,0,0,0.08) 46%, rgba(255,255,255,0.22));
     box-shadow: var(--wtf-button-shadow);
   }
 
-  html[data-wtf-appearance-style="wtf-aqua"] button:not([data-compact-control="true"]),
-  html[data-wtf-appearance-style="wtf-aqua"] [role="button"]:not([data-compact-control="true"]) {
+  html[data-wtf-appearance-style="wtf-aqua"] button:not([data-compact-control="true"]):not(:where([data-horf-frame] *)),
+  html[data-wtf-appearance-style="wtf-aqua"] [role="button"]:not([data-compact-control="true"]):not(:where([data-horf-frame] *)) {
     background-image:
       radial-gradient(circle at 50% 8%, rgba(255,255,255,0.95), rgba(255,255,255,0.18) 34%, transparent 46%),
       linear-gradient(180deg, rgba(255,255,255,0.42), rgba(0,0,0,0.05));
     box-shadow: var(--wtf-button-shadow);
   }
 
-  html[data-wtf-appearance-style="wtf-zine"] button:not([data-compact-control="true"]),
-  html[data-wtf-appearance-style="wtf-zine"] [role="button"]:not([data-compact-control="true"]) {
+  html[data-wtf-appearance-style="wtf-zine"] button:not([data-compact-control="true"]):not(:where([data-horf-frame] *)),
+  html[data-wtf-appearance-style="wtf-zine"] [role="button"]:not([data-compact-control="true"]):not(:where([data-horf-frame] *)) {
     border: 2px solid #000000;
     text-transform: uppercase;
     box-shadow: var(--wtf-button-shadow);
   }
 
-  html[data-wtf-appearance-style="wtf-zine"] button:not([data-compact-control="true"]):active,
-  html[data-wtf-appearance-style="wtf-zine"] [role="button"]:not([data-compact-control="true"]):active {
+  html[data-wtf-appearance-style="wtf-zine"] button:not([data-compact-control="true"]):not(:where([data-horf-frame] *)):active,
+  html[data-wtf-appearance-style="wtf-zine"] [role="button"]:not([data-compact-control="true"]):not(:where([data-horf-frame] *)):active {
     transform: translate(2px, 2px);
     box-shadow: 1px 1px 0 #000000;
   }
 
-  html[data-wtf-appearance-style="wtf-aqua"] input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
-  html[data-wtf-appearance-style="wtf-aqua"] select,
-  html[data-wtf-appearance-style="wtf-aqua"] textarea {
+  html[data-wtf-appearance-style="wtf-aqua"] input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not(:where([data-horf-frame] *)),
+  html[data-wtf-appearance-style="wtf-aqua"] select:not(:where([data-horf-frame] *)),
+  html[data-wtf-appearance-style="wtf-aqua"] textarea:not(:where([data-horf-frame] *)) {
     box-shadow: inset 0 2px 5px rgba(0,0,0,0.16), 0 1px 0 rgba(255,255,255,0.75);
   }
 
-  html[data-wtf-appearance-style="wtf-zine"] input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
-  html[data-wtf-appearance-style="wtf-zine"] select,
-  html[data-wtf-appearance-style="wtf-zine"] textarea {
+  html[data-wtf-appearance-style="wtf-zine"] input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not(:where([data-horf-frame] *)),
+  html[data-wtf-appearance-style="wtf-zine"] select:not(:where([data-horf-frame] *)),
+  html[data-wtf-appearance-style="wtf-zine"] textarea:not(:where([data-horf-frame] *)) {
     border: 2px solid #000000;
     box-shadow: 3px 3px 0 #000000;
   }

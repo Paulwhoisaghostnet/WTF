@@ -132,6 +132,41 @@ async function mockSeason(page, observedAddresses, observedSeasons = []) {
 }
 
 test.describe("Horf horse trading", () => {
+  test("keeps HORF controls visually consistent across WTF OS appearances", async ({ page, request }) => {
+    expect((await request.post("/__test/state", { data: { userRole: "anonymous" } })).ok()).toBeTruthy();
+    await mockSeason(page, []);
+    await page.goto("/horf?season=current-2026");
+    const horseMarketButton = page.locator("[data-horf-horse-market-open]");
+    const walletButton = page.locator("[data-horf-frame] button.wallet-state");
+    await expect(horseMarketButton).toBeVisible();
+    await expect(walletButton).toBeVisible();
+    await page.evaluate(() => document.documentElement.removeAttribute("data-wtf-appearance-style"));
+    const controlStyles = () => page.evaluate(() => {
+      const read = (selector) => {
+        const node = document.querySelector(selector);
+        if (!node) throw new Error(`Missing HORF control: ${selector}`);
+        const style = getComputedStyle(node);
+        return {
+          radius: style.borderTopLeftRadius,
+          border: style.borderTopWidth,
+          shadow: style.boxShadow,
+          backgroundImage: style.backgroundImage,
+          textTransform: style.textTransform,
+        };
+      };
+      return {
+        horseMarket: read("[data-horf-horse-market-open]"),
+        wallet: read("[data-horf-frame] button.wallet-state"),
+        season: read("[data-horf-season-select]"),
+      };
+    });
+    const defaultStyles = await controlStyles();
+    for (const appearance of ["wtf-zine", "wtf-xp", "wtf-aqua"]) {
+      await page.evaluate((value) => document.documentElement.setAttribute("data-wtf-appearance-style", value), appearance);
+      expect(await controlStyles()).toEqual(defaultStyles);
+    }
+  });
+
   test("keeps the Inspection Desk out of a non-Marshal rider's trails", async ({ page, request }) => {
     expect((await request.post("/__test/state", { data: { userRole: "user" } })).ok()).toBeTruthy();
     await mockSeason(page, []);
@@ -209,16 +244,23 @@ test.describe("Horf horse trading", () => {
       body: JSON.stringify({ items: [
         { contract, tokenId: "7", name: "Neighvember Chestnut", image: "/horf-art/horse-gallop-photo.jpg", creatorAddress: leadWallet },
         { contract, tokenId: "8", name: "Neighvember Bay", image: "/horf-art/horse-beach-photo.jpg", creatorAddress: thirdWallet },
+        { contract, tokenId: "7", name: "Neighvember Chestnut", image: "/horf-art/horse-gallop-photo.jpg", creatorAddress: leadWallet },
       ] }),
     }));
     await page.goto("/horf?season=current-2026");
 
     const feature = page.locator("[data-horf-season-art]");
     await expect(feature).toBeVisible();
-    await expect(feature).toContainText("Fresh from Neighvember 2026");
+    await expect(feature).toContainText("Neighvember 2026");
     await expect(feature.locator("[data-horf-season-art-token]")).toHaveText("Neighvember Chestnut");
+    await expect(feature.locator(".controls .count")).toHaveText("1 / 2");
     await expect(feature.locator('[data-horf-season-art-image][alt="Neighvember Chestnut token artwork"]')).toBeVisible();
+    await expect(feature.locator(".photo-layer")).toHaveCount(0);
     await expect(feature.locator("[data-horf-season-art-objkt]")).toHaveAttribute("href", `https://objkt.com/tokens/${contract}/7`);
+    const wantedArt = page.locator("[data-horf-wanted-poster] [data-horf-wanted-mint]");
+    await expect(wantedArt).toHaveAttribute("href", `https://objkt.com/tokens/${contract}/8`);
+    await expect(wantedArt.locator("img")).toHaveAttribute("alt", "Neighvember Bay horse artwork");
+    await expect(page.locator("[data-horf-wanted-poster] .photo-fallback")).toHaveCount(0);
     await feature.locator("[data-horf-season-art-next]").click();
     await expect(feature.locator("[data-horf-season-art-token]")).toHaveText("Neighvember Bay");
     await expect(feature.locator('[data-horf-season-art-image][alt="Neighvember Bay token artwork"]')).toBeVisible();
@@ -232,6 +274,24 @@ test.describe("Horf horse trading", () => {
     await expect(feature.locator("[data-horf-season-art-toggle]")).toHaveAttribute("aria-label", "Pause horse art rotation");
     await expect(page.locator("[data-horf-wanted-poster]")).toContainText("10 $HORSE");
     await expect(page.locator("[data-horf-wanted-poster]")).toContainText("Neighvember 2026");
+  });
+
+  test("tries another minted horse before the wanted poster photo fallback", async ({ page, request }) => {
+    const response = await request.post("/__test/state", { data: { userRole: "anonymous" } });
+    expect(response.ok()).toBeTruthy();
+    await mockSeason(page, []);
+    await page.route("**/horf-art/broken-mint.jpg", (route) => route.fulfill({ status: 404, body: "" }));
+    await page.route(/\/api\/horf\/open-range\?season=current-2026$/, (route) => route.fulfill({
+      status: 200, contentType: "application/json",
+      body: JSON.stringify({ items: [
+        { contract, tokenId: "7", name: "Available mint", image: "/horf-art/horse-gallop-photo.jpg", creatorAddress: leadWallet },
+        { contract, tokenId: "8", name: "Broken mint", image: "/horf-art/broken-mint.jpg", creatorAddress: thirdWallet },
+      ] }),
+    }));
+    await page.goto("/horf?season=current-2026");
+    const wanted = page.locator("[data-horf-wanted-poster]");
+    await expect(wanted.locator("[data-horf-wanted-mint]")).toHaveAttribute("href", `https://objkt.com/tokens/${contract}/7`);
+    await expect(wanted.locator(".photo-fallback")).toHaveCount(0);
   });
 
   test("welcomes a direct guest and keeps personal horse records behind wallet proof", async ({ page, request }) => {
@@ -318,7 +378,7 @@ test.describe("Horf horse trading", () => {
     await expect(app.locator('[data-horf-region="gifts"]')).toContainText("Your Horf wallet proof is missing or expired");
     verified = false;
     await page.evaluate(() => window.dispatchEvent(new Event("focus")));
-    await expect(app.locator("[data-horf-wallet-status]")).toContainText("Verify it to unlock your Horf ledger");
+    await expect(app.locator("[data-horf-wallet-status]")).toContainText("Verify it to open your stable");
     await expect(app.locator('[data-horf-region="gifts"]').getByRole("button", { name: "Connect and verify wallet" })).toBeVisible();
     await expect(page).toHaveURL(/\/horf\/gifts(?:\?season=current-2026)?$/);
   });
@@ -428,7 +488,7 @@ test.describe("Horf horse trading", () => {
 
     const app = page.locator("[data-horf-app]");
     await expect(app).toBeVisible();
-    await expect(app.getByRole("alert")).toContainText("could not finish reading the season");
+    await expect(app.getByRole("alert")).toContainText("The race did not update");
     await expect(app.locator('[data-horf-region="race"]')).toContainText("Race board unavailable");
     await expect(page.locator("[data-app-error]")).toHaveCount(0);
   });
@@ -464,14 +524,14 @@ test.describe("Horf horse trading", () => {
     expect(layout.centerWidth).toBeGreaterThanOrEqual(layout.width * 0.75 - 1);
     expect(layout.rightLeft).toBeGreaterThanOrEqual(layout.centerRight - 1);
     await expect(app.locator('[data-horf-region="intro"]')).toContainText(/horse trader/i);
-    await expect(app.locator('[data-horf-region="intro"]')).toContainText("Find horses, trade with the posse");
-    await expect(app.locator('[data-horf-region="intro"]')).toContainText("open your stable and rider profile");
+    await expect(app.locator('[data-horf-region="intro"]')).toContainText("Find a horse, meet a trader, and make a return ride");
+    await expect(app.locator('[data-horf-region="intro"]')).toContainText("Connect a wallet to open your stable");
     const poster = app.locator("[data-horf-wanted-poster]");
     await expect(poster).toContainText("Wanted");
     await expect(poster).toContainText("Horse traders · all riders welcome");
     await expect(poster).toContainText("Neighvember 2026");
     await expect(poster).toContainText("10 $HORSE");
-    await expect(poster).toContainText("sender only");
+    await expect(poster).toContainText("Sender earns the reward");
     await expect(app.getByRole("button", { name: "Browse Horse Market" })).toBeVisible();
     await expect(app.locator("[data-horf-open-range-open]")).toHaveText("Browse the Open Range");
     await expect(app.locator("[data-horf-wallet-connect-intro]")).toBeVisible();
@@ -581,7 +641,7 @@ test.describe("Horf horse trading", () => {
     await expect(page).toHaveURL(/\?season=neighvember-2025$/);
     await expect(app.locator("[data-horf-lane]").first()).toContainText("Mare Force");
     await expect(app.locator("[data-horf-lane]").first()).toHaveAttribute("data-horf-trades", "6");
-    await expect(app.locator('[data-horf-region="season"]')).toContainText("Archive dates are inferred");
+    await expect(app.locator('[data-horf-region="season"]')).toContainText("Archive dates estimated from mint tags and event posts");
     await expect(app.locator('[data-horf-region="race"]')).toContainText("Neighvember 2025");
     await expect(app.locator("[data-horf-wanted-poster]")).toHaveCount(0);
     await page.locator('[data-horf-left-nav] a[href^="/horf/stable"]').click();

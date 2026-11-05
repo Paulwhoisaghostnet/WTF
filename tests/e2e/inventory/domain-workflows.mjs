@@ -886,7 +886,7 @@ export const DOMAIN_WORKFLOWS = [
     name: "horf welcome to race and horse market loop",
     domain: "Market, Exchange, Inventory, and Commerce",
     routes: ["/horf", "/horf/race", "/horf/horse-market"],
-    uiHandles: ["data-horf-horse-market-open", "data-horf-lane"],
+    uiHandles: ["data-horf-horse-market-open", "data-horf-wanted-mint", "data-horf-season-art", "data-horf-lane"],
     eventHandles: ["horf.race.viewed", "horf.season.selected"],
     apiProbes: [
       { method: "GET", path: "/api/horf/season?season=current-2026", expectedStatuses: [200, 503] },
@@ -896,7 +896,7 @@ export const DOMAIN_WORKFLOWS = [
     name: "horf open range public search and owner offer loop",
     domain: "Market, Exchange, Inventory, and Commerce",
     routes: ["/horf/open-range"],
-    uiHandles: ["data-horf-open-range-for-trade-now"],
+    uiHandles: ["data-horf-open-range-for-trade-now", "data-horf-open-range-filter", "data-horf-open-range-featured-mint"],
     eventHandles: ["horf.open_range.viewed", "horf.open_range.horse_viewed", "horf.open_range.offer_posted", "horf.open_range.offer_removed", "horf.open_range.refreshed", "horf.inspection.submitted", "horf.inspection.decided"],
     apiProbes: [
       { method: "GET", path: "/api/horf/open-range?season=current-2026", expectedStatuses: [200, 503] },
@@ -957,7 +957,7 @@ export const DOMAIN_WORKFLOWS = [
     name: "horf personal stable and inspection request loop",
     domain: "Market, Exchange, Inventory, and Commerce",
     routes: ["/horf", "/horf/stable"],
-    uiHandles: ["data-horf-stable-for-trade-now", "data-horf-stable-available-status", "data-horf-stable-remove-availability"],
+    uiHandles: ["data-horf-stable-for-trade-now", "data-horf-stable-available-status", "data-horf-stable-remove-availability", "data-horf-owned-horse-picker", "data-horf-personal-token"],
     eventHandles: ["horf.personal_stable.selected", "horf.personal_stable.removed", "horf.inspection.submitted", "horf.trader_profile.updated", "horf.trader_profile.picture_uploaded", "horf.stable.mint_season_selected"],
     apiProbes: [
       { method: "GET", path: "/api/horf/traders/tz1VSUr8wwNhLAzempoch5d6hLRiTh8Cjcjb/horses?offset=48", expectedStatuses: [200, 503] },
@@ -1107,6 +1107,7 @@ export const DOMAIN_WORKFLOWS = [
     name: "horf HORSE market loop",
     domain: "Market, Exchange, Inventory, and Commerce",
     routes: ["/horf/horse-market?market=horse4horse", "/horf/horse-market?market=horse4horse&listing=8", "/horf/open-range"],
+    uiHandles: ["data-horf-horse-market-featured-mint", "data-horf-horse-market-listing", "data-horf-horse-market-owned"],
     eventHandles: [
       "horf.horse_market.buying_options_opened",
       "horf.horse_market.artwork_opened",

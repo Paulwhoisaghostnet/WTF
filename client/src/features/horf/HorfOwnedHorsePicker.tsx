@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import styled from "styled-components";
 import { api } from "../../lib/api";
+import { HorfOwnedHorseOptions } from "./HorfOwnedHorseOptions";
 
 export type HorfOwnedHorse = {
   contract: string;
@@ -88,7 +89,7 @@ export function HorfOwnedHorsePicker({ address, selected, onSelect, disabled = f
     return horses.filter((horse) => `${horse.name || ""} ${horse.contract} ${horse.tokenId}`.toLowerCase().includes(term));
   }, [filter, horses]);
   const options = selectedKey && selected && !shown.some((horse) => horseKey(horse) === selectedKey)
-    ? [selected, ...shown] : shown;
+    ? [...shown, selected] : shown;
   const selectAttrs = selectDataAttr ? { [selectDataAttr]: "" } : {};
   return <Picker data-horf-owned-horse-picker>
     <label htmlFor={`${id}-search`}>Find a horse in your wallet</label>
@@ -99,11 +100,11 @@ export function HorfOwnedHorsePicker({ address, selected, onSelect, disabled = f
       onSelect(horse ?? null);
     }} disabled={!address || disabled}>
       <option value="">{!address ? "Connect wallet to see your horses" : query.isPending ? "Loading your horses…" : "Choose a horse"}</option>
-      {options.map((horse) => <option key={horseKey(horse)} value={horseKey(horse)}>{horse.name || `Token #${horse.tokenId}`} · {horse.balance} owned{horse.approvedForMarshalsMarket ? " · Marshal approved" : ""}</option>)}
+      <HorfOwnedHorseOptions horses={options} address={address} />
     </select>
     {query.hasNextPage && <button type="button" onClick={() => void query.fetchNextPage()} disabled={disabled || query.isFetchingNextPage}>{query.isFetchingNextPage ? "Loading…" : "More horses from this wallet"}</button>}
     {query.isError && <p role="alert">Horse list unavailable. <button type="button" onClick={() => void query.refetch()} disabled={disabled || query.isFetching}>Retry</button></p>}
-    {address && !query.isPending && !query.isError && options.length === 0 && <p role="status">{query.hasNextPage ? "No matching horses on these pages. Load more to keep looking." : marshalApprovedOnly ? <>No Marshal-approved horses in this wallet. Submit one from <a href="/horf/stable">My Stable</a> for inspection. Marshals can review it at the <a href="/horf/inspection-desk">Inspection Desk</a>.</> : "No matching horse tokens in this wallet."}</p>}
-    <p>{marshalApprovedOnly ? "Only currently owned horses that pass HORF’s test and have active Marshal approval appear here." : "Only currently owned tokens that pass HORF’s horse test appear here."}</p>
+    {address && !query.isPending && !query.isError && options.length === 0 && <p role="status">{query.hasNextPage ? "No match yet. Load more horses." : marshalApprovedOnly ? <>No Marshal-approved horses here. <a href="/horf/stable">Submit one for inspection</a>.</> : "No matching horses in this wallet."}</p>}
+    {marshalApprovedOnly && <p>Marshal-approved horses only.</p>}
   </Picker>;
 }

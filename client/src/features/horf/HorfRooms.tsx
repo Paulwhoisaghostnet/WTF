@@ -258,7 +258,7 @@ export function HorfRooms({ market, address, connectWallet, isConnecting, listin
           <h3><a href={objktTokenUrl(listing.tokenContract, listing.tokenId)} target="_blank" rel="noopener noreferrer">{name}</a></h3>
           <small>{listing.remaining} of {listing.submitted} {listing.submitted === "1" ? "edition" : "editions"} in escrow · {listing.mode === 0 ? "Reciprocal" : listing.mode === 1 ? "Honor" : "Outlaw"}</small>
           <p>Listed by <a href={`/horf/traders/${listing.owner}`}>{listing.ownerName || abbreviated(listing.owner)}</a></p>
-          {listing.creatorAddress && <p>Created by <a href={`/horf/traders/${listing.creatorAddress}`}>{listing.creatorName || abbreviated(listing.creatorAddress)}</a></p>}
+          {listing.creatorAddress && listing.creatorAddress !== listing.owner && <p>Created by <a href={`/horf/traders/${listing.creatorAddress}`}>{listing.creatorName || abbreviated(listing.creatorAddress)}</a></p>}
           {own ? <>
             <label htmlFor={`horf-room-return-${listing.id}`}>Editions to return</label>
             <input id={`horf-room-return-${listing.id}`} data-horf-room-return-amount inputMode="numeric" value={cancelAmounts[listing.id] ?? listing.remaining} onChange={(event) => setCancelAmounts((current) => ({ ...current, [listing.id]: event.target.value }))} disabled={busy} />

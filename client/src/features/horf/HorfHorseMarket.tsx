@@ -48,7 +48,7 @@ const Page = styled.section`
 `;
 const Hero = styled.header`
   position: relative;
-  min-height: 226px;
+  min-height: 170px;
   display: grid;
   grid-template-columns: minmax(0, 1.3fr) minmax(180px, .7fr);
   overflow: hidden;
@@ -57,14 +57,19 @@ const Hero = styled.header`
   color: var(--horf-ink, #f4ead6);
   border: 1px solid var(--horf-line, #3d5148);
   box-shadow: 0 18px 45px #0000003d;
-  .copy { position: relative; z-index: 1; align-self: center; padding: clamp(25px, 4vw, 48px); }
+  .copy { position: relative; z-index: 1; align-self: center; padding: clamp(18px, 3vw, 30px); }
   .kicker { color: #ffc363; font-weight: 850; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; }
-  h2 { max-width: 12ch; margin: 8px 0 12px; color: var(--horf-ink, #f4ead6); font: 700 clamp(35px, 4cqw, 62px)/.99 var(--horf-display); letter-spacing: -.045em; }
+  h2 { max-width: 15ch; margin: 8px 0 9px; color: var(--horf-ink, #f4ead6); font: 700 clamp(32px, 3.3cqw, 52px)/1 var(--horf-display); letter-spacing: -.045em; }
   p { max-width: 62ch; margin: 0; color: var(--horf-muted, #b7b5a7); font-size: 14px; line-height: 1.55; }
-  .photo { position: relative; min-height: 226px; background: url('/horf-art/horse-portrait-photo.jpg') center 35% / cover; }
-  .photo:before { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, #1b2723 0%, #1b272311 46%); }
-  .seal { position: absolute; right: 18px; bottom: 18px; display: grid; place-items: center; width: 112px; height: 112px; border: 2px dashed #ffd187; border-radius: 50%; background: #132b2dd9; color: #ffcf73; font: 700 14px/1.2 var(--horf-display); text-align: center; transform: rotate(11deg); }
-  @container (max-width: 660px) { grid-template-columns: 1fr; .photo { min-height: 130px; background-position: center 32%; } .photo:before { background: linear-gradient(180deg, #1b2723, transparent 80%); } .seal { width: 93px; height: 93px; font-size: 12px; } }
+  .photo { position: relative; display: block; width: 100%; min-height: 170px; padding: 0; border: 0; background: #24332d; overflow: hidden; }
+  button.photo { cursor: zoom-in; }
+  button.photo:focus-visible { outline: 3px solid var(--horf-teal); outline-offset: -4px; }
+  .photo img { display: block; width: 100%; height: 170px; object-fit: contain; }
+  .photo img.stock-photo { object-fit: cover; object-position: center 35%; }
+  .photo-loading { display: grid; place-content: center; gap: 4px; color: var(--horf-muted); text-align: center; font-size: 11px; font-weight: 800; }
+  .photo-loading span { color: var(--horf-teal); font-size: 30px; line-height: 1; }
+  .seal { position: absolute; right: 10px; bottom: 10px; padding: 6px 9px; border: 1px solid #ffd187; border-radius: 999px; background: #132b2de8; color: #ffcf73; font: 850 10px/1.2 var(--horf-font); text-transform: uppercase; }
+  @container (max-width: 660px) { grid-template-columns: minmax(0, 1fr) 125px; .photo { min-height: 150px; } .photo img { height: 150px; } .seal { right: 4px; bottom: 4px; padding: 4px 5px; font-size: 8px; } .copy p { display: none; } }
 `;
 const Toolbar = styled.div`
   display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;
@@ -202,6 +207,17 @@ function MarketVideoPreview({ video, poster }: { video: ResolvedThumbnail; poste
 }
 
 function shortAddress(value: string) { return value.length > 18 ? `${value.slice(0, 8)}…${value.slice(-6)}` : value; }
+function listingPreview(listing: HorfHorseMarketListing): { art: ResolvedThumbnail | null; hasGifPreview: boolean } {
+  const token = listing.token;
+  const isGif = token?.mime?.trim().toLowerCase().startsWith("image/gif") ?? false;
+  const hasGifPreview = isGif || Boolean(token?.displayUri && /\.gif(?:[?#]|$)/i.test(token.displayUri));
+  const art = isGif
+    ? resolveHorfHorseArt({ ...(token ?? {}), image: token?.displayUri || token?.image })
+    : hasGifPreview && token?.displayUri
+      ? resolveTokenThumbnail({ thumbnail: token.displayUri })
+      : token?.image || token?.displayUri ? resolveTokenThumbnail({ thumbnail: token.image || token.displayUri! }) : null;
+  return { art, hasGifPreview };
+}
 function isPositive(value: string) { try { return BigInt(value) > 0n; } catch { return false; } }
 function pendingText(pending: Pending) {
   if (pending.stage === "eligibility") return "Checking the Marshal’s approval and preparing your one-use listing permit…";
@@ -227,6 +243,7 @@ export function HorfHorseMarket({ address, connectWallet, isConnecting }: {
   const [artListing, setArtListing] = useState<HorfHorseMarketListing | null>(null);
   const [artVideoFailed, setArtVideoFailed] = useState(false);
   const [artImageFailed, setArtImageFailed] = useState(false);
+  const [featuredImageFailedKeys, setFeaturedImageFailedKeys] = useState<Set<string>>(() => new Set());
   const [selectedOwned, setSelectedOwned] = useState<HorfOwnedHorse | null>(null);
   const [quantity, setQuantity] = useState("0");
   const [price, setPrice] = useState("");
@@ -245,6 +262,9 @@ export function HorfHorseMarket({ address, connectWallet, isConnecting }: {
     contractAddress: snapshot!.contractAddress!, chainId: snapshot!.chainId, horseContractAddress: snapshot!.horseContractAddress!,
   } : null;
   const listings = (listingQuery.data?.listings ?? []).filter((item) => isPositive(item.remaining));
+  const featuredListing = listings.find((item) => !featuredImageFailedKeys.has(item.id) && listingPreview(item).art) ?? null;
+  const featuredImage = featuredListing ? listingPreview(featuredListing).art : null;
+  const showFeaturedImage = Boolean(featuredListing && featuredImage);
   const linkedListing = listingFromUrl ? listings.find((item) => item.id === listingFromUrl) ?? null : null;
   const selected = listings.find((item) => item.id === selectedId) ?? (listingFromUrl ? linkedListing : listings[0] ?? null);
   const inspectionQuery = useQuery({
@@ -411,19 +431,18 @@ export function HorfHorseMarket({ address, connectWallet, isConnecting }: {
   return <Page data-horf-region="horse-market" aria-label="Horf HORSE Market">
     <Hero>
       <div className="copy"><span className="kicker">Marshal’s seal · 🪢 The HORSE Market</span><h2>Fine horses. Fair HORSE.</h2><p>List inspected horses for HORSE. The full price goes to the seller. 🤠</p></div>
-      <div className="photo" role="img" aria-label="Horse photograph"><span className="seal">MARSHAL<br />APPROVED<br />🐎</span></div>
+      {showFeaturedImage && featuredListing && featuredImage ? <button className="photo" data-horf-horse-market-featured-mint type="button" aria-label={`View larger artwork for ${featuredListing.token?.name || `Horse #${featuredListing.tokenId}`}`} onClick={(event) => openArtwork(featuredListing, event.currentTarget)}><img src={featuredImage.src} alt="" fetchPriority="high" decoding="async" onError={(event) => { if (!advanceResolvedMediaFallback(event.currentTarget, featuredImage)) setFeaturedImageFailedKeys((current) => new Set(current).add(featuredListing.id)); }} /><span className="seal">✦ Marshal approved</span></button> : listingQuery.isPending || (listingQuery.isError && !listings.length) ? <div className="photo photo-loading" role="status"><span aria-hidden="true">🐎</span>Rounding up listings…</div> : <div className="photo"><img className="stock-photo" src="/horf-art/horse-portrait-photo.jpg" alt="Horse photograph" /></div>}
     </Hero>
     {configQuery.isPending && <Notice role="status">Checking the HORSE Market contract…</Notice>}
     {configQuery.isError && <Notice $error role="alert">Market configuration is unavailable. Refresh before signing a transaction.</Notice>}
     {snapshot?.status === "unconfigured" && <Notice role="status">The HORSE Market is being prepared for Mainnet. Listings and purchases will open when its contract is deployed and verified.</Notice>}
     {snapshot?.status === "ready" && !configured && <Notice $error role="alert">Market configuration does not match Tezos Mainnet. Signing is paused.</Notice>}
-    {configured && <Notice role="status"><Stamp>✦ Mainnet contract ready</Stamp> <a href={`https://tzkt.io/${contract!.contractAddress}`} target="_blank" rel="noopener noreferrer">{shortAddress(contract!.contractAddress)}</a> · HORSE is the only currency accepted by this Market. Objkt XTZ asks below use Objkt’s own contract.</Notice>}
-    {!address && <Notice>Browse the corral freely. Connect a Tezos wallet to list or buy. <Action type="button" onClick={() => void connectWallet()} disabled={isConnecting}>{isConnecting ? "Connecting…" : "Connect my wallet"}</Action></Notice>}
+    {!address && <Notice>Connect a Tezos wallet to list or buy. <Action type="button" onClick={() => void connectWallet()} disabled={isConnecting}>{isConnecting ? "Connecting…" : "Connect my wallet"}</Action></Notice>}
     {pending && <Notice role="status" aria-live="polite">{pendingText(pending)} {pending.opHash && <a href={`https://tzkt.io/${encodeURIComponent(pending.opHash)}`} target="_blank" rel="noopener noreferrer">View submitted operation</a>}</Notice>}
     {error && <Notice $error role="alert">{error}</Notice>}
     {success && <Notice role="status">{success.text} <a href={`https://tzkt.io/${encodeURIComponent(success.opHash)}`} target="_blank" rel="noopener noreferrer">View operation</a></Notice>}
 
-    <Toolbar><div><h3>Horses on the block 🐎</h3><p>Inspected editions priced in HORSE by their owners.</p></div><Action type="button" onClick={() => void Promise.all([listingQuery.refetch(), configQuery.refetch()])} disabled={listingQuery.isFetching || configQuery.isFetching}>↻ Refresh market</Action></Toolbar>
+    <Toolbar><div><h3>Horses on the block 🐎</h3><p>Inspected editions priced in HORSE by their owners.</p></div><Action type="button" onClick={() => { setFeaturedImageFailedKeys(new Set()); void Promise.all([listingQuery.refetch(), configQuery.refetch()]); }} disabled={listingQuery.isFetching || configQuery.isFetching}>↻ Refresh market</Action></Toolbar>
     <Layout>
       <div>
         {listingQuery.isPending && <Notice role="status">Rounding up the live listings…</Notice>}
@@ -433,22 +452,17 @@ export function HorfHorseMarket({ address, connectWallet, isConnecting }: {
         <Grid>{listings.map((listing, index) => {
           const name = listing.token?.name || `Horse #${listing.tokenId}`;
           const video = listing.token ? resolveHorfHorseVideo(listing.token) : null;
-          const isGif = listing.token?.mime?.trim().toLowerCase().startsWith("image/gif") ?? false;
-          const hasGifPreview = isGif || Boolean(listing.token?.displayUri && /\.gif(?:[?#]|$)/i.test(listing.token.displayUri));
-          const art = isGif
-            ? resolveHorfHorseArt({ ...(listing.token ?? {}), image: listing.token?.displayUri || listing.token?.image })
-            : hasGifPreview && listing.token?.displayUri
-              ? resolveTokenThumbnail({ thumbnail: listing.token.displayUri })
-              : listing.token?.image ? resolveTokenThumbnail({ thumbnail: listing.token.image }) : null;
+          const { art, hasGifPreview } = listingPreview(listing);
           return <Card key={listing.id} ref={listing.id === listingFromUrl ? linkedCardRef : undefined} $selected={selected?.id === listing.id} data-horf-horse-market-listing data-horf-horse-market-listing-id={listing.id} data-horf-horse-market-featured={listing.id === listingFromUrl ? "" : undefined} tabIndex={-1}>
             <div className="art"><button className="art-open" type="button" data-horf-horse-market-art-trigger aria-haspopup="dialog" aria-label={`View larger artwork for ${name}`} onClick={(event) => openArtwork(listing, event.currentTarget)}>{video ? <MarketVideoPreview video={video} poster={art} /> : art ? <img data-horf-horse-market-card-gif={hasGifPreview ? "" : undefined} src={art.src} alt="" loading={index === 0 ? "eager" : "lazy"} decoding="async" fetchPriority={index === 0 ? "high" : "auto"} onError={(event) => { if (!advanceResolvedMediaFallback(event.currentTarget, art)) { event.currentTarget.src = "/horf-art/horse-portrait-photo.jpg"; event.currentTarget.classList.add("photo"); } }} /> : <img className="photo" src="/horf-art/horse-portrait-photo.jpg" alt="" loading="lazy" decoding="async" />}</button><span className="tag">✦ Marshal approved</span><span className="expand" aria-hidden="true">⤢ View art</span></div>
-            <div className="body"><h4>{name}</h4><p>{listing.remaining} {listing.remaining === "1" ? "edition" : "editions"} · {shortAddress(listing.sellerAddress)}</p><div className="price"><div><span>Per edition</span><br /><strong>{formatHorseRaw(listing.unitPriceHorseRaw)}</strong> <span>HORSE</span></div><span>100% to seller</span></div><Action type="button" $strong={selected?.id === listing.id} onClick={() => inspectListing(listing)} aria-label={`View buying options for ${name}`}>View buying options →</Action><a href={objktTokenUrl(listing.tokenContract, listing.tokenId)} target="_blank" rel="noopener noreferrer">View full artwork on Objkt ↗</a></div>
+            <div className="body"><h4>{name}</h4><p>{listing.remaining} {listing.remaining === "1" ? "edition" : "editions"} in escrow · Seller <a href={`/horf/traders/${listing.sellerAddress}`} title={`Seller ${listing.sellerAddress}`}>{shortAddress(listing.sellerAddress)}</a></p><div className="price"><div><span>Per edition</span><br /><strong>{formatHorseRaw(listing.unitPriceHorseRaw)}</strong> <span>HORSE</span></div></div><Action type="button" $strong={selected?.id === listing.id} onClick={() => inspectListing(listing)} aria-label={`View buying options for ${name}`}>View buying options →</Action><a href={objktTokenUrl(listing.tokenContract, listing.tokenId)} target="_blank" rel="noopener noreferrer">View full artwork on Objkt ↗</a></div>
           </Card>;
         })}</Grid>
       </div>
       <div>
         <Panel ref={detailsRef} tabIndex={-1} aria-label="Horse listing and payment choices" data-horf-horse-market-details>
           <h3>At the hitching post 🪢</h3>
+          {configured && <p className="small"><a href={`https://tzkt.io/${contract!.contractAddress}`} target="_blank" rel="noopener noreferrer">HORSE Market contract ↗</a></p>}
           {!selected && <p>Select a horse from the corral to see its payment choices.</p>}
           {selected && <>
             <p><Stamp>✦ Inspected horse</Stamp></p>

@@ -11,6 +11,7 @@ import { HorfStableShare, type HorfShareStats } from "./HorfStableShare";
 import { findHorfMintSeason, type HorfMintSeason } from "./mint-season";
 import { objktTokenUrl } from "./token-input";
 import { HorfTradeOfferInbox } from "./HorfTradeOffers";
+import { HorfOwnedHorseOptions } from "./HorfOwnedHorseOptions";
 import { useHorfListedHorsePaths } from "./useHorfListedHorsePaths";
 
 type Selection = {
@@ -223,7 +224,7 @@ const HorseGallery = styled.div`
   gap: 14px;
   margin: 16px 0;
   article { min-width: 0; overflow: hidden; border: 1px solid var(--horf-line); border-radius: 13px; background: var(--horf-elevated); }
-  .art { display: grid; place-items: center; height: 190px; background: var(--horf-field); }
+  .art { display: grid; place-items: center; aspect-ratio: 1; background: var(--horf-field); }
   img, video { display: block; width: 100%; height: 100%; object-fit: contain; }
   .copy { padding: 13px; }
   h4 { margin: 0 0 5px; color: var(--horf-ink); font: 700 18px/1.2 var(--horf-display); overflow-wrap: anywhere; }
@@ -367,7 +368,7 @@ export function HorfPersonalStable({ address, connectWallet, isConnecting, seaso
     queryFn: async ({ pageParam }) => {
       const page = parseHeldHorsePage(await api.get<unknown>(`/api/horf/traders/${encodeURIComponent(address!)}/horses?offset=${pageParam}${refreshHoldings.current ? "&refresh=1" : ""}`));
       if (page.pagination.hasMore && page.pagination.nextOffset <= pageParam) {
-        throw new Error("The wallet horse index stopped advancing. Retry the scan.");
+        throw new Error("Horse search stalled. Try again.");
       }
       return page;
     },
@@ -382,15 +383,6 @@ export function HorfPersonalStable({ address, connectWallet, isConnecting, seaso
     return qualifyingHorses.filter((horse) => positiveBalance(horse.balance) &&
       (!term || `${horse.name ?? ""} ${horse.contract} ${horse.tokenId}`.toLowerCase().includes(term)));
   }, [qualifyingHorses, search]);
-  const ownedByCreator = useMemo(() => {
-    const credits = new Map(qualifyingHorses.map((horse) => [`${horse.contract}:${horse.tokenId}`, horse.creatorAddress] as const));
-    const credited = (token: { contract: string; tokenId: string }) => credits.get(`${token.contract}:${token.tokenId}`);
-    return {
-      created: owned.filter((token) => credited(token) === address),
-      received: owned.filter((token) => credited(token) && credited(token) !== address),
-      uncredited: owned.filter((token) => !credited(token)),
-    };
-  }, [owned, qualifyingHorses, address]);
   const mintSeasons = useMemo(() => seasons.filter((season) =>
     season.key !== "all-time" && Number.isFinite(Date.parse(season.startsAt))), [seasons]);
   const selectedMintSeason = mintSeasons.find((season) => season.key === mintSeasonKey);
@@ -582,12 +574,10 @@ export function HorfPersonalStable({ address, connectWallet, isConnecting, seaso
       const mintedSeason = findHorfMintSeason(horse, mintSeasons);
       const eager = index === 0 && horse === (createdHorses[0] ?? receivedHorses[0] ?? uncreditedHorses[0]);
       return <article key={`${horse.contract}:${horse.tokenId}`} data-horf-stable-horse>
-        <div className="art"><button className="art-open" type="button" aria-label={`View ${name} horse card`} onClick={() => setDetailHorse(horse)}>{video ? <StableVideoPreview src={video.src} /> : art ? <img src={art.src} alt={`${name} artwork`} loading={eager ? "eager" : "lazy"} decoding="async" fetchPriority={eager ? "high" : "auto"} onError={(event) => { if (!advanceResolvedMediaFallback(event.currentTarget, art)) event.currentTarget.style.display = "none"; }} /> : <img src="/horf-art/horse-gallop-photo.jpg" alt="Horse photograph placeholder; exact token preview unavailable" loading={eager ? "eager" : "lazy"} decoding="async" />}</button></div>
-        <div className="copy"><h4><button className="title-open" type="button" onClick={() => setDetailHorse(horse)}>{name}</button></h4>{mintedSeason && <MintBadge data-horf-mint-badge><img src="/horf-art/horseshoe.svg" alt="" aria-hidden="true" />{mintedSeason.label}</MintBadge>}<p data-horf-edition-holdings>You own {horse.balance} {horse.balance === "1" ? "edition" : "editions"} · {shortAddress(horse.contract)} / #{horse.tokenId}</p>
+        <div className="art"><button className="art-open" data-horf-stable-view-horse type="button" aria-label={`View ${name} horse card`} onClick={() => setDetailHorse(horse)}>{video ? <StableVideoPreview src={video.src} /> : art ? <img src={art.src} alt={`${name} artwork`} loading={eager ? "eager" : "lazy"} decoding="async" fetchPriority={eager ? "high" : "auto"} onError={(event) => { if (!advanceResolvedMediaFallback(event.currentTarget, art)) event.currentTarget.style.display = "none"; }} /> : <img src="/horf-art/horse-gallop-photo.jpg" alt="Horse photograph placeholder; exact token preview unavailable" loading={eager ? "eager" : "lazy"} decoding="async" />}</button></div>
+        <div className="copy"><h4><button className="title-open" type="button" onClick={() => setDetailHorse(horse)}>{name}</button></h4>{mintedSeason && <MintBadge data-horf-mint-badge><img src="/horf-art/horseshoe.svg" alt="" aria-hidden="true" />{mintedSeason.label}</MintBadge>}<p data-horf-edition-holdings>You own {horse.balance} {horse.balance === "1" ? "edition" : "editions"} · #{horse.tokenId}</p>
           {tradingPaths.map((path) => <a data-horf-stable-for-trade-now key={`${path.kind}:${path.id}`} href={path.href}>{path.label} ↗</a>)}
-          {availabilitySign && <p data-horf-stable-available-status>Available for trade · {availabilitySign.amount} {availabilitySign.amount === "1" ? "edition" : "editions"} in your wallet</p>}
-          <a href={objktTokenUrl(horse.contract, horse.tokenId)} target="_blank" rel="noopener noreferrer">View horse on Objkt ↗</a>
-          <button data-horf-stable-view-horse type="button" onClick={() => setDetailHorse(horse)}>View horse card</button>
+          {availabilitySign && <p data-horf-stable-available-status>Available · {availabilitySign.amount} {availabilitySign.amount === "1" ? "edition" : "editions"}</p>}
           <button data-horf-stable-mark-available type="button" onClick={() => markAvailable(horse)}>{availabilitySign ? "Update availability" : "Mark available for trade"}</button>
           {availabilitySign && <button data-horf-stable-remove-availability type="button" onClick={() => void removeAvailabilitySign(availabilitySign.id)} disabled={busy}>Remove availability sign</button>}
           <button data-horf-stable-select-inspection type="button" aria-pressed={selectedKey === `${horse.contract}:${horse.tokenId}`} onClick={() => selectFromGallery(horse)}>{selectedKey === `${horse.contract}:${horse.tokenId}` ? "Selected for inspection ✓" : "Select for inspection"}</button>
@@ -622,7 +612,7 @@ export function HorfPersonalStable({ address, connectWallet, isConnecting, seaso
       </MintFilter>
       {availabilityHorse && <Panel ref={availabilityRef} data-horf-stable-availability>
         <h3>Mark {availabilityHorse.name || `horse #${availabilityHorse.tokenId}`} available</h3>
-        <p>This is a sign, not escrow. A trader can offer one of their horses; you decide whether to place one of yours in private escrow.</p>
+        <p>Invite offers. Your horse stays in your wallet until you accept one.</p>
         <form onSubmit={(event) => void postAvailability(event)}>
           <label htmlFor="horf-stable-available-amount">Editions available</label>
           <input id="horf-stable-available-amount" data-horf-stable-available-amount inputMode="numeric" pattern="[0-9]+" value={availabilityAmount} onChange={(event) => setAvailabilityAmount(event.target.value)} disabled={busy} />
@@ -633,8 +623,8 @@ export function HorfPersonalStable({ address, connectWallet, isConnecting, seaso
           <Action type="button" onClick={() => setAvailabilityHorse(null)} disabled={busy}>Cancel</Action>
         </form>
       </Panel>}
-      {!qualifyingQuery.isError && !scanComplete && <p data-horf-stable-scan-progress role="status">Scanning wallet holdings… {scannedPages} {scannedPages === 1 ? "page" : "pages"} checked · {qualifyingHorses.length} {qualifyingHorses.length === 1 ? "horse" : "horses"} found.</p>}
-      {qualifyingQuery.isError && <Note $error role="alert">Horse scan paused after {scannedPages} {scannedPages === 1 ? "page" : "pages"}. {qualifyingQuery.error instanceof Error ? qualifyingQuery.error.message : "The Mainnet horse index is unavailable."} Horses already found remain below. <Action data-horf-stable-scan-retry type="button" onClick={retryHorseScan}>Retry horse scan</Action> <Action type="button" onClick={() => void connectWallet()} disabled={isConnecting}>{isConnecting ? "Connecting…" : "Switch wallet"}</Action></Note>}
+      {!qualifyingQuery.isError && !scanComplete && <p data-horf-stable-scan-progress role="status">Finding horses… {qualifyingHorses.length} found.</p>}
+      {qualifyingQuery.isError && <Note $error role="alert">Horse search paused. {qualifyingQuery.error instanceof Error ? qualifyingQuery.error.message : "Try again."} Horses found so far remain below. <Action data-horf-stable-scan-retry type="button" onClick={retryHorseScan}>Retry horse search</Action> <Action type="button" onClick={() => void connectWallet()} disabled={isConnecting}>{isConnecting ? "Connecting…" : "Switch wallet"}</Action></Note>}
       {visibleHorses.length > 0 && <>
         <HorseGroup data-horf-stable-created aria-label="Horses created by you">
           <h3>Created by you · {createdHorses.length}</h3>
@@ -645,8 +635,7 @@ export function HorfPersonalStable({ address, connectWallet, isConnecting, seaso
           {receivedHorses.length ? renderHorseGallery(receivedHorses) : <p>No horses credited to other creators in this view.</p>}
         </HorseGroup>
         {uncreditedHorses.length > 0 && <HorseGroup data-horf-stable-uncredited aria-label="Horses without a credited creator">
-          <h3>Creator uncredited · {uncreditedHorses.length}</h3>
-          <p>Objkt has no credited creator for these held horses.</p>
+          <h3>Creator unknown · {uncreditedHorses.length}</h3>
           {renderHorseGallery(uncreditedHorses)}
         </HorseGroup>}
       </>}
@@ -664,26 +653,23 @@ export function HorfPersonalStable({ address, connectWallet, isConnecting, seaso
         <label htmlFor="horf-personal-owned">Select a qualifying horse</label>
         <select id="horf-personal-owned" data-horf-personal-token value={selected ? selectedKey : ""} onChange={(event) => setSelectedKey(event.target.value)} disabled={!address || busy}>
           <option value="">{qualifyingQuery.isPending && address ? "Loading qualifying horses…" : "Choose a horse"}</option>
-          {selected && !owned.some((token) => token.contract === selected.contract && token.tokenId === selected.tokenId) && <option value={selectedKey}>{selected.name || `Token #${selected.tokenId}`} · {selected.balance} owned</option>}
-          {ownedByCreator.created.length > 0 && <optgroup label="Created by you">{ownedByCreator.created.map((token) => <option key={`${token.contract}:${token.tokenId}`} value={`${token.contract}:${token.tokenId}`}>{token.name || `Token #${token.tokenId}`} · {token.balance} owned</option>)}</optgroup>}
-          {ownedByCreator.received.length > 0 && <optgroup label="Received horses">{ownedByCreator.received.map((token) => <option key={`${token.contract}:${token.tokenId}`} value={`${token.contract}:${token.tokenId}`}>{token.name || `Token #${token.tokenId}`} · {token.balance} owned</option>)}</optgroup>}
-          {ownedByCreator.uncredited.length > 0 && <optgroup label="Creator uncredited or still scanning">{ownedByCreator.uncredited.map((token) => <option key={`${token.contract}:${token.tokenId}`} value={`${token.contract}:${token.tokenId}`}>{token.name || `Token #${token.tokenId}`} · {token.balance} owned</option>)}</optgroup>}
+          <HorfOwnedHorseOptions horses={selected && !owned.some((token) => token.contract === selected.contract && token.tokenId === selected.tokenId) ? [...owned, selected] : owned} address={address} />
         </select>
         {qualifyingQuery.hasNextPage && <p role="status">Scanning more qualifying horses for the picker…</p>}
         {selected && <div data-horf-personal-selection ref={inspectionSelectionRef} role="region" aria-label="Selected horse for inspection" tabIndex={-1}>
-          <Note><a href={objktTokenUrl(selected.contract, selected.tokenId)} target="_blank" rel="noopener noreferrer">{selected.name || `Token #${selected.tokenId}`}</a> · #{selected.tokenId} · {shortAddress(selected.contract)} · {selected.balance} editions indexed</Note>
+          <Note><a href={objktTokenUrl(selected.contract, selected.tokenId)} target="_blank" rel="noopener noreferrer">{selected.name || `Token #${selected.tokenId}`}</a> · #{selected.tokenId} · {shortAddress(selected.contract)} · {selected.balance} owned</Note>
           {selectedArt && <HorseArt src={selectedArt.src} alt={`${selected.name || `Horse token #${selected.tokenId}`} artwork`} onError={(event) => { if (!advanceResolvedMediaFallback(event.currentTarget, selectedArt)) event.currentTarget.style.display = "none"; }} />}
-          <p>{eligibilityQuery.isPending ? "Checking horse mint keywords and Objkt tag groups…" : eligibilityQuery.isError ? `Horse eligibility: ${eligibilityQuery.error instanceof Error ? eligibilityQuery.error.message : "unavailable"}` : "Horse eligibility: qualifying metadata found."}</p>
+          <p>{eligibilityQuery.isPending ? "Checking mint tags…" : eligibilityQuery.isError ? `Horse test: ${eligibilityQuery.error instanceof Error ? eligibilityQuery.error.message : "unavailable"}` : "Horse test passed."}</p>
           <p>{statusQuery.isPending ? "Checking inspection status…" : statusQuery.isError ? "Inspection status unavailable." : `Inspection: ${statusQuery.data?.status ?? "none"}${statusQuery.data?.reason ? ` · ${statusQuery.data.reason}` : ""}`}</p>
           {!saved && <Action data-horf-personal-add type="button" $primary onClick={() => void addSelection()} disabled={!address || busy || eligibilityQuery.isPending || eligibilityQuery.isError}>Add to my stable</Action>}
           {saved && <Action data-horf-inspection-submit type="button" $primary onClick={() => void submitInspection()} disabled={busy || eligibilityQuery.isPending || eligibilityQuery.isError || statusQuery.isPending || statusQuery.isError || statusQuery.data?.status === "pending" || statusQuery.data?.status === "approved"}>Submit for inspection</Action>}
-          {saved && statusQuery.data?.status === "approved" && <p>This token identity is approved for trading Stable permit checks; each deposit still rechecks ownership and eligibility.</p>}
+          {saved && statusQuery.data?.status === "approved" && <p>Marshal approved. Escrow checks ownership again when you deposit.</p>}
           {saved && statusQuery.data?.status === "pending" && <p>An inspector has this token in the review queue.</p>}
         </div>}
       </Panel>
       <Panel data-horf-personal-saved>
         <h3>Saved horses</h3>
-        <p>These are your saved token choices, not a live proof of ownership. Horf rechecks your Mainnet balance when you submit a token for inspection or deposit.</p>
+        <p>Saved horses may have moved. Horf checks your balance before inspection or escrow.</p>
         {selectionsQuery.isPending && address && <p>Opening your personal stable…</p>}
         {selectionsDenied ? <Note $error role="alert">{restricted ? "This wallet is restricted from Horf private features. Check Trader standing by the race board." : "Your Horf wallet proof is missing or expired. Reconnect and verify this wallet."} {!restricted && <Action type="button" onClick={() => void connectWallet()} disabled={isConnecting}>{isConnecting ? "Connecting…" : "Reconnect and verify wallet"}</Action>}</Note> : selectionsQuery.isError && <Note $error role="alert">Saved horses are unavailable. Refresh this section to try again.</Note>}
         {selections.length ? <StableList>{selections.map((item) => {

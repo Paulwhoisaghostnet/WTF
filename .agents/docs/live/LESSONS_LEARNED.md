@@ -14840,3 +14840,13 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: The same token looked inconsistent across browser profiles, and the artwork acquired distracting button chrome despite the Horf page's own styling.
 
 **Rule**: Keep horse status in explicit text and color pills. Mark artwork buttons as exempt from the global appearance button chrome, and browser-check computed borders and shadows under both the default and alternate WTF OS appearances when a sub-app needs a consistent design.
+
+---
+
+## 2026-11-05 - Keep Horf selection and artwork owned by one design system
+
+**What happened**: Horf used several local owned-horse option renderers. The shared trade picker and legacy Stable displayed indexer order while Gifts and My Stable grouped creator mints first. Open Range and HORSE Market led with stock photography and broad controls that pushed actual mint art below the first viewport. Global WTF OS appearance selectors changed Horf button and field styling for riders using Zine, XP, or Aqua. Some browser assertions then failed because they matched the old verbose copy exactly.
+
+**Why it mattered**: Riders saw different horse ordering and controls depending on the page or appearance preference, and the artwork they came to browse was hidden behind generic presentation. Exact-copy tests blocked a visual simplification even when the underlying action and safety terms remained intact.
+
+**Rule**: Render qualifying owned-horse choices through one grouped component, with creator mints first and exact token ID and held editions visible. Feature current mint media before credited photography, keep stock for genuine empty or failed media states, and exempt Horf descendants from global appearance chrome. Keep card labels short while preserving exact token and trade terms in detail and signing views. Assert user-visible meaning and behavior in browser tests, updating only stale wording expectations when the behavior is unchanged.

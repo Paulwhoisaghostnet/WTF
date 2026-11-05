@@ -7,6 +7,7 @@ import { toNatString } from "../../lib/tezos/nat";
 import { objktTokenUrl as tokenUrl, parseObjktToken } from "./token-input";
 import { uniqueHorfThumbnailIdentities } from "./horse-media";
 import { HorfEscrowArtwork } from "./HorfEscrowArtwork";
+import { HorfOwnedHorseOptions } from "./HorfOwnedHorseOptions";
 import {
   HORF_STABLES_CHAIN_ID,
   cancelHorfListing,
@@ -65,6 +66,7 @@ type OwnedHorse = {
   tokenId: string;
   balance: string;
   name: string | null;
+  creatorAddress?: string | null;
   approvedForMarshalsMarket: boolean;
 };
 type OwnedHorsePage = {
@@ -78,6 +80,7 @@ function parseOwnedHorsePage(value: unknown, address: string): OwnedHorsePage {
       page.items.some((horse) => !horse || typeof horse.contract !== "string" ||
         typeof horse.tokenId !== "string" || typeof horse.balance !== "string" ||
         (horse.name !== null && typeof horse.name !== "string") ||
+        (horse.creatorAddress != null && typeof horse.creatorAddress !== "string") ||
         typeof horse.approvedForMarshalsMarket !== "boolean") ||
       !page.pagination || typeof page.pagination.hasMore !== "boolean" ||
       !Number.isSafeInteger(page.pagination.nextOffset) || page.pagination.nextOffset < 0) {
@@ -829,11 +832,7 @@ export function HorfStables({
               <InputAction>
                 <select id="horf-owned-token" data-horf-owned-select value={chosenOwned ? selectedOwned : ""} onChange={(event) => setSelectedOwned(event.target.value)}>
                   <option value="">{ownedQuery.isPending || ownedQuery.isFetchingNextPage ? "Checking approved horses…" : ownedTokens.length ? "Choose an approved horse" : "No approved horses found"}</option>
-                  {ownedTokens.map((token) => (
-                    <option key={`${token.contract}:${token.tokenId}`} value={`${token.contract}:${token.tokenId}`}>
-                      {token.name || `Token #${token.tokenId}`} · {token.balance} owned
-                    </option>
-                  ))}
+                  <HorfOwnedHorseOptions horses={ownedTokens} address={address} />
                 </select>
                 <SmallButton type="button" onClick={() => chosenOwned && addRow(chosenOwned.contract, chosenOwned.tokenId, chosenOwned.name || `Token #${chosenOwned.tokenId}`)} disabled={!chosenOwned || !depositReady || busy}>Add approved horse</SmallButton>
               </InputAction>

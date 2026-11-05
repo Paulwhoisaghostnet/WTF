@@ -133,6 +133,30 @@ async function mockOfficialCrpPrefill(page, nomineeAddress) {
 }
 
 test.describe("Horf HORSE, posse, and horse gifts", () => {
+  test("keeps gift and trade horse choices grouped with creator mints first", async ({ page, request }) => {
+    await seedTrader(request);
+    await mockHorf(page);
+    await page.route(/\/api\/horf\/traders\/[^/]+\/horses(?:\?.*)?$/, (route) => json(route, {
+      address: traderWallet,
+      items: [
+        { contract: horseToken, tokenId: "8", name: "Received Pinto", balance: "1", creatorAddress: leadWallet },
+        { contract: horseToken, tokenId: "7", name: "My Mare", balance: "3", creatorAddress: traderWallet },
+      ],
+      pagination: { hasMore: false, nextOffset: 2 },
+    }));
+
+    await page.goto("/horf/gifts");
+    const picker = page.locator('[data-horf-region="gifts"] [data-horf-gift-owned]');
+    const groups = picker.locator("optgroup");
+    await expect(groups).toHaveCount(2);
+    await expect(groups.nth(0)).toHaveAttribute("label", "Created by you");
+    await expect(groups.nth(0).locator("option")).toHaveText("My Mare · #7 · 3 owned");
+    await expect(groups.nth(1)).toHaveAttribute("label", "Received horses");
+    await expect(groups.nth(1).locator("option")).toHaveText("Received Pinto · #8 · 1 owned");
+    await picker.selectOption(`${horseToken}:8`);
+    await expect(picker).toHaveValue(`${horseToken}:8`);
+  });
+
   test("posse horse batch excludes current holders and blocks a send with too few editions", async ({ page, request }) => {
     await seedTrader(request);
     await mockHorf(page, {

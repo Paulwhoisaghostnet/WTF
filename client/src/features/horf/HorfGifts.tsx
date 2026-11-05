@@ -11,6 +11,7 @@ import { objktTokenUrl, parseObjktToken } from "./token-input";
 import { parseHorfOwnedTokenPage, type HorfOwnedTokenPage } from "./owned-tokens";
 import type { HorfGift, HorfGiftsResponse } from "./social-types";
 import { horfTraderReceiptLabel, useHorfTraderChoices } from "./HorfKnownTraderPicker";
+import { HorfOwnedHorseOptions } from "./HorfOwnedHorseOptions";
 
 type TokenChoice = { contract: string; tokenId: string; name: string };
 type GiftToConfirm = { recipient: string; tokenContract: string; tokenId: string; amount: string };
@@ -359,9 +360,6 @@ export function HorfGifts({
       .filter((item) => item.walletAddress === address && isPositive(item.balance)),
     [address, compact, ownedQuery.data, quickHorsesQuery.data],
   );
-  const createdOwnedTokens = ownedTokens.filter((item) => item.creatorAddress === address);
-  const receivedOwnedTokens = ownedTokens.filter((item) => item.creatorAddress && item.creatorAddress !== address);
-  const uncreditedOwnedTokens = ownedTokens.filter((item) => !item.creatorAddress);
   const selectedOwned = ownedTokens.find((item) => `${item.contract}:${item.tokenId}` === ownedKey);
   const ownedBalanceQuery = useQuery({
     queryKey: ["horf", "art-send-owned-balance", address, token?.contract, token?.tokenId],
@@ -686,22 +684,20 @@ export function HorfGifts({
         </div>
         <Action type="button" onClick={() => void giftsQuery.refetch()} disabled={!address || giftsQuery.isFetching}>Refresh gifts</Action>
       </Header>}
-      {!compact && <Reminder><strong>Don’t look them in the mouth.</strong><br />A gift is a gift. If you send a horse back later, mark that you returned the favor here; Horf does not count gifts as social return-ride debt.</Reminder>}
+      {!compact && <Reminder><strong>Don’t look them in the mouth.</strong><br />Gifts carry no return-ride debt. Sent one back? Mark the favor returned.</Reminder>}
       {!address && <Note $error>{posseBatch ? "Connect and verify your wallet to send a horse to your posse." : batchReturn ? "Connect and verify your wallet to return horses to these riders." : compact ? "Connect and verify your wallet to send this rider a horse." : "Connect and verify your Tezos wallet to send and review gifts."} <Action type="button" onClick={() => void connectWallet()} disabled={isConnecting}>{isConnecting ? "Connecting…" : isGuest ? "Connect and verify wallet" : "Connect wallet"}</Action></Note>}
       <Columns $compact={compact}>
         <Panel data-horf-gift-send $compact={compact}>
           {!compact && <><h3>Trade or give a horse</h3><p>Send one horse to several riders in one Mainnet transaction. Pick familiar faces from your posse or the trader directory.</p></>}
           {(!compact || !review) && <>
           {compact && <p>{posseBatch ? "Pick a horse. Riders who already own it step aside; everyone else gets one edition in one wallet send." : batchReturn ? "Pick one horse to send, one edition per waiting rider. Remove anyone you are not ready to answer." : "Pick a horse from your stable, set its editions, then review the ride."}</p>}
-          <label htmlFor="horf-gift-owned">{compact ? "Your horse" : "Choose an indexed token from this wallet"}</label>
+          <label htmlFor="horf-gift-owned">Your horse</label>
           <InputAction>
             <select id="horf-gift-owned" data-horf-gift-owned value={selectedOwned ? ownedKey : ""} onChange={(event) => { setOwnedKey(event.target.value); const chosen = ownedTokens.find((item) => `${item.contract}:${item.tokenId}` === event.target.value); setToken(chosen ? { contract: chosen.contract, tokenId: chosen.tokenId, name: chosen.name || `Token #${chosen.tokenId}` } : null); setReview(null); }} disabled={!address || busy}>
               <option value="">{compact
                 ? quickHorsesQuery.isPending && address ? "Loading your horses…" : "Choose a horse"
                 : ownedQuery.isPending && address ? "Loading your horses…" : "Choose a horse"}</option>
-              {createdOwnedTokens.length > 0 && <optgroup label="Created by you">{createdOwnedTokens.map((item) => <option key={`${item.contract}:${item.tokenId}`} value={`${item.contract}:${item.tokenId}`}>{item.name || `Token #${item.tokenId}`} · {item.balance} owned</option>)}</optgroup>}
-              {receivedOwnedTokens.length > 0 && <optgroup label="Received horses">{receivedOwnedTokens.map((item) => <option key={`${item.contract}:${item.tokenId}`} value={`${item.contract}:${item.tokenId}`}>{item.name || `Token #${item.tokenId}`} · {item.balance} owned</option>)}</optgroup>}
-              {uncreditedOwnedTokens.length > 0 && <optgroup label="Creator uncredited">{uncreditedOwnedTokens.map((item) => <option key={`${item.contract}:${item.tokenId}`} value={`${item.contract}:${item.tokenId}`}>{item.name || `Token #${item.tokenId}`} · {item.balance} owned</option>)}</optgroup>}
+              <HorfOwnedHorseOptions horses={ownedTokens} address={address} />
             </select>
             {(compact ? quickHorsesQuery.hasNextPage : ownedQuery.hasNextPage) && <Action type="button" onClick={() => void (compact ? quickHorsesQuery.fetchNextPage() : ownedQuery.fetchNextPage())} disabled={compact ? quickHorsesQuery.isFetchingNextPage : ownedQuery.isFetchingNextPage}>{(compact ? quickHorsesQuery.isFetchingNextPage : ownedQuery.isFetchingNextPage) ? "Loading…" : "More horses"}</Action>}
           </InputAction>

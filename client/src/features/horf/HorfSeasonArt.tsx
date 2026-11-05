@@ -56,9 +56,9 @@ const PHOTO_SLIDES: PhotoSlide[] = [
 
 const Feature = styled.section`
   display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(250px, .9fr);
+  grid-template-columns: minmax(0, 1.6fr) minmax(240px, .7fr);
   min-width: 0;
-  min-height: 310px;
+  min-height: 350px;
   overflow: hidden;
   border: 1px solid var(--horf-line, #3d5148);
   border-radius: 18px;
@@ -66,21 +66,21 @@ const Feature = styled.section`
   color: #f6f8f3;
   box-shadow: 0 16px 30px #00000035;
 
-  .art-pane { position: relative; min-height: 310px; overflow: hidden; background: #425b52; }
+  .art-pane { position: relative; min-height: 350px; overflow: hidden; background: #24332d; }
   .art-pane img { display: block; position: absolute; inset: 0; width: 100%; height: 100%; }
   .photo-layer { object-fit: cover; object-position: center; }
   .token-layer { object-fit: contain; background: var(--horf-field, #24332d); opacity: 0; transition: opacity 360ms ease; }
   .token-layer.is-ready { opacity: 1; }
-  .art-stamp { position: absolute; left: 18px; bottom: 18px; z-index: 2; padding: 6px 9px; border-radius: 4px; background: #132f2de8; color: #fff; font-size: 10px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+  .art-pending { display: grid; place-items: center; height: 100%; color: #b8cec5; font-size: 76px; }
+  .photo-credit { position: absolute; left: 12px; right: 12px; bottom: 12px; padding: 5px 8px; border-radius: 5px; background: #102421dd; color: #fff; font-size: 11px; line-height: 1.25; }
   .story { display: flex; flex-direction: column; justify-content: center; min-width: 0; padding: clamp(22px, 4vw, 42px); }
   .eyebrow { margin: 0 0 11px; color: #f5b665; font-size: 11px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
-  h2 { margin: 0 0 13px; font: 700 clamp(25px, 3vw, 39px)/1.05 var(--horf-display, "Avenir Next", sans-serif); letter-spacing: -.035em; }
-  .horse-name { margin: 0 0 5px; color: #f4e7c9; font-size: 17px; font-weight: 800; overflow-wrap: anywhere; }
+  h2 { margin: 0 0 13px; color: #f4e7c9; font: 700 clamp(25px, 3vw, 39px)/1.05 var(--horf-display, "Avenir Next", sans-serif); letter-spacing: -.035em; overflow-wrap: anywhere; }
   .horse-meta { margin: 0 0 17px; color: #b8cec5; font-size: 12px; overflow-wrap: anywhere; }
   .horse-meta a { color: inherit; }
   .objkt-link { align-self: start; color: #fff; font-size: 13px; font-weight: 800; text-decoration-color: #f5b665; text-underline-offset: 5px; }
   .controls { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; margin-top: auto; padding-top: 24px; }
-  .controls button { min-height: 34px; padding: 6px 11px; border: 1px solid #799188; border-radius: 999px; background: transparent; color: #f6f8f3; font-size: 12px; font-weight: 800; cursor: pointer; }
+  .controls button { min-width: 38px; min-height: 38px; padding: 5px 9px; border: 1px solid #799188; border-radius: 999px; background: transparent; color: #f6f8f3; font-size: 18px; font-weight: 800; cursor: pointer; }
   .controls button:hover { border-color: #f5b665; background: #294a42; }
   .controls .count { margin-left: auto; color: #b8cec5; font-size: 11px; font-weight: 800; letter-spacing: .08em; }
 
@@ -104,15 +104,19 @@ function shortCreator(address: string): string {
 function mintedTokenSlides(value: unknown): TokenSlide[] {
   const items = (value as { items?: unknown[] } | null)?.items;
   if (!Array.isArray(items)) return [];
+  const seen = new Set<string>();
   return items.flatMap((candidate) => {
     const horse = candidate as Partial<MintedHorse> | null;
     if (!horse || typeof horse.contract !== "string" ||
         typeof horse.tokenId !== "string" || typeof horse.image !== "string") return [];
+    const key = `${horse.contract}:${horse.tokenId}`;
+    if (seen.has(key)) return [];
     const art = resolveTokenThumbnail({ thumbnail: horse.image });
     if (!art) return [];
+    seen.add(key);
     return [{
       kind: "token" as const,
-      key: `${horse.contract}:${horse.tokenId}`,
+      key,
       contract: horse.contract,
       tokenId: horse.tokenId,
       name: typeof horse.name === "string" && horse.name.trim() ? horse.name : `Horse #${horse.tokenId}`,
@@ -123,14 +127,33 @@ function mintedTokenSlides(value: unknown): TokenSlide[] {
   });
 }
 
-export function HorfSeasonArt() {
+function useCurrentHorfMintSlides() {
   const query = useQuery({
     queryKey: ["horf", "season-art", "current-2026"],
     queryFn: () => api.get<unknown>("/api/horf/open-range?season=current-2026"),
     refetchOnWindowFocus: true,
   });
   const tokenSlides = useMemo(() => mintedTokenSlides(query.data), [query.data]);
-  const slides: Slide[] = tokenSlides.length ? tokenSlides : PHOTO_SLIDES;
+  return { tokenSlides, loading: query.isPending };
+}
+
+export function HorfWantedArtwork() {
+  const { tokenSlides, loading } = useCurrentHorfMintSlides();
+  const [failedKeys, setFailedKeys] = useState<Set<string>>(() => new Set());
+  const preferredMints = tokenSlides.length > 1 ? [tokenSlides[1]!, tokenSlides[0]!, ...tokenSlides.slice(2)] : tokenSlides;
+  const mint = preferredMints.find((item) => !failedKeys.has(item.key)) ?? null;
+
+  if (mint) return <a data-horf-wanted-mint href={objktTokenUrl(mint.contract, mint.tokenId)} target="_blank" rel="noopener noreferrer" aria-label={`View ${mint.name} on Objkt`} onClick={() => logClientSystemEvent({ eventType: "horf.season_art.objkt_opened", message: "Featured Neighvember horse opened on Objkt", metadata: { contract: mint.contract, tokenId: mint.tokenId, source: "wanted-poster" } })}>
+    <img key={mint.key} src={mint.art.src} alt={`${mint.name} horse artwork`} onError={(event) => { if (!advanceResolvedMediaFallback(event.currentTarget, mint.art)) setFailedKeys((current) => new Set(current).add(mint.key)); }} />
+    <span className="mint-caption">{mint.name} ↗</span>
+  </a>;
+  if (loading) return <span className="art-pending" role="status" aria-label="Finding Neighvember horse art"><span aria-hidden="true">🐎</span></span>;
+  return <><img className="photo-fallback" src="/horf-art/horse-portrait-photo.jpg" alt="Horse portrait photograph" /><span className="mint-caption">MarkBuckawicki · CC0</span></>;
+}
+
+export function HorfSeasonArt() {
+  const { tokenSlides, loading } = useCurrentHorfMintSlides();
+  const slides: Slide[] = tokenSlides.length ? tokenSlides : loading ? [] : PHOTO_SLIDES;
   const [index, setIndex] = useState(0);
   const [readyKey, setReadyKey] = useState<string | null>(null);
   const [failedKey, setFailedKey] = useState<string | null>(null);
@@ -152,11 +175,11 @@ export function HorfSeasonArt() {
     return () => window.clearInterval(timer);
   }, [held, paused, reducedMotion, slides.length]);
 
-  const slide = slides[index % slides.length]!;
-  const tokenSlide = slide.kind === "token" ? slide : null;
+  const slide = slides.length ? slides[index % slides.length]! : null;
+  const tokenSlide = slide?.kind === "token" ? slide : null;
   const photoFallback = PHOTO_SLIDES[index % PHOTO_SLIDES.length]!;
-  const photograph = slide.kind === "photo" ? slide.image : photoFallback.image;
-  const tokenArtReady = slide.kind === "token" && readyKey === slide.key && failedKey !== slide.key;
+  const photograph = slide?.kind === "photo" ? slide.image : photoFallback.image;
+  const tokenArtReady = slide?.kind === "token" && readyKey === slide.key && failedKey !== slide.key;
   const objktUrl = tokenSlide ? objktTokenUrl(tokenSlide.contract, tokenSlide.tokenId) : null;
 
   function step(delta: number) {
@@ -178,22 +201,25 @@ export function HorfSeasonArt() {
     });
   }
 
-  return <Feature data-horf-season-art aria-label="Fresh horse art from Neighvember 2026" onMouseEnter={() => setHeld(true)} onMouseLeave={() => setHeld(false)} onFocusCapture={() => setHeld(true)} onBlurCapture={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setHeld(false); }}>
+  if (!slide) return <Feature data-horf-season-art aria-label="Horses on the trail">
+    <div className="art-pane"><div className="art-pending" role="status" aria-label="Finding Neighvember horse art"><span aria-hidden="true">🐎</span></div></div>
+    <div className="story"><p className="eyebrow">Neighvember 2026</p><h2>Fresh horses</h2></div>
+  </Feature>;
+
+  return <Feature data-horf-season-art aria-label="Horses on the trail" onMouseEnter={() => setHeld(true)} onMouseLeave={() => setHeld(false)} onFocusCapture={() => setHeld(true)} onBlurCapture={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setHeld(false); }}>
     <div className="art-pane">
-      <img className="photo-layer" src={photograph} alt="" data-horf-season-art-image={tokenArtReady ? undefined : ""} />
+      {(slide.kind === "photo" || failedKey === slide.key) && <><img className="photo-layer" src={photograph} alt="" data-horf-season-art-image={tokenArtReady ? undefined : ""} /><span className="photo-credit">{slide.kind === "photo" ? slide.credit : `Photo shown · ${photoFallback.credit}`}</span></>}
       {slide.kind === "token" && failedKey !== slide.key && <img key={slide.key} className={tokenArtReady ? "token-layer is-ready" : "token-layer"} data-horf-season-art-image={tokenArtReady ? "" : undefined} src={slide.art.src} alt={`${slide.name} token artwork`} onLoad={() => setReadyKey(slide.key)} onError={(event) => { if (!advanceResolvedMediaFallback(event.currentTarget, slide.art)) { setFailedKey(slide.key); setReadyKey(null); } }} />}
-      <span className="art-stamp">{tokenArtReady ? "Actual Tezos mint" : "Horse photography"}</span>
     </div>
     <div className="story">
-      <p className="eyebrow">Fresh from Neighvember 2026</p>
-      <h2>Horses on the trail</h2>
-      <p className="horse-name" data-horf-season-art-token>{slide.name}</p>
-      <p className="horse-meta">{slide.kind === "token" ? `Minted this season${slide.creatorAddress ? ` · by ${shortCreator(slide.creatorAddress)}` : ""}${failedKey === slide.key ? ` · Preview unavailable; ${photoFallback.credit}` : ""}` : slide.credit}</p>
+      <p className="eyebrow">{slide.kind === "token" ? "Neighvember 2026" : "From the range"}</p>
+      <h2 data-horf-season-art-token>{slide.name}</h2>
+      {slide.kind === "token" && slide.creatorAddress && <p className="horse-meta">by <a href={`https://objkt.com/profile/${encodeURIComponent(slide.creatorAddress)}`} target="_blank" rel="noopener noreferrer">{shortCreator(slide.creatorAddress)}</a></p>}
       {tokenSlide && objktUrl && <a className="objkt-link" data-horf-season-art-objkt href={objktUrl} target="_blank" rel="noopener noreferrer" onClick={() => logClientSystemEvent({ eventType: "horf.season_art.objkt_opened", message: "Featured Neighvember horse opened on Objkt", metadata: { contract: tokenSlide.contract, tokenId: tokenSlide.tokenId } })}>View this horse on Objkt ↗</a>}
       <div className="controls">
-        <button data-horf-season-art-prev type="button" onClick={() => step(-1)} aria-label="Previous horse artwork">← Previous</button>
-        <button data-horf-season-art-next type="button" onClick={() => step(1)} aria-label="Next horse artwork">Next →</button>
-        <button data-horf-season-art-toggle type="button" onClick={toggleRotation} aria-label={paused ? "Resume horse art rotation" : "Pause horse art rotation"}>{paused ? "Resume" : "Pause"}</button>
+        <button data-horf-season-art-prev data-compact-control="true" type="button" onClick={() => step(-1)} aria-label="Previous horse artwork" title="Previous horse artwork">←</button>
+        <button data-horf-season-art-next data-compact-control="true" type="button" onClick={() => step(1)} aria-label="Next horse artwork" title="Next horse artwork">→</button>
+        <button data-horf-season-art-toggle data-compact-control="true" type="button" onClick={toggleRotation} aria-label={paused ? "Resume horse art rotation" : "Pause horse art rotation"} title={paused ? "Resume horse art rotation" : "Pause horse art rotation"}>{paused ? "▶" : "⏸"}</button>
         <span className="count">{index % slides.length + 1} / {slides.length}</span>
       </div>
     </div>

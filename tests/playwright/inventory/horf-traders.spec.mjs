@@ -171,8 +171,9 @@ test.describe("Horf trader discovery and horse test", () => {
       const address = decodeURIComponent(new URL(route.request().url()).pathname.split("/").at(-2));
       return json(route, { address, items: address === viewerWallet ? [
         { contract, tokenId: "12", balance: "2", name: "Uninspected Pony", image: "/horf-art/horse-portrait-photo.jpg", creatorAddress: viewerWallet, approvedForMarshalsMarket: false },
+        { contract, tokenId: "14", balance: "1", name: "Received Mare", image: "/horf-art/horse-beach-photo.jpg", creatorAddress: leadWallet, approvedForMarshalsMarket: true },
         { contract, tokenId: "13", balance: "2", name: "Approved Mare", image: "/horf-art/horse-beach-photo.jpg", creatorAddress: viewerWallet, approvedForMarshalsMarket: true },
-      ] : [], pagination: { hasMore: false, nextOffset: 2 } });
+      ] : [], pagination: { hasMore: false, nextOffset: 3 } });
     });
     await page.route("**/api/horf/wallet/tokens?*", (route) => json(route, { items: [
       { contract, tokenId: "12", name: "Uninspected Pony", balance: "2", walletAddress: viewerWallet },
@@ -201,6 +202,12 @@ test.describe("Horf trader discovery and horse test", () => {
     const dialog = page.locator("[data-horf-proposal-dialog]");
     await expect(dialog).toBeVisible();
     await expect(dialog.locator('[data-horf-owned-horse-select] option[value="'+contract+':12"]')).toHaveCount(0);
+    const groups = dialog.locator('[data-horf-owned-horse-select] optgroup');
+    await expect(groups).toHaveCount(2);
+    await expect(groups.nth(0)).toHaveAttribute("label", "Created by you");
+    await expect(groups.nth(0).locator("option")).toHaveAttribute("value", `${contract}:13`);
+    await expect(groups.nth(1)).toHaveAttribute("label", "Received horses");
+    await expect(groups.nth(1).locator("option")).toHaveAttribute("value", `${contract}:14`);
     await dialog.locator("[data-horf-owned-horse-select]").selectOption(`${contract}:13`);
     await expect(dialog.locator("[data-horf-proposal-selection]")).toContainText("Approved Mare");
     await dialog.locator("[data-horf-proposal-submit]").click();
@@ -336,7 +343,7 @@ test.describe("Horf trader discovery and horse test", () => {
     await expect(dialog).toContainText("No horses on this page yet");
     await expect(dialog.locator('[data-horf-gift-owned] option')).toHaveCount(1);
     await dialog.getByRole("button", { name: "More horses" }).click();
-    await expect(dialog.locator('[data-horf-gift-owned]').locator(`option[value="${contract}:7"]`)).toHaveText("Later Page Pony · 2 owned");
+    await expect(dialog.locator('[data-horf-gift-owned]').locator(`option[value="${contract}:7"]`)).toHaveText("Later Page Pony · #7 · 2 owned");
     expect(offsets).toContain(2);
   });
 
@@ -391,9 +398,7 @@ test.describe("Horf trader discovery and horse test", () => {
     const info = page.locator('[data-horf-region="horse-test-info"]');
     await expect(page.locator("[data-horf-app]")).toHaveAttribute("data-horf-page", "info");
     await expect(info.getByRole("heading", { name: "Is It a Horse?" })).toBeVisible();
-    await expect(info).toContainText("Tezos Mainnet FA2");
-    await expect(info).toContainText("indexed by Objkt");
-    await expect(info).toContainText("zero or unset decimals");
+    await expect(info).toContainText("Objkt-listed Tezos token with whole editions and a qualifying mint tag");
     await expect(info).toContainText("horseart");
     await expect(info).toContainText("Objkt mint tags");
     await expect(info).toContainText("Neighvember and Horse of July");
@@ -403,7 +408,7 @@ test.describe("Horf trader discovery and horse test", () => {
     await expect(info).toContainText("horsepower");
     await expect(info).toContainText("different wallets");
     await expect(info).toContainText("transfer date chooses which race season");
-    await expect(info).toContainText("Marshal inspection is a separate approval");
+    await expect(info).toContainText("Marshal approval is required to enter inspected escrow");
     await expect(page.locator('[data-horf-region="race"]')).toHaveCount(0);
     await expect(page.locator('[data-horf-region="trader-directory"]')).toHaveCount(0);
   });
@@ -423,7 +428,8 @@ test.describe("Horf trader discovery and horse test", () => {
     await page.goto(`/horf/traders/${leadWallet}?season=current-2026`);
     const profile = page.locator('[data-horf-region="trader-profile"]');
     await profile.locator('[data-horf-profile-tab="all-horses"]').click();
-    await expect(profile).toContainText("No qualifying horses on the scanned pages");
+    await expect(profile).toContainText("No horses found yet");
+    await expect(profile).toContainText("Load more to keep looking through this rider’s wallet");
     await profile.getByRole("button", { name: "Load more horses" }).click();
     await expect(profile.locator("[data-horf-profile-horse]")).toContainText("Hidden Filly");
   });

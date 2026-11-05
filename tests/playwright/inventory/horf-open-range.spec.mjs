@@ -114,6 +114,13 @@ test.describe("Horf Open Range", () => {
     await expect(previews.nth(3)).toHaveAttribute("src", /^\/api\/cache\/artifact\?/);
     expect(await previews.nth(2).getAttribute("src")).not.toBe(await previews.nth(3).getAttribute("src"));
     await expect(previews.nth(4)).toHaveAttribute("src", /^\/api\/cache\/media\?/);
+    const featured = page.locator("[data-horf-open-range-featured-mint]");
+    await expect(featured).toBeVisible();
+    await expect(featured.locator("img")).toHaveAttribute("src", /horse-gallop-photo\.jpg/);
+    await expect(page.locator("[data-horf-open-range-view-horse]").first()).toBeInViewport({ ratio: 0.1 });
+    await featured.focus();
+    await page.keyboard.press("Enter");
+    await expect(page.locator("[data-horf-open-range-detail]")).toContainText("Horse #1");
   });
 
   test("shows a Marshal rejection as a reviewed horse card", async ({ page, request }) => {
@@ -410,9 +417,7 @@ test.describe("Horf Open Range", () => {
     await expect(range.locator("[data-horf-open-range-horse]")).toHaveCount(1);
     const first = range.locator("[data-horf-open-range-horse]").first();
     await expect(first).toContainText("Horse #1");
-    await expect(first.locator('[data-horf-open-range-status="traded"]')).toHaveText("No Horf trade yet");
-    await expect(first.locator('[data-horf-open-range-status="offered"]')).toHaveText("No wallet availability sign");
-    await expect(first.locator('[data-horf-open-range-status="approved"]')).toHaveText("Not Marshal approved");
+    await expect(first.locator("[data-horf-open-range-flags]")).toHaveCount(0);
     await expect(first.locator("[data-horf-open-range-approve]")).toHaveCount(0);
     await expect(first.locator("[data-horf-open-range-trade-owned]")).toHaveCount(0);
     await first.locator("[data-horf-open-range-view-horse]").click();
@@ -424,19 +429,21 @@ test.describe("Horf Open Range", () => {
     await expect(detail.getByRole("link", { name: "View this horse on Objkt" })).toHaveAttribute("href", `https://objkt.com/tokens/${contract}/1`);
     await page.keyboard.press("Escape");
     await expect(detail).not.toBeVisible();
-    const inactiveBorder = await first.locator('[data-horf-open-range-status="traded"]').evaluate((node) => getComputedStyle(node).borderTopColor);
     await range.locator("[data-horf-open-range-more]").click();
     await expect(range.locator("[data-horf-open-range-horse]")).toHaveCount(2);
     expect(reads).toContainEqual({ mode: current.key, cursor: "next-1", refresh: null, viewer: null });
 
     await expect(range.locator('[data-horf-open-range-mode="all-seasons"]').locator("..")).toContainText("Tracked seasons");
     await expect(range.locator('[data-horf-open-range-mode="all-horse-search"]').locator("..")).toContainText("All time · every horse");
+    await range.locator("[data-horf-open-range-filter] summary").click();
     await range.locator('[data-horf-open-range-mode="all-seasons"]').check();
     await expect(page).toHaveURL(/\/horf\/open-range\?season=all-seasons$/);
+    await expect(range.locator("[data-horf-open-range-filter]")).not.toHaveAttribute("open", "");
     await expect(range.locator("[data-horf-open-range-horse]")).toHaveCount(1);
     await expect(range.locator("[data-horf-open-range-horse]")).toContainText("Horse #3");
     await expect(range).toContainText("Horse trading season windows.");
 
+    await range.locator("[data-horf-open-range-filter] summary").click();
     await range.locator('[data-horf-open-range-mode="all-horse-search"]').check();
     await expect(page).toHaveURL(/\/horf\/open-range\?season=all-horse-search$/);
     const undated = range.locator("[data-horf-open-range-horse]");
@@ -444,8 +451,7 @@ test.describe("Horf Open Range", () => {
     await expect(undated.locator('[data-horf-open-range-status="traded"]')).toHaveText("Traded before on Horf");
     await expect(undated.locator('[data-horf-open-range-status="offered"]')).toHaveText("Available in a wallet ↗");
     await expect(undated.locator('[data-horf-open-range-status="approved"]')).toHaveText("Marshal approved");
-    const activeBorder = await undated.locator('[data-horf-open-range-status="traded"]').evaluate((node) => getComputedStyle(node).borderTopColor);
-    expect(activeBorder).not.toBe(inactiveBorder);
+    await expect(undated.locator("[data-horf-open-range-flags]")).toBeVisible();
     const artworkButton = undated.locator("[data-horf-open-range-view-horse]");
     for (const appearance of [null, "wtf-zine", "wtf-xp", "wtf-aqua"]) {
       await page.evaluate((value) => {
@@ -462,6 +468,7 @@ test.describe("Horf Open Range", () => {
     await expect(detail).toContainText("Wants Marshal-approved horses");
     await detail.getByRole("button", { name: "Close details" }).click();
     await page.screenshot({ path: "test-results/horf-open-range-art-feed.png", fullPage: true });
+    await range.locator("[data-horf-open-range-filter] summary").click();
     await range.locator(`[data-horf-open-range-mode="${archive.key}"]`).check();
     await expect(page).toHaveURL(new RegExp(`/horf/open-range\\?season=${archive.key}$`));
     await expect(range.locator("[data-horf-open-range-horse]")).toContainText("Horse #5");

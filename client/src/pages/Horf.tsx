@@ -11,7 +11,7 @@ import { HahaCrp } from "../features/haha-crp/HahaCrp";
 import { HorfGifts } from "../features/horf/HorfGifts";
 import { HorfPosse } from "../features/horf/HorfPosse";
 import { HorfTradeHorseCarousel } from "../features/horf/HorfTradeHorseCarousel";
-import { HorfSeasonArt } from "../features/horf/HorfSeasonArt";
+import { HorfSeasonArt, HorfWantedArtwork } from "../features/horf/HorfSeasonArt";
 import { HorfTraderStatus } from "../features/horf/HorfTraderStatus";
 import { HorfPersonalStable } from "../features/horf/HorfPersonalStable";
 import { HorfProposalDialog, type HorfTradeSign } from "../features/horf/HorfTradeOffers";
@@ -327,8 +327,13 @@ const WantedPoster = styled.aside`
   font-family: var(--horf-font, ui-sans-serif, system-ui, sans-serif);
   .wanted { display: block; color: var(--horf-gold); font: 900 12px/1.2 ui-sans-serif, system-ui, sans-serif; text-transform: uppercase; letter-spacing: .18em; }
   .traders { display: block; margin: 5px 0 0; color: #d6bd95; font: 750 11px/1.35 ui-sans-serif, system-ui, sans-serif; text-transform: uppercase; letter-spacing: .07em; }
-  .horse-art { height: clamp(135px, 15cqw, 185px); min-height: 0; overflow: hidden; margin: 9px 0 12px; border: 3px solid #9e7441; border-radius: 6px; background: #241f19; }
-  .horse-art img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center 34%; filter: sepia(.28) saturate(1.13) contrast(1.06); }
+  .horse-art { position: relative; height: clamp(135px, 15cqw, 185px); min-height: 0; overflow: hidden; margin: 9px 0 12px; border: 3px solid #9e7441; border-radius: 6px; background: #241f19; }
+  .horse-art a { display: block; width: 100%; height: 100%; }
+  .horse-art a:focus-visible { outline: 3px solid var(--horf-focus); outline-offset: -5px; }
+  .horse-art img { display: block; width: 100%; height: 100%; object-fit: contain; }
+  .horse-art img.photo-fallback { object-fit: cover; object-position: center 34%; filter: sepia(.28) saturate(1.13) contrast(1.06); }
+  .horse-art .mint-caption { position: absolute; right: 0; bottom: 0; left: 0; padding: 6px 9px; background: #101816d9; color: #f4ead6; font: 700 12px/1.25 var(--horf-font); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .horse-art .art-pending { display: grid; place-items: center; height: 100%; color: var(--horf-gold); font-size: 60px; }
   h2 { margin: 0 0 10px; font: 800 clamp(22px, 2.2cqw, 30px)/1.05 var(--horf-display, Georgia, serif); letter-spacing: -.04em; overflow-wrap: anywhere; }
   .reward { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0 0 10px; padding: 11px 13px; border: 1px solid #92713e; border-radius: 12px; background: #1b2b24; color: var(--horf-ink); }
   .reward strong { display: block; font: 800 clamp(22px, 2.2cqw, 30px)/1 var(--horf-display, sans-serif); white-space: nowrap; }
@@ -1553,13 +1558,13 @@ export function Horf() {
     <HorfFrame title={`${routeTitle} · ${seasonDisplayName}`} walletAddress={address} onConnectWallet={connectWallet} onDisconnectWallet={disconnectWallet} walletConnecting={isConnecting} marshalActive={profileMarshalQuery.data?.active === true} aside={<AsideRail>
       {walletError && <div className="rail-section" role="alert"><span className="eyebrow">Wallet alert</span><p>{walletError}</p></div>}
       {personal?.blacklisted === true && <div className="rail-section" role="alert"><span className="eyebrow">Trader standing</span><p>This wallet is restricted from private Horf actions. Review the public standing before trading.</p></div>}
-      <div className="rail-section"><span className="eyebrow">🐎 Live trail</span><strong>{seasonDisplayName}</strong><p>{countsProvisional ? "The race is still scanning Mainnet." : hasError ? "Season totals need a refresh." : "Season ledger ready for the next ride."}</p></div>
+      <div className="rail-section"><span className="eyebrow">🐎 Live trail</span><strong>{seasonDisplayName}</strong><p>{countsProvisional ? "Counting horse transfers…" : hasError ? "Refresh to see the latest race." : "Race totals up to date."}</p></div>
       {routeSection === "haha" && <div className="rail-section"><span className="eyebrow">🏆 HAHA ballot</span><strong>Nominate a deserving rider</strong><p>Choose a different Tezos wallet for each nomination in a category. Your wallet signs in to the ballot.</p></div>}
-      {routeSection === "horse-market" && <div className="rail-section"><span className="eyebrow">🐎 Horse Market</span><strong>{marketTab === "horse4horse" ? "Horse4HORSE" : marketTab === "marshals" ? "Marshal’s Market" : "Outlaw Corral"}</strong><p>{marketTab === "horse4horse" ? "Buy inspected horses with HORSE. Objkt tez asks stay available through Objkt’s contract." : marketTab === "marshals" ? "Inspected horses enter the reciprocal pool or honor stable." : outlawTab === "rooms" ? "Escrow rooms swap one horse for one horse in one Mainnet transaction." : "Wallet-held signs let you propose a horse; the owner chooses whether to open private escrow."}</p></div>}
+      {routeSection === "horse-market" && <div className="rail-section"><span className="eyebrow">🐎 Horse Market</span><strong>{marketTab === "horse4horse" ? "Horse4HORSE" : marketTab === "marshals" ? "Marshal’s Market" : "Outlaw Corral"}</strong><p>{marketTab === "horse4horse" ? "Inspected horses for HORSE. Objkt asks use XTZ." : marketTab === "marshals" ? "Inspected horses in escrow." : outlawTab === "rooms" ? "One horse in, one horse out." : "Offer a horse; its owner decides."}</p></div>}
       <div className="rail-section"><span className="eyebrow">Race leader</span><strong>{leaderboard[0] ? traderName(leaderboard[0].name, leaderboard[0].address) : "The starting gate"}</strong><p>{leaderboard[0] ? `${leaderboard[0].trades} horse ${leaderboard[0].trades === 1 ? "transfer" : "transfers"} this season` : "No riders ranked yet."}</p></div>
       {routeSection === "profile" && validProfileAddress && <div className="rail-section"><span className="eyebrow">Trader in your sights</span><strong>{traderName(profileIdentityQuery.data?.displayName ?? profileRider?.name, validProfileAddress)}</strong><p>{profileRider?.trades ?? 0} season horse transfers · {profileOffersQuery.data?.offers.length ?? 0} active trade signs</p></div>}
-      {statusAddress && <div className="rail-section"><span className="eyebrow">Trader in your sights</span><strong>{shortAddress(statusAddress)}</strong><p>Standing and inspection notes are open in the main trail.</p></div>}
-      <div className="rail-section"><span className="eyebrow">Your saddle</span>{address ? <><strong>{shortAddress(address)}</strong><p>{personal ? `${personal.received} received · ${personal.sent} sent` : "Reading your horse ledger."}</p>{personal && <HorfReceivedBreakdown gifts={personal.giftHorsesReceived} trades={personal.tradeHorsesReceived} />}</> : <><strong>Guest rider</strong><p>Connect a wallet to see your horses, posse, and claim.</p></>}</div>
+      {statusAddress && <div className="rail-section"><span className="eyebrow">Trader in your sights</span><strong>{shortAddress(statusAddress)}</strong></div>}
+      <div className="rail-section"><span className="eyebrow">Your saddle</span>{address ? <><strong>{shortAddress(address)}</strong><p>{personal ? `${personal.received} received · ${personal.sent} sent` : "Counting your horses…"}</p>{personal && <HorfReceivedBreakdown gifts={personal.giftHorsesReceived} trades={personal.tradeHorsesReceived} />}</> : <><strong>Guest rider</strong><p>Connect a wallet to see your horses, posse, and claim.</p></>}</div>
       {claimAlert && <div className="rail-section"><span className="eyebrow">HORSE waiting</span><span className="rail-number">{formatHorseAmount(claimAlert.claimableRaw, 8)}</span><p>Earned HORSE · your wallet pays XTZ gas to claim.</p></div>}
     </AsideRail>}>
       <Shell data-horf-app data-horf-page={routeSection}>
@@ -1567,7 +1572,7 @@ export function Horf() {
           <div>
             <small>WTF OS · Tezos horse trading</small>
             <h1>HORF! <span aria-hidden="true">★</span></h1>
-            <p>Howdy, horse trader. Connect your wallet to open your stable and rider profile. Find horses, trade with the posse, and follow the race.{isGuest ? " No WTF OS sign-in needed." : ""}</p>
+            <p>Howdy, rider. Find a horse, meet a trader, and make a return ride. Connect a wallet to open your stable.{isGuest ? " No WTF OS sign-in needed." : ""}</p>
             <IntroActions>
               <Action type="button" $primary onClick={() => navigateHorf("/horf/traders")}><span aria-hidden="true">🐎 </span>Find horse traders</Action>
               <Action data-horf-open-range-open type="button" style={{ backgroundImage: "url('/horf-art/lasso.svg')", backgroundPosition: "8px center", backgroundSize: 18, backgroundRepeat: "no-repeat", paddingLeft: 31 }} onClick={() => navigateHorf("/horf/open-range")}>Browse the Open Range</Action>
@@ -1578,11 +1583,11 @@ export function Horf() {
           <WantedPoster data-horf-wanted-poster aria-label={`${seasonDisplayName} horse trader notice`}>
             <span className="wanted">Wanted</span>
             <span className="traders">Horse traders · all riders welcome</span>
-            <div className="horse-art"><img src="/horf-art/horse-portrait-photo.jpg" alt="A chestnut horse peers out from the wanted poster" /></div>
+            <div className="horse-art"><HorfWantedArtwork /></div>
             <h2>{seasonDisplayName}</h2>
             {selectedSeasonKey === CURRENT_SEASON_KEY ? <>
-              <span className="reward"><strong>10 $HORSE</strong><span>per recognized horse trade/send</span></span>
-              <p>Neighvember 2026 sender only, for each qualifying horse edition. Return a ride to earn your own.</p>
+              <span className="reward"><strong>10 $HORSE</strong><span>per qualifying horse sent</span></span>
+              <p>Sender earns the reward. Return a ride to earn yours.</p>
             </> : <>
               <span className="reward"><strong>Past rides</strong><span>Archive race board</span></span>
               <p>Follow the hoofprints from this earlier season.</p>
@@ -1595,12 +1600,12 @@ export function Horf() {
         {routeSection !== "stable" && routeSection !== "race" && <WalletStatus data-horf-wallet-status role="status">
           {address ? `${isGuest ? "Horf wallet verified" : "WTF OS wallet selected"}: ${shortAddress(address)} · Tezos Mainnet`
             : isGuest && guestSessionLoading ? "Checking for a saved Horf wallet proof…"
-            : isGuest && localWalletAddress ? `Wallet ${shortAddress(localWalletAddress)} is connected locally. Verify it to unlock your Horf ledger and wallet actions.`
-            : isGuest ? "You can watch the race without signing in. Connect and sign a wallet challenge to use your personal Horf ledger and wallet actions."
-            : "Connect your Tezos wallet to use your personal Horf ledger and wallet actions."}
+            : isGuest && localWalletAddress ? `Wallet ${shortAddress(localWalletAddress)} is connected. Verify it to open your stable.`
+            : isGuest ? "You can watch the race without signing in. Connect a wallet to open your stable and trade."
+            : "Connect your Tezos wallet to open your stable and trade."}
           {isGuest && address && <button data-horf-wallet-disconnect type="button" onClick={() => void disconnectWallet()} disabled={isConnecting}>{isConnecting ? "Disconnecting…" : "Disconnect Horf wallet"}</button>}
         </WalletStatus>}
-        {routeSection === "home" && claimAlert && <ClaimNotice data-horf-claim-alert role="status" aria-live="polite"><span>🐎 Claim alert: {formatHorseAmount(claimAlert.claimableRaw, 8)} HORSE is shown as earned from this wallet’s qualifying horse sends{claimAlert.status !== "ready" ? " (provisional while Horf scans Mainnet)" : ""}. {claimAlert.claimReady ? "Claim it from the Mainnet vault; your wallet pays XTZ gas." : "Vault claiming is waiting for its Mainnet setup or season scan."}</span><button type="button" onClick={() => navigateHorf("/horf/send-horse")}>See HORSE claim</button></ClaimNotice>}
+        {routeSection === "home" && claimAlert && <ClaimNotice data-horf-claim-alert role="status" aria-live="polite"><span>🐎 {formatHorseAmount(claimAlert.claimableRaw, 8)} HORSE from your sends{claimAlert.status !== "ready" ? " · still counting" : ""}. {claimAlert.claimReady ? "Claim with your wallet; XTZ gas applies." : "Claiming opens when the count is ready."}</span><button type="button" onClick={() => navigateHorf("/horf/send-horse")}>Claim HORSE</button></ClaimNotice>}
         {walletError && <Warning role="alert">{walletError}</Warning>}
 
         {(routeSection === "race" || routeSection === "home" || routeSection === "stable" || routeSection === "traders" || routeSection === "profile") && <SeasonPicker data-horf-region="season" aria-label="Trading season">
@@ -1629,29 +1634,29 @@ export function Horf() {
           </div>
           <div>
             <strong id="horf-season-boundary">{selectedSeasonKey === "all-time" ? "Tracked seasons combined" : selectedSeason ? seasonDateRange(selectedSeason) : "Loading campaign dates…"}</strong>
-            {selectedSeasonKey === "all-time" ? <small id="horf-season-inference">All time combines tracked seasons. Rider notes below show {profileSeasonLabel}; wallet horses show current holdings.</small> : selectedSeason?.inferred && (
-              <small id="horf-season-inference">Archive dates are inferred from Objkt mint clusters and organizer posts; boundaries may differ from an official calendar.</small>
+            {selectedSeasonKey === "all-time" ? <small id="horf-season-inference">Tracked seasons combined · gaps excluded · wallet holdings are current.</small> : selectedSeason?.inferred && (
+              <small id="horf-season-inference">Archive dates estimated from mint tags and event posts.</small>
             )}
           </div>
         </SeasonPicker>}
 
         {(routeSection === "race" || routeSection === "traders") && <><StatusBar aria-live="polite">
           <span>
-            {query.isPending ? "Reading the season ledger…" : hasError ? "Season ledger needs attention" : countsProvisional ? "Scanning Tezos history · counts are provisional" : "Season ledger ready"}
-            {data?.asOf ? ` · As of ${formatDate(data.asOf)}` : " · Awaiting first snapshot"}
+            {query.isPending ? "Counting horse transfers…" : hasError ? "Race needs a refresh" : countsProvisional ? "Counting more rides…" : "Race up to date"}
+            {data?.asOf ? ` · Updated ${formatDate(data.asOf)}` : ""}
           </span>
           <button type="button" onClick={() => void query.refetch()} disabled={query.isFetching}>
-            {query.isFetching ? "Updating…" : hasError ? "Retry season ledger" : "Refresh race and ledger"}
+            {query.isFetching ? "Updating…" : hasError ? "Retry race" : "Refresh race"}
           </button>
         </StatusBar>
-        {countsProvisional && <Warning role="status">Horf is scanning mainnet transfers. Race positions, horse totals, and return rides may change as transfers are found.</Warning>}
-        {hasError && <Warning role="alert">Horf could not finish reading the season. Retry the ledger; any figures shown below are the last available snapshot.</Warning>}</>}
-        {personal?.blacklisted === true && <Warning data-horf-wallet-restricted role="alert">This wallet is blacklisted from Horf private API features. Its historical trade totals remain visible. Direct Stable claims need a separate admin-signed contract restriction; Horf cannot reverse Tezos transfers.</Warning>}
+        {countsProvisional && <Warning role="status">The race is still counting rides. Rankings and return rides may change.</Warning>}
+        {hasError && <Warning role="alert">The race did not update. Try again; the last known totals remain below.</Warning>}</>}
+        {personal?.blacklisted === true && <Warning data-horf-wallet-restricted role="alert">This wallet is restricted from Horf trading. Past rides remain visible. On-chain transfers cannot be reversed.</Warning>}
 
         {routeSection === "traders" && <Section data-horf-region="trader-directory" aria-label="Find other Horf traders" tabIndex={-1}>
           <SectionLabel>🤠 The horse trader directory</SectionLabel>
           <h2>Find Other Traders</h2>
-          <p>Meet riders from {seasonDisplayName} and wallets with horses currently offered on Horf. Open a trader’s profile to see their trade signs and qualifying horses.</p>
+          <p>Meet {seasonDisplayName} riders and see the horses they offer.</p>
           {directoryOffersQuery.isError && <Warning role="status">Active trade signs are taking longer to load. The season riders are still listed below.</Warning>}
           {directory.length ? <DirectoryGrid>
             {directory.map((rider, index) => <DirectoryCard key={rider.address} data-horf-trader-card>
@@ -1683,7 +1688,7 @@ export function Horf() {
                   <div data-horf-profile-stat="received"><strong>{profilePersonal.received}</strong><span>Horses received</span><HorfReceivedBreakdown gifts={profilePersonal.giftHorsesReceived} trades={profilePersonal.tradeHorsesReceived} /></div>
                   <div data-horf-profile-stat="completed"><strong>{profilePersonal.completedTrades ?? "—"}</strong><span>Completed trades</span></div>
                 </TraderActivityStats>
-                <p>{profilePersonal.trades} race {profilePersonal.trades === 1 ? "point" : "points"} from qualifying transfers. A completed trade pairs return rides or records a settled exchange; gifts do not complete one.</p>
+              <p>{profilePersonal.trades} race {profilePersonal.trades === 1 ? "point" : "points"} from horse transfers. Completed trades pair return rides; gifts stay separate.</p>
                 <TraderTrail data-horf-profile-trail>
                   <summary>View transfer trail · {profilePersonal.recent.length} {profilePersonal.recent.length === 1 ? "entry" : "entries"}</summary>
                   {profilePersonal.recent.length ? <ReceiptList>
@@ -1710,10 +1715,10 @@ export function Horf() {
                     {profileRewardsQuery.data.bySource?.length ? <ul className="reward-sources" aria-label="HORSE earned by trade source">
                       {profileRewardsQuery.data.bySource.map((source) => <li key={source.kind}>{rewardSourceLabels[source.kind]} · {source.units} {source.units === "1" ? "edition" : "editions"} · {horseRawLabel(source.amountRaw)} HORSE</li>)}
                     </ul> : null}
-                    {!profileRewardsQuery.data.sourceComplete && <p role="status">Reward sources are syncing; totals may change.</p>}
-                    {/^[1-9]\d*$/.test(profileRewardsQuery.data.sourceDiscrepancies) && <p role="alert">Claimed HORSE exceeds the currently recognized reward sources. This ledger needs review.</p>}
-                    <p>Claimed is the vault’s on-chain total. A rider may also hold HORSE sent by other people.</p>
-                  </> : <p role="status">The reward ledger is syncing.</p>}
+                    {!profileRewardsQuery.data.sourceComplete && <p role="status">Rewards are still being counted.</p>}
+                    {/^[1-9]\d*$/.test(profileRewardsQuery.data.sourceDiscrepancies) && <p role="alert">Claimed HORSE is higher than recognized earnings. A Marshal should review it.</p>}
+                    <p>Claimed shows HORSE taken from the vault. Other riders can send HORSE too.</p>
+                  </> : <p role="status">Counting rewards…</p>}
               </RewardLedger>
             </TraderActivity>
             <ProfileTabs role="tablist" aria-label="Trader horse collections">
@@ -1723,7 +1728,7 @@ export function Horf() {
             </ProfileTabs>
             <div id="horf-profile-panel" role="tabpanel" aria-labelledby={profileTab === "for-trade" ? "horf-profile-tab-for-trade" : profileTab === "received" ? "horf-profile-tab-received" : "horf-profile-tab-all-horses"}>
               {profileTab === "for-trade" ? <>
-                <p>These horses are marked available in this rider’s wallet. Offer one of yours; the rider can accept and open private escrow.</p>
+                <p>Offer one of your horses. This rider can accept and open a private swap.</p>
                 {profileOffersQuery.isPending ? <p>Reading this rider’s trade signs…</p> : profileOffersQuery.isError ? <Warning role="alert">Trade signs could not be loaded. Try again shortly.</Warning> : profileOffersQuery.data?.offers.length ? <ProfileHorseGrid>
                   {profileOffersQuery.data.offers.map((offer) => {
                     const name = offer.name || `Horse token #${offer.tokenId}`;
@@ -1734,7 +1739,7 @@ export function Horf() {
                   })}
                 </ProfileHorseGrid> : <LedgerPanel><h3>No availability signs up</h3><p>This rider has no wallet-held horses marked available right now.</p></LedgerPanel>}
               </> : profileTab === "received" ? <>
-                <p data-horf-profile-received-summary>{profilePersonal ? `${profilePersonal.received} horse ${profilePersonal.received === 1 ? "edition" : "editions"} received ${receivedScope}.` : `Received horses ${receivedScope}.`} This is the recognized receipt history, including horses this rider has since sent on.</p>
+                <p data-horf-profile-received-summary>{profilePersonal ? `${profilePersonal.received} horse ${profilePersonal.received === 1 ? "edition" : "editions"} received ${receivedScope}.` : `Received horses ${receivedScope}.`} Includes horses later sent on.</p>
                 {profilePersonal && <HorfReceivedBreakdown gifts={profilePersonal.giftHorsesReceived} trades={profilePersonal.tradeHorsesReceived} />}
                 {query.isPending ? <p role="status">Reading the received herd…</p> : hasError ? <Warning role="alert">The horse receipt ledger is unavailable. Try again shortly.</Warning> : profileReceived.length ? <ProfileHorseGrid data-horf-profile-received-gallery>
                   {profileReceived.map((receipt) => {
@@ -1746,7 +1751,7 @@ export function Horf() {
                   })}
                 </ProfileHorseGrid> : <LedgerPanel><h3>No received horses yet</h3><p>This rider has no recognized receipts {receivedScope}.</p></LedgerPanel>}
               </> : <>
-                <p>Every currently held token that passes Horf’s <Link href="/horf/info">Is It a Horse? Test</Link>, across mint dates. Balances come from Tezos Mainnet.</p>
+                <p>Horses this rider holds now, from every mint date. <Link href="/horf/info">How Horf recognizes a horse ↗</Link></p>
                 {profileMarshalQuery.data?.active && <Action data-horf-profile-approve-all type="button" disabled={profileApprovalBusy} onClick={() => void approveAllProfileHorses()}>{profileApprovalBusy ? "Checking the herd…" : "Approve all held horses"}</Action>}
                 {profileApprovalStatus && <p data-horf-profile-approval-progress role="status" aria-live="polite">{profileApprovalStatus}</p>}
                 {Object.entries(profileApprovalResults).filter(([, result]) => result.status === "failed").map(([key, result]) => <Warning key={key} data-horf-profile-approval-failure role="alert">{key}: {result.message}</Warning>)}
@@ -1760,7 +1765,7 @@ export function Horf() {
                       <div className="art">{resolveHorfHorseVideo(horse) ? <ProfileArt media={horse} name={name} uniqueThumbnails={profileMarshalQuery.data?.active ? undefined : profileThumbnails} card /> : <button className="art-open" type="button" aria-label={`View ${name} horse card`} onClick={() => setSelectedProfileHorse(horse)}><ProfileArt media={horse} name={name} uniqueThumbnails={profileMarshalQuery.data?.active ? undefined : profileThumbnails} card /></button>}</div>
                       <div className="copy"><h3><button type="button" onClick={() => setSelectedProfileHorse(horse)}>{name}</button></h3>{mintedSeason && <span className="mint-badge" data-horf-mint-badge><img src="/horf-art/horseshoe.svg" alt="" aria-hidden="true" />{mintedSeason.label}</span>}<p data-horf-edition-holdings>{holdingsText(horse.balance, horse.viewerBalance, Boolean(address))}</p><p>{shortAddress(horse.contract)} / #{horse.tokenId}</p><a href={objktTokenUrl(horse.contract, horse.tokenId)} target="_blank" rel="noopener noreferrer">View token on Objkt ↗</a><Action data-horf-profile-view-horse type="button" onClick={() => setSelectedProfileHorse(horse)}>View horse card</Action>{isApproved && <p data-horf-profile-approved>✦ Marshal approved</p>}{profileMarshalQuery.data?.active && !isApproved && <Action data-horf-profile-approve-horse type="button" disabled={profileApprovalBusy} onClick={() => void approveProfileHorse(horse)}>Approve this horse</Action>}</div>
                     </ProfileHorseCard>;
-                  })}</ProfileHorseGrid> : <LedgerPanel><h3>No qualifying horses on the scanned pages</h3><p>{profileHorsesQuery.hasNextPage ? "This wallet has more editions to check. Load the next page to keep looking." : "There are no current balances that pass the horse test for this wallet."}</p></LedgerPanel>}
+                  })}</ProfileHorseGrid> : <LedgerPanel><h3>No horses found yet</h3><p>{profileHorsesQuery.hasNextPage ? "Load more to keep looking through this rider’s wallet." : "This rider holds no horses that pass Horf’s horse test."}</p></LedgerPanel>}
                   {profileHorsesQuery.hasNextPage && <Action type="button" onClick={() => void profileHorsesQuery.fetchNextPage()} disabled={profileHorsesQuery.isFetchingNextPage}>{profileHorsesQuery.isFetchingNextPage ? "Rounding up more horses…" : "Load more horses"}</Action>}
                 </>}
               </>}
@@ -1789,7 +1794,7 @@ export function Horf() {
         {routeSection === "info" && <Section data-horf-region="horse-test-info" aria-label="Horf Is It a Horse Test">
           <SectionLabel>🐴 The Horf field guide</SectionLabel>
           <h2>Is It a Horse?</h2>
-          <p>Horf uses the same horse test for Open Range discovery and a trader’s “All horses held” profile tab. A Tezos Mainnet FA2 edition must be indexed by Objkt and be a whole token (zero or unset decimals). The profile shows qualifying editions the wallet currently holds.</p>
+          <p>The Open Range and trader profiles use the same test: an Objkt-listed Tezos token with whole editions and a qualifying mint tag. Profiles show what the wallet holds now.</p>
           <LedgerPanel><h3>Words that open the stable gate</h3><HorseTestList>
             <li>Objkt mint tags with whole-keyword matches: horse, horseart, horse art, horsetrade, horse trade, horse trader, horse trading, and horf.</li>
             <li>Neighvember and Horse of July mint tags, including year-suffixed campaign names. A word in the title or description alone does not qualify.</li>
@@ -1798,9 +1803,9 @@ export function Horf() {
           </HorseTestList></LedgerPanel>
           <LedgerPanel><h3>What counts as a trade?</h3><HorseTestList>
             <li>The horse edition must actually move between two different wallets on Tezos Mainnet during the selected trading season.</li>
-            <li>Horf ignores reverted transfers, marketplace or contract handoffs, non-positive amounts, and tokens with fractional decimals. The HORSE reward currency is excluded from horse trade counts.</li>
+            <li>Failed transfers, marketplace handoffs, fractional tokens, and HORSE rewards do not count as horse trades.</li>
             <li>A token’s mint date chooses its Open Range season. Its transfer date chooses which race season counts the ride.</li>
-            <li>Passing the horse test makes art discoverable and qualifying transfers countable. Marshal inspection is a separate approval before an edition enters inspected escrow.</li>
+            <li>Marshal approval is required to enter inspected escrow; the horse test alone does not grant it.</li>
           </HorseTestList></LedgerPanel>
           <p><Link href="/horf/open-range?season=all-horse-search">Search every qualifying horse on the Open Range →</Link></p>
         </Section>}
@@ -1808,7 +1813,7 @@ export function Horf() {
         {routeSection === "race" && <Section id="horf-race" data-horf-region="race" aria-label="Horse trader race leaderboard">
           <SectionLabel><img src="/horf-art/horseshoe.svg" alt="" aria-hidden="true" width="20" height="20" style={{ verticalAlign: "middle", marginRight: 5 }} />Midway race board</SectionLabel>
           <h2>Who’s out in front?</h2>
-          <p>Both riders score race activity when a horse moves. The sender earns 10 HORSE per qualifying edition. Completed return trades are counted separately.</p>
+          <p>Both riders gain race activity when a horse moves. Only the sender earns 10 HORSE.</p>
           <RaceFrame>
             <RaceHeader><span>Riders · {seasonDisplayName}</span><span>Finish line</span></RaceHeader>
             {leaderboard.length ? (
@@ -1937,8 +1942,8 @@ export function Horf() {
             </LedgerPanel>
           ) : (
             <>
-              <p>Showing {shortAddress(address)} · Tezos mainnet{countsProvisional ? " · provisional totals" : ""}</p>
-              <RuleNote>Race activity counts each qualifying horse transfer for its sender and recipient. Completed trades pair opposite sends; gifts do not count. Escrow claims and paid sales count when settled. “Owed” tracks social return rides.</RuleNote>
+              <p>Showing {shortAddress(address)}{countsProvisional ? " · still counting" : ""}</p>
+              <RuleNote>Both riders gain race activity when a horse moves. Completed trades pair return rides; gifts stay separate. Escrow swaps and sales count when settled. “Owed” tracks return rides.</RuleNote>
               {personal ? (
                 <>
                   <MetricStrip>
@@ -1964,7 +1969,7 @@ export function Horf() {
                           </li>
                         ))}
                       </ReceiptList>
-                    ) : <p>{countsProvisional ? "The scan is still checking which received horses need a return." : "Every received horse has a matching return ride, or no horses have arrived yet."}</p>}
+                    ) : <p>{countsProvisional ? "Still checking for return rides…" : "No horses waiting for a return ride."}</p>}
                   </Section>
                   <Ledger>
                     <TraderListPanel region="owed-to" title="Return rides you owe" description="Traders who sent you horses and are waiting for one back." rows={personal.owedTo} empty="No return rides are waiting on you." onSend={openQuickSend} onBatchSend={openBatchReturn} currentWallet={address} />
@@ -1986,13 +1991,13 @@ export function Horf() {
                           </li>
                         ))}
                       </ReceiptList>
-                    ) : <p>{countsProvisional ? "The scan has not found your recent horse transfers yet." : "No horse transfers for this wallet this season."}</p>}
+                    ) : <p>{countsProvisional ? "Still finding your recent rides…" : "No horse transfers this season."}</p>}
                   </Section>
                 </>
               ) : (
                 <LedgerPanel>
-                  <h3>{hasError ? "Ledger unavailable" : query.isPending || countsProvisional ? "Finding your horses…" : "No horse trades yet"}</h3>
-                  <p>{hasError ? "Retry the season ledger to load this wallet's horse trades." : query.isPending || countsProvisional ? "Your wallet history is still being checked. These counts are not final." : "This wallet has no qualifying horse transfers in the selected season. The race board is still open for discovering traders."}</p>
+                  <h3>{hasError ? "Stable unavailable" : query.isPending || countsProvisional ? "Finding your horses…" : "No horse trades yet"}</h3>
+                  <p>{hasError ? "Refresh to try again." : query.isPending || countsProvisional ? "Your totals may still change." : "No horse transfers in this season. Meet other riders on the race board."}</p>
                 </LedgerPanel>
               )}
             </>

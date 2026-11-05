@@ -107,7 +107,7 @@ test.describe("Horf Stable and trader profile", () => {
     await form.locator('input[value="marshal_only"]').check();
     await form.locator('[data-horf-stable-availability-submit]').click();
     await expect(stable).toContainText("My Mare marked available");
-    await expect(created.locator('[data-horf-stable-available-status]')).toContainText("Available for trade · 2 editions");
+    await expect(created.locator('[data-horf-stable-available-status]')).toContainText("Available · 2 editions");
     await received.locator('[data-horf-stable-mark-available]').click();
     await form.locator('[data-horf-stable-available-amount]').fill("1");
     await form.locator('[data-horf-stable-availability-submit]').click();
@@ -551,7 +551,7 @@ test.describe("Horf Stable and trader profile", () => {
     const stable = page.locator('[data-horf-region="personal-stable"]');
     const retry = stable.locator("[data-horf-stable-scan-retry]");
     await expect(retry).toBeVisible();
-    await expect(stable.locator("[data-horf-qualifying-horses]")).toContainText("Horse scan paused after 1 page");
+    await expect(stable.locator("[data-horf-qualifying-horses]")).toContainText("Horse search paused");
     await expect(stable.locator("[data-horf-stable-scan-complete]")).toHaveCount(0);
     await expect(stable).not.toContainText("No qualifying horses found in this wallet");
     expect(offsets).toContain(48);
