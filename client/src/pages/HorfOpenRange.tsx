@@ -35,7 +35,7 @@ type RangeHorse = {
   viewerBalance?: string | null;
   offers: Array<{ id: number; ownerAddress: string; ownerName?: string | null; amount: string; acceptedTokenPolicy: AcceptedTokenPolicy }>;
 };
-type RangePage = { season: Season; items: RangeHorse[]; nextCursor: string | null; hasMore: boolean; asOf: string | null };
+type RangePage = { season: Season; items: RangeHorse[]; nextCursor: string | null; hasMore: boolean; asOf: string | null; holderStatus?: "ready" | "stale" };
 
 const CURRENT_SEASON = "current-2026";
 
@@ -65,6 +65,7 @@ function parsePage(value: unknown): RangePage {
         !Array.isArray(item.offers)) ||
       typeof page.hasMore !== "boolean" ||
       (page.nextCursor !== null && typeof page.nextCursor !== "string") ||
+      (page.holderStatus !== undefined && page.holderStatus !== "ready" && page.holderStatus !== "stale") ||
       (page.hasMore && !page.nextCursor)) {
     throw new Error("The Open Range returned an invalid horse page. Refresh to try again.");
   }
@@ -429,6 +430,7 @@ export function HorfOpenRange() {
   const selectedOfferOwned = Boolean(address && offerWalletAddress === address && offerHorse && ownsHorse(offerHorse.viewerBalance));
   const shownSeason = pages[0]?.season ?? seasonsQuery.data?.season;
   const asOf = pages[0]?.asOf ?? null;
+  const holderStatusStale = pages.some((page) => page.holderStatus === "stale");
   const offersQuery = useQuery({
     queryKey: ["horf", "open-range-offers", address],
     queryFn: () => api.get<{ offers: RangeOffer[] }>(`/api/horf/open-range/offers?address=${encodeURIComponent(address!)}`),
@@ -651,6 +653,7 @@ export function HorfOpenRange() {
       </div></fieldset><small>{seasonKey === "all-seasons" ? "Horse trading season windows." : seasonKey === "all-horse-search" ? "All known horse keywords, any mint date." : shownSeason?.startsAt ? `${new Date(shownSeason.startsAt).toLocaleDateString()} – ${shownSeason.endsAt ? new Date(shownSeason.endsAt).toLocaleDateString() : "ongoing"}${shownSeason.inferred ? " · Archive dates are inferred." : ""}` : "Loading season dates…"}</small></div><Action type="button" onClick={() => { refreshHorseCache.current = true; logClientSystemEvent({ eventType: "horf.open_range.refreshed", message: "Open Range source refresh requested", metadata: { seasonKey } }); void rangeQuery.refetch().finally(() => { refreshHorseCache.current = false; }); }} disabled={rangeQuery.isFetching}>{rangeQuery.isFetching ? "Refreshing…" : "Refresh horses"}</Action></Toolbar>
       {rangeQuery.isPending && <Note role="status">Rounding up the season’s minted horses…</Note>}
       {rangeQuery.isError && <Note $error role="alert">{rangeQuery.error instanceof Error ? rangeQuery.error.message : "The Open Range is unavailable."} Refresh to try again.</Note>}
+      {holderStatusStale && <Note role="status">Holder check is delayed; last verified ownership shown.</Note>}
       <GalleryHeading><div><h2>{shownSeason?.label || "Horses on the range"}</h2><p>{horses.length} in view · frames show trades, wallet availability, and Marshal approval.</p></div>{asOf && <small>Indexed {new Date(asOf).toLocaleString()}</small>}</GalleryHeading>
       <Grid data-horf-open-range-grid tabIndex={-1}>{horses.map((horse, index) => {
         const art = marshalStatusQuery.data?.active ? horseArt(horse) : resolveHorfHorseCardArt(horse, uniqueThumbnails);

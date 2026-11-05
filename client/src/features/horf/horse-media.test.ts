@@ -17,6 +17,20 @@ test("video horse previews use the artifact route without treating video as an i
   assert.match(resolveHorfHorseArt(horse)?.src || "", /^\/api\/cache\/media\?/);
 });
 
+test("directory artifacts use their image thumbnail without trying HTML through image gateways", () => {
+  const horse = {
+    image: "ipfs://QmMakiumaThumbnail",
+    artifactUri: "ipfs://QmMakiumaDirectory",
+    mime: "application/x-directory",
+  };
+  const art = resolveHorfHorseArt(horse);
+  assert.match(art?.src || "", /^\/api\/cache\/media\?/);
+  assert.ok(!art?.src.includes("QmMakiumaDirectory"));
+  assert.ok(!art?.fallbackCandidates?.some((url) => url.includes("QmMakiumaDirectory")));
+  const cardArt = resolveHorfHorseCardArt(horse, new Set());
+  assert.match(cardArt?.src || "", /^\/api\/cache\/media\?/);
+});
+
 test("card previews use unique Objkt thumbnails and reserve exact artifacts for shared thumbnails", () => {
   const horses = [
     { contract: "KT1Horse", tokenId: "1", image: "ipfs://QmSharedThumbnail", artifactUri: "ipfs://QmExactFirst", mime: "image/png" },

@@ -40,9 +40,13 @@ export function uniqueHorfThumbnailIdentities(horses: readonly HorfThumbnailCand
 /** Use a small, token-specific Objkt preview on cards, with exact art as backup. */
 export function resolveHorfHorseCardArt(horse: HorfHorseMedia, uniqueThumbnails: ReadonlySet<string>): ResolvedThumbnail | null {
   const exact = resolveHorfHorseArt({ ...horse, image: null });
-  if (!horse.image || !uniqueThumbnails.has(thumbnailIdentity(horse.image))) return exact;
+  if (!horse.image) return exact;
+  if (!uniqueThumbnails.has(thumbnailIdentity(horse.image)) && exact) return exact;
   const thumbnail = resolveTokenThumbnail({ thumbnail: horse.image });
   if (!thumbnail) return exact;
+  // Some distinct token IDs share one Objkt thumbnail, but a directory or
+  // other non-image artifact leaves that thumbnail as the only image to show.
+  if (!exact) return thumbnail;
   return {
     src: thumbnail.src,
     fallbackCandidates: unique([
@@ -64,8 +68,9 @@ function unique(values: Array<string | undefined>): string[] {
 export function resolveHorfHorseArt(horse: HorfHorseMedia): ResolvedThumbnail | null {
   const thumbnail = horse.image ? resolveTokenThumbnail({ thumbnail: horse.image }) : null;
   const mime = horse.mime?.trim().toLowerCase() || "";
-  if (!horse.artifactUri || mime.startsWith("video/") || mime.startsWith("audio/") ||
-      mime.startsWith("text/") || mime === "application/pdf") return thumbnail;
+  // Directory artifacts serve HTML at IPFS gateways. Sending one to an <img>
+  // produces a cache 415, then needless failures across every gateway.
+  if (!horse.artifactUri || (mime && !mime.startsWith("image/"))) return thumbnail;
   const artifact = resolveArtifactUri(horse.artifactUri);
   if (!artifact) return thumbnail;
   return {

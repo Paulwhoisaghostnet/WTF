@@ -30,6 +30,57 @@ async function mockSeasons(page) {
 }
 
 test.describe("Horf Open Range", () => {
+  test("renders directory-based horses from image thumbnails without loading HTML artifacts", async ({ page, request }) => {
+    expect((await request.post("/__test/state", { data: { userRole: "anonymous" } })).ok()).toBeTruthy();
+    await mockSeasons(page);
+    await page.route("**/api/horf/inspectors/status", (route) => route.fulfill({
+      status: 200, contentType: "application/json", body: JSON.stringify({ active: false, role: null }),
+    }));
+    await page.route("**/api/horf/open-range?*", (route) => route.fulfill({
+      status: 200, contentType: "application/json", body: JSON.stringify({
+        season: current,
+        items: ["4", "5", "6"].map((tokenId) => horse(tokenId, {
+          image: "ipfs://QmMakiumaThumbnail", artifactUri: `ipfs://QmMakiumaDirectory${tokenId}`,
+          mime: "application/x-directory", name: "Makiuma",
+        })),
+        nextCursor: null, hasMore: false, asOf: now,
+      }),
+    }));
+    let artifactRequests = 0;
+    const mediaRequests = [];
+    await page.route(/\/api\/cache\/(?:media|artifact)\?/, (route) => {
+      if (route.request().url().includes("/api/cache/artifact")) artifactRequests += 1;
+      mediaRequests.push(route.request().url());
+      return route.fulfill({ status: 200, contentType: "image/jpeg",
+        path: "public/horf-art/horse-gallop-photo.jpg" });
+    });
+
+    await page.goto("/horf/open-range");
+    const previews = page.locator("[data-horf-open-range-horse] [data-horf-open-range-view-horse] img");
+    await expect(previews).toHaveCount(3);
+    for (const preview of await previews.all()) {
+      await expect(preview).toHaveAttribute("src", /^\/api\/cache\/media\?/);
+    }
+    expect(mediaRequests.length).toBeGreaterThan(0);
+    expect(artifactRequests).toBe(0);
+  });
+
+  test("labels cached ownership when the holder check is delayed", async ({ page, request }) => {
+    expect((await request.post("/__test/state", { data: { userRole: "anonymous" } })).ok()).toBeTruthy();
+    await mockSeasons(page);
+    await page.route("**/api/horf/inspectors/status", (route) => route.fulfill({
+      status: 200, contentType: "application/json", body: JSON.stringify({ active: false, role: null }),
+    }));
+    await page.route("**/api/horf/open-range?*", (route) => route.fulfill({
+      status: 200, contentType: "application/json", body: JSON.stringify({
+        season: current, items: [horse("6")], nextCursor: null, hasMore: false,
+        asOf: now, holderStatus: "stale",
+      }),
+    }));
+    await page.goto("/horf/open-range");
+    await expect(page.locator("[data-horf-open-range]")).toContainText("Holder check is delayed; last verified ownership shown.");
+  });
+
   test("prioritizes the first horse preview and defers later artwork", async ({ page, request }) => {
     expect((await request.post("/__test/state", { data: { userRole: "anonymous" } })).ok()).toBeTruthy();
     await mockSeasons(page);

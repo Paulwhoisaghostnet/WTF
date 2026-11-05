@@ -14770,3 +14770,23 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: A rider's race rank includes receipts, but only qualifying sends earn HORSE. Accrued rewards, vault claims, and HORSE received from other people are different amounts. Adding the received breakdown in another profile region also made an older browser selector match multiple chips.
 
 **Rule**: On public profiles, show the viewed wallet's season transfer record beside the exact current-season reward ledger and its earning sources; label claimable and claimed separately. In browser proofs, scope repeated stats and receipt chips to their owning panel.
+
+---
+
+## 2026-11-05 - Do not render IPFS directory artifacts as images
+
+**What happened**: Open Range treated Makiuma's `application/x-directory` artifacts as image URLs. The cache correctly rejected each HTML directory with 415, then the card retried seven IPFS gateways, filling the browser console with blocked, 403, and DNS errors. The three token IDs shared one valid Objkt image thumbnail, which the card had previously suppressed in favor of exact artifacts.
+
+**Why it mattered**: A single unsuitable artifact could multiply into many failed requests and a generic photo even though a usable token thumbnail was available.
+
+**Rule**: Use exact artifacts in image elements only for image MIME or absent MIME; use the token thumbnail for other MIME types. When a shared thumbnail is the only renderable image, show it instead of probing a non-image artifact. Verify the rendered card makes no artifact request for a directory token.
+
+---
+
+## 2026-11-05 - Recheck current holders after cached mint discovery
+
+**What happened**: Open Range correctly found three distinct Makiuma horse mint IDs, but IDs 4 and 5 had been burned into the Tezos burn wallet before ID 6 was reminted. Its durable mint-page cache had no current-holder filter, so all three continued to appear as live horse cards.
+
+**Why it mattered**: Mint history and current availability are different facts. A page can retain genuine historical mints while showing inaccessible burned editions as possible horses to inspect or trade.
+
+**Rule**: Keep exact mint identities in discovery history, then check current Mainnet burn-wallet balance against total supply on each cached page read. Coalesce and cache holder verdicts for one chain block, retain verified burn exclusions during an index outage with a visible stale status, and use exact contract-group queries to avoid cross-product scans.

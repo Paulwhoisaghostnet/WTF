@@ -5,6 +5,7 @@ import { horfGiftTransfers, horfInspectionApprovals, horfInspectionRequests, hor
 import { validOpenRangeCursor } from "../features/horf/open-range-source";
 import { cachedOpenRangeMintPage } from "../features/horf/open-range-cache";
 import { visibleOpenRangeItems } from "../features/horf/open-range-visibility";
+import { visibleNonBurnedOpenRangeItems } from "../features/horf/open-range-holders";
 import { HORF_SEASONS, resolveHorfSeason } from "../features/horf/seasons";
 import { isTezosWallet } from "../features/horf/model";
 import { assertCurrentOwner, HorfTokenNotOwnedError } from "../features/horf/inspections";
@@ -12,8 +13,6 @@ import { HorseTokenIneligibleError, HorseTokenNotFoundError, inspectHorseToken, 
 import { requireHorfCsrf, requireHorfWallet } from "../features/horf/wallet-scope";
 import { loadHorfTraderNames } from "../features/horf/trader-names";
 import { editionKey, getTraderEditionCounts } from "../features/horf/trader-editions";
-import { horfMainnetIndex } from "../features/horf/mainnet-index";
-import { HORF_MAINNET_CHAIN_ID } from "../features/horf/stables/config";
 import { currentHorfRole } from "../features/horf/roles";
 import { excludedHorseTokenKeys } from "../features/horf/nonhorse-reports";
 
@@ -64,7 +63,8 @@ router.get("/api/horf/open-range", async (req, res) => {
       season: selected || { key: mode, label: mode === "all-seasons" ? "All Horse Seasons" : "All Horse Search",
         startsAt: null, endsAt: null },
       items: [], nextCursor: page.nextCursor, hasMore: page.hasMore,
-      asOf: page.asOf, scannedSourceRows, cacheStatus: page.cacheStatus, balanceStatus: "ready",
+      asOf: page.asOf, scannedSourceRows, cacheStatus: page.cacheStatus,
+      holderStatus: "ready", balanceStatus: "ready",
     });
     const [approvalRows, excluded] = await Promise.all([db.select({ contract: horfInspectionApprovals.tokenContract,
       tokenId: horfInspectionApprovals.tokenId })
@@ -73,19 +73,19 @@ router.get("/api/horf/open-range", async (req, res) => {
           eq(horfInspectionApprovals.tokenContract, item.contract), eq(horfInspectionApprovals.tokenId, item.tokenId)))))),
       excludedHorseTokenKeys(page.items)]);
     const approved = new Set(approvalRows.map((row) => key(row.contract, row.tokenId)));
-    const items = visibleOpenRangeItems(page.items, approved, marshalPatrol)
+    const eligibleItems = visibleOpenRangeItems(page.items, approved, marshalPatrol)
       .filter((item) => !excluded.has(key(item.contract, item.tokenId)));
+    const { items, holderStatus } = await visibleNonBurnedOpenRangeItems(eligibleItems);
     if (!items.length) return res.json({
       season: selected || { key: mode, label: mode === "all-seasons" ? "All Horse Seasons" : "All Horse Search",
         startsAt: null, endsAt: null },
       items: [], nextCursor: page.nextCursor, hasMore: page.hasMore,
-      asOf: page.asOf, scannedSourceRows, cacheStatus: page.cacheStatus, balanceStatus: "ready",
+      asOf: page.asOf, scannedSourceRows, cacheStatus: page.cacheStatus,
+      holderStatus, balanceStatus: "ready",
     });
     let viewerBalances: Map<string, string> | null = null;
     if (typeof viewer === "string") {
       try {
-        const head = await horfMainnetIndex.getJson<{ chainId?: string }>("/head");
-        if (head.chainId !== HORF_MAINNET_CHAIN_ID) throw new Error("Open Range balances require the Tezos Mainnet index");
         viewerBalances = await getTraderEditionCounts(viewer, items, BALANCE_PAGE_SIZE);
       } catch (error) {
         console.warn("[horf] Open Range viewer balance unavailable:", error);
@@ -133,7 +133,7 @@ router.get("/api/horf/open-range", async (req, res) => {
         offers: offersByToken.get(key(item.contract, item.tokenId)) || [],
       })),
       nextCursor: page.nextCursor, hasMore: page.hasMore,
-      asOf: page.asOf, scannedSourceRows, cacheStatus: page.cacheStatus,
+      asOf: page.asOf, scannedSourceRows, cacheStatus: page.cacheStatus, holderStatus,
       balanceStatus: viewer && !viewerBalances ? "unavailable" : "ready",
     });
   } catch (error) {
