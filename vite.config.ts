@@ -54,6 +54,17 @@ export default defineConfig({
           });
         },
       },
+      "^/horf-production-api/api/horf/rooms$": {
+        target: "https://wtfos.app/",
+        changeOrigin: true,
+        rewrite: (url: string) => url.replace(/^\/horf-production-api/, ""),
+        configure: (proxy) => {
+          proxy.on("proxyReq", (request) => {
+            request.removeHeader("cookie");
+            request.removeHeader("authorization");
+          });
+        },
+      },
     },
   },
   build: {

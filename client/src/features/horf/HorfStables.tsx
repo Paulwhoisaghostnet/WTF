@@ -427,10 +427,13 @@ export function HorfStables({
   address,
   connectWallet,
   isConnecting,
+  legacyReadOnly = false,
 }: {
   address: string | null;
   connectWallet: () => Promise<void>;
   isConnecting: boolean;
+  /** Old Mainnet escrow remains claimable and cancellable after new deposits close. */
+  legacyReadOnly?: boolean;
 }) {
   const qc = useQueryClient();
   const [mode, setMode] = useState<HorfStableMode>(0);
@@ -454,21 +457,23 @@ export function HorfStables({
   const depositPanelRef = useRef<HTMLDivElement>(null);
 
   const snapshotQuery = useQuery({
-    queryKey: ["horf", "stables-market", address],
-    queryFn: () => api.get<StableSnapshot>(`/api/horf/stables?market=1${address ? `&address=${encodeURIComponent(address)}` : ""}`),
+    queryKey: ["horf", legacyReadOnly ? "stables-legacy" : "stables-market", address],
+    queryFn: () => api.get<StableSnapshot>(legacyReadOnly
+      ? `/api/horf/stables${address ? `?address=${encodeURIComponent(address)}` : ""}`
+      : `/api/horf/stables?market=1${address ? `&address=${encodeURIComponent(address)}` : ""}`),
     refetchOnWindowFocus: true,
   });
   const snapshot = snapshotQuery.data;
   const managementQuery = useQuery({
     queryKey: ["horf", "stables-management", address],
     queryFn: () => api.get<StableSnapshot>(`/api/horf/stables?address=${encodeURIComponent(address!)}`),
-    enabled: Boolean(address && showManagement),
+    enabled: Boolean(address && showManagement && !legacyReadOnly),
     refetchOnWindowFocus: true,
   });
   const configured = !snapshotQuery.isError && snapshot?.status === "ready" && snapshot.network === "mainnet" &&
     snapshot.chainId === HORF_STABLES_CHAIN_ID &&
     Boolean(snapshot.contractAddress && /^KT1[1-9A-HJ-NP-Za-km-z]{33}$/.test(snapshot.contractAddress));
-  const depositReady = configured && snapshot?.permitReady === true && snapshot?.custodyReady === true;
+  const depositReady = !legacyReadOnly && configured && snapshot?.permitReady === true && snapshot?.custodyReady === true;
   const contract = configured ? { contractAddress: snapshot!.contractAddress!, chainId: snapshot!.chainId } : null;
   const ownedQuery = useInfiniteQuery({
     queryKey: ["horf", "trader-profile-horses", address],
@@ -476,14 +481,14 @@ export function HorfStables({
       .then((page) => parseOwnedHorsePage(page, address!)),
     initialPageParam: 0,
     getNextPageParam: (lastPage) => lastPage.pagination.hasMore ? lastPage.pagination.nextOffset : undefined,
-    enabled: Boolean(address && showManagement),
+    enabled: Boolean(address && showManagement && !legacyReadOnly),
     refetchOnWindowFocus: true,
   });
   const scannedOwnedPages = ownedQuery.data?.pages.length ?? 0;
   useEffect(() => {
-    if (!address || !showManagement || !ownedQuery.hasNextPage || ownedQuery.isFetching || ownedQuery.isError) return;
+    if (!address || legacyReadOnly || !showManagement || !ownedQuery.hasNextPage || ownedQuery.isFetching || ownedQuery.isError) return;
     void ownedQuery.fetchNextPage();
-  }, [address, showManagement, scannedOwnedPages, ownedQuery.hasNextPage, ownedQuery.isFetching, ownedQuery.isError]);
+  }, [address, legacyReadOnly, showManagement, scannedOwnedPages, ownedQuery.hasNextPage, ownedQuery.isFetching, ownedQuery.isError]);
   const ownedTokens = useMemo(
     () => (ownedQuery.data?.pages.flatMap((page) => page.items) ?? []).filter((token) =>
       token.approvedForMarshalsMarket && isPositive(token.balance) &&
@@ -688,7 +693,7 @@ export function HorfStables({
         onSubmitted: (hash) => { submittedHash = hash; handlers.onSubmitted(hash); },
       });
       setSuccess({ action: "Horse claim confirmed", opHash });
-      logClientSystemEvent({ eventType: "horf.stable.claimed", message: "Horse claimed from Horf Stable", metadata: { mode: activeStable.key, listingId: listing.id, opHash } });
+      logClientSystemEvent({ eventType: "horf.stable.claimed", message: "Horse claimed from Horf Stable", metadata: { mode: STABLES[listing.mode].key, listingId: listing.id, opHash } });
       void snapshotQuery.refetch();
       if (showManagement) void managementQuery.refetch();
       void qc.invalidateQueries({ queryKey: ["horf", "horse-rewards"] });
@@ -714,7 +719,7 @@ export function HorfStables({
         onSubmitted: (hash) => { submittedHash = hash; handlers.onSubmitted(hash); },
       });
       setSuccess({ action: `${amount} ${amount === "1" ? "edition" : "editions"} returned to your wallet`, opHash });
-      logClientSystemEvent({ eventType: "horf.stable.cancelled", message: "Horse listing cancelled in Horf Stable", metadata: { mode: activeStable.key, listingId: listing.id, amount, opHash } });
+      logClientSystemEvent({ eventType: "horf.stable.cancelled", message: "Horse listing cancelled in Horf Stable", metadata: { mode: STABLES[listing.mode].key, listingId: listing.id, amount, opHash } });
       void snapshotQuery.refetch();
       if (showManagement) void managementQuery.refetch();
     } catch (error) {
@@ -722,6 +727,63 @@ export function HorfStables({
     } finally {
       setPending(null);
     }
+  }
+
+  if (legacyReadOnly) {
+    const legacyListings = (snapshot?.listings ?? []).filter((listing) => isPositive(listing.remaining));
+    return <Board id="horf-legacy-stables" data-horf-region="legacy-stables" aria-label="Legacy Horf escrow recovery">
+      <Header>
+        <div>
+          <Eyebrow>Old escrow · Tezos Mainnet</Eyebrow>
+          <h2>Legacy stable recovery</h2>
+          <p>New deposits are closed. Existing claim credits and owner cancellations still work.</p>
+        </div>
+        <SmallButton type="button" onClick={() => void snapshotQuery.refetch()} disabled={snapshotQuery.isFetching}>Refresh old escrow</SmallButton>
+      </Header>
+      {snapshotQuery.isPending && <Status role="status">Reading the old stable contract…</Status>}
+      {snapshotQuery.isError && <Status $warn role="alert">The old escrow ledger is unavailable. Refresh before claiming or cancelling.</Status>}
+      {snapshot?.status === "unconfigured" && <Status $warn role="alert">The old Mainnet escrow contract is not configured. Existing horses cannot be recovered here until its connection is restored.</Status>}
+      {snapshot?.status === "ready" && !configured && <Status $warn role="alert">The old escrow contract does not match Tezos Mainnet. Transactions are disabled.</Status>}
+      {configured && <Status role="status">Old contract <a href={`https://tzkt.io/${contract!.contractAddress}`} target="_blank" rel="noopener noreferrer">{shortAddress(contract!.contractAddress)}</a> · {formatSnapshot(snapshot!.asOf)}</Status>}
+      {!address && <Status $warn>Connect your wallet to use an existing claim credit or return horses you listed. <SmallButton type="button" onClick={() => void connectWallet()} disabled={isConnecting}>{isConnecting ? "Connecting…" : "Connect wallet"}</SmallButton></Status>}
+      {address && <CreditStrip data-horf-legacy-credits>
+        <span>Unused Reciprocal claims: {snapshot?.reciprocalCredits ?? "Loading…"}</span>
+        <span>Unused former Group claims: {snapshot?.groupCredits ?? "Loading…"}</span>
+      </CreditStrip>}
+      <Status $warn data-horf-legacy-risk-note>Historical horse listings may no longer have Marshal approval. Check the token and trader before claiming.</Status>
+      <Panel data-horf-legacy-listings>
+        <Eyebrow>Still in old escrow</Eyebrow>
+        <h3>Remaining horses</h3>
+        {legacyListings.length ? <ListingList>{legacyListings.map((listing) => {
+          const own = address === listing.owner;
+          const alreadyClaimed = listing.mode === 2 && listing.claimedByWallet === true;
+          const hasCredit = listing.mode === 0 ? creditsAboveZero(snapshot?.reciprocalCredits)
+            : listing.mode === 2 ? creditsAboveZero(snapshot?.groupCredits) : true;
+          const modeLabel = listing.mode === 0 ? "Reciprocal" : listing.mode === 1 ? "Honor" : "Former Group";
+          return <li key={listing.id} data-horf-legacy-listing data-horf-legacy-listing-id={listing.id}>
+            <StableHorsePreview listing={listing} uniqueThumbnails={uniqueThumbnails} />
+            <ListingCopy>
+              <strong><a href={tokenUrl(listing.tokenContract, listing.tokenId)} target="_blank" rel="noopener noreferrer">{listing.token?.name?.trim() || `Horse token #${listing.tokenId}`}</a> · {listing.remaining} {listing.remaining === "1" ? "edition" : "editions"} left</strong>
+              <small>{modeLabel} listing #{listing.id} · offered by <a href={`https://objkt.com/profile/${encodeURIComponent(listing.owner)}`} target="_blank" rel="noopener noreferrer">{own ? "you" : shortAddress(listing.owner)}</a></small>
+              {own ? <>
+                <ListingActions>
+                  <label>Return editions<input aria-label={`Return editions from legacy listing ${listing.id}`} inputMode="numeric" pattern="[0-9]+" value={cancelAmounts[listing.id] ?? listing.remaining} onChange={(event) => setCancelAmounts((current) => ({ ...current, [listing.id]: event.target.value }))} disabled={!configured || busy} /></label>
+                  <SmallButton data-horf-legacy-cancel type="button" onClick={() => void cancel(listing)} disabled={!configured || busy}>Return my editions</SmallButton>
+                </ListingActions>
+                {listing.mode !== 1 && <p>The old contract can return editions only while their claim credits remain unspent.</p>}
+              </> : !address
+                ? <SmallButton type="button" onClick={() => void connectWallet()} disabled={isConnecting}>Connect wallet to claim</SmallButton>
+                : alreadyClaimed ? <p>Already claimed this token with this wallet.</p>
+                : hasCredit ? <SmallButton data-horf-legacy-claim type="button" $strong onClick={() => void claim(listing)} disabled={!configured || busy}>Claim 1 horse</SmallButton>
+                : <p>No unused claim credit on this old contract. New deposits are closed.</p>}
+            </ListingCopy>
+          </li>;
+        })}</ListingList> : <p>{snapshotQuery.isPending ? "Reading old listings…" : snapshotQuery.isError ? "Old listings unavailable." : "No horse editions remain in this old escrow."}</p>}
+      </Panel>
+      {pending && <Status role="status" aria-live="polite">{pendingLabel(pending)} {pending.opHash && <a href={explorerUrl(pending.opHash)} target="_blank" rel="noopener noreferrer">View submitted transaction</a>}</Status>}
+      {actionError && <Status $warn role="alert">{actionError}</Status>}
+      {success && <Status role="status">{success.action}. <a href={explorerUrl(success.opHash)} target="_blank" rel="noopener noreferrer">View Tezos transaction</a>. The old escrow ledger may take a moment to update.</Status>}
+    </Board>;
   }
 
   return (

@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import { bigint, bigserial, boolean, customType, index, integer, jsonb, pgTable, primaryKey, smallint, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/pg-core";
 import { users } from "./schema-core";
 
@@ -61,6 +62,34 @@ export const horfStableClaimEvents = pgTable(
 
 /** Durable TzKT cursor, separate from Objkt's direct-wallet season cursor. */
 export const horfStableClaimSync = pgTable("horf_stable_claim_sync", {
+  contractAddress: text("contract_address").primaryKey(),
+  cursor: bigint("cursor", { mode: "number" }).notNull().default(0),
+  status: text("status").notNull().default("syncing"),
+  asOf: timestamp("as_of", { withTimezone: true }),
+  error: text("error"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Confirmed V3 claim and swap events; escrow deposits are not settlements. */
+export const horfRoomSettlementEvents = pgTable("horf_room_settlement_events", {
+  contractAddress: text("contract_address").notNull(),
+  tzktEventId: bigint("tzkt_event_id", { mode: "number" }).notNull(),
+  occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull(),
+  operationHash: text("operation_hash").notNull(),
+  mode: smallint("mode").notNull(),
+  ownerAddress: text("owner_address").notNull(),
+  claimantAddress: text("claimant_address").notNull(),
+  outputContract: text("output_contract").notNull(),
+  outputTokenId: text("output_token_id").notNull(),
+  inputContract: text("input_contract"),
+  inputTokenId: text("input_token_id"),
+}, (table) => [
+  primaryKey({ columns: [table.contractAddress, table.tzktEventId] }),
+  index("horf_room_settlement_contract_time_idx").on(table.contractAddress, table.occurredAt),
+  index("horf_room_settlement_operation_idx").on(table.operationHash),
+]);
+
+export const horfRoomSettlementSync = pgTable("horf_room_settlement_sync", {
   contractAddress: text("contract_address").primaryKey(),
   cursor: bigint("cursor", { mode: "number" }).notNull().default(0),
   status: text("status").notNull().default("syncing"),
@@ -208,6 +237,36 @@ export const horfOpenRangeOffers = pgTable("horf_open_range_offers", {
 }, (table) => [
   uniqueIndex("horf_open_range_offers_owner_token_uq").on(table.ownerWalletAddress, table.tokenContract, table.tokenId),
   index("horf_open_range_offers_token_active_idx").on(table.tokenContract, table.tokenId, table.active),
+]);
+
+/** Wallet-held availability-sign proposals; escrow states require Mainnet proof. */
+export const horfTradeOfferMessages = pgTable("horf_trade_offer_messages", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  signId: bigint("sign_id", { mode: "number" }).notNull().references(() => horfOpenRangeOffers.id),
+  offererWalletAddress: text("offerer_wallet_address").notNull(),
+  ownerWalletAddress: text("owner_wallet_address").notNull(),
+  requestedTokenContract: text("requested_token_contract").notNull(),
+  requestedTokenId: text("requested_token_id").notNull(),
+  offeredTokenContract: text("offered_token_contract").notNull(),
+  offeredTokenId: text("offered_token_id").notNull(),
+  message: text("message"),
+  status: text("status").notNull().default("proposed"),
+  declineReason: text("decline_reason"),
+  cancelledByWalletAddress: text("cancelled_by_wallet_address"),
+  privateListingId: text("private_listing_id"),
+  acceptOperationHash: text("accept_operation_hash"),
+  fulfillOperationHash: text("fulfill_operation_hash"),
+  cancelOperationHash: text("cancel_operation_hash"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  index("horf_trade_offer_messages_incoming_idx").on(table.ownerWalletAddress, table.createdAt),
+  index("horf_trade_offer_messages_outgoing_idx").on(table.offererWalletAddress, table.createdAt),
+  uniqueIndex("horf_trade_offer_messages_active_uq")
+    .on(table.signId, table.offererWalletAddress, table.offeredTokenContract, table.offeredTokenId)
+    .where(sql`${table.status} IN ('proposed', 'accepted')`),
+  uniqueIndex("horf_trade_offer_messages_private_listing_uq")
+    .on(table.privateListingId).where(sql`${table.privateListingId} IS NOT NULL`),
 ]);
 
 /** One current-season HORSE entitlement per canonical outbound event and sender. */

@@ -10,8 +10,8 @@ const archiveSeason = { key: "neighvember-2025", startsAt: "2025-11-01T00:00:00.
 const allTimeSeason = { key: "all-time", startsAt: "2023-07-30T00:00:00.000Z", endsAt: null, label: "All time", inferred: true };
 const horsePortrait = readFileSync("public/horf-art/horse-portrait-photo.jpg");
 
-function json(route, body) {
-  return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(body) });
+function json(route, body, status = 200) {
+  return route.fulfill({ status, contentType: "application/json", body: JSON.stringify(body) });
 }
 
 async function mockSeason(page, getRiderName = () => null, includeRider = true) {
@@ -45,6 +45,138 @@ async function mockConnectedWallet(page, onTokenRead = () => {}) {
 }
 
 test.describe("Horf Stable and trader profile", () => {
+  test("marks created and received horses available with an explicit quantity and handles proposal replies", async ({ page, request }) => {
+    expect((await request.post("/__test/state", { data: { userRole: "admin" } })).ok()).toBeTruthy();
+    await mockConnectedWallet(page);
+    await mockSeason(page);
+    await page.route(/\/api\/horf\/traders\/[^/]+\/profile\?season=current-2026$/, (route) => json(route, {
+      address: wallet, seasonKey: season.key, imageUrl: null, description: "", updatedAt: null,
+      username: null, displayName: null, usernameSource: "wallet", canEditUsername: true,
+    }));
+    await page.route(/\/api\/horf\/traders\/[^/]+\/horses(?:\?.*)?$/, (route) => json(route, {
+      address: wallet, items: [
+        { contract, tokenId: "41", balance: "3", name: "My Mare", image: "/horf-art/horse-gallop-photo.jpg", creatorAddress: wallet },
+        { contract, tokenId: "42", balance: "2", name: "Received Pinto", image: "/horf-art/horse-beach-photo.jpg", creatorAddress: firstReturnWallet },
+      ], pagination: { hasMore: false, nextOffset: 2 },
+    }));
+    const posts = [];
+    await page.route("**/api/horf/open-range/offers?*", (route) => json(route, { offers: posts.map((post, index) => ({ ...post, id: index + 1 })) }));
+    await page.route("**/api/horf/open-range/offers", (route) => {
+      posts.push(route.request().postDataJSON());
+      return json(route, { id: posts.length });
+    });
+    await page.route("**/api/horf/open-range/offers/1", (route) => {
+      posts.splice(0, 1);
+      return route.fulfill({ status: 204, body: "" });
+    });
+    await page.route("**/api/horf/rooms?*", (route) => json(route, { status: "ready", network: "mainnet", chainId: "NetXdQprcVkpaWU",
+      contractAddress: "KT1U4p17VUNcinntAzUULBhzpPK7f2a4Ht4P", permitReady: true,
+      listings: [{ id: "5", mode: 2, tokenContract: contract, tokenId: "41", publicVisible: true }] }));
+    await page.route("**/api/horf/horse-market/listings", (route) => json(route, { listings: [{ id: "8", tokenContract: contract, tokenId: "42" }] }));
+    const incoming = [{ id: 9, signId: 1, offererAddress: firstReturnWallet, ownerAddress: wallet,
+      requestedTokenContract: contract, requestedTokenId: "41", offeredTokenContract: contract,
+      offeredTokenId: "77", message: "Trade, pardner?", status: "proposed", signActive: true,
+      privateListingId: null, acceptOperationHash: null, fulfillOperationHash: null, declineReason: null,
+      createdAt: "2026-11-05T12:00:00Z", updatedAt: "2026-11-05T12:00:00Z" }];
+    const outgoing = [{ ...incoming[0], id: 10, ownerAddress: secondReturnWallet, offererAddress: wallet,
+      signId: 2, status: "proposed" }];
+    await page.route("**/api/horf/trade-offers?*", (route) => json(route, {
+      offers: new URL(route.request().url()).searchParams.get("box") === "incoming" ? incoming : outgoing,
+    }));
+    await page.route("**/api/horf/trade-offers/9/decline", (route) => {
+      expect(route.request().postDataJSON()).toEqual({ address: wallet });
+      incoming[0].status = "declined"; return json(route, { offer: incoming[0] });
+    });
+    await page.route("**/api/horf/trade-offers/10/cancel", (route) => {
+      expect(route.request().postDataJSON()).toEqual({ address: wallet });
+      outgoing[0].status = "cancelled"; return json(route, { offer: outgoing[0] });
+    });
+
+    await page.goto("/horf/stable?season=current-2026");
+    const stable = page.locator('[data-horf-region="personal-stable"]');
+    const created = stable.locator('[data-horf-stable-created] [data-horf-stable-horse]');
+    const received = stable.locator('[data-horf-stable-received] [data-horf-stable-horse]');
+    await expect(created).toHaveCount(1);
+    await expect(received).toHaveCount(1);
+    await expect(created.locator('[data-horf-stable-for-trade-now]')).toHaveAttribute("href", /market=outlaw&outlaw=rooms&listing=5$/);
+    await expect(received.locator('[data-horf-stable-for-trade-now]')).toHaveAttribute("href", /market=horse4horse&listing=8$/);
+    await created.locator('[data-horf-stable-mark-available]').click();
+    const form = stable.locator('[data-horf-stable-availability]');
+    await expect(form.locator('[data-horf-stable-available-amount]')).toHaveValue("0");
+    await form.locator('[data-horf-stable-available-amount]').fill("2");
+    await form.locator('input[value="marshal_only"]').check();
+    await form.locator('[data-horf-stable-availability-submit]').click();
+    await expect(stable).toContainText("My Mare marked available");
+    await expect(created.locator('[data-horf-stable-available-status]')).toContainText("Available for trade · 2 editions");
+    await received.locator('[data-horf-stable-mark-available]').click();
+    await form.locator('[data-horf-stable-available-amount]').fill("1");
+    await form.locator('[data-horf-stable-availability-submit]').click();
+    expect(posts).toEqual([
+      { address: wallet, tokenContract: contract, tokenId: "41", amount: "2", acceptedTokenPolicy: "marshal_only" },
+      { address: wallet, tokenContract: contract, tokenId: "42", amount: "1", acceptedTokenPolicy: "any_qualifying" },
+    ]);
+    await created.locator('[data-horf-stable-remove-availability]').click();
+    await expect(created.locator('[data-horf-stable-available-status]')).toHaveCount(0);
+    const inbox = stable.locator('[data-horf-trade-inbox]');
+    await expect(inbox.locator('[data-horf-trade-incoming] [data-horf-trade-offer]')).toHaveCount(1);
+    await inbox.locator('[data-horf-trade-incoming] [data-horf-trade-decline]').click();
+    await expect(inbox.locator('[data-horf-trade-incoming] [data-horf-trade-offer]')).toContainText("declined");
+    await inbox.locator('[data-horf-trade-outgoing] [data-horf-trade-cancel]').click();
+    await expect(inbox.locator('[data-horf-trade-outgoing] [data-horf-trade-offer]')).toContainText("cancelled");
+  });
+
+  test("restores a confirmed private escrow proof and opens its pinned horse terms", async ({ page, request }) => {
+    expect((await request.post("/__test/state", { data: { userRole: "admin" } })).ok()).toBeTruthy();
+    await mockConnectedWallet(page);
+    await mockSeason(page);
+    await page.addInitScript(({ address }) => window.localStorage.setItem(`horf:confirmed-trade-proof:${address}`,
+      JSON.stringify([{ id: 9, kind: "accept", operationHash: "ooConfirmedHorseDeposit" }])), { address: wallet });
+    const incoming = { id: 9, signId: 1, offererAddress: firstReturnWallet, ownerAddress: wallet,
+      requestedTokenContract: contract, requestedTokenId: "41", offeredTokenContract: contract,
+      offeredTokenId: "77", message: null, status: "proposed", signActive: true,
+      privateListingId: null, acceptOperationHash: null, fulfillOperationHash: null, declineReason: null,
+      createdAt: "2026-11-05T12:00:00Z", updatedAt: "2026-11-05T12:00:00Z" };
+    await page.route("**/api/horf/trade-offers?*", (route) => json(route, {
+      offers: new URL(route.request().url()).searchParams.get("box") === "incoming" ? [incoming] : [],
+    }));
+    let proofCalls = 0;
+    await page.route("**/api/horf/trade-offers/9/accept", (route) => {
+      proofCalls += 1;
+      expect(route.request().postDataJSON()).toEqual({ address: wallet, operationHash: "ooConfirmedHorseDeposit" });
+      if (proofCalls === 1) return json(route, { error: "Indexer is catching up" }, 409);
+      incoming.status = "accepted"; incoming.privateListingId = "19";
+      return json(route, { offer: incoming });
+    });
+    const privateEntry = { listing: { id: "19", mode: 3, owner: wallet, tokenContract: contract,
+      tokenId: "41", submitted: "1", remaining: "1", claimedByWallet: false },
+      terms: { offerer: firstReturnWallet, inputTokenContract: contract, inputTokenId: "77" } };
+    await page.route("**/api/horf/rooms/private?*", (route) => json(route, { contractAddress: "KT1U4p17VUNcinntAzUULBhzpPK7f2a4Ht4P",
+      chainId: "NetXdQprcVkpaWU", listings: [privateEntry] }));
+    await page.route("**/api/horf/rooms/private/19?*", (route) => json(route, { ...privateEntry,
+      token: { name: "My Mare", image: "/horf-art/horse-gallop-photo.jpg" } }));
+    await page.route("**/api/horf/rooms?*", (route) => json(route, { status: "ready", network: "mainnet", chainId: "NetXdQprcVkpaWU",
+      contractAddress: "KT1U4p17VUNcinntAzUULBhzpPK7f2a4Ht4P", permitReady: true, listings: [] }));
+    await page.route(/\/api\/horf\/traders\/[^/]+\/horses(?:\?.*)?$/, (route) => json(route, {
+      address: wallet, items: [], pagination: { hasMore: false, nextOffset: 0 },
+    }));
+
+    await page.goto("/horf/stable?season=current-2026");
+    const inbox = page.locator('[data-horf-trade-inbox]');
+    await expect.poll(() => proofCalls).toBe(1);
+    await expect(inbox.locator('[data-horf-trade-record-proof]')).toBeVisible();
+    await expect(inbox.locator('[data-horf-private-unmatched]')).toHaveCount(1);
+    await expect.poll(() => page.evaluate((address) => JSON.parse(window.localStorage.getItem(`horf:confirmed-trade-proof:${address}`) || "[]").length, wallet)).toBe(1);
+    await inbox.locator('[data-horf-trade-record-proof]').click();
+    await expect.poll(() => proofCalls).toBe(2);
+    await expect(inbox.locator('[data-horf-private-unmatched]')).toHaveCount(0);
+    const privateLink = inbox.locator('[data-horf-private-link]');
+    await expect(privateLink).toBeVisible();
+    await privateLink.click();
+    await expect(inbox.locator('[data-horf-private-detail]')).toContainText("Only horse #77");
+    await expect(inbox.locator('[data-horf-private-return]')).toBeVisible();
+    await expect.poll(() => page.evaluate((address) => window.localStorage.getItem(`horf:confirmed-trade-proof:${address}`), wallet)).toBeNull();
+  });
+
   test("waits to attach a Stable video source until its horse card is visible", async ({ page, request }) => {
     expect((await request.post("/__test/state", { data: { userRole: "admin" } })).ok()).toBeTruthy();
     await page.setViewportSize({ width: 390, height: 480 });

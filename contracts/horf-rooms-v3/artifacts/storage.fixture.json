@@ -1,0 +1,49 @@
+{
+  "prim": "Pair",
+  "args": [
+    { "string": "tz1YijrTmx1eQ5bf3icY6xro6cFFhaTQbU1c" },
+    {
+      "prim": "Pair",
+      "args": [
+        [],
+        {
+          "prim": "Pair",
+          "args": [
+            [],
+            {
+              "prim": "Pair",
+              "args": [
+                [],
+                {
+                  "prim": "Pair",
+                  "args": [
+                    [],
+                    {
+                      "prim": "Pair",
+                      "args": [
+                        { "int": "0" },
+                        {
+                          "prim": "Pair",
+                          "args": [
+                            { "int": "0" },
+                            {
+                              "prim": "Pair",
+                              "args": [
+                                { "string": "edpkuNmfzSSnZrJJGiFEjj8Zm3coPaGRP4jSBVhukrhhntJgMbAghQ" },
+                                { "prim": "Pair", "args": [ [], { "prim": "Pair", "args": [ [], { "prim": "Pair", "args": [ [], [] ] } ] } ] }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

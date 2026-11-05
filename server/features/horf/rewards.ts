@@ -1,9 +1,13 @@
 import { randomUUID } from "node:crypto";
+import type { PoolClient } from "pg";
 import { pool } from "../../db";
 import { getHorfSeasonSnapshot, horfLedgerPolicyVersion } from "./ledger";
 import { HORF_CURRENT_SEASON_KEY, HORF_SEASONS } from "./seasons";
 import { horseContractAddress } from "./horse-config";
-import { horfStablesContractAddress } from "./stables/config";
+import { horfStableClaimSourceAddresses } from "./stables/config";
+import { horfRoomsContractAddress } from "./rooms/config";
+import { withoutRoomSwapInputDuplicates } from "./room-dedupe";
+import type { StoredRoomSettlement } from "./room-ledger";
 import { horseMarketAddress } from "./horse-market/market";
 import { isTezosWallet } from "./model";
 import { HorfHorseClaimSyncError, readConfiguredHorseClaimVault, readHorseClaimVault, signHorseClaimPermit } from "./horse-claims";
@@ -61,6 +65,7 @@ export function buildHorfRewardEntitlements(
 
 interface RawDirect {
   event_id: string;
+  operation_hash: string | null;
   from_address: string;
   to_address: string;
   amount: string;
@@ -94,6 +99,48 @@ interface RawObjkt {
   token_id: string;
 }
 
+export async function readyStableClaimSources(client: PoolClient, addresses: readonly string[]): Promise<string[] | null> {
+  const fingerprints: string[] = [];
+  for (const address of addresses) {
+    const source = await client.query<{ status: string; as_of: Date | null }>(
+      `SELECT status, as_of FROM public.horf_stable_claim_sync
+        WHERE contract_address = $1 FOR SHARE`, [address]);
+    if (source.rows[0]?.status !== "ready" || !source.rows[0]?.as_of) return null;
+    fingerprints.push(`${address}:${new Date(source.rows[0].as_of).toISOString()}`);
+  }
+  return fingerprints;
+}
+
+export function stableClaimRewardEvents(rows: readonly RawStable[]): HorfRewardSourceEvent[] {
+  return rows.map((row) => ({ kind: "stable", sourceKey: `${row.contract_address}:${row.tzkt_event_id}`,
+    from: row.owner_address, to: row.claimant_address, units: "1",
+    tokenContract: row.token_contract, tokenId: row.token_id }));
+}
+
+export function roomSettlementRewardEvents(rows: readonly StoredRoomSettlement[]): HorfRewardSourceEvent[] {
+  return rows.flatMap((row) => {
+    const base = `rooms:${row.contract_address}:${row.tzkt_event_id}`;
+    const output: HorfRewardSourceEvent = { kind: "stable", sourceKey: `${base}:output`,
+      from: row.owner_address, to: row.claimant_address, units: "1",
+      tokenContract: row.output_contract, tokenId: row.output_token_id };
+    if (row.mode <= 1) return [output];
+    if (!row.input_contract || !row.input_token_id) throw new Error("V3 room swap is missing its input horse");
+    const input: HorfRewardSourceEvent = { kind: "stable", sourceKey: `${base}:input`,
+      from: row.claimant_address, to: row.owner_address, units: "1",
+      tokenContract: row.input_contract, tokenId: row.input_token_id };
+    return [output, input];
+  });
+}
+
+async function readyRoomSettlementSource(client: PoolClient, address: string | null): Promise<string | null> {
+  if (!address) return "";
+  const source = await client.query<{ status: string; as_of: Date | null }>(
+    `SELECT status, as_of FROM public.horf_room_settlement_sync
+      WHERE contract_address = $1 FOR SHARE`, [address]);
+  if (source.rows[0]?.status !== "ready" || !source.rows[0]?.as_of) return null;
+  return `${address}:${new Date(source.rows[0].as_of).toISOString()}`;
+}
+
 /** Rebuild pending rewards from the ready current-season source, preserving paid receipts. */
 export async function reconcileCurrentHorfRewards(): Promise<{ status: "ready" | "syncing" | "error"; asOf: string | null; reconciled: boolean }> {
   const snapshot = await getHorfSeasonSnapshot(null, CURRENT);
@@ -115,17 +162,17 @@ export async function reconcileCurrentHorfRewards(): Promise<{ status: "ready" |
       await client.query("ROLLBACK");
       return { status, asOf: snapshot.asOf, reconciled: false };
     }
-    const stableAddress = horfStablesContractAddress();
-    let stableAsOf: string | null = null;
-    if (stableAddress) {
-      const stableSource = await client.query<{ status: string; as_of: Date | null }>(
-        `SELECT status, as_of FROM public.horf_stable_claim_sync
-          WHERE contract_address = $1 FOR SHARE`, [stableAddress]);
-      if (stableSource.rows[0]?.status !== "ready" || !stableSource.rows[0]?.as_of) {
-        await client.query("ROLLBACK");
-        return { status, asOf: snapshot.asOf, reconciled: false };
-      }
-      stableAsOf = new Date(stableSource.rows[0].as_of).toISOString();
+    const stableAddresses = horfStableClaimSourceAddresses();
+    const stableFingerprints = await readyStableClaimSources(client, stableAddresses);
+    if (!stableFingerprints) {
+      await client.query("ROLLBACK");
+      return { status, asOf: snapshot.asOf, reconciled: false };
+    }
+    const roomAddress = horfRoomsContractAddress();
+    const roomFingerprint = await readyRoomSettlementSource(client, roomAddress);
+    if (roomFingerprint === null) {
+      await client.query("ROLLBACK");
+      return { status, asOf: snapshot.asOf, reconciled: false };
     }
     const marketAddress = horseMarketAddress();
     let marketAsOf: string | null = null;
@@ -144,22 +191,31 @@ export async function reconcileCurrentHorfRewards(): Promise<{ status: "ready" |
         AND occurred_at >= $1::timestamptz
         AND ($2::timestamptz IS NULL OR occurred_at < $2::timestamptz)`, [CURRENT.startsAt, CURRENT.endsAt]);
     const fingerprint = [CURRENT.startsAt, new Date(sourceRow.as_of).toISOString(),
-      stableAddress ?? "", stableAsOf ?? "", marketAddress ?? "", marketAsOf ?? "",
+      ...stableFingerprints, roomFingerprint, marketAddress ?? "", marketAsOf ?? "",
       objktSource.rows[0]?.count ?? "0", horseContractAddress() ?? ""].join("|");
     if (lastReconciledSourceFingerprint === fingerprint) {
       await client.query("COMMIT");
       return { status, asOf: snapshot.asOf, reconciled: true };
     }
     const direct = await client.query<RawDirect>(
-      `SELECT event_id, from_address, to_address, amount, token_contract, token_id
+      `SELECT event_id, operation_hash, from_address, to_address, amount, token_contract, token_id
          FROM public.horf_transfer_events WHERE season_start = $1::timestamptz
          ORDER BY event_id ASC`, [CURRENT.startsAt]);
-    const stable = stableAddress ? await client.query<RawStable>(
+    const stable = stableAddresses.length ? await client.query<RawStable>(
       `SELECT contract_address, tzkt_event_id, owner_address, claimant_address, token_contract, token_id
          FROM public.horf_stable_claim_events
+        WHERE contract_address = ANY($1::text[]) AND occurred_at >= $2::timestamptz
+          AND ($3::timestamptz IS NULL OR occurred_at < $3::timestamptz)
+        ORDER BY contract_address ASC, tzkt_event_id ASC`, [stableAddresses, CURRENT.startsAt, CURRENT.endsAt]) : { rows: [] as RawStable[] };
+    const room = roomAddress ? await client.query<StoredRoomSettlement>(
+      `SELECT contract_address, tzkt_event_id, occurred_at, operation_hash, mode,
+              owner_address, claimant_address, output_contract, output_token_id,
+              input_contract, input_token_id
+         FROM public.horf_room_settlement_events
         WHERE contract_address = $1 AND occurred_at >= $2::timestamptz
           AND ($3::timestamptz IS NULL OR occurred_at < $3::timestamptz)
-        ORDER BY tzkt_event_id ASC`, [stableAddress, CURRENT.startsAt, CURRENT.endsAt]) : { rows: [] as RawStable[] };
+        ORDER BY tzkt_event_id ASC`, [roomAddress, CURRENT.startsAt, CURRENT.endsAt])
+      : { rows: [] as StoredRoomSettlement[] };
     const market = marketAddress ? await client.query<RawMarket>(
       `SELECT contract_address, tzkt_event_id, seller_address, buyer_address, token_contract, token_id
          FROM public.horf_horse_market_sale_events
@@ -172,14 +228,19 @@ export async function reconcileCurrentHorfRewards(): Promise<{ status: "ready" |
         AND occurred_at >= $1::timestamptz
         AND ($2::timestamptz IS NULL OR occurred_at < $2::timestamptz)
       ORDER BY occurred_at ASC, id ASC`, [CURRENT.startsAt, CURRENT.endsAt]);
+    const roomInputs = room.rows.filter((row) => row.mode >= 2).map((row) => ({
+      operationHash: row.operation_hash, from: row.claimant_address, to: row.owner_address,
+      amount: "1", tokenContract: row.input_contract || "", tokenId: row.input_token_id || "",
+    }));
+    const directWithoutRoomInput = withoutRoomSwapInputDuplicates(direct.rows, roomInputs,
+      (row) => ({ operationHash: row.operation_hash, from: row.from_address, to: row.to_address,
+        amount: row.amount, tokenContract: row.token_contract, tokenId: row.token_id }));
     const events: HorfRewardSourceEvent[] = [
-      ...direct.rows.map((row) => ({ kind: "direct" as const, sourceKey: String(row.event_id),
+      ...directWithoutRoomInput.map((row) => ({ kind: "direct" as const, sourceKey: String(row.event_id),
         from: row.from_address, to: row.to_address, units: String(row.amount),
         tokenContract: row.token_contract, tokenId: row.token_id })),
-      ...stable.rows.map((row) => ({ kind: "stable" as const,
-        sourceKey: `${row.contract_address}:${row.tzkt_event_id}`,
-        from: row.owner_address, to: row.claimant_address, units: "1",
-        tokenContract: row.token_contract, tokenId: row.token_id })),
+      ...stableClaimRewardEvents(stable.rows),
+      ...roomSettlementRewardEvents(room.rows),
       ...market.rows.map((row) => ({ kind: "market" as const,
         sourceKey: `${row.contract_address}:${row.tzkt_event_id}`,
         from: row.seller_address, to: row.buyer_address, units: "1",
@@ -279,14 +340,11 @@ export async function issueHorfHorseClaimPermit(address: string) {
     if (!completedHorfRewardSource(source.rows[0])) {
       throw new HorfHorseClaimSyncError("HORSE season source is still syncing");
     }
-    const stableAddress = horfStablesContractAddress();
-    if (stableAddress) {
-      const stable = await client.query<{ status: string; as_of: Date | null }>(
-        `SELECT status, as_of FROM public.horf_stable_claim_sync
-          WHERE contract_address = $1 FOR SHARE`, [stableAddress]);
-      if (stable.rows[0]?.status !== "ready" || !stable.rows[0]?.as_of) {
-        throw new HorfHorseClaimSyncError("HORSE Stable claim source is still syncing");
-      }
+    if (!await readyStableClaimSources(client, horfStableClaimSourceAddresses())) {
+      throw new HorfHorseClaimSyncError("HORSE Stable claim source is still syncing");
+    }
+    if (await readyRoomSettlementSource(client, horfRoomsContractAddress()) === null) {
+      throw new HorfHorseClaimSyncError("HORSE room settlement source is still syncing");
     }
     const marketAddress = horseMarketAddress();
     if (marketAddress) {

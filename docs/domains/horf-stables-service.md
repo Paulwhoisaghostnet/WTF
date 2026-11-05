@@ -193,6 +193,17 @@ use `HORF_MAINNET_RPC_URL` when configured; otherwise they use generic
 primary `https://tezos-mainnet.octez.io/` and fallback
 `https://tcinfra.net/rpc/tezos/mainnet`. The RPC chain ID is checked.
 
+When an immutable replacement becomes active, set
+`HORF_STABLES_LEGACY_CONTRACT_ADDRESSES` to the prior Mainnet KT1 address or
+a comma-separated list of prior KT1s. Leave it empty while V2 is the active
+contract. The active address remains the only destination for new deposit
+permits; the legacy addresses are read-only claim sources for season totals and
+HORSE reward reconciliation. Every configured source must finish indexing
+before HORSE claim permits resume, so historical rewards are not silently
+removed. This source setting does not migrate escrowed editions or credits;
+the old contract's claim and cancellation path must remain available until
+owners have resolved their listings.
+
 The current artifacts describe the per-token V2 contract, which was originated
 on Mainnet in the applied operation above. Local contract tests and actor-backed
 app tests cover deposit, claim, moderation, and indexing paths. The runtime

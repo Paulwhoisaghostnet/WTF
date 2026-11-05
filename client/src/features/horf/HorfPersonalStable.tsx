@@ -10,6 +10,8 @@ import { HorfProfileEditor } from "./HorfTraderProfile";
 import { HorfStableShare, type HorfShareStats } from "./HorfStableShare";
 import { findHorfMintSeason, type HorfMintSeason } from "./mint-season";
 import { objktTokenUrl } from "./token-input";
+import { HorfTradeOfferInbox } from "./HorfTradeOffers";
+import { useHorfListedHorsePaths } from "./useHorfListedHorsePaths";
 
 type Selection = {
   id: number;
@@ -79,6 +81,7 @@ const Shell = styled.section`
   p { margin: 0 0 12px; color: var(--horf-muted, #b7b5a7); font-size: 14px; line-height: 1.55; }
   label { display: block; margin: 0 0 6px; font: 700 13px/1.3 var(--horf-font, "Avenir Next", sans-serif); }
   input, select { width: 100%; min-width: 0; min-height: 42px; padding: 9px 11px; border: 1px solid var(--horf-line, #3d5148); border-radius: 9px; background: var(--horf-field, #24332d); color: var(--horf-ink, #f4ead6); font: 14px var(--horf-font, "Avenir Next", sans-serif); }
+  [data-horf-stable-availability] input[type="radio"] { width: auto; min-width: 0; min-height: 0; margin-right: 6px; padding: 0; }
   button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible { outline: 3px solid var(--horf-teal, #71b7a0); outline-offset: 2px; }
 `;
 
@@ -325,6 +328,10 @@ export function HorfPersonalStable({ address, connectWallet, isConnecting, seaso
   const [selectedKey, setSelectedKey] = useState("");
   const [mintSeasonKey, setMintSeasonKey] = useState("all");
   const [detailHorse, setDetailHorse] = useState<HeldHorse | null>(null);
+  const [availabilityHorse, setAvailabilityHorse] = useState<HeldHorse | null>(null);
+  const [availabilityAmount, setAvailabilityAmount] = useState("0");
+  const [availabilityPolicy, setAvailabilityPolicy] = useState<"marshal_only" | "any_qualifying">("any_qualifying");
+  const availabilityRef = useRef<HTMLDivElement>(null);
   const detailRef = useRef<HTMLDialogElement>(null);
   const inspectionSelectionRef = useRef<HTMLDivElement>(null);
   const [busy, setBusy] = useState(false);
@@ -347,6 +354,13 @@ export function HorfPersonalStable({ address, connectWallet, isConnecting, seaso
     ? linkedWalletsQuery.data.filter((wallet) => typeof wallet?.walletAddress === "string").map((wallet) => wallet.walletAddress)
     : [];
   const linkedHere = Boolean(address && linkedWallets.includes(address));
+  const listedHorsePaths = useHorfListedHorsePaths(shareSeasonKey);
+  const availabilitySignsQuery = useQuery({
+    queryKey: ["horf", "open-range-offers", address],
+    queryFn: () => api.get<{ offers: Array<{ id: number; tokenContract: string; tokenId: string; amount: string; acceptedTokenPolicy: "marshal_only" | "any_qualifying" }> }>(`/api/horf/open-range/offers?address=${encodeURIComponent(address!)}`),
+    enabled: Boolean(address), refetchOnWindowFocus: true,
+  });
+  const availabilitySigns = availabilitySignsQuery.data?.offers ?? [];
 
   const qualifyingQuery = useInfiniteQuery({
     queryKey: ["horf", "trader-profile-horses", address],
@@ -515,18 +529,67 @@ export function HorfPersonalStable({ address, connectWallet, isConnecting, seaso
       ? qualifyingQuery.fetchNextPage() : qualifyingQuery.refetch());
   }
 
+  function markAvailable(horse: HeldHorse) {
+    setAvailabilityHorse(horse); setAvailabilityAmount("0"); setAvailabilityPolicy("any_qualifying");
+    setError(null); setSuccess(null);
+    window.requestAnimationFrame(() => availabilityRef.current?.scrollIntoView({ block: "center", behavior: "smooth" }));
+  }
+
+  async function postAvailability(event: FormEvent) {
+    event.preventDefault();
+    if (!address || !availabilityHorse || busy) return;
+    setError(null); setSuccess(null);
+    try {
+      if (!/^\d+$/.test(availabilityAmount) || BigInt(availabilityAmount) <= 0n ||
+          BigInt(availabilityAmount) > BigInt(availabilityHorse.balance)) {
+        throw new Error("Choose an edition count you own.");
+      }
+      setBusy(true);
+      await api.post("/api/horf/open-range/offers", { address, tokenContract: availabilityHorse.contract,
+        tokenId: availabilityHorse.tokenId, amount: availabilityAmount, acceptedTokenPolicy: availabilityPolicy });
+      setSuccess(`${availabilityHorse.name || "Horse"} marked available. It stays in your wallet until you accept a proposal and sign an escrow deposit.`);
+      setAvailabilityHorse(null); setAvailabilityAmount("0");
+      await qc.invalidateQueries({ queryKey: ["horf", "directory-offers"] });
+      await qc.invalidateQueries({ queryKey: ["horf", "open-range-offers", address] });
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "Could not mark this horse available."); }
+    finally { setBusy(false); }
+  }
+
+  async function removeAvailabilitySign(id: number) {
+    if (!address || busy) return;
+    setError(null); setSuccess(null);
+    try {
+      setBusy(true);
+      const response = await fetchWithCsrf(`/api/horf/open-range/offers/${id}`, { method: "DELETE" });
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body.error || "Could not remove this availability sign.");
+      }
+      setSuccess("Availability sign removed. Your horse remains in your wallet.");
+      await qc.invalidateQueries({ queryKey: ["horf", "open-range-offers", address] });
+      await qc.invalidateQueries({ queryKey: ["horf", "directory-offers"] });
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "Could not remove this availability sign."); }
+    finally { setBusy(false); }
+  }
+
   function renderHorseGallery(horses: HeldHorse[]) {
     return <HorseGallery>{horses.map((horse, index) => {
       const art = resolveHorfHorseCardArt(horse, uniqueThumbnails);
       const video = resolveHorfHorseVideo(horse);
       const name = horse.name || `Horse token #${horse.tokenId}`;
+      const availabilitySign = availabilitySigns.find((sign) => sign.tokenContract === horse.contract && sign.tokenId === horse.tokenId);
+      const tradingPaths = listedHorsePaths.paths.get(`${horse.contract}/${horse.tokenId}`) ?? [];
       const mintedSeason = findHorfMintSeason(horse, mintSeasons);
       const eager = index === 0 && horse === (createdHorses[0] ?? receivedHorses[0] ?? uncreditedHorses[0]);
       return <article key={`${horse.contract}:${horse.tokenId}`} data-horf-stable-horse>
         <div className="art"><button className="art-open" type="button" aria-label={`View ${name} horse card`} onClick={() => setDetailHorse(horse)}>{video ? <StableVideoPreview src={video.src} /> : art ? <img src={art.src} alt={`${name} artwork`} loading={eager ? "eager" : "lazy"} decoding="async" fetchPriority={eager ? "high" : "auto"} onError={(event) => { if (!advanceResolvedMediaFallback(event.currentTarget, art)) event.currentTarget.style.display = "none"; }} /> : <img src="/horf-art/horse-gallop-photo.jpg" alt="Horse photograph placeholder; exact token preview unavailable" loading={eager ? "eager" : "lazy"} decoding="async" />}</button></div>
         <div className="copy"><h4><button className="title-open" type="button" onClick={() => setDetailHorse(horse)}>{name}</button></h4>{mintedSeason && <MintBadge data-horf-mint-badge><img src="/horf-art/horseshoe.svg" alt="" aria-hidden="true" />{mintedSeason.label}</MintBadge>}<p data-horf-edition-holdings>You own {horse.balance} {horse.balance === "1" ? "edition" : "editions"} · {shortAddress(horse.contract)} / #{horse.tokenId}</p>
+          {tradingPaths.map((path) => <a data-horf-stable-for-trade-now key={`${path.kind}:${path.id}`} href={path.href}>{path.label} ↗</a>)}
+          {availabilitySign && <p data-horf-stable-available-status>Available for trade · {availabilitySign.amount} {availabilitySign.amount === "1" ? "edition" : "editions"} in your wallet</p>}
           <a href={objktTokenUrl(horse.contract, horse.tokenId)} target="_blank" rel="noopener noreferrer">View horse on Objkt ↗</a>
           <button data-horf-stable-view-horse type="button" onClick={() => setDetailHorse(horse)}>View horse card</button>
+          <button data-horf-stable-mark-available type="button" onClick={() => markAvailable(horse)}>{availabilitySign ? "Update availability" : "Mark available for trade"}</button>
+          {availabilitySign && <button data-horf-stable-remove-availability type="button" onClick={() => void removeAvailabilitySign(availabilitySign.id)} disabled={busy}>Remove availability sign</button>}
           <button data-horf-stable-select-inspection type="button" aria-pressed={selectedKey === `${horse.contract}:${horse.tokenId}`} onClick={() => selectFromGallery(horse)}>{selectedKey === `${horse.contract}:${horse.tokenId}` ? "Selected for inspection ✓" : "Select for inspection"}</button>
         </div>
       </article>;
@@ -543,6 +606,7 @@ export function HorfPersonalStable({ address, connectWallet, isConnecting, seaso
       <div><small>Your paddock · 🪢</small><h2>{address ? "Wallet horses" : "Your stable & profile"} <span aria-hidden="true">🐎</span></h2><p>{address ? "Current holdings that pass Horf’s horse test." : "Connect a wallet above to open your stable."}</p></div>
       <HeaderActions><HorfStableShare address={address} seasonKey={shareSeasonKey} seasonLabel={shareSeasonLabel} stats={shareStats} /><Action data-horf-stable-refresh type="button" onClick={refreshStable} disabled={!address || qualifyingQuery.isFetching || selectionsQuery.isFetching}>Refresh stable</Action></HeaderActions>
     </Header>
+    <HorfTradeOfferInbox address={address} />
     {address && <Panel data-horf-qualifying-horses>
       <MintFilter data-horf-mint-season-filter>
         <label htmlFor="horf-mint-season">Mint season
@@ -556,6 +620,19 @@ export function HorfPersonalStable({ address, connectWallet, isConnecting, seaso
         </label>
         <small>Mint date sets the season. Unknown dates appear under All horses.</small>
       </MintFilter>
+      {availabilityHorse && <Panel ref={availabilityRef} data-horf-stable-availability>
+        <h3>Mark {availabilityHorse.name || `horse #${availabilityHorse.tokenId}`} available</h3>
+        <p>This is a sign, not escrow. A trader can offer one of their horses; you decide whether to place one of yours in private escrow.</p>
+        <form onSubmit={(event) => void postAvailability(event)}>
+          <label htmlFor="horf-stable-available-amount">Editions available</label>
+          <input id="horf-stable-available-amount" data-horf-stable-available-amount inputMode="numeric" pattern="[0-9]+" value={availabilityAmount} onChange={(event) => setAvailabilityAmount(event.target.value)} disabled={busy} />
+          <p>You own {availabilityHorse.balance} {availabilityHorse.balance === "1" ? "edition" : "editions"}. Enter a quantity above zero.</p>
+          <label><input type="radio" name="horf-available-policy" value="any_qualifying" checked={availabilityPolicy === "any_qualifying"} onChange={() => setAvailabilityPolicy("any_qualifying")} /> Any qualifying horse</label>
+          <label><input type="radio" name="horf-available-policy" value="marshal_only" checked={availabilityPolicy === "marshal_only"} onChange={() => setAvailabilityPolicy("marshal_only")} /> Marshal-approved horses only</label>
+          <Action data-horf-stable-availability-submit type="submit" $primary disabled={busy}>Post availability sign</Action>
+          <Action type="button" onClick={() => setAvailabilityHorse(null)} disabled={busy}>Cancel</Action>
+        </form>
+      </Panel>}
       {!qualifyingQuery.isError && !scanComplete && <p data-horf-stable-scan-progress role="status">Scanning wallet holdings… {scannedPages} {scannedPages === 1 ? "page" : "pages"} checked · {qualifyingHorses.length} {qualifyingHorses.length === 1 ? "horse" : "horses"} found.</p>}
       {qualifyingQuery.isError && <Note $error role="alert">Horse scan paused after {scannedPages} {scannedPages === 1 ? "page" : "pages"}. {qualifyingQuery.error instanceof Error ? qualifyingQuery.error.message : "The Mainnet horse index is unavailable."} Horses already found remain below. <Action data-horf-stable-scan-retry type="button" onClick={retryHorseScan}>Retry horse scan</Action> <Action type="button" onClick={() => void connectWallet()} disabled={isConnecting}>{isConnecting ? "Connecting…" : "Switch wallet"}</Action></Note>}
       {visibleHorses.length > 0 && <>

@@ -133,6 +133,68 @@ async function mockOfficialCrpPrefill(page, nomineeAddress) {
 }
 
 test.describe("Horf HORSE, posse, and horse gifts", () => {
+  test("posse horse batch excludes current holders and blocks a send with too few editions", async ({ page, request }) => {
+    await seedTrader(request);
+    await mockHorf(page, {
+      ownedBalance: "1",
+      initialPosse: [
+        { id: 1, address: leadWallet, nickname: "Already saddled", createdAt: "2026-11-03T12:00:00.000Z" },
+        { id: 2, address: thirdWallet, nickname: "First rider", createdAt: "2026-11-03T12:00:01.000Z" },
+        { id: 3, address: "tz1NxEjghX2ATrTeKTDGKS1pUfde7vJA3Und", nickname: "Second rider", createdAt: "2026-11-03T12:00:02.000Z" },
+      ],
+    });
+    await page.route(/\/api\/horf\/posse\/horse-holders(?:\?.*)?$/, (route) => {
+      const url = new URL(route.request().url());
+      expect(url.searchParams.get("address")).toBe(traderWallet);
+      expect(url.searchParams.get("contract")).toBe(horseToken);
+      expect(url.searchParams.get("tokenId")).toBe("7");
+      return json(route, { address: traderWallet, contract: horseToken, tokenId: "7", checkedAt: new Date().toISOString(), members: [
+        { address: leadWallet, owns: true }, { address: thirdWallet, owns: false },
+        { address: "tz1NxEjghX2ATrTeKTDGKS1pUfde7vJA3Und", owns: false },
+      ] });
+    });
+    await page.goto("/horf/posse");
+    const batch = page.locator("[data-horf-posse-batch-send]");
+    await batch.locator("[data-horf-gift-owned]").selectOption(`${horseToken}:7`);
+    await expect(batch.locator("[data-horf-posse-batch-recipient]")).toHaveCount(2);
+    await expect(batch.locator("[data-horf-posse-batch-recipient]").filter({ hasText: "Already saddled" })).toHaveCount(0);
+    await expect(batch.locator("[data-horf-posse-batch-shortage]")).toContainText("own 1 edition but need 2");
+    await expect(batch.locator("[data-horf-gift-submit]")).toBeDisabled();
+  });
+
+  test("posse horse batch preselects one edition each and refreshes holders before wallet signing", async ({ page, request }) => {
+    await seedTrader(request);
+    await mockHorf(page, {
+      ownedBalance: "2",
+      initialPosse: [
+        { id: 1, address: leadWallet, nickname: "Already saddled", createdAt: "2026-11-03T12:00:00.000Z" },
+        { id: 2, address: thirdWallet, nickname: "First rider", createdAt: "2026-11-03T12:00:01.000Z" },
+      ],
+    });
+    let holderReads = 0;
+    await page.route(/\/api\/horf\/posse\/horse-holders(?:\?.*)?$/, (route) => {
+      holderReads += 1;
+      const changed = new URL(route.request().url()).searchParams.has("refresh");
+      return json(route, { address: traderWallet, contract: horseToken, tokenId: "7", checkedAt: new Date().toISOString(), members: [
+        { address: leadWallet, owns: true }, { address: thirdWallet, owns: changed },
+      ] });
+    });
+    await page.goto("/horf/posse");
+    const batch = page.locator("[data-horf-posse-batch-send]");
+    await batch.locator("[data-horf-gift-owned]").selectOption(`${horseToken}:7`);
+    await expect(batch.locator("[data-horf-posse-batch-recipient]")).toHaveCount(1);
+    await expect(batch.locator("[data-horf-posse-batch-recipient]")).toContainText("First rider");
+    await batch.locator("[data-horf-gift-submit]").click();
+    const review = batch.locator("[data-horf-gift-review]");
+    await expect(review).toContainText("1 of 2 owned editions · 1 rider");
+    await expect(review).toContainText(thirdWallet);
+    await expect(review).not.toContainText(leadWallet);
+    await review.locator("[data-horf-gift-confirm]").click();
+    await expect(batch.getByRole("alert")).toContainText("holders changed");
+    await expect(review).toHaveCount(0);
+    expect(holderReads).toBeGreaterThanOrEqual(2);
+  });
+
   test("shows a selected known trader's name on the saved posse card after reload", async ({ page, request }) => {
     await seedTrader(request);
     await mockHorf(page, { seasonRiders: [

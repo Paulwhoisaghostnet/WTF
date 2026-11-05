@@ -1,0 +1,12 @@
+{
+  "network": "tezos-mainnet",
+  "chainId": "NetXdQprcVkpaWU",
+  "contractAddress": "KT1PGhfmETCoE79Pg6BNSZWJfwFHRKscb5gi",
+  "originationOperationHash": "op6wfKbjk8SzNEyvyyCgECfLZVfgUeSSq2DaocPTXs8ysAcDPJt",
+  "originationLevel": 15686440,
+  "originationTimestamp": "2026-11-05T18:03:40Z",
+  "admin": "tz1cVRngZw42KZ42VQF2ZCy2CJSPNG3H7Cgt",
+  "oraclePublicKey": "edpkvZL5ek6Njb9RWQVtnUMkV2HJQtNFsycFdrgDjTnshrsXmzEzVy",
+  "sourceArtifactSha256": "eec1cf043a069a1ffb4abf14d3b87ab6a8b2edb424886fd535c5b2fb372b9b89",
+  "verification": "Applied TzKT origination from wtf.tez; Tezos Mainnet RPC chain ID, every deployed Michelson section, and decoded storage matched the reviewed plan."
+}

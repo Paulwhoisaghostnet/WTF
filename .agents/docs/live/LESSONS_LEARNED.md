@@ -14610,3 +14610,73 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: A quick selector that says “horse” should reflect the same mint-tag policy as the public gallery. Escrow and paid-market forms also need active Marshal approval before listing.
 
 **Rule**: Build horse-art selectors from paginated Horf-qualified holdings, not raw wallet tokens. Keep the HAHA-only Marshal gate in that source, filter paid and escrow listing choices to active approvals, and still recheck exact token approval and eligibility before a wallet transaction.
+
+---
+
+## 2026-11-05 - Immutable Stable replacements need versioned claim history
+
+**What happened**: HORF read Stable claims from only the currently configured KT1. Replacing V2 with a new escrow contract would stop reading V2's earlier claim events, even while its listings and rewards remain live.
+
+**Why it mattered**: Season counts could shrink and the reward reconciler could void HORSE entitlements earned from V2 claims when the active contract address changed.
+
+**Rule**: Keep explicit Mainnet legacy claim-source addresses when rotating custody contracts. Sync and require readiness of every source, preserve contract-qualified event keys, and keep the active deposit permit target separate from historic claim sources. Preserve old-contract claim and cancellation access until its obligations are resolved.
+
+---
+
+## 2026-11-05 - Private horse offer messages need chain-backed state
+
+**What happened**: Wallet-held availability signs needed a durable way for an interested rider to offer one horse before the sign owner escrowed theirs. A first pass at proof matching also assumed an on-chain listing ID must be positive, but the V3 counter starts at zero.
+
+**Why it mattered**: A browser claim of acceptance could falsely advertise locked custody, while rejecting listing zero would strand the first legitimate private escrow. Local decline or cancellation can also race an already-signed chain operation.
+
+**Rule**: Keep proposal messages separate from custody, require exact confirmed Mainnet event evidence for accepted and fulfilled states, allow listing ID zero, and let verified chain custody override a racing local message status so recovery stays visible.
+
+---
+
+## 2026-11-05 - Escrow custody is not a horse trade
+
+**What happened**: The original HORF ledger understood direct wallet sends and V2 claims. A V3 Outlaw or private swap moves one horse through escrow before settlement and sends a second horse directly from the claimant to the owner. Naively adding its event would count the input send twice, while counting a deposit would reward custody instead of a trader.
+
+**Why it mattered**: Race standings, completed exchanges, and 10 HORSE sender rewards would diverge from one actual 1:1 swap. The owner output leg would be invisible to a direct-wallet scanner because its source is the escrow KT1.
+
+**Rule**: Index only confirmed settlement events, synthesize both exact swap legs, consume the matching Objkt direct input once by operation hash and token identity, and share one exchange key for both riders' race and completed-trade counts. Keep source keys distinct by contract, event, and leg, and apply Marshal exclusions to each horse independently.
+
+---
+
+## 2026-11-05 - Posse batch sends must derive recipients from exact token holders
+
+**What happened**: Sending a horse to every posse rider required manually entering addresses and could include wallets that already held the token. The 50-recipient cap for HORSE payout sends had also been reused for horse-art FA2 transfers.
+
+**Why it mattered**: A rider could waste editions on existing holders or leave eligible posse members out of the promised single batch. An insufficient wallet balance would otherwise surface only during wallet signing.
+
+**Rule**: For a posse horse-art send, query the exact token's indexed balances across the saved posse, include every nonholder with one edition, show the allocation and block shortages or unavailable checks, then recheck both the recipient roster and sender balance before opening the wallet. Keep the explicit 50-recipient limit on HORSE payouts, not horse-art transfers.
+
+---
+
+## 2026-11-05 - V2 permit retirement needs a server guard
+
+**What happened**: A V2 oracle epoch bump invalidates already signed permits, but the V2 permit API could simply sign new permits at the incremented epoch after V3 went live.
+
+**Why it mattered**: Riders could keep adding horses to the superseded Stable even after the interface routed new deposits to V3.
+
+**Rule**: When a V3 contract is configured, stop the V2 permit API and advertise V2 as read only for deposits. Keep V2 listings, claims, and cancellations accessible. Bump the V2 epoch after the V3 cutover to invalidate outstanding permits.
+
+---
+
+## 2026-11-05 - Sale deep links must identify an active listing
+
+**What happened**: A Horse4HORSE link to one sale could finish async loading and silently select the first sale if the requested listing had sold or disappeared.
+
+**Why it mattered**: A rider could see a different horse and price than the card they clicked.
+
+**Rule**: Select and focus only the exact active listing ID after data loads. Explain missing or sold IDs and never substitute another listing.
+
+---
+
+## 2026-11-05 - Reuse the production deploy lock without recreating it
+
+**What happened**: The V3 runtime-address update first opened the existing deploy lock with a create flag under sudo. Linux protected regular-file handling rejected that open because the lock is owned by the deploy user in `/tmp`.
+
+**Why it mattered**: The environment cutover could not proceed, even though the root-owned runtime file was writable through the authorized SSH wrapper.
+
+**Rule**: Open the existing `/tmp/wtf-app-deploy.lock` with `r+` before taking `flock`; preserve the runtime file's owner and mode and replace it atomically. Never print the secret-bearing env file.

@@ -1,5 +1,5 @@
 import { toNatString } from "../../lib/tezos/nat";
-import { HORF_RECIPIENT_LIMIT, assertTraderAddress } from "./recipient-input";
+import { assertTraderAddress } from "./recipient-input";
 
 export type ArtSendRecipient = { address: string; amount: string };
 
@@ -10,9 +10,6 @@ export function validateArtSendRecipients(
   ownedBalance: string,
 ): { recipients: Array<{ address: string; amountRaw: string }>; total: string } {
   if (!rows.length) throw new Error("Add at least one trader.");
-  if (rows.length > HORF_RECIPIENT_LIMIT) {
-    throw new Error(`One horse send can include up to ${HORF_RECIPIENT_LIMIT} riders.`);
-  }
   const from = assertTraderAddress(sender);
   const seen = new Set<string>();
   let total = 0n;

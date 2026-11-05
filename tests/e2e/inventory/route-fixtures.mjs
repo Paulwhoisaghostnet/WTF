@@ -43,6 +43,7 @@ export const ROUTE_FIXTURES = [
   { pattern: "/horf/inspection-desk", path: "/horf/inspection-desk", title: "Inspection Desk", domain: "commerce", subdomain: "Horf Marshal inspection", auth: true },
   { pattern: "/horf/outlaw-corral", path: "/horf/outlaw-corral", title: "Horf Horse Market", domain: "commerce", subdomain: "Horf horse trades and gifts", auth: false },
   { pattern: "/horf/stable", path: "/horf/stable", title: "My Stable", domain: "commerce", subdomain: "Horf personal stable", auth: false },
+  { pattern: "/horf/legacy-stables", path: "/horf/legacy-stables", title: "Horf Legacy Stable Recovery", domain: "commerce", subdomain: "Horf Stables", auth: false },
   { pattern: "/horf/send-horse", path: "/horf/send-horse", title: "Send HORSE", domain: "commerce", subdomain: "Horf HORSE sends, claims, and posse", auth: false },
   { pattern: "/horf/gifts", path: "/horf/gifts", title: "Horse Gifts", domain: "commerce", subdomain: "Horf horse trades and gifts", auth: false },
   { pattern: "/horf/posse", path: "/horf/posse", title: "Horf Posse", domain: "commerce", subdomain: "Horf HORSE sends, claims, and posse", auth: false },

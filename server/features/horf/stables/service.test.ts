@@ -7,6 +7,7 @@ import { issueHorfDepositPermit, packHorfDepositPermit } from "./permit";
 import { parseHorfPermitRequest } from "./routes";
 import { buildHorfClaimEventParams, fetchHorfClaimEventPage, isLastHorfClaimEventPage } from "./claims";
 import { identityMatchesApproval } from "./custody";
+import { horfLegacyDepositsClosed } from "./config";
 
 const wallet = "tz1Qi77tcJn9foeHHP1QHj6UX1m1vLVLMbuY";
 const donor = "tz1VSUr8wwNhLAzempoch5d6hLRiTh8Cjcjb";
@@ -23,6 +24,13 @@ const token = {
   creators: [{ creator_address: donor, holder: { alias: "Sally" } }],
   tags: [{ tag: { name: "horseofjuly", token_count: 125 } }],
 };
+
+test("V3 configuration closes new V2 deposits but leaves legacy reads independent", () => {
+  assert.equal(horfLegacyDepositsClosed({ TEZOS_NETWORK: "mainnet" }), false);
+  assert.equal(horfLegacyDepositsClosed({ TEZOS_NETWORK: "mainnet", HORF_ROOMS_CONTRACT_ADDRESS: stable }), true);
+  assert.equal(horfLegacyDepositsClosed({ TEZOS_NETWORK: "mainnet", HORF_ROOMS_CONTRACT_ADDRESS: "bad-address" }), true);
+  assert.equal(horfLegacyDepositsClosed({ TEZOS_NETWORK: "shadownet", HORF_ROOMS_CONTRACT_ADDRESS: stable }), false);
+});
 
 test("stable eligibility uses live Objkt metadata and group counts", async () => {
   const exclusionCheck = async () => false;

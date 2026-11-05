@@ -8,6 +8,7 @@ import { getHorfHorseActivity, getHorfHorseConfig, horseContractAddress, HORF_HO
 import { getHorfRewardActivity, issueHorfHorseClaimPermit } from "../features/horf/rewards";
 import { HorfHorseClaimSyncError, HorfHorseClaimUnconfiguredError } from "../features/horf/horse-claims";
 import { isTezosWallet } from "../features/horf/model";
+import { getPosseHorseHolders } from "../features/horf/posse-holders";
 import { HorseTokenIneligibleError, HorseTokenNotFoundError, inspectHorseToken, inspectHorseTokenCached } from "../features/horf/stables/eligibility";
 import { matchGiftTransfers, parseGiftConfirmation, parsePossePartner, type IndexedGiftTransfer } from "../features/horf/social";
 import { requireHorfCsrf, requireHorfWallet } from "../features/horf/wallet-scope";
@@ -142,6 +143,35 @@ router.get("/api/horf/posse", async (req, res) => {
   } catch (error) {
     console.error("[horf] posse read failed:", error);
     return res.status(503).json({ error: "Your posse could not be loaded" });
+  }
+});
+
+router.get("/api/horf/posse/horse-holders", async (req, res) => {
+  const address = req.query.address;
+  const contract = req.query.contract;
+  const tokenId = req.query.tokenId;
+  if (!isTezosWallet(address) || typeof contract !== "string" || !FA2_RE.test(contract) ||
+      typeof tokenId !== "string" || !/^\d+$/.test(tokenId)) {
+    return res.status(400).json({ error: "A verified wallet and exact horse token are required" });
+  }
+  try {
+    if (!(await requireHorfWallet(req, res, address))) return;
+    if (contract === horseContractAddress()) {
+      return res.status(422).json({ error: "HORSE rewards are not horse art" });
+    }
+    await inspectHorseTokenCached(contract, tokenId);
+    const partners = await db.select({ address: horfPossePartners.address })
+      .from(horfPossePartners).where(eq(horfPossePartners.ownerWalletAddress, address))
+      .orderBy(asc(horfPossePartners.createdAt), asc(horfPossePartners.id));
+    const holders = await getPosseHorseHolders(partners.map((partner) => partner.address), { contract, tokenId });
+    res.setHeader("Cache-Control", "no-store");
+    return res.json({ address, contract, tokenId, checkedAt: new Date().toISOString(),
+      members: partners.map((partner) => ({ address: partner.address, owns: holders.has(partner.address) })) });
+  } catch (error) {
+    if (error instanceof HorseTokenNotFoundError) return res.status(404).json({ error: error.message });
+    if (error instanceof HorseTokenIneligibleError) return res.status(422).json({ error: error.message });
+    console.error("[horf] posse horse holder check failed:", error);
+    return res.status(503).json({ error: "Current posse horse holders could not be checked. Nothing was sent." });
   }
 });
 

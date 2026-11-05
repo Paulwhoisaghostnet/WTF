@@ -7,12 +7,13 @@ import { isTezosWallet } from "../model";
 import { requireHorfCsrf, requireHorfWallet } from "../wallet-scope";
 import { getHorfStablesSnapshot, type HorfStableListing } from "./chain";
 import { HorseTokenIneligibleError, HorseTokenNotFoundError } from "./eligibility";
-import { HorfStablesNetworkError, HorfStablesUnconfiguredError } from "./config";
+import { HorfStablesNetworkError, HorfStablesUnconfiguredError, horfLegacyDepositsClosed } from "./config";
 import { issueHorfDepositPermit, type HorfPermitRequest } from "./permit";
 import { HorfCustodyUntrustedError } from "./custody";
 import { marshalMarketListings } from "./market-visibility";
 
 const router = Router();
+const LEGACY_DEPOSIT_MESSAGE = "New deposits use HORF Rooms. Existing Stable claims and cancellations remain available.";
 
 interface ListingInspection {
   contract: string;
@@ -107,8 +108,12 @@ router.get("/api/horf/stables", async (req, res) => {
   }
   try {
     const snapshot = await getHorfStablesSnapshot(address || null);
+    const legacyDepositClosed = horfLegacyDepositsClosed();
+    const legacySnapshot = legacyDepositClosed
+      ? { ...snapshot, permitReady: false, custodyReady: false, depositBlockReason: LEGACY_DEPOSIT_MESSAGE }
+      : { ...snapshot, custodyReady: true, depositBlockReason: null };
     if (snapshot.listings.length === 0) {
-      return res.json({ ...snapshot, custodyReady: true, depositBlockReason: null });
+      return res.json(legacySnapshot);
     }
     if (!marketOnly) {
       // Owner management remains available when inspection metadata is temporarily unavailable.
@@ -119,11 +124,11 @@ router.get("/api/horf/stables", async (req, res) => {
         console.warn("[horf] stable preview metadata unavailable:", error);
       }
       const inspections = new Map(inspectionRows.map((row) => [`${row.contract}/${row.tokenId}`, row]));
-      return res.json({ ...snapshot,
+      return res.json({ ...legacySnapshot,
         listings: snapshot.listings.map((listing) => withInspectedToken(
           listing, inspections.get(`${listing.tokenContract}/${listing.tokenId}`),
         )),
-        custodyReady: true, depositBlockReason: null });
+      });
     }
     const [approvalRows, excludedRows] = await Promise.all([
       loadListingInspections(snapshot.listings),
@@ -133,11 +138,11 @@ router.get("/api/horf/stables", async (req, res) => {
     const approved = new Set(approvalRows.filter((row) => row.active).map((row) => `${row.contract}/${row.tokenId}`));
     const excluded = new Set(excludedRows.map((row) => `${row.contract}/${row.tokenId}`));
     const inspections = new Map(approvalRows.map((row) => [`${row.contract}/${row.tokenId}`, row]));
-    return res.json({ ...snapshot,
+    return res.json({ ...legacySnapshot,
       listings: marshalMarketListings(snapshot.listings, approved, excluded).map((listing) => withInspectedToken(
         listing, inspections.get(`${listing.tokenContract}/${listing.tokenId}`),
       )),
-      custodyReady: true, depositBlockReason: null });
+    });
   } catch (error) {
     console.error("[horf] stable chain read failed:", error);
     res.status(503).json({ error: "The horse stables are temporarily unavailable" });
@@ -145,6 +150,9 @@ router.get("/api/horf/stables", async (req, res) => {
 });
 
 router.post("/api/horf/stables/permit", requireHorfCsrf, async (req, res) => {
+  if (horfLegacyDepositsClosed()) {
+    return res.status(410).json({ code: "HORF_LEGACY_DEPOSITS_CLOSED", error: LEGACY_DEPOSIT_MESSAGE });
+  }
   const request = parseHorfPermitRequest(req.body);
   if (!request) {
     return res.status(400).json({ error: "Valid wallet, stable, FA2 token, and positive edition count are required" });

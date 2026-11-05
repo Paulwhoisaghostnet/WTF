@@ -1,4 +1,4 @@
-import { HORF_RECIPIENT_LIMIT, assertTraderAddress } from "../../features/horf/recipient-input";
+import { assertTraderAddress } from "../../features/horf/recipient-input";
 import { toNatString } from "./nat";
 import { assertNetworkReadyForSend } from "./preflight";
 import { ensureWalletProviderForSend, withTezosRpcFallback } from "./wallet";
@@ -29,9 +29,6 @@ export async function sendHorfTokenTransfer(
   if (!FA2_CONTRACT.test(transfer.tokenContract)) throw new Error("A verified FA2 token contract is required.");
   const tokenId = toNatString(transfer.tokenId);
   if (!transfer.recipients.length) throw new Error("Add at least one recipient.");
-  if (transfer.recipients.length > HORF_RECIPIENT_LIMIT) {
-    throw new Error(`A Horf send can include up to ${HORF_RECIPIENT_LIMIT} recipient addresses.`);
-  }
   const seen = new Set<string>();
   const txs = transfer.recipients.map((recipient) => {
     const address = assertTraderAddress(recipient.address);

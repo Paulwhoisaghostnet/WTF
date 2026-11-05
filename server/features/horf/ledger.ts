@@ -14,6 +14,8 @@ import {
   isLastHorfEventPage,
 } from "./source";
 import { getStableClaimSnapshot } from "./stable-ledger";
+import { getRoomSettlementSnapshot } from "./room-ledger";
+import { withoutRoomSwapInputDuplicates } from "./room-dedupe";
 import { getHorseMarketSaleSnapshot } from "./horse-market/sale-ledger";
 import { getHorfObjktPurchaseSnapshot } from "./horse-market/objkt-intents";
 import { horseContractAddress } from "./horse-config";
@@ -363,6 +365,7 @@ export async function getHorfSeasonSnapshot(address: string | null, season: Horf
   const effectiveStatus = invalidSnapshot || (due && state.status === "ready") ? "syncing" : state.status;
   const asOf = !invalidSnapshot && state.as_of ? new Date(state.as_of).toISOString() : null;
   const stableClaims = await getStableClaimSnapshot(season);
+  const roomSettlements = await getRoomSettlementSnapshot(season);
   const marketSales = await getHorseMarketSaleSnapshot(season);
   const objktPurchases = await getHorfObjktPurchaseSnapshot(season);
   let directTransfers: HorfTransfer[] = [];
@@ -389,12 +392,19 @@ export async function getHorfSeasonSnapshot(address: string | null, season: Horf
     );
     directTransfers = applyGiftSettlements(result.rows.map(readStoredTransfer), gifts.rows);
   }
+  directTransfers = withoutRoomSwapInputDuplicates(directTransfers,
+    roomSettlements.transfers.filter((transfer) => transfer.roomInput).map((transfer) => ({
+      operationHash: transfer.operationHash, from: transfer.from, to: transfer.to,
+      amount: transfer.amount, tokenContract: transfer.token.contract, tokenId: transfer.token.tokenId,
+    })), (transfer) => ({ operationHash: transfer.operationHash, from: transfer.from, to: transfer.to,
+      amount: transfer.amount, tokenContract: transfer.token.contract, tokenId: transfer.token.tokenId }));
   const exclusions = await pool.query<{ token_contract: string; token_id: string }>(
     `SELECT token_contract, token_id FROM public.horf_token_nonhorse_decisions WHERE active = true`,
   );
   const excluded = new Set(exclusions.rows.map((row) => `${row.token_contract}/${row.token_id}`));
   ({ leaderboard, currentUser } = summarizeSeason(withoutExcludedHorseTokens([
-    ...directTransfers, ...stableClaims.transfers, ...marketSales.transfers, ...objktPurchases.transfers,
+    ...directTransfers, ...stableClaims.transfers, ...roomSettlements.transfers,
+    ...marketSales.transfers, ...objktPurchases.transfers,
   ], excluded), address));
   if (due) kickSync(season);
   const reference = effectiveStatus === "ready" ? state.as_of : state.updated_at;
@@ -402,19 +412,20 @@ export async function getHorfSeasonSnapshot(address: string | null, season: Horf
   const nextRefreshAt = season.endsAt && effectiveStatus === "ready"
     ? null
     : new Date(Math.max(now + MAINNET_BLOCK_MS, dueAt)).toISOString();
-  const status = effectiveStatus === "error" || stableClaims.status === "error" || marketSales.status === "error" ? "error"
-    : effectiveStatus === "syncing" || stableClaims.status === "syncing" || marketSales.status === "syncing" ? "syncing" : "ready";
-  const sourceTimes = [asOf, stableClaims.asOf, marketSales.asOf].filter((value): value is string => !!value);
+  const status = effectiveStatus === "error" || stableClaims.status === "error" || roomSettlements.status === "error" || marketSales.status === "error" ? "error"
+    : effectiveStatus === "syncing" || stableClaims.status === "syncing" || roomSettlements.status === "syncing" || marketSales.status === "syncing" ? "syncing" : "ready";
+  const sourceTimes = [asOf, stableClaims.asOf, roomSettlements.asOf, marketSales.asOf].filter((value): value is string => !!value);
   const combinedAsOf = sourceTimes.length ? new Date(Math.min(...sourceTimes.map(Date.parse))).toISOString() : null;
-  const refreshCandidates = [nextRefreshAt, stableClaims.nextRefreshAt, marketSales.nextRefreshAt].filter((value): value is string => !!value);
+  const refreshCandidates = [nextRefreshAt, stableClaims.nextRefreshAt, roomSettlements.nextRefreshAt,
+    marketSales.nextRefreshAt].filter((value): value is string => !!value);
   return {
     season,
     seasons: HORF_SEASON_CHOICES,
     asOf: combinedAsOf,
     status,
-    error: state.error || stableClaims.error || marketSales.error,
+    error: state.error || stableClaims.error || roomSettlements.error || marketSales.error,
     nextRefreshAt: refreshCandidates.length ? refreshCandidates.sort()[0] : null,
-    countingRule: "Each whole horse sent directly or claimed from a Horf Stable counts for both traders. A verified HORSE market sale or Objkt purchase made in Horf counts once for each trader, even when several editions sell; only direct pairwise sends create return rides.",
+    countingRule: "Each direct horse send or Stable claim counts once for each rider. A settled V3 swap sends one horse each way but counts once per rider; each sender earns 10 HORSE. Escrow deposits do not count. Only direct pairwise sends create return rides.",
     leaderboard,
     currentUser,
   };
@@ -441,17 +452,18 @@ function sumCount(left: number, right: number): number {
 /** Combine only named, nonoverlapping campaign snapshots; gaps remain outside the count. */
 export function combineHorfSeasonSnapshots(snapshots: readonly HorfSeasonSnapshot[], address: string | null) {
   const totals = new Map<string, {
-    received: number; giftHorsesReceived: number; tradeHorsesReceived: number; sent: number; name: null;
+    received: number; giftHorsesReceived: number; tradeHorsesReceived: number; sent: number; trades: number; name: null;
   }>();
   for (const snapshot of snapshots) {
     for (const rider of snapshot.leaderboard) {
       const previous = totals.get(rider.address) || {
-        received: 0, giftHorsesReceived: 0, tradeHorsesReceived: 0, sent: 0, name: null,
+        received: 0, giftHorsesReceived: 0, tradeHorsesReceived: 0, sent: 0, trades: 0, name: null,
       };
       previous.received = sumCount(previous.received, rider.received);
       previous.giftHorsesReceived = sumCount(previous.giftHorsesReceived, rider.giftHorsesReceived);
       previous.tradeHorsesReceived = sumCount(previous.tradeHorsesReceived, rider.tradeHorsesReceived);
       previous.sent = sumCount(previous.sent, rider.sent);
+      previous.trades = sumCount(previous.trades, rider.trades);
       totals.set(rider.address, previous);
     }
   }
@@ -461,7 +473,7 @@ export function combineHorfSeasonSnapshots(snapshots: readonly HorfSeasonSnapsho
     giftHorsesReceived: counts.giftHorsesReceived,
     tradeHorsesReceived: counts.tradeHorsesReceived,
     sent: counts.sent,
-    trades: sumCount(counts.received, counts.sent),
+    trades: counts.trades,
   })).sort((a, b) => b.trades - a.trades || b.received - a.received || a.address.localeCompare(b.address));
 
   // Return rides can settle a prior season's obligation. Rebuild this wallet's
@@ -483,6 +495,7 @@ export function combineHorfSeasonSnapshots(snapshots: readonly HorfSeasonSnapsho
           token: row.token, amount: row.amount,
           ...(row.settlement ? { settlement: row.settlement } : {}),
           ...(row.stableMode !== undefined ? { stableMode: row.stableMode } : {}),
+          ...(row.exchangeKey ? { exchangeKey: row.exchangeKey } : {}),
         });
       }
     }

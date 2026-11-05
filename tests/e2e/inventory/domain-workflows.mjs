@@ -886,6 +886,7 @@ export const DOMAIN_WORKFLOWS = [
     name: "horf open range public search and owner offer loop",
     domain: "Market, Exchange, Inventory, and Commerce",
     routes: ["/horf/open-range"],
+    uiHandles: ["data-horf-open-range-for-trade-now"],
     eventHandles: ["horf.open_range.viewed", "horf.open_range.horse_viewed", "horf.open_range.offer_posted", "horf.open_range.offer_removed", "horf.open_range.refreshed", "horf.inspection.submitted", "horf.inspection.decided"],
     apiProbes: [
       { method: "GET", path: "/api/horf/open-range?season=current-2026", expectedStatuses: [200, 503] },
@@ -945,6 +946,7 @@ export const DOMAIN_WORKFLOWS = [
     name: "horf personal stable and inspection request loop",
     domain: "Market, Exchange, Inventory, and Commerce",
     routes: ["/horf", "/horf/stable"],
+    uiHandles: ["data-horf-stable-for-trade-now", "data-horf-stable-available-status", "data-horf-stable-remove-availability"],
     eventHandles: ["horf.personal_stable.selected", "horf.personal_stable.removed", "horf.inspection.submitted", "horf.trader_profile.updated", "horf.trader_profile.picture_uploaded", "horf.stable.mint_season_selected"],
     apiProbes: [
       { method: "GET", path: "/api/horf/traders/tz1VSUr8wwNhLAzempoch5d6hLRiTh8Cjcjb/horses?offset=48", expectedStatuses: [200, 503] },
@@ -985,9 +987,9 @@ export const DOMAIN_WORKFLOWS = [
     ],
   },
   {
-    name: "horf stable trading loop",
+    name: "horf V2 stable recovery loop",
     domain: "Market, Exchange, Inventory, and Commerce",
-    routes: ["/horf/horse-market?market=marshals"],
+    routes: ["/horf/legacy-stables"],
     eventHandles: [
       "horf.stable.deposited",
       "horf.stable.claimed",
@@ -1006,10 +1008,49 @@ export const DOMAIN_WORKFLOWS = [
     ],
   },
   {
+    name: "horf V3 inspected and outlaw escrow rooms",
+    domain: "Market, Exchange, Inventory, and Commerce",
+    routes: ["/horf/horse-market?market=marshals", "/horf/horse-market?market=outlaw&outlaw=rooms", "/horf/horse-market?market=outlaw&outlaw=rooms&listing=9"],
+    eventHandles: ["horf.room.deposited", "horf.room.claimed", "horf.room.swapped", "horf.room.cancelled"],
+    apiProbes: [
+      { method: "GET", path: "/api/horf/rooms?market=marshal", expectedStatuses: [200, 503] },
+      { method: "GET", path: "/api/horf/rooms?market=outlaw", expectedStatuses: [200, 503] },
+      { method: "POST", path: "/api/horf/rooms/permit", body: {}, expectedStatuses: [400, 403] },
+    ],
+  },
+  {
+    name: "horf wallet-held horse offer messages",
+    domain: "Market, Exchange, Inventory, and Commerce",
+    routes: ["/horf/horse-market?market=outlaw&outlaw=available", "/horf/horse-market?market=outlaw&outlaw=available&offer=71", "/horf/stable", "/horf/stable?private-listing=19"],
+    uiHandles: ["data-horf-private-detail", "data-horf-private-recovery"],
+    eventHandles: [
+      "horf.trade_offer.inbox_viewed",
+      "horf.trade_offer.proposed",
+      "horf.trade_offer.declined",
+      "horf.trade_offer.cancelled",
+      "horf.trade_offer.escrow_confirmed",
+      "horf.trade_offer.fulfilled",
+      "horf.trade_offer.escrow_cancelled",
+    ],
+    apiProbes: [
+      { method: "GET", path: "/api/horf/trade-offers?address=invalid&box=incoming", expectedStatuses: [400] },
+      { method: "GET", path: "/api/horf/trade-offers?address=tz1VSUr8wwNhLAzempoch5d6hLRiTh8Cjcjb&box=outgoing", expectedStatuses: [403, 503] },
+      { method: "POST", path: "/api/horf/trade-offers", body: {}, expectedStatuses: [400, 403] },
+      { method: "POST", path: "/api/horf/trade-offers/0/decline", body: {}, expectedStatuses: [400, 403] },
+      { method: "POST", path: "/api/horf/trade-offers/0/cancel", body: {}, expectedStatuses: [400, 403] },
+      { method: "POST", path: "/api/horf/trade-offers/0/accept", body: {}, expectedStatuses: [400, 403] },
+      { method: "POST", path: "/api/horf/trade-offers/0/fulfill", body: {}, expectedStatuses: [400, 403] },
+      { method: "POST", path: "/api/horf/trade-offers/0/escrow-cancel", body: {}, expectedStatuses: [400, 403] },
+      { method: "GET", path: "/api/horf/rooms/private?address=invalid", expectedStatuses: [400] },
+      { method: "GET", path: "/api/horf/rooms/private/0?address=invalid", expectedStatuses: [400] },
+    ],
+  },
+  {
     name: "horf HORSE distribution and posse loop",
     domain: "Market, Exchange, Inventory, and Commerce",
     routes: ["/horf/send-horse", "/horf/posse"],
     eventHandles: [
+      "horf.posse.batch_send_reviewed",
       "horf.horse.sent",
       "horf.horse.reward_claimed",
       "horf.crp_nominations.opened",
@@ -1025,6 +1066,7 @@ export const DOMAIN_WORKFLOWS = [
       { method: "GET", path: "/api/horf/horse/rewards?address=tz1VSUr8wwNhLAzempoch5d6hLRiTh8Cjcjb", expectedStatuses: [200, 503] },
       { method: "POST", path: "/api/horf/horse/claim-permit", body: { address: "invalid" }, expectedStatuses: [400, 403, 503] },
       { method: "GET", path: "/api/horf/posse?address=tz1VSUr8wwNhLAzempoch5d6hLRiTh8Cjcjb", expectedStatuses: [200, 403, 503] },
+      { method: "GET", path: "/api/horf/posse/horse-holders?address=invalid&contract=invalid&tokenId=0", expectedStatuses: [400] },
       { method: "POST", path: "/api/horf/posse", body: { ownerAddress: "invalid", address: "invalid" }, expectedStatuses: [400, 403] },
       { method: "DELETE", path: "/api/horf/posse/0", expectedStatuses: [400, 403] },
     ],
@@ -1051,7 +1093,7 @@ export const DOMAIN_WORKFLOWS = [
   {
     name: "horf HORSE market loop",
     domain: "Market, Exchange, Inventory, and Commerce",
-    routes: ["/horf/horse-market?market=horse4horse", "/horf/open-range"],
+    routes: ["/horf/horse-market?market=horse4horse", "/horf/horse-market?market=horse4horse&listing=8", "/horf/open-range"],
     eventHandles: [
       "horf.horse_market.buying_options_opened",
       "horf.horse_market.artwork_opened",

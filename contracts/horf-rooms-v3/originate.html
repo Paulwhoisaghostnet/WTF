@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>HORF Rooms V3 · Mainnet origination</title>
+    <style>
+      :root { font: 16px/1.5 system-ui, sans-serif; color: #efe6d2; background: #0d1916; }
+      * { box-sizing: border-box; }
+      main { max-width: 820px; margin: 32px auto; padding: 28px; border: 1px solid #4b7462; border-radius: 19px; background: #192a24; box-shadow: 0 18px 60px #0007; }
+      h1 { margin: 0 0 8px; color: #f0bb62; font-size: clamp(32px, 6vw, 58px); line-height: 1; }
+      p { max-width: 70ch; }
+      dl { display: grid; grid-template-columns: 175px minmax(0, 1fr); gap: 7px 16px; padding: 18px; border-radius: 12px; background: #233a31; }
+      dt { font-weight: 800; }
+      dd { margin: 0; overflow-wrap: anywhere; }
+      button { margin: 6px 8px 6px 0; padding: 12px 18px; border: 1px solid #daa957; border-radius: 8px; background: #d9a64d; color: #191b12; font: 800 15px system-ui; cursor: pointer; }
+      button:disabled { opacity: .5; cursor: not-allowed; }
+      #status { min-height: 3em; padding: 12px; border-left: 4px solid #7dc9aa; background: #233a31; overflow-wrap: anywhere; }
+      #status.error { border-color: #dc8271; background: #3c2928; }
+      code { overflow-wrap: anywhere; }
+      @media (max-width: 600px) { main { margin: 10px; padding: 15px; } dl { grid-template-columns: 1fr; } }
+    </style>
+  </head>
+  <body>
+    <main>
+      <small>WTF OS · Tezos Mainnet</small>
+      <h1>Originate HORF Rooms V3 🐎</h1>
+      <p>Reciprocal and Honor pools, automatic Outlaw swaps, and one-to-one private offer escrow. This creates a new contract. The existing V2 Stable and its riders’ deposits remain intact.</p>
+      <dl>
+        <dt>Originator/admin</dt><dd><code>wtf.tez · tz1cVRngZw42KZ42VQF2ZCy2CJSPNG3H7Cgt</code></dd>
+        <dt>Network</dt><dd>Tezos Mainnet · NetXdQprcVkpaWU</dd>
+        <dt>Oracle public key</dt><dd><code id="oracle-key">Loading…</code></dd>
+        <dt>Code SHA-256</dt><dd><code id="code-hash">Loading…</code></dd>
+      </dl>
+      <button id="connect" type="button">Connect wtf.tez in Kukai</button>
+      <button id="originate" type="button" disabled>Request V3 origination signature</button>
+      <button id="retire-v2" type="button" disabled>Invalidate old V2 deposit permits</button>
+      <p id="status" role="status" aria-live="polite">Verifying the compiled artifact and Mainnet plan…</p>
+      <p><small>Kukai displays the current fee and storage burn before signing. Review the admin, oracle, and code hash. Invalidate V2 permits only after the public Horf app reports V3 ready; V2 claims and cancellations remain open. Outlaw and private swaps involving uninspected FA2 contracts retain token-behavior risk.</small></p>
+    </main>
+    <script type="module" src="./bootstrap.ts"></script>
+  </body>
+</html>

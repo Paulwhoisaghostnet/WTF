@@ -34,6 +34,25 @@ test("local puppet DB preparation includes durable Horf discovery and nonhorse d
   assert.match(preparationSource, /to_regclass\(\$1\).*public\.horf_token_nonhorse_decisions/);
 });
 
+test("local puppet DB preparation includes private Horf trade messages", async () => {
+  assert.match(preparationSource, /"drizzle\/0156_horf_trade_offer_messages\.sql"/);
+  const migration = await readFile(
+    new URL("../drizzle/0156_horf_trade_offer_messages.sql", import.meta.url), "utf8"
+  );
+  assert.match(migration, /CREATE TABLE IF NOT EXISTS public\.horf_trade_offer_messages/);
+  assert.match(migration, /horf_trade_offer_messages_active_uq/);
+  assert.match(migration, /status NOT IN \('accepted', 'fulfilled'\)/);
+});
+
+test("local puppet DB preparation includes verified V3 room settlements", async () => {
+  assert.match(preparationSource, /"drizzle\/0157_horf_room_settlements\.sql"/);
+  const migration = await readFile(
+    new URL("../drizzle/0157_horf_room_settlements.sql", import.meta.url), "utf8"
+  );
+  assert.match(migration, /CREATE TABLE IF NOT EXISTS public\.horf_room_settlement_events/);
+  assert.match(migration, /PRIMARY KEY \(contract_address, tzkt_event_id\)/);
+});
+
 test("local puppet DB preparation includes current WTF LIVE room schemas", () => {
   for (const migration of [
     "0097_wtf_live_rooms.sql",

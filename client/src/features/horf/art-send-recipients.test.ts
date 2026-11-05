@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { b58Encode, PrefixV2 } from "@taquito/utils";
 import { validateArtSendRecipients } from "./art-send-recipients";
-import { HORF_RECIPIENT_LIMIT } from "./recipient-input";
 
 const sender = "tz1VSUr8wwNhLAzempoch5d6hLRiTh8Cjcjb";
 const alice = "tz1Qi77tcJn9foeHHP1QHj6UX1m1vLVLMbuY";
@@ -20,9 +20,18 @@ test("one FA2 horse can be allocated to multiple riders without exceeding editio
   ], sender, "3"), /assigned 4 editions.*owns 3/);
 });
 
-test("horse batch validation rejects duplicates, self sends, zero and over-limit rows", () => {
+test("horse batch validation rejects duplicates, self sends and zero editions", () => {
   assert.throws(() => validateArtSendRecipients([{ address: alice, amount: "1" }, { address: alice, amount: "1" }], sender, "3"), /more than once/);
   assert.throws(() => validateArtSendRecipients([{ address: sender, amount: "1" }], sender, "3"), /another trader/);
   assert.throws(() => validateArtSendRecipients([{ address: alice, amount: "0" }], sender, "3"), /at least one/);
-  assert.throws(() => validateArtSendRecipients(Array.from({ length: HORF_RECIPIENT_LIMIT + 1 }, () => ({ address: alice, amount: "1" })), sender, "100"), /up to 50/);
+});
+
+test("horse art batch accepts the full eligible posse beyond the HORSE payout recipient limit", () => {
+  const rows = Array.from({ length: 51 }, (_, index) => ({
+    address: b58Encode((index + 1).toString(16).padStart(40, "0"), PrefixV2.Ed25519PublicKeyHash),
+    amount: "1",
+  }));
+  const result = validateArtSendRecipients(rows, sender, "51");
+  assert.equal(result.total, "51");
+  assert.equal(result.recipients.length, 51);
 });

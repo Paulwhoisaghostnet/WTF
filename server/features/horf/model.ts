@@ -79,7 +79,11 @@ export interface HorfTransfer {
   token: { contract: string; tokenId: string; name: string; image: string | null };
   /** Pool claims count as trades, but their deposit/credit rules settle the return. */
   settlement?: "stable" | "gift" | "market" | "objkt";
-  stableMode?: 0 | 1 | 2;
+  stableMode?: 0 | 1 | 2 | 3;
+  /** The two V3 swap legs share one exchange for race and completed-trade counts. */
+  exchangeKey?: string;
+  /** Input leg may also appear as an Objkt wallet-to-wallet transfer. */
+  roomInput?: boolean;
 }
 
 export function isTezosWallet(value: unknown): value is string {
@@ -184,7 +188,7 @@ export function normalizeHorfTransfer(
 export interface HorfLeaderboardEntry {
   address: string;
   name: null;
-  /** Raw horse transfer legs for the race and sender reward activity. */
+  /** One activity point per direct edition or settled exchange per rider. */
   trades: number;
   received: number;
   /** Explicitly confirmed horse gifts received through Horf. */
@@ -214,7 +218,8 @@ export interface HorfCurrentUser extends HorfLeaderboardEntry {
     token: HorfTransfer["token"];
     amount: number;
     settlement?: "stable" | "gift" | "market" | "objkt";
-    stableMode?: 0 | 1 | 2;
+    stableMode?: 0 | 1 | 2 | 3;
+    exchangeKey?: string;
   }>;
 }
 
@@ -222,7 +227,9 @@ export function summarizeSeason(transfers: HorfTransfer[], address: string | nul
   leaderboard: HorfLeaderboardEntry[];
   currentUser: HorfCurrentUser | null;
 } {
-  const totals = new Map<string, { received: number; giftHorsesReceived: number; tradeHorsesReceived: number; sent: number }>();
+  const totals = new Map<string, { received: number; giftHorsesReceived: number; tradeHorsesReceived: number; sent: number; trades: number }>();
+  const countedExchanges = new Map<string, Set<string>>();
+  const completedExchanges = new Set<string>();
   let completedTrades = 0;
   const pair = new Map<string, {
     sendCredit: number;
@@ -230,11 +237,21 @@ export function summarizeSeason(transfers: HorfTransfer[], address: string | nul
   }>();
   const recent: HorfCurrentUser["recent"] = [];
   for (const transfer of [...transfers].sort((a, b) => a.timestamp.localeCompare(b.timestamp) || a.id - b.id)) {
-    const sender = totals.get(transfer.from) || { received: 0, giftHorsesReceived: 0, tradeHorsesReceived: 0, sent: 0 };
+    const sender = totals.get(transfer.from) || { received: 0, giftHorsesReceived: 0, tradeHorsesReceived: 0, sent: 0, trades: 0 };
     sender.sent += transfer.amount;
+    if (transfer.exchangeKey) {
+      const seen = countedExchanges.get(transfer.from) || new Set<string>();
+      if (!seen.has(transfer.exchangeKey)) { sender.trades += 1; seen.add(transfer.exchangeKey); }
+      countedExchanges.set(transfer.from, seen);
+    } else sender.trades += transfer.amount;
     totals.set(transfer.from, sender);
-    const recipient = totals.get(transfer.to) || { received: 0, giftHorsesReceived: 0, tradeHorsesReceived: 0, sent: 0 };
+    const recipient = totals.get(transfer.to) || { received: 0, giftHorsesReceived: 0, tradeHorsesReceived: 0, sent: 0, trades: 0 };
     recipient.received += transfer.amount;
+    if (transfer.exchangeKey) {
+      const seen = countedExchanges.get(transfer.to) || new Set<string>();
+      if (!seen.has(transfer.exchangeKey)) { recipient.trades += 1; seen.add(transfer.exchangeKey); }
+      countedExchanges.set(transfer.to, seen);
+    } else recipient.trades += transfer.amount;
     if (transfer.settlement === "gift") recipient.giftHorsesReceived += transfer.amount;
     else recipient.tradeHorsesReceived += transfer.amount;
     totals.set(transfer.to, recipient);
@@ -267,6 +284,11 @@ export function summarizeSeason(transfers: HorfTransfer[], address: string | nul
           });
         }
         pair.set(counterparty, account);
+      } else if (transfer.exchangeKey) {
+        if (!completedExchanges.has(transfer.exchangeKey)) {
+          completedTrades += 1;
+          completedExchanges.add(transfer.exchangeKey);
+        }
       } else if (transfer.settlement === "market" || transfer.settlement === "objkt" ||
           (transfer.settlement === "stable" && (transfer.stableMode === 0 || transfer.stableMode === 2))) {
         // A verified sale or credit-spending pool claim settles in one chain event.
@@ -281,6 +303,7 @@ export function summarizeSeason(transfers: HorfTransfer[], address: string | nul
         amount: transfer.amount,
         ...(transfer.settlement ? { settlement: transfer.settlement } : {}),
         ...(transfer.stableMode !== undefined ? { stableMode: transfer.stableMode } : {}),
+        ...(transfer.exchangeKey ? { exchangeKey: transfer.exchangeKey } : {}),
       });
     }
   }
@@ -291,10 +314,10 @@ export function summarizeSeason(transfers: HorfTransfer[], address: string | nul
     giftHorsesReceived: counts.giftHorsesReceived,
     tradeHorsesReceived: counts.tradeHorsesReceived,
     sent: counts.sent,
-    trades: counts.received + counts.sent,
+    trades: counts.trades,
   })).sort((a, b) => b.trades - a.trades || b.received - a.received || a.address.localeCompare(b.address));
   if (!address) return { leaderboard, currentUser: null };
-  const own = totals.get(address) || { received: 0, giftHorsesReceived: 0, tradeHorsesReceived: 0, sent: 0 };
+  const own = totals.get(address) || { received: 0, giftHorsesReceived: 0, tradeHorsesReceived: 0, sent: 0, trades: 0 };
   const owedTo: HorfCurrentUser["owedTo"] = [];
   const owedBy: HorfCurrentUser["owedBy"] = [];
   const waitingHorses: HorfCurrentUser["waitingHorses"] = [];
@@ -318,7 +341,7 @@ export function summarizeSeason(transfers: HorfTransfer[], address: string | nul
       giftHorsesReceived: own.giftHorsesReceived,
       tradeHorsesReceived: own.tradeHorsesReceived,
       sent: own.sent,
-      trades: own.received + own.sent,
+      trades: own.trades,
       owedTo,
       owedBy,
       waitingHorses,

@@ -7,6 +7,7 @@ import { assertTraderAddress } from "./recipient-input";
 import type { HorfPosseResponse } from "./social-types";
 import { HorfTradeHorseCarousel } from "./HorfTradeHorseCarousel";
 import { HorfKnownTraderPicker, useHorfTraderChoices } from "./HorfKnownTraderPicker";
+import { HorfGifts } from "./HorfGifts";
 
 const Shell = styled.section`
   min-width: 0;
@@ -32,6 +33,8 @@ const Shell = styled.section`
   .member-name:hover { color: var(--horf-teal, #71b7a0); text-decoration: underline; }
   .member small { display: block; margin-top: 5px; color: var(--horf-muted, #b7b5a7); font-size: 11px; overflow-wrap: anywhere; }
   .member-head button { flex: none; min-height: 32px; padding: 5px 8px; font-size: 11px; }
+  .batch-send { margin: 18px 0 22px; padding: 18px; border: 1px solid var(--horf-line, #3d5148); border-radius: 16px; background: var(--horf-surface, #1b2723); }
+  .batch-send h3 { margin: 0 0 6px; font: 700 23px/1.1 var(--horf-display, Georgia, serif); }
   @container (max-width: 760px) { .list { grid-template-columns: 1fr; } .add-form { grid-template-columns: 1fr; } }
 `;
 
@@ -39,8 +42,9 @@ function shortAddress(address: string) {
   return address.length > 18 ? `${address.slice(0, 8)}…${address.slice(-6)}` : address;
 }
 
-export function HorfPosse({ address, connectWallet, isConnecting }: {
+export function HorfPosse({ address, isGuest, connectWallet, isConnecting }: {
   address: string | null;
+  isGuest: boolean;
   connectWallet: () => Promise<void>;
   isConnecting: boolean;
 }) {
@@ -107,6 +111,12 @@ export function HorfPosse({ address, connectWallet, isConnecting }: {
     {posseQuery.isPending && address && <div className="status" role="status">Rounding up your posse…</div>}
     {scopeDenied ? <div className="status error" role="alert">Your Horf wallet proof is missing or this wallet is restricted. Reconnect and verify before viewing your posse. <button type="button" onClick={() => void connectWallet()} disabled={isConnecting}>{isConnecting ? "Connecting…" : "Reconnect wallet"}</button></div>
       : posseQuery.isError && <div className="status error" role="alert">The posse list is unavailable. Refresh to try again.</div>}
+    {address && partners.length > 0 && <div className="batch-send" data-horf-posse-batch-send>
+      <h3>One horse, the whole posse 🐎</h3>
+      <p>Choose a horse. Horf checks current holders, then saddles up one edition for each rider who does not own it.</p>
+      <HorfGifts key={`${address}:${partners.map((partner) => partner.address).join(":")}`} address={address} isGuest={isGuest} connectWallet={connectWallet} isConnecting={isConnecting}
+        posseBatchMembers={partners.map((partner) => ({ address: partner.address, name: partner.nickname || posseNameByAddress.get(partner.address) }))} />
+    </div>}
     {partners.length > 0 ? <ul className="list">{partners.map((partner) => {
       const name = posseNameByAddress.get(partner.address) || shortAddress(partner.address);
       return <li className="member" key={partner.id} data-horf-posse-member>

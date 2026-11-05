@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useSearch } from "wouter";
 import styled from "styled-components";
 import { api } from "../../lib/api";
 import { advanceResolvedMediaFallback, resolveTokenThumbnail, type ResolvedThumbnail } from "../../lib/media-resolve";
@@ -110,6 +111,8 @@ const Grid = styled.div`
 const Card = styled.article<{ $selected: boolean }>`
   min-width: 0; overflow: hidden; border: 1px solid ${(p) => p.$selected ? 'var(--horf-teal, #71b7a0)' : 'var(--horf-line, #3d5148)'};
   border-radius: 18px; background: var(--horf-surface, #1b2723); box-shadow: ${(p) => p.$selected ? '0 10px 30px #00000040' : '0 3px 12px #00000026'};
+  &[data-horf-horse-market-featured] { border-color: var(--horf-gold, #d8a34a); box-shadow: 0 0 0 3px #d8a34a55, 0 12px 36px #0005; }
+  &:focus { outline: 3px solid var(--horf-teal, #71b7a0); outline-offset: 4px; }
   .art { position: relative; aspect-ratio: 1.35; overflow: hidden; background: #2b3d34; }
   .art-open { width: 100%; height: 100%; padding: 0; border: 0; background: transparent; cursor: zoom-in; }
   .art-open:focus-visible { outline: 3px solid var(--horf-teal, #71b7a0); outline-offset: -4px; }
@@ -212,7 +215,11 @@ export function HorfHorseMarket({ address, connectWallet, isConnecting }: {
   address: string | null; connectWallet: () => Promise<void>; isConnecting: boolean;
 }) {
   const qc = useQueryClient();
+  const search = useSearch();
+  const listingFromUrl = new URLSearchParams(search).get("listing")?.trim() || null;
   const detailsRef = useRef<HTMLElement>(null);
+  const linkedCardRef = useRef<HTMLElement>(null);
+  const focusedListingRef = useRef<string | null>(null);
   const artDialogRef = useRef<HTMLDialogElement>(null);
   const artCloseRef = useRef<HTMLButtonElement>(null);
   const artTriggerRef = useRef<HTMLButtonElement | null>(null);
@@ -238,7 +245,8 @@ export function HorfHorseMarket({ address, connectWallet, isConnecting }: {
     contractAddress: snapshot!.contractAddress!, chainId: snapshot!.chainId, horseContractAddress: snapshot!.horseContractAddress!,
   } : null;
   const listings = (listingQuery.data?.listings ?? []).filter((item) => isPositive(item.remaining));
-  const selected = listings.find((item) => item.id === selectedId) ?? listings[0] ?? null;
+  const linkedListing = listingFromUrl ? listings.find((item) => item.id === listingFromUrl) ?? null : null;
+  const selected = listings.find((item) => item.id === selectedId) ?? (listingFromUrl ? linkedListing : listings[0] ?? null);
   const inspectionQuery = useQuery({
     queryKey: ["horf", "inspection-status", selectedOwned?.contract, selectedOwned?.tokenId],
     queryFn: () => api.get<Inspection>(`/api/horf/inspections/status?contract=${encodeURIComponent(selectedOwned!.contract)}&tokenId=${encodeURIComponent(selectedOwned!.tokenId)}`),
@@ -249,6 +257,19 @@ export function HorfHorseMarket({ address, connectWallet, isConnecting }: {
     selectedOwned.balance === review.ownedBalance && quantity === review.quantity &&
     price.trim() === review.priceInput && inspectionQuery.data?.status === "approved");
   useEffect(() => { setSelectedOwned(null); setQuantity("0"); setReview(null); }, [address]);
+  useEffect(() => { setSelectedId(null); }, [listingFromUrl]);
+  useEffect(() => {
+    if (!listingFromUrl) { focusedListingRef.current = null; return; }
+    if (!linkedListing || focusedListingRef.current === listingFromUrl) return;
+    const frame = window.requestAnimationFrame(() => {
+      const card = linkedCardRef.current;
+      if (!card) return;
+      card.scrollIntoView({ block: "center", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+      card.focus({ preventScroll: true });
+      focusedListingRef.current = listingFromUrl;
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [listingFromUrl, linkedListing]);
   useEffect(() => {
     const dialog = artDialogRef.current;
     if (!dialog) return;
@@ -407,6 +428,7 @@ export function HorfHorseMarket({ address, connectWallet, isConnecting }: {
       <div>
         {listingQuery.isPending && <Notice role="status">Rounding up the live listings…</Notice>}
         {listingQuery.isError && <Notice $error role="alert">Listings could not be read. Refresh to try again.</Notice>}
+        {!listingQuery.isPending && !listingQuery.isError && listingFromUrl && !linkedListing && <Notice role="status">Listing #{listingFromUrl} is no longer active. Browse the current horses below.</Notice>}
         {!listingQuery.isPending && !listingQuery.isError && listings.length === 0 && <Notice>No horses on the block yet. A Marshal-approved horse can be the first in the ring.</Notice>}
         <Grid>{listings.map((listing, index) => {
           const name = listing.token?.name || `Horse #${listing.tokenId}`;
@@ -418,7 +440,7 @@ export function HorfHorseMarket({ address, connectWallet, isConnecting }: {
             : hasGifPreview && listing.token?.displayUri
               ? resolveTokenThumbnail({ thumbnail: listing.token.displayUri })
               : listing.token?.image ? resolveTokenThumbnail({ thumbnail: listing.token.image }) : null;
-          return <Card key={listing.id} $selected={selected?.id === listing.id} data-horf-horse-market-listing>
+          return <Card key={listing.id} ref={listing.id === listingFromUrl ? linkedCardRef : undefined} $selected={selected?.id === listing.id} data-horf-horse-market-listing data-horf-horse-market-listing-id={listing.id} data-horf-horse-market-featured={listing.id === listingFromUrl ? "" : undefined} tabIndex={-1}>
             <div className="art"><button className="art-open" type="button" data-horf-horse-market-art-trigger aria-haspopup="dialog" aria-label={`View larger artwork for ${name}`} onClick={(event) => openArtwork(listing, event.currentTarget)}>{video ? <MarketVideoPreview video={video} poster={art} /> : art ? <img data-horf-horse-market-card-gif={hasGifPreview ? "" : undefined} src={art.src} alt="" loading={index === 0 ? "eager" : "lazy"} decoding="async" fetchPriority={index === 0 ? "high" : "auto"} onError={(event) => { if (!advanceResolvedMediaFallback(event.currentTarget, art)) { event.currentTarget.src = "/horf-art/horse-portrait-photo.jpg"; event.currentTarget.classList.add("photo"); } }} /> : <img className="photo" src="/horf-art/horse-portrait-photo.jpg" alt="" loading="lazy" decoding="async" />}</button><span className="tag">✦ Marshal approved</span><span className="expand" aria-hidden="true">⤢ View art</span></div>
             <div className="body"><h4>{name}</h4><p>{listing.remaining} {listing.remaining === "1" ? "edition" : "editions"} · {shortAddress(listing.sellerAddress)}</p><div className="price"><div><span>Per edition</span><br /><strong>{formatHorseRaw(listing.unitPriceHorseRaw)}</strong> <span>HORSE</span></div><span>100% to seller</span></div><Action type="button" $strong={selected?.id === listing.id} onClick={() => inspectListing(listing)} aria-label={`View buying options for ${name}`}>View buying options →</Action><a href={objktTokenUrl(listing.tokenContract, listing.tokenId)} target="_blank" rel="noopener noreferrer">View full artwork on Objkt ↗</a></div>
           </Card>;

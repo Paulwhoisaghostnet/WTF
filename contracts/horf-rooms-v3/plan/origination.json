@@ -1,0 +1,85 @@
+{
+  "network": "tezos-mainnet",
+  "chainId": "NetXdQprcVkpaWU",
+  "rpc": "https://tezos-mainnet.octez.io/",
+  "admin": "tz1cVRngZw42KZ42VQF2ZCy2CJSPNG3H7Cgt",
+  "oraclePublicKey": "edpkvZL5ek6Njb9RWQVtnUMkV2HJQtNFsycFdrgDjTnshrsXmzEzVy",
+  "inheritedOracleFrom": "KT1Rg7ippRJGrFgKBDCGUyiFG7jKdcU7Dmsg",
+  "source": "artifacts/contract.json",
+  "contractJsonSha256": "eec1cf043a069a1ffb4abf14d3b87ab6a8b2edb424886fd535c5b2fb372b9b89",
+  "storage": {
+    "prim": "Pair",
+    "args": [
+      {
+        "string": "tz1cVRngZw42KZ42VQF2ZCy2CJSPNG3H7Cgt"
+      },
+      {
+        "prim": "Pair",
+        "args": [
+          [],
+          {
+            "prim": "Pair",
+            "args": [
+              [],
+              {
+                "prim": "Pair",
+                "args": [
+                  [],
+                  {
+                    "prim": "Pair",
+                    "args": [
+                      [],
+                      {
+                        "prim": "Pair",
+                        "args": [
+                          {
+                            "int": "0"
+                          },
+                          {
+                            "prim": "Pair",
+                            "args": [
+                              {
+                                "int": "0"
+                              },
+                              {
+                                "prim": "Pair",
+                                "args": [
+                                  {
+                                    "string": "edpkvZL5ek6Njb9RWQVtnUMkV2HJQtNFsycFdrgDjTnshrsXmzEzVy"
+                                  },
+                                  {
+                                    "prim": "Pair",
+                                    "args": [
+                                      [],
+                                      {
+                                        "prim": "Pair",
+                                        "args": [
+                                          [],
+                                          {
+                                            "prim": "Pair",
+                                            "args": [
+                                              [],
+                                              []
+                                            ]
+                                          }
+                                        ]
+                                      }
+                                    ]
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

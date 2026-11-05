@@ -5,7 +5,6 @@ import { api, isApiRequestError } from "../../lib/api";
 import { logClientSystemEvent } from "../../lib/system-log";
 import { sendHorfTokenTransfer, type HorfSendProgress } from "../../lib/tezos/horf-send";
 import { ensureWalletProviderForSend } from "../../lib/tezos/wallet";
-import { HORF_RECIPIENT_LIMIT } from "./recipient-input";
 import { validateArtSendRecipients, type ArtSendRecipient } from "./art-send-recipients";
 import type { HorfGuestSession } from "./guest-wallet";
 import { objktTokenUrl, parseObjktToken } from "./token-input";
@@ -29,6 +28,13 @@ type PendingTrade = { address: string; opHash: string; trades: GiftToConfirm[] }
 type ConfirmResponse = { status: "pending"; opHash: string } | { gifts: HorfGift[] };
 type GiftStage = "eligibility" | "preflight" | "preparing" | "wallet" | "confirming" | "indexing";
 type QuickRecipient = { address: string; name?: string | null };
+type PosseHolderResponse = {
+  address: string;
+  contract: string;
+  tokenId: string;
+  checkedAt: string;
+  members: Array<{ address: string; owns: boolean }>;
+};
 type QuickOffer = { id: number; ownerAddress: string; tokenContract: string; tokenId: string; name: string | null; acceptedTokenPolicy: "marshal_only" | "any_qualifying" };
 
 const PENDING_KEY_PREFIX = "horf:pending-gift-confirmation:";
@@ -281,6 +287,7 @@ export function HorfGifts({
   isConnecting,
   quickRecipient,
   quickRecipients,
+  posseBatchMembers,
   quickOffer,
   onQuickBusyChange,
 }: {
@@ -290,17 +297,19 @@ export function HorfGifts({
   isConnecting: boolean;
   quickRecipient?: QuickRecipient;
   quickRecipients?: QuickRecipient[];
+  posseBatchMembers?: QuickRecipient[];
   quickOffer?: QuickOffer | null;
   onQuickBusyChange?: (busy: boolean) => void;
 }) {
   const batchReturn = Boolean(quickRecipients?.length);
-  const compact = Boolean(quickRecipient || batchReturn);
+  const posseBatch = posseBatchMembers !== undefined;
+  const compact = Boolean(quickRecipient || batchReturn || posseBatch);
   const qc = useQueryClient();
   const [ownedKey, setOwnedKey] = useState("");
   const [manualLink, setManualLink] = useState("");
   const [token, setToken] = useState<TokenChoice | null>(null);
   const [sendKind, setSendKind] = useState<"gift" | "trade">(compact ? "trade" : "gift");
-  const [recipients, setRecipients] = useState<RecipientRow[]>(() => batchReturn
+  const [recipients, setRecipients] = useState<RecipientRow[]>(() => posseBatch ? [] : batchReturn
     ? quickRecipients!.map((rider, index) => ({ id: index + 1, address: rider.address, amount: "1" }))
     : [{ id: 1, address: quickRecipient?.address ?? "", amount: compact ? "" : "1" }]);
   const nextRecipientId = useRef((quickRecipients?.length ?? 1) + 1);
@@ -360,6 +369,21 @@ export function HorfGifts({
     enabled: Boolean(address && token),
     refetchOnWindowFocus: true,
   });
+  const posseHoldersQuery = useQuery({
+    queryKey: ["horf", "posse-horse-holders", address, token?.contract, token?.tokenId],
+    queryFn: async () => {
+      const params = new URLSearchParams({ address: address!, contract: token!.contract, tokenId: token!.tokenId });
+      const result = await api.get<PosseHolderResponse>(`/api/horf/posse/horse-holders?${params}`);
+      if (result.address !== address || result.contract !== token!.contract || result.tokenId !== token!.tokenId ||
+          !Array.isArray(result.members) || result.members.some((item) =>
+            !item || typeof item.address !== "string" || typeof item.owns !== "boolean")) {
+        throw new Error("The posse holder check did not match this horse and wallet.");
+      }
+      return result;
+    },
+    enabled: Boolean(posseBatch && address && token),
+    refetchOnWindowFocus: true,
+  });
   const quickApprovalQuery = useQuery({
     queryKey: ["horf", "quick-offer-approval", token?.contract, token?.tokenId],
     queryFn: () => api.get<{ status: string }>(`/api/horf/inspections/status?contract=${encodeURIComponent(token!.contract)}&tokenId=${encodeURIComponent(token!.tokenId)}`),
@@ -372,7 +396,15 @@ export function HorfGifts({
   const giftScopeDenied = isApiRequestError(giftsQuery.error) && giftsQuery.error.status === 403;
   const giftRestricted = giftScopeDenied && /restricted|blacklist/i.test(giftsQuery.error?.message ?? "");
   const busy = stage !== null;
-  const quickRecipientAddresses = batchReturn ? quickRecipients!.map((rider) => rider.address) : quickRecipient ? [quickRecipient.address] : [];
+  const posseRecipients = posseBatch ? (posseHoldersQuery.data?.members ?? [])
+    .filter((member) => !member.owns)
+    .map((member, index) => ({ id: index + 1, address: member.address, amount: "1" })) : [];
+  const activeRecipients = posseBatch ? posseRecipients : recipients;
+  const quickRecipientAddresses = posseBatch ? posseRecipients.map((rider) => rider.address)
+    : batchReturn ? quickRecipients!.map((rider) => rider.address) : quickRecipient ? [quickRecipient.address] : [];
+  const posseOwnedBalance = ownedBalanceQuery.data != null && /^\d+$/.test(ownedBalanceQuery.data)
+    ? BigInt(ownedBalanceQuery.data) : null;
+  const posseEnoughEditions = !posseBatch || (posseOwnedBalance !== null && posseOwnedBalance >= BigInt(posseRecipients.length));
   const pendingQuickTrade = compact ? pendingTrades.find((item) => item.trades.some((trade) => quickRecipientAddresses.includes(trade.recipient))) : null;
 
   useEffect(() => onQuickBusyChange?.(busy), [busy, onQuickBusyChange]);
@@ -383,7 +415,6 @@ export function HorfGifts({
   }
 
   function addRecipient() {
-    if (recipients.length >= HORF_RECIPIENT_LIMIT) return;
     setRecipients((current) => [...current, { id: nextRecipientId.current++, address: "", amount: "1" }]);
     setReview(null);
   }
@@ -452,18 +483,26 @@ export function HorfGifts({
     setSuccess(null);
     try {
       if (ownedBalanceQuery.data == null) throw new Error("This wallet’s horse edition balance is still loading. Try again shortly.");
-      const allocation = validateArtSendRecipients(recipients, address, ownedBalanceQuery.data);
+      if (posseBatch && (!posseHoldersQuery.data || posseHoldersQuery.isFetching)) {
+        throw new Error("Wait for the current posse ownership check before sending.");
+      }
+      const allocation = validateArtSendRecipients(activeRecipients, address, ownedBalanceQuery.data);
       if (compact && sendKind !== "trade") throw new Error("Return rides must be sent as trades.");
+      if (posseBatch && (allocation.recipients.length !== posseRecipients.length ||
+          allocation.recipients.some((rider) => rider.amountRaw !== "1" || !quickRecipientAddresses.includes(rider.address)))) {
+        throw new Error("Every posse rider who does not own this horse must receive exactly one edition.");
+      }
       if (batchReturn && (allocation.recipients.length < 1 || allocation.recipients.some((rider) => rider.amountRaw !== "1" || !quickRecipientAddresses.includes(rider.address)))) {
         throw new Error("Choose at least one waiting rider; send exactly one edition of this horse to each.");
       }
-      if (compact && !batchReturn && (allocation.recipients.length !== 1 || allocation.recipients[0]?.address !== quickRecipient?.address)) {
+      if (compact && !batchReturn && !posseBatch && (allocation.recipients.length !== 1 || allocation.recipients[0]?.address !== quickRecipient?.address)) {
         throw new Error("This quick trade must go to the rider you chose.");
       }
       if (compact && quickOffer?.acceptedTokenPolicy === "marshal_only" && quickApprovalQuery.data?.status !== "approved") {
         throw new Error("This rider asked for a Marshal-approved horse. Choose one with active approval before offering it.");
       }
       setReview({ sender: address, token: { ...token }, kind: sendKind, ...allocation, ownedBalance: ownedBalanceQuery.data });
+      if (posseBatch) logClientSystemEvent({ eventType: "horf.posse.batch_send_reviewed", message: "Horf posse horse batch reviewed", metadata: { tokenContract: token.contract, tokenId: token.tokenId, recipientCount: allocation.recipients.length } });
     } catch (cause) {
       setReview(null);
       setError(cause instanceof Error ? cause.message : "The horse send could not be reviewed.");
@@ -474,8 +513,14 @@ export function HorfGifts({
     if (!address || !review || busy || sendInFlight.current || review.sender !== address) return;
     const { token, kind, recipients: destinations } = review;
     if (compact && kind !== "trade") return;
+    if (posseBatch && (destinations.length !== posseRecipients.length ||
+        destinations.some((rider) => rider.amountRaw !== "1" || !quickRecipientAddresses.includes(rider.address)))) {
+      setReview(null);
+      setError("Your posse holder list changed. Review it again before signing.");
+      return;
+    }
     if (batchReturn && (destinations.length < 1 || destinations.some((rider) => rider.amountRaw !== "1" || !quickRecipientAddresses.includes(rider.address)))) return;
-    if (compact && !batchReturn && (destinations.length !== 1 || destinations[0]?.address !== quickRecipient?.address)) return;
+    if (compact && !batchReturn && !posseBatch && (destinations.length !== 1 || destinations[0]?.address !== quickRecipient?.address)) return;
     sendInFlight.current = true;
     const gifts: GiftToConfirm[] = destinations.map(({ address: recipient, amountRaw: amount }) => ({
       recipient, tokenContract: token.contract, tokenId: token.tokenId, amount,
@@ -486,15 +531,38 @@ export function HorfGifts({
     setSubmittedHash(null);
     let submitted = false;
     let signerReady = false;
+    let signerAttempted = false;
     let submittedOpHash: string | null = null;
     try {
       setStageKind(kind);
       setStage("preflight");
+      if (posseBatch) {
+        setStage("eligibility");
+        const freshBalance = await readOwnedHorseBalance(address, token, true);
+        validateArtSendRecipients(destinations.map(({ address: to, amountRaw }) => ({ address: to, amount: amountRaw })), address, freshBalance);
+        const params = new URLSearchParams({ address, contract: token.contract, tokenId: token.tokenId, refresh: "1" });
+        const latest = await api.get<PosseHolderResponse>(`/api/horf/posse/horse-holders?${params}`);
+        if (latest.address !== address || latest.contract !== token.contract || latest.tokenId !== token.tokenId ||
+            !Array.isArray(latest.members) || latest.members.some((member) =>
+              !member || typeof member.address !== "string" || typeof member.owns !== "boolean")) {
+          throw new Error("The latest posse ownership check was unavailable. Nothing was sent.");
+        }
+        const currentRecipients = latest.members.filter((member) => !member.owns).map((member) => member.address);
+        if (currentRecipients.length !== destinations.length ||
+            currentRecipients.some((member, index) => member !== destinations[index]?.address)) {
+          setReview(null);
+          void posseHoldersQuery.refetch();
+          throw new Error("Your posse or its horse holders changed. Review the updated recipient list before signing.");
+        }
+      }
+      signerAttempted = true;
       await ensureWalletProviderForSend(address, { network: "mainnet" });
       signerReady = true;
       setStage("eligibility");
-      const freshBalance = await readOwnedHorseBalance(address, token, true);
-      validateArtSendRecipients(destinations.map(({ address: to, amountRaw }) => ({ address: to, amount: amountRaw })), address, freshBalance);
+      if (!posseBatch) {
+        const freshBalance = await readOwnedHorseBalance(address, token, true);
+        validateArtSendRecipients(destinations.map(({ address: to, amountRaw }) => ({ address: to, amount: amountRaw })), address, freshBalance);
+      }
       if (isGuest) {
         const session = await api.get<HorfGuestSession>("/api/horf/wallet/session");
         if (!session.verified || session.walletAddress !== address) {
@@ -559,7 +627,7 @@ export function HorfGifts({
       setToken(null);
       setOwnedKey("");
       setManualLink("");
-      setRecipients(batchReturn
+      setRecipients(posseBatch ? [] : batchReturn
         ? quickRecipients!.map((rider) => ({ id: nextRecipientId.current++, address: rider.address, amount: "1" }))
         : [{ id: nextRecipientId.current++, address: quickRecipient?.address ?? "", amount: compact ? "" : "1" }]);
       setReview(null);
@@ -567,7 +635,7 @@ export function HorfGifts({
       else void ownedQuery.refetch();
       void ownedBalanceQuery.refetch();
     } catch (cause) {
-      setNeedsWalletReconnect(!signerReady);
+      setNeedsWalletReconnect(signerAttempted && !signerReady);
       const submittedNote = submitted
         ? ` The transfer was submitted; retry ${kind} confirmation after checking its explorer status. Do not resend it.`
         : submittedOpHash ? " The transfer was submitted; inspect it on TzKT before retrying." : "";
@@ -610,7 +678,7 @@ export function HorfGifts({
   }
 
   return (
-    <Shell id="horf-gifts" data-horf-region="gifts" data-horf-quick-send-form={compact || undefined} aria-label={compact ? "Quick horse trade" : "Gift horses"} $compact={compact}>
+    <Shell id="horf-gifts" data-horf-region="gifts" data-horf-quick-send-form={compact || undefined} aria-label={posseBatch ? "Send a horse to the posse" : compact ? "Quick horse trade" : "Gift horses"} $compact={compact}>
       {!compact && <Header>
         <div>
           <small>Horse trader’s gift book</small>
@@ -620,12 +688,12 @@ export function HorfGifts({
         <Action type="button" onClick={() => void giftsQuery.refetch()} disabled={!address || giftsQuery.isFetching}>Refresh gifts</Action>
       </Header>}
       {!compact && <Reminder><strong>Don’t look them in the mouth.</strong><br />A gift is a gift. If you send a horse back later, mark that you returned the favor here; Horf does not count gifts as social return-ride debt.</Reminder>}
-      {!address && <Note $error>{batchReturn ? "Connect and verify your wallet to return horses to these riders." : compact ? "Connect and verify your wallet to send this rider a horse." : "Connect and verify your Tezos wallet to send and review gifts."} <Action type="button" onClick={() => void connectWallet()} disabled={isConnecting}>{isConnecting ? "Connecting…" : isGuest ? "Connect and verify wallet" : "Connect wallet"}</Action></Note>}
+      {!address && <Note $error>{posseBatch ? "Connect and verify your wallet to send a horse to your posse." : batchReturn ? "Connect and verify your wallet to return horses to these riders." : compact ? "Connect and verify your wallet to send this rider a horse." : "Connect and verify your Tezos wallet to send and review gifts."} <Action type="button" onClick={() => void connectWallet()} disabled={isConnecting}>{isConnecting ? "Connecting…" : isGuest ? "Connect and verify wallet" : "Connect wallet"}</Action></Note>}
       <Columns $compact={compact}>
         <Panel data-horf-gift-send $compact={compact}>
           {!compact && <><h3>Trade or give a horse</h3><p>Send one horse to several riders in one Mainnet transaction. Pick familiar faces from your posse or the trader directory.</p></>}
           {(!compact || !review) && <>
-          {compact && <p>{batchReturn ? "Pick one horse to send, one edition per waiting rider. Remove anyone you are not ready to answer." : "Pick a horse from your stable, set its editions, then review the ride."}</p>}
+          {compact && <p>{posseBatch ? "Pick a horse. Riders who already own it step aside; everyone else gets one edition in one wallet send." : batchReturn ? "Pick one horse to send, one edition per waiting rider. Remove anyone you are not ready to answer." : "Pick a horse from your stable, set its editions, then review the ride."}</p>}
           <label htmlFor="horf-gift-owned">{compact ? "Your horse" : "Choose an indexed token from this wallet"}</label>
           <InputAction>
             <select id="horf-gift-owned" data-horf-gift-owned value={selectedOwned ? ownedKey : ""} onChange={(event) => { setOwnedKey(event.target.value); const chosen = ownedTokens.find((item) => `${item.contract}:${item.tokenId}` === event.target.value); setToken(chosen ? { contract: chosen.contract, tokenId: chosen.tokenId, name: chosen.name || `Token #${chosen.tokenId}` } : null); setReview(null); }} disabled={!address || busy}>
@@ -661,7 +729,16 @@ export function HorfGifts({
               <label><input type="radio" name="horf-art-send-kind" value="trade" checked={sendKind === "trade"} onChange={() => { setSendKind("trade"); setReview(null); }} disabled={busy} />Trade</label>
               <label><input type="radio" name="horf-art-send-kind" value="gift" checked={sendKind === "gift"} onChange={() => { setSendKind("gift"); setReview(null); }} disabled={busy} />Gift</label>
             </SendKind>}
-            {batchReturn ? <div data-horf-quick-batch-recipients>
+            {posseBatch ? <div data-horf-posse-batch-recipients>
+              {token && posseHoldersQuery.isPending && <Note role="status">Checking who already owns this horse…</Note>}
+              {token && posseHoldersQuery.isError && <Note $error role="alert">Posse ownership could not be checked. <Action type="button" onClick={() => void posseHoldersQuery.refetch()} disabled={posseHoldersQuery.isFetching}>Retry holder check</Action></Note>}
+              {token && posseHoldersQuery.data && <>
+                <p><strong>{posseRecipients.length} {posseRecipients.length === 1 ? "rider" : "riders"} to send</strong> · {posseHoldersQuery.data.members.length - posseRecipients.length} already own this horse · one edition each.</p>
+                <ul>{posseRecipients.map((row) => <li key={row.address} data-horf-posse-batch-recipient>{posseBatchMembers?.find((rider) => rider.address === row.address)?.name?.trim() || shortAddress(row.address)} · {row.address} · 1 edition</li>)}</ul>
+                {!posseRecipients.length && <Note role="status">Every rider in this posse already owns this horse, or your posse is empty.</Note>}
+                {!posseEnoughEditions && <Note data-horf-posse-batch-shortage $error role="alert">You own {ownedBalanceQuery.data ?? "0"} {ownedBalanceQuery.data === "1" ? "edition" : "editions"} but need {posseRecipients.length}. Choose another horse or get more editions; this send is blocked.</Note>}
+              </>}
+            </div> : batchReturn ? <div data-horf-quick-batch-recipients>
               <p><strong>{recipients.length} return {recipients.length === 1 ? "ride" : "rides"}</strong> · 1 edition of the same horse to each rider.</p>
               {recipients.map((row) => <div key={row.id} data-horf-quick-batch-recipient>
                 <span>{quickRecipients?.find((rider) => rider.address === row.address)?.name?.trim() || shortAddress(row.address)} · {row.address} · 1 edition</span>{" "}
@@ -696,13 +773,13 @@ export function HorfGifts({
                 <Action className="remove-cell" type="button" onClick={() => { setRecipients((current) => current.filter((item) => item.id !== row.id)); setReview(null); }} disabled={busy || recipients.length === 1} aria-label={`Remove rider ${index + 1}`}>Remove</Action>
               </li>)}
             </RecipientRows>}
-            {!compact && <><Action data-horf-gift-add-recipient type="button" onClick={addRecipient} disabled={!address || busy || recipients.length >= HORF_RECIPIENT_LIMIT}>Add another rider</Action>
-              <p>{recipients.length} of {HORF_RECIPIENT_LIMIT} rider slots. Each edition goes to one wallet. Need $HORSE instead? Use Send $HORSE.</p>
+            {!compact && <><Action data-horf-gift-add-recipient type="button" onClick={addRecipient} disabled={!address || busy}>Add another rider</Action>
+              <p>{recipients.length} {recipients.length === 1 ? "rider" : "riders"} selected. Each edition goes to one wallet. Need $HORSE instead? Use Send $HORSE.</p>
               {traderChoices.isError && <p role="status">Some known riders are unavailable right now; you can still use your posse or enter a wallet.</p>}
               {traderChoices.posseUnavailable && <p role="status">Your posse is unavailable right now; you can still choose a known rider or enter a wallet.</p>}
             </>}
-            {pendingQuickTrade && <Note role="status">A trade to {batchReturn ? "one of these riders" : "this rider"} is still pending. Retry its confirmation below before sending again.</Note>}
-            <Action data-horf-gift-submit type="submit" $primary disabled={!address || !token || busy || ownedBalanceQuery.data == null || Boolean(pendingQuickTrade) || (batchReturn && !recipients.length) || (compact && !batchReturn && !recipients[0]?.amount.trim()) || (compact && quickOffer?.acceptedTokenPolicy === "marshal_only" && quickApprovalQuery.data?.status !== "approved")}>Review horse send</Action>
+            {pendingQuickTrade && <Note role="status">A trade to {posseBatch || batchReturn ? "one of these riders" : "this rider"} is still pending. Retry its confirmation below before sending again.</Note>}
+            <Action data-horf-gift-submit type="submit" $primary disabled={!address || !token || busy || ownedBalanceQuery.data == null || Boolean(pendingQuickTrade) || (posseBatch && (!posseHoldersQuery.data || posseHoldersQuery.isFetching || !posseRecipients.length || !posseEnoughEditions)) || (batchReturn && !recipients.length) || (compact && !batchReturn && !posseBatch && !recipients[0]?.amount.trim()) || (compact && quickOffer?.acceptedTokenPolicy === "marshal_only" && quickApprovalQuery.data?.status !== "approved")}>Review horse send</Action>
             <p>{compact ? "One Mainnet wallet transfer. Gas applies; Horf verifies the trade after it confirms." : sendKind === "gift"
               ? "One Mainnet wallet transaction sends every gift. Tezos gas applies. Horf verifies each recipient. Gifts count as horse sends in the race, without a return-ride debt."
               : "One Mainnet wallet transaction sends every horse. Tezos gas applies. Sends count in the race; reciprocal trades complete when a rider sends a horse back."}</p>
@@ -716,7 +793,7 @@ export function HorfGifts({
             <p>{review.total} of {review.ownedBalance} owned editions · {review.recipients.length} {review.recipients.length === 1 ? "rider" : "riders"}. Your wallet will approve one Mainnet transfer and pay gas.</p>
             {compact && quickOffer && <p data-horf-quick-offer-target>You hope to receive {quickOffer.name || `token #${quickOffer.tokenId}`} ({quickOffer.tokenContract} / #{quickOffer.tokenId}) in return. Sending your horse does not claim or reserve theirs; that rider must send it separately.</p>}
             <Action data-horf-gift-confirm type="button" $primary onClick={() => void sendHorse()} disabled={busy || Boolean(submittedHash) || Boolean(pendingQuickTrade)}>Confirm {review.kind} in wallet</Action>{" "}
-            <Action type="button" onClick={() => setReview(null)} disabled={busy}>{batchReturn ? "Edit horse or riders" : compact ? "Edit horse or quantity" : "Edit riders"}</Action>
+            <Action type="button" onClick={() => setReview(null)} disabled={busy}>{posseBatch ? "Choose another horse" : batchReturn ? "Edit horse or riders" : compact ? "Edit horse or quantity" : "Edit riders"}</Action>
           </Note>}
         </Panel>
         {!compact && <Panel data-horf-gift-received>

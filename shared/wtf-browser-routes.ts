@@ -44,6 +44,7 @@ export const BROWSER_ROUTE_META: readonly BrowserRouteMeta[] = [
   { pattern: "/horf/inspection-desk", auth: true, title: "Horf Inspection Desk" },
   { pattern: "/horf/outlaw-corral", auth: false, title: "Horf Horse Market" },
   { pattern: "/horf/stable", auth: false, title: "Horf My Stable" },
+  { pattern: "/horf/legacy-stables", auth: false, title: "Horf Legacy Stable Recovery" },
   { pattern: "/horf/send-horse", auth: false, title: "Horf Send HORSE" },
   { pattern: "/horf/haha-crp", auth: false, title: "HAHA Horse Trader Awards" },
   { pattern: "/horf/horse-market", auth: false, title: "Horf Horse Market" },

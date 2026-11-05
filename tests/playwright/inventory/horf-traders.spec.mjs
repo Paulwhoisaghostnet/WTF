@@ -160,7 +160,7 @@ test.describe("Horf trader discovery and horse test", () => {
     await expect(page.locator('[data-horf-region="trader-directory"]')).toHaveCount(0);
   });
 
-  test("shows Outlaw trade signs and starts a trust-based offer from either horse card", async ({ page, request }) => {
+  test("offers one owned horse from wallet-held signs without moving a token", async ({ page, request }) => {
     expect((await request.post("/__test/state", { data: { userRole: "admin" } })).ok()).toBeTruthy();
     await page.addInitScript(({ address }) => {
       window.localStorage.setItem("wtf:wallet-session", JSON.stringify({ address, providerName: "octez.connect" }));
@@ -170,28 +170,25 @@ test.describe("Horf trader discovery and horse test", () => {
     await page.route(/\/api\/horf\/traders\/[^/]+\/horses(?:\?.*)?$/, (route) => {
       const address = decodeURIComponent(new URL(route.request().url()).pathname.split("/").at(-2));
       return json(route, { address, items: address === viewerWallet ? [
-        { contract, tokenId: "12", balance: "2", name: "Uninspected Pony", image: "/horf-art/horse-portrait-photo.jpg", creatorAddress: viewerWallet },
-        { contract, tokenId: "13", balance: "2", name: "Approved Mare", image: "/horf-art/horse-beach-photo.jpg", creatorAddress: viewerWallet },
+        { contract, tokenId: "12", balance: "2", name: "Uninspected Pony", image: "/horf-art/horse-portrait-photo.jpg", creatorAddress: viewerWallet, approvedForMarshalsMarket: false },
+        { contract, tokenId: "13", balance: "2", name: "Approved Mare", image: "/horf-art/horse-beach-photo.jpg", creatorAddress: viewerWallet, approvedForMarshalsMarket: true },
       ] : [], pagination: { hasMore: false, nextOffset: 2 } });
     });
     await page.route("**/api/horf/wallet/tokens?*", (route) => json(route, { items: [
       { contract, tokenId: "12", name: "Uninspected Pony", balance: "2", walletAddress: viewerWallet },
       { contract, tokenId: "13", name: "Approved Mare", balance: "2", walletAddress: viewerWallet },
     ], pagination: { hasMore: false, nextOffset: 2 } }));
-    const inspections = [];
-    await page.route("**/api/horf/inspections/status?*", (route) => {
-      const tokenId = new URL(route.request().url()).searchParams.get("tokenId");
-      inspections.push(tokenId);
-      return json(route, { status: tokenId === "13" ? "approved" : "none", reason: null });
+    let proposalBody = null;
+    await page.route("**/api/horf/trade-offers", (route) => {
+      proposalBody = route.request().postDataJSON();
+      return json(route, { offer: { id: 5, status: "proposed" } });
     });
 
-    await page.goto("/horf/outlaw-corral?season=current-2026&offer=71");
+    await page.goto("/horf/horse-market?season=current-2026&market=outlaw&outlaw=available");
     const corral = page.locator('[data-horf-region="outlaw-corral"]');
     const offers = corral.locator("[data-horf-outlaw-offer]");
     await expect(offers).toHaveCount(3);
     const first = offers.filter({ hasText: "Chestnut Neighvember" });
-    await expect(first).toHaveAttribute("data-horf-outlaw-featured", "");
-    await expect(first).toBeFocused();
     await expect(first.locator("img")).toHaveAttribute("src", "/horf-art/horse-gallop-photo.jpg");
     await expect(first).toContainText("Sir Canter");
     await expect(first).toContainText("Mare Force");
@@ -201,34 +198,23 @@ test.describe("Horf trader discovery and horse test", () => {
     await expect(horseCard).toContainText(leadWallet);
     await expect(horseCard).toContainText(offerOnlyWallet);
     await horseCard.locator("[data-horf-outlaw-detail-offer]").click();
-    const dialog = page.locator("[data-horf-quick-send-dialog]");
+    const dialog = page.locator("[data-horf-proposal-dialog]");
     await expect(dialog).toBeVisible();
-    await expect(dialog.locator("[data-horf-direct-offer-warning]")).toContainText("Their listed horse stays in their wallet");
-    await expect(dialog.locator("[data-horf-direct-offer-warning]")).toContainText("Marshal-approved horse");
-    await dialog.locator("[data-horf-gift-owned]").selectOption(`${contract}:12`);
-    await expect(dialog.locator("[data-horf-quick-offer-approval]")).toContainText("Choose an approved horse");
-    await dialog.locator("[data-horf-gift-amount]").fill("1");
-    await expect(dialog.locator("[data-horf-gift-submit]")).toBeDisabled();
-    await dialog.locator("[data-horf-gift-owned]").selectOption(`${contract}:13`);
-    await expect(dialog.locator("[data-horf-quick-offer-approval]")).toContainText("Marshal-approved horse");
-    await expect(dialog.locator("[data-horf-gift-submit]")).toBeEnabled();
-    await dialog.locator("[data-horf-gift-submit]").click();
-    await expect(dialog.locator("[data-horf-gift-review]")).toContainText("Approved Mare");
-    await expect(dialog.locator("[data-horf-gift-review]")).toContainText(leadWallet);
-    await expect(dialog.locator("[data-horf-quick-offer-target]")).toContainText("Chestnut Neighvember");
-    await expect(dialog.locator("[data-horf-quick-offer-target]")).toContainText(`${contract} / #7`);
-    await expect(dialog.locator("[data-horf-quick-offer-target]")).toContainText("does not claim or reserve theirs");
-    expect(inspections).toContain("12");
-    expect(inspections).toContain("13");
-    await dialog.locator("[data-horf-quick-send-close]").click();
-    await expect(first.locator("[data-horf-outlaw-offer-horse]")).toBeFocused();
+    await expect(dialog.locator('[data-horf-owned-horse-select] option[value="'+contract+':12"]')).toHaveCount(0);
+    await dialog.locator("[data-horf-owned-horse-select]").selectOption(`${contract}:13`);
+    await expect(dialog.locator("[data-horf-proposal-selection]")).toContainText("Approved Mare");
+    await dialog.locator("[data-horf-proposal-submit]").click();
+    await expect(dialog).toContainText("Proposal sent. No horse moved.");
+    expect(proposalBody).toEqual({ offererAddress: viewerWallet, signId: 71,
+      offeredTokenContract: contract, offeredTokenId: "13" });
+    await dialog.getByRole("button", { name: "Back to the corral" }).click();
 
     await page.goto(`/horf/traders/${leadWallet}?season=current-2026`);
     const profileOffer = page.locator('[data-horf-region="trader-profile"] [data-horf-profile-horse]').filter({ hasText: "Bay Neighvember" });
     await expect(profileOffer.locator("[data-horf-profile-offer-horse]")).toBeVisible();
     await profileOffer.locator("[data-horf-profile-offer-horse]").click();
-    await expect(page.locator("[data-horf-quick-send-dialog] [data-horf-direct-offer-warning]")).toContainText("any qualifying horse");
-    await expect(page.locator("[data-horf-quick-send-dialog] [data-horf-gift-owned]")).toBeEnabled();
+    await expect(page.locator("[data-horf-proposal-dialog]")).toContainText("Choose one horse you own");
+    await expect(page.locator("[data-horf-proposal-dialog] [data-horf-owned-horse-select]")).toBeEnabled();
   });
 
   test("reviews a horse in the trader popup and offers reconnect when no signer is active", async ({ page, request }) => {

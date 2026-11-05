@@ -11,7 +11,7 @@ function json(route, body) {
   return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(body) });
 }
 
-async function mockMarket(page, ready, token = { name: "Neighvember Chestnut", image: "/horf-art/horse-portrait-photo.jpg" }) {
+async function mockMarket(page, ready, token = { name: "Neighvember Chestnut", image: "/horf-art/horse-portrait-photo.jpg" }, marketListings = null) {
   await page.route(/\/api\/horf\/season(?:\?.*)?$/, (route) => json(route, {
     season, seasons: [season], asOf: "2026-11-03T20:00:00Z", status: "ready", error: null,
     nextRefreshAt: null, currentUser: null, leaderboard: [],
@@ -21,7 +21,7 @@ async function mockMarket(page, ready, token = { name: "Neighvember Chestnut", i
     status: ready ? "ready" : "unconfigured", network: "mainnet", chainId: "NetXdQprcVkpaWU",
     contractAddress: ready ? market : null, horseContractAddress: ready ? currency : null, permitReady: ready,
   }));
-  await page.route("**/api/horf/horse-market/listings", (route) => json(route, { listings: ready ? [{
+  await page.route("**/api/horf/horse-market/listings", (route) => json(route, { listings: ready ? marketListings ?? [{
     id: "2", sellerAddress: seller, tokenContract: horse, tokenId: "7", remaining: "3",
     unitPriceHorseRaw: "123000000", unitPriceHorse: "1.23",
     token,
@@ -63,8 +63,11 @@ test.describe("HORSE market", () => {
     await expect(page.locator('[data-horf-region="marshals-market"]')).toBeVisible();
     await expect(page.locator('[data-horf-region="horse-market"], [data-horf-region="outlaw-corral"]')).toHaveCount(0);
     await outlaw.click();
-    await expect(page).toHaveURL(/\/horf\/horse-market\?season=current-2026&market=outlaw$/);
+    await expect(page).toHaveURL(/\/horf\/horse-market\?season=current-2026&market=outlaw&outlaw=rooms$/);
     await expect(outlaw).toHaveAttribute("aria-selected", "true");
+    await expect(page.locator('[data-horf-outlaw-tab="rooms"]')).toHaveAttribute("aria-selected", "true");
+    await page.locator('[data-horf-outlaw-tab="available"]').click();
+    await expect(page).toHaveURL(/\/horf\/horse-market\?season=current-2026&market=outlaw&outlaw=available$/);
     await expect(page.locator('[data-horf-region="outlaw-corral"] [data-horf-outlaw-offer]')).toHaveCount(1);
     await expect(page.locator('[data-horf-region="horse-market"], [data-horf-region="marshals-market"]')).toHaveCount(0);
     await horse4horse.click();
@@ -74,10 +77,12 @@ test.describe("HORSE market", () => {
     await page.goto("/horf/outlaw-corral?season=current-2026&offer=71");
     await expect.poll(() => new URL(page.url()).pathname).toBe("/horf/horse-market");
     expect(new URL(page.url()).searchParams.get("market")).toBe("outlaw");
+    expect(new URL(page.url()).searchParams.get("outlaw")).toBe("available");
     expect(new URL(page.url()).searchParams.get("offer")).toBe("71");
     const featured = page.locator('[data-horf-outlaw-offer-id="71"]');
     await expect(featured).toHaveAttribute("data-horf-outlaw-featured", "");
-    await expect(featured).toBeFocused();
+    await expect(page.locator('[data-horf-proposal-dialog]')).toBeVisible();
+    await expect(page.locator('[data-horf-proposal-dialog]')).toContainText("Offer your horse");
     await page.goto("/horf/marshals-market?season=current-2026");
     await expect.poll(() => new URL(page.url()).pathname).toBe("/horf/horse-market");
     expect(new URL(page.url()).searchParams.get("market")).toBe("marshals");
@@ -107,6 +112,31 @@ test.describe("HORSE market", () => {
     await expect(detail).toContainText("Objkt’s contract");
     await page.setViewportSize({ width: 390, height: 844 });
     await expect(detail).toBeVisible();
+  });
+
+  test("focuses an exact active HORSE listing link and explains a missing listing", async ({ page, request }) => {
+    expect((await request.post("/__test/state", { data: { userRole: "anonymous" } })).ok()).toBeTruthy();
+    await mockMarket(page, true, undefined, [
+      { id: "2", sellerAddress: seller, tokenContract: horse, tokenId: "7", remaining: "3", unitPriceHorseRaw: "123000000", token: { name: "First Chestnut" } },
+      { id: "9", sellerAddress: seller, tokenContract: horse, tokenId: "8", remaining: "1", unitPriceHorseRaw: "250000000", token: { name: "Linked Mare" } },
+      { id: "10", sellerAddress: seller, tokenContract: horse, tokenId: "9", remaining: "0", unitPriceHorseRaw: "250000000", token: { name: "Sold Horse" } },
+    ]);
+    await page.setViewportSize({ width: 390, height: 600 });
+    await page.goto("/horf/horse-market?market=horse4horse&listing=9");
+    const linked = page.locator('[data-horf-horse-market-listing-id="9"]');
+    await expect(linked).toHaveAttribute("data-horf-horse-market-featured", "");
+    await expect(linked).toBeFocused();
+    await expect(linked).toBeInViewport({ ratio: 0.4 });
+    const detail = page.locator("[data-horf-horse-market-details]");
+    await expect(detail).toContainText("Linked Mare");
+    await expect(detail).toContainText("Token #8");
+
+    await page.goto("/horf/horse-market?market=horse4horse&listing=10");
+    await expect(page.locator('[data-horf-region="horse-market"]')).toContainText("Listing #10 is no longer active");
+    await expect(page.locator('[data-horf-horse-market-listing-id="10"]')).toHaveCount(0);
+    await expect(detail).toContainText("Select a horse from the corral");
+    await page.locator('[data-horf-horse-market-listing-id="2"]').getByRole("button", { name: /View buying options/ }).click();
+    await expect(detail).toContainText("First Chestnut");
   });
 
   test("opens the first horse's payment choices where the rider can see them", async ({ page, request }) => {

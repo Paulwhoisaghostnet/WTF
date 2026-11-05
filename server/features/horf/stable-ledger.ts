@@ -2,7 +2,7 @@ import type { PoolClient } from "pg";
 import { pool } from "../../db";
 import { HORF_SEASON_START, type HorfTransfer } from "./model";
 import type { HorfSeason } from "./seasons";
-import { horfStablesContractAddress } from "./stables/config";
+import { horfStableClaimSourceAddresses } from "./stables/config";
 import { assertHorfStablesMainnet } from "./stables/chain";
 import { fetchHorfClaimEventPage, isLastHorfClaimEventPage, type HorfStableClaim } from "./stables/claims";
 
@@ -192,12 +192,28 @@ export interface StableClaimSnapshot {
   transfers: HorfTransfer[];
 }
 
-/** Historic archives predate the stable contract; they have no stable claims. */
-export async function getStableClaimSnapshot(season: HorfSeason): Promise<StableClaimSnapshot> {
-  const contractAddress = horfStablesContractAddress();
-  if (!contractAddress || (season.endsAt && season.endsAt <= HORF_SEASON_START)) {
-    return { status: "ready", asOf: null, error: null, nextRefreshAt: null, transfers: [] };
-  }
+export function combineStableClaimSnapshots(snapshots: readonly StableClaimSnapshot[]): StableClaimSnapshot {
+  if (!snapshots.length) return { status: "ready", asOf: null, error: null, nextRefreshAt: null, transfers: [] };
+  const asOf = snapshots.map((snapshot) => snapshot.asOf).filter((value): value is string => !!value).sort()[0] ?? null;
+  const nextRefreshAt = snapshots.map((snapshot) => snapshot.nextRefreshAt)
+    .filter((value): value is string => !!value).sort()[0] ?? null;
+  return {
+    status: snapshots.some((snapshot) => snapshot.status === "error") ? "error"
+      : snapshots.some((snapshot) => snapshot.status === "syncing") ? "syncing" : "ready",
+    asOf,
+    error: snapshots.find((snapshot) => snapshot.error)?.error ?? null,
+    nextRefreshAt,
+    transfers: snapshots.flatMap((snapshot) => snapshot.transfers),
+  };
+}
+
+export async function collectStableClaimSnapshots(
+  addresses: readonly string[], load: (address: string) => Promise<StableClaimSnapshot>,
+): Promise<StableClaimSnapshot> {
+  return combineStableClaimSnapshots(await Promise.all(addresses.map(load)));
+}
+
+async function claimSnapshotForContract(contractAddress: string, season: HorfSeason): Promise<StableClaimSnapshot> {
   const state = await stateFor(contractAddress);
   const now = Date.now();
   const reference = state.status === "ready" ? state.as_of : state.updated_at;
@@ -227,4 +243,14 @@ export async function getStableClaimSnapshot(season: HorfSeason): Promise<Stable
       : new Date(now + MAINNET_BLOCK_MS).toISOString(),
     transfers,
   };
+}
+
+/** Include old Mainnet Stable claims when an immutable replacement becomes active. */
+export async function getStableClaimSnapshot(season: HorfSeason): Promise<StableClaimSnapshot> {
+  const sources = horfStableClaimSourceAddresses();
+  if (!sources.length || (season.endsAt && season.endsAt <= HORF_SEASON_START)) {
+    return combineStableClaimSnapshots([]);
+  }
+  return collectStableClaimSnapshots(sources,
+    (contractAddress) => claimSnapshotForContract(contractAddress, season));
 }
