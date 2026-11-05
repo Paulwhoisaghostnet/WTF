@@ -932,7 +932,7 @@ export const DOMAIN_WORKFLOWS = [
   {
     name: "horf trader standing and admin moderation loop",
     domain: "Market, Exchange, Inventory, and Commerce",
-    routes: ["/horf/outlaw-corral"],
+    routes: ["/horf/horse-market?market=outlaw"],
     eventHandles: ["horf.trader_status.viewed", "horf.blacklist.added", "horf.blacklist.removed", "horf.blacklist.chain_updated", "horf.trader_picker.selected"],
     apiProbes: [
       { method: "GET", path: "/api/horf/trader-status?address=tz1VSUr8wwNhLAzempoch5d6hLRiTh8Cjcjb", expectedStatuses: [200, 503] },
@@ -987,7 +987,7 @@ export const DOMAIN_WORKFLOWS = [
   {
     name: "horf stable trading loop",
     domain: "Market, Exchange, Inventory, and Commerce",
-    routes: ["/horf/marshals-market"],
+    routes: ["/horf/horse-market?market=marshals"],
     eventHandles: [
       "horf.stable.deposited",
       "horf.stable.claimed",
@@ -1051,7 +1051,7 @@ export const DOMAIN_WORKFLOWS = [
   {
     name: "horf HORSE market loop",
     domain: "Market, Exchange, Inventory, and Commerce",
-    routes: ["/horf/horse-market", "/horf/open-range"],
+    routes: ["/horf/horse-market?market=horse4horse", "/horf/open-range"],
     eventHandles: [
       "horf.horse_market.buying_options_opened",
       "horf.horse_market.artwork_opened",
@@ -1077,7 +1077,7 @@ export const DOMAIN_WORKFLOWS = [
   {
     name: "horf gift book loop",
     domain: "Market, Exchange, Inventory, and Commerce",
-    routes: ["/horf/gifts", "/horf/outlaw-corral"],
+    routes: ["/horf/gifts", "/horf/horse-market?market=outlaw"],
     eventHandles: [
       "horf.trade.sent",
       "horf.gift.sent",

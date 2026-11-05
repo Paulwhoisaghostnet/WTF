@@ -184,12 +184,16 @@ test.describe("Horf HORSE, posse, and horse gifts", () => {
   test("offers an active Open Range rider in the gift recipient picker", async ({ page, request }) => {
     await seedTrader(request);
     await mockHorf(page, {
-      seasonRiders: [{ address: leadWallet, name: "Sir Canter", trades: 2, received: 2, sent: 2 }],
+      seasonRiders: [{ address: leadWallet, name: "Sir Canter", trades: 2, received: 2, giftHorsesReceived: 1, tradeHorsesReceived: 1, sent: 2 }],
       openRangeOffers: [{ ownerAddress: thirdWallet, ownerName: "Prairie Pony" }],
     });
     await page.goto("/horf/gifts");
     const gift = page.locator('[data-horf-region="gifts"]');
+    await expect(gift.locator("[data-horf-gift-trader-picker] option[value='" + leadWallet + "']"))
+      .toContainText("received 2 (🎁 1 gift / 🤝 1 trade)");
     await expect(gift.locator("[data-horf-gift-trader-picker] option[value='" + thirdWallet + "']")).toContainText("Prairie Pony");
+    await expect(gift.locator("[data-horf-gift-trader-picker] option[value='" + thirdWallet + "']"))
+      .not.toContainText("received");
     await gift.locator("[data-horf-gift-trader-picker]").selectOption(thirdWallet);
     await expect(gift.locator("[data-horf-gift-recipient]")).toHaveValue(thirdWallet);
   });
@@ -386,7 +390,7 @@ test.describe("Horf HORSE, posse, and horse gifts", () => {
     await expect(gifts.locator('[data-horf-art-send-kind] input[value="gift"]')).toBeChecked();
     await gifts.locator('[data-horf-art-send-kind] input[value="trade"]').check();
     await expect(gifts.locator("[data-horf-gift-submit]")).toHaveText("Review horse send");
-    await expect(gifts).toContainText("Direct trades count when the season ledger scans each transfer");
+    await expect(gifts).toContainText("Sends count in the race; reciprocal trades complete when a rider sends a horse back.");
     await gifts.locator('[data-horf-art-send-kind] input[value="gift"]').check();
     await expect(gifts.locator("[data-horf-gift-submit]")).toHaveText("Review horse send");
     await gifts.getByRole("combobox", { name: "Choose gift recipient from posse" }).selectOption(leadWallet);
@@ -526,7 +530,7 @@ test.describe("Horf HORSE, posse, and horse gifts", () => {
     await expect(gifts).not.toContainText("Direct horse trade verified in Horf");
     await expect(gifts.locator("[data-horf-trade-retry]")).toHaveCount(1);
     await gifts.locator("[data-horf-trade-retry]").click();
-    await expect(gifts).toContainText("2 direct horse trades verified in Horf");
+    await expect(gifts).toContainText("2 direct horse sends verified in Horf");
     await expect(gifts.locator("[data-horf-trade-retry]")).toHaveCount(0);
     expect(confirmations).toEqual([pending, pending]);
     expect(await page.evaluate((address) => window.localStorage.getItem(`horf:pending-trade-confirmation:${address}`), traderWallet)).toBeNull();

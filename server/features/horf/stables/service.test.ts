@@ -20,6 +20,7 @@ const token = {
   description: "GM Horsetraders",
   decimals: 0,
   thumbnail_uri: "ipfs://QmYSZCWcof4Ep9ayVSgDDuiKhmE2qEv8V9xuuMYh9fDeUc",
+  creators: [{ creator_address: donor, holder: { alias: "Sally" } }],
   tags: [{ tag: { name: "horseofjuly", token_count: 125 } }],
 };
 
@@ -27,6 +28,8 @@ test("stable eligibility uses live Objkt metadata and group counts", async () =>
   const exclusionCheck = async () => false;
   const found = await inspectHorseToken(tokenContract, tokenId, async () => token, { exclusionCheck });
   assert.equal(found.name, token.name);
+  assert.equal(found.creatorAddress, donor);
+  assert.equal(found.creatorName, "Sally");
   assert.match(found.image || "", /^https:\/\//);
   const animated = await inspectHorseToken(tokenContract, tokenId, async () => ({
     ...token,

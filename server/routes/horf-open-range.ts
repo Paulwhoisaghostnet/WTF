@@ -151,16 +151,25 @@ router.get("/api/horf/open-range/offers", async (req, res) => {
         : eq(horfOpenRangeOffers.active, true))
       .orderBy(asc(horfOpenRangeOffers.createdAt), asc(horfOpenRangeOffers.id));
     const checked = await Promise.all(rows.map(async (row) => {
-      try { await inspectHorseTokenCached(row.tokenContract, row.tokenId); return row; }
+      try { return { row, token: await inspectHorseTokenCached(row.tokenContract, row.tokenId) }; }
       catch (error) {
         if (error instanceof HorseTokenIneligibleError || error instanceof HorseTokenNotFoundError) return null;
         throw error;
       }
     }));
-    const visible = checked.filter((row) => row !== null);
-    const names = await loadHorfTraderNames(visible.map((row) => row.ownerWalletAddress));
-    return res.json({ offers: visible.map((row) => ({ ...offerDto(row),
-      ownerName: names.get(row.ownerWalletAddress)?.displayName ?? null })) });
+    const visible = checked.filter((entry) => entry !== null);
+    const names = await loadHorfTraderNames(visible.flatMap(({ row, token }) =>
+      token.creatorAddress ? [row.ownerWalletAddress, token.creatorAddress] : [row.ownerWalletAddress]));
+    return res.json({ offers: visible.map(({ row, token }) => ({
+      ...offerDto(row),
+      ownerName: names.get(row.ownerWalletAddress)?.displayName ?? null,
+      name: token.name,
+      image: token.image,
+      artifactUri: token.artifactUri,
+      mime: token.mime,
+      creatorAddress: token.creatorAddress,
+      creatorName: (token.creatorAddress ? names.get(token.creatorAddress)?.displayName : null) || token.creatorName,
+    })) });
   } catch (error) {
     console.error("[horf] Open Range offers failed:", error);
     return res.status(503).json({ error: "Open Range offers are temporarily unavailable" });

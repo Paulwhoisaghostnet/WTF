@@ -57,7 +57,7 @@ const Picker = styled.div`
 `;
 
 /** The same qualifying, currently owned horse selector used by HORF trade forms. */
-export function HorfOwnedHorsePicker({ address, selected, onSelect, disabled = false, id, label = "Your horse", selectDataAttr }: {
+export function HorfOwnedHorsePicker({ address, selected, onSelect, disabled = false, id, label = "Your horse", selectDataAttr, marshalApprovedOnly = false }: {
   address: string | null;
   selected: HorfOwnedHorse | null;
   onSelect: (horse: HorfOwnedHorse | null) => void;
@@ -65,6 +65,7 @@ export function HorfOwnedHorsePicker({ address, selected, onSelect, disabled = f
   id: string;
   label?: string;
   selectDataAttr?: `data-${string}`;
+  marshalApprovedOnly?: boolean;
 }) {
   const [filter, setFilter] = useState("");
   const query = useInfiniteQuery({
@@ -77,9 +78,10 @@ export function HorfOwnedHorsePicker({ address, selected, onSelect, disabled = f
     refetchOnWindowFocus: true,
   });
   const horses = useMemo(() => (query.data?.pages.flatMap((page) => page.items) ?? [])
-    .filter((horse) => isOwned(horse.balance))
-    .map((horse) => ({ ...horse, walletAddress: address! })), [query.data, address]);
-  const selectedKey = selected && (!selected.walletAddress || selected.walletAddress === address) ? horseKey(selected) : "";
+    .filter((horse) => isOwned(horse.balance) && (!marshalApprovedOnly || horse.approvedForMarshalsMarket === true))
+    .map((horse) => ({ ...horse, walletAddress: address! })), [query.data, address, marshalApprovedOnly]);
+  const selectedKey = selected && (!selected.walletAddress || selected.walletAddress === address) &&
+    (!marshalApprovedOnly || selected.approvedForMarshalsMarket === true) ? horseKey(selected) : "";
   const shown = useMemo(() => {
     const term = filter.trim().toLowerCase();
     if (!term) return horses;
@@ -101,7 +103,7 @@ export function HorfOwnedHorsePicker({ address, selected, onSelect, disabled = f
     </select>
     {query.hasNextPage && <button type="button" onClick={() => void query.fetchNextPage()} disabled={disabled || query.isFetchingNextPage}>{query.isFetchingNextPage ? "Loading…" : "More horses from this wallet"}</button>}
     {query.isError && <p role="alert">Horse list unavailable. <button type="button" onClick={() => void query.refetch()} disabled={disabled || query.isFetching}>Retry</button></p>}
-    {address && !query.isPending && !query.isError && options.length === 0 && <p role="status">{query.hasNextPage ? "No matching horses on these pages. Load more to keep looking." : "No matching horse tokens in this wallet."}</p>}
-    <p>Only currently owned tokens that pass HORF’s horse test appear here.</p>
+    {address && !query.isPending && !query.isError && options.length === 0 && <p role="status">{query.hasNextPage ? "No matching horses on these pages. Load more to keep looking." : marshalApprovedOnly ? <>No Marshal-approved horses in this wallet. Submit one from <a href="/horf/stable">My Stable</a> for inspection. Marshals can review it at the <a href="/horf/inspection-desk">Inspection Desk</a>.</> : "No matching horse tokens in this wallet."}</p>}
+    <p>{marshalApprovedOnly ? "Only currently owned horses that pass HORF’s test and have active Marshal approval appear here." : "Only currently owned tokens that pass HORF’s horse test appear here."}</p>
   </Picker>;
 }

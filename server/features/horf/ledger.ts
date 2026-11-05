@@ -440,18 +440,27 @@ function sumCount(left: number, right: number): number {
 
 /** Combine only named, nonoverlapping campaign snapshots; gaps remain outside the count. */
 export function combineHorfSeasonSnapshots(snapshots: readonly HorfSeasonSnapshot[], address: string | null) {
-  const totals = new Map<string, { received: number; sent: number; name: null }>();
+  const totals = new Map<string, {
+    received: number; giftHorsesReceived: number; tradeHorsesReceived: number; sent: number; name: null;
+  }>();
   for (const snapshot of snapshots) {
     for (const rider of snapshot.leaderboard) {
-      const previous = totals.get(rider.address) || { received: 0, sent: 0, name: null };
+      const previous = totals.get(rider.address) || {
+        received: 0, giftHorsesReceived: 0, tradeHorsesReceived: 0, sent: 0, name: null,
+      };
       previous.received = sumCount(previous.received, rider.received);
+      previous.giftHorsesReceived = sumCount(previous.giftHorsesReceived, rider.giftHorsesReceived);
+      previous.tradeHorsesReceived = sumCount(previous.tradeHorsesReceived, rider.tradeHorsesReceived);
       previous.sent = sumCount(previous.sent, rider.sent);
       totals.set(rider.address, previous);
     }
   }
   const leaderboard = [...totals].map(([wallet, counts]) => ({
     address: wallet, name: counts.name,
-    received: counts.received, sent: counts.sent,
+    received: counts.received,
+    giftHorsesReceived: counts.giftHorsesReceived,
+    tradeHorsesReceived: counts.tradeHorsesReceived,
+    sent: counts.sent,
     trades: sumCount(counts.received, counts.sent),
   })).sort((a, b) => b.trades - a.trades || b.received - a.received || a.address.localeCompare(b.address));
 

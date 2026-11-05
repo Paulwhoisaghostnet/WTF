@@ -47,8 +47,24 @@ test("All time combines tracked windows and settles a return ride across seasons
   assert.deepEqual(combined.currentUser?.owedTo, [{ address: bob, name: null, count: 1 }]);
   assert.deepEqual(combined.currentUser?.owedBy, []);
   assert.deepEqual(combined.currentUser?.waitingHorses.map((row) => [row.id, row.amount]), [[11, 1]]);
+  assert.equal(combined.currentUser?.completedTrades, 2, "a cross-season return ride and reciprocal stable claim each complete one trade");
   assert.match(combined.countingRule, /tracked by Horf; gaps between those campaigns are excluded/i);
   assert.equal(resolveHorfSeason("all-time"), null);
+});
+
+test("All time preserves trade and explicit gift receipt quantities for rider and race rows", () => {
+  const first = snapshot(0, [
+    { id: 31, timestamp: "2023-08-01T12:00:00.000Z", from: bob, to: alice, amount: 2, token, settlement: "gift" },
+  ]);
+  const second = snapshot(8, [
+    { id: 32, timestamp: "2026-11-02T12:00:00.000Z", from: bob, to: alice, amount: 3, token },
+    { id: 33, timestamp: "2026-11-03T12:00:00.000Z", from: stable, to: alice, amount: 1, token, settlement: "gift" },
+  ]);
+  const combined = combineHorfSeasonSnapshots([first, second], alice);
+  const own = combined.currentUser!;
+  const race = combined.leaderboard.find((entry) => entry.address === alice)!;
+  assert.deepEqual([own.received, own.giftHorsesReceived, own.tradeHorsesReceived], [6, 3, 3]);
+  assert.deepEqual([race.received, race.giftHorsesReceived, race.tradeHorsesReceived], [6, 3, 3]);
 });
 
 test("All time reports partial freshness and the earliest pending refresh", () => {

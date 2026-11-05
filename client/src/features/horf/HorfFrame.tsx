@@ -235,12 +235,10 @@ const links = [
   { path: "/horf/race", label: "The race", icon: "🏁", section: "race" },
   { path: "/horf/traders", label: "Find Other Traders", icon: "🧭", section: "traders" },
   { path: "/horf/open-range", label: "Open Range", icon: "🐎", section: "range" },
-  { path: "/horf/marshals-market", label: "Marshal’s Market", icon: "✦", section: "marshal" },
+  { path: "/horf/horse-market", label: "Horse Market", icon: "🪙", section: "horse-market" },
   { path: "/horf/inspection-desk", label: "Inspection Desk", icon: "🔎", section: "inspection-desk" },
-  { path: "/horf/outlaw-corral", label: "Outlaw Corral", icon: "↗", section: "outlaw" },
   { path: "/horf/stable", label: "My stable", icon: "♞", section: "stable" },
   { path: "/horf/send-horse", label: "Send $HORSE", icon: "◈", section: "horse" },
-  { path: "/horf/horse-market", label: "HORSE Market", icon: "🪙", section: "horse-market" },
   { path: "/horf/haha-crp", label: "HAHA Awards", icon: "🏆", section: "haha" },
   { path: "/horf/gifts", label: "Gifts", icon: "♡", section: "gifts" },
   { path: "/horf/posse", label: "Posse", icon: "🤠", section: "posse" },
@@ -318,7 +316,7 @@ export function HorfFrame({ title, children, aside, walletAddress, onConnectWall
         const linkSeason = link.section === "range" ? rangeSeason
           : link.section === "race" || link.section === "stable" || link.section === "traders" ? ledgerSeason : "current-2026";
         const href = `${link.path}?season=${encodeURIComponent(linkSeason)}`;
-        return <a key={link.section} data-horf-nav={link.section} href={href} onClick={(event) => navigateTo(event, href)} aria-label={link.label} title={link.label} aria-current={pathname === link.path || (pathname === "/horf" && (walletAddress ? link.section === "stable" : link.section === "race")) || (link.section === "traders" && pathname.startsWith("/horf/traders/")) ? "page" : undefined}><span className="nav-icon" aria-hidden="true">{link.icon}</span><span className="nav-label">{link.label}</span></a>;
+        return <a key={link.section} data-horf-nav={link.section} href={href} onClick={(event) => navigateTo(event, href)} aria-label={link.label} title={link.label} aria-current={pathname === link.path || (link.section === "horse-market" && (pathname === "/horf/marshals-market" || pathname === "/horf/outlaw-corral")) || (pathname === "/horf" && (walletAddress ? link.section === "stable" : link.section === "race")) || (link.section === "traders" && pathname.startsWith("/horf/traders/")) ? "page" : undefined}><span className="nav-icon" aria-hidden="true">{link.icon}</span><span className="nav-label">{link.label}</span></a>;
       })}</div>
       <div className="spacer" />
       <a className="exit" href="/" aria-label="Back to WTF OS" title="Back to WTF OS"><span className="nav-icon" aria-hidden="true">↙</span><span className="nav-label">WTF OS</span></a>

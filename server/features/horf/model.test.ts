@@ -133,6 +133,7 @@ test("season totals count token units and pairwise net horse obligations", () =>
   assert.deepEqual(result.currentUser?.waitingHorses.map(({ id, from, amount }) => ({ id, from, amount })), [
     { id: 76425265, from: bob, amount: 1 },
   ]);
+  assert.equal(result.currentUser?.completedTrades, 2);
   assert.equal(result.currentUser?.recent[0]?.id, 76425268);
   assert.equal(result.currentUser?.recent[0]?.direction, "in");
 });
@@ -168,8 +169,48 @@ test("stable claims advance the race without creating a return obligation", () =
   const { leaderboard, currentUser } = summarizeSeason(rows, alice);
   assert.equal(leaderboard.find((row) => row.address === alice)?.trades, 2);
   assert.equal(leaderboard.find((row) => row.address === carol)?.sent, 1);
+  assert.equal(currentUser?.completedTrades, 0, "an honor claim and unreturned send are not completed trades");
   assert.deepEqual(currentUser?.owedTo, [{ address: bob, name: null, count: 1 }]);
   assert.deepEqual(currentUser?.waitingHorses.map((horse) => horse.id), [10]);
   assert.equal(currentUser?.recent[0]?.settlement, "stable");
   assert.equal(currentUser?.recent[0]?.stableMode, 1);
+});
+
+test("completed trades count reciprocal pairs once, excluding unreturned legs and gifts", () => {
+  const base = normalizeHorfTransfer(event(), new Set())!;
+  const rows: HorfTransfer[] = [
+    { ...base, id: 1, timestamp: "2026-11-02T01:00:00Z", from: bob, to: alice, amount: 6 },
+    { ...base, id: 2, timestamp: "2026-11-02T02:00:00Z", from: carol, to: alice, amount: 1, settlement: "gift" },
+    { ...base, id: 3, timestamp: "2026-11-02T03:00:00Z", from: alice, to: bob, amount: 6 },
+  ];
+  const own = summarizeSeason(rows, alice).currentUser!;
+  assert.deepEqual([own.received, own.sent, own.trades, own.completedTrades], [7, 6, 13, 6]);
+  assert.deepEqual([own.giftHorsesReceived, own.tradeHorsesReceived], [1, 6]);
+  assert.equal(own.giftHorsesReceived + own.tradeHorsesReceived, own.received);
+  const ranked = summarizeSeason(rows, alice).leaderboard.find((entry) => entry.address === alice)!;
+  assert.deepEqual([ranked.giftHorsesReceived, ranked.tradeHorsesReceived], [1, 6]);
+  assert.deepEqual(own.owedTo, []);
+  assert.deepEqual(own.owedBy, []);
+  const unrelated = summarizeSeason([
+    { ...base, id: 4, from: bob, to: alice, amount: 2 },
+    { ...base, id: 5, from: alice, to: carol, amount: 2 },
+  ], alice).currentUser!;
+  assert.equal(unrelated.completedTrades, 0, "sends to another rider cannot settle Bob's return ride");
+});
+
+test("pool credit claims and verified sales settle trades, while honor claims and gifts do not", () => {
+  const base = normalizeHorfTransfer(event(), new Set())!;
+  const rows: HorfTransfer[] = [
+    { ...base, id: 1, from: bob, to: alice, settlement: "stable", stableMode: 0 },
+    { ...base, id: 2, from: alice, to: carol, settlement: "stable", stableMode: 2 },
+    { ...base, id: 3, from: bob, to: alice, settlement: "market" },
+    { ...base, id: 4, from: alice, to: carol, settlement: "objkt" },
+    { ...base, id: 5, from: bob, to: alice, settlement: "stable", stableMode: 1 },
+    { ...base, id: 6, from: carol, to: alice, settlement: "gift" },
+  ];
+  const own = summarizeSeason(rows, alice).currentUser!;
+  assert.equal(own.completedTrades, 4);
+  assert.equal(own.trades, 6, "the raw transfer-activity race remains unchanged");
+  assert.deepEqual(own.owedTo, []);
+  assert.deepEqual(own.owedBy, []);
 });

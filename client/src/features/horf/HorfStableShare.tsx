@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import styled from "styled-components";
 import { logClientSystemEvent } from "../../lib/system-log";
+import { HorfReceivedBreakdown } from "./HorfReceivedBreakdown";
 
 export type HorfShareStats = {
   trades: number;
   received: number;
+  giftHorsesReceived?: number;
+  tradeHorsesReceived?: number;
   sent: number;
   rank: number | null;
   uniqueReceived: number;
@@ -14,7 +17,7 @@ export type HorfShareStats = {
 };
 
 type StoryKey = "herd" | "return" | "race";
-type Story = { key: StoryKey; title: string; metrics: string[]; draft: string };
+type Story = { key: StoryKey; title: string; metrics: string[]; draft: string; receivedBreakdown?: boolean };
 
 const Trigger = styled.button`
   min-height: 40px;
@@ -75,11 +78,13 @@ function buildStories(seasonLabel: string, stats: HorfShareStats, url: string): 
   const answered = Math.max(0, stats.directReceived - stats.waiting);
   const reciprocation = stats.directReceived > 0
     ? `${Math.round(answered / stats.directReceived * 100)}%` : "N/A";
+  const receivedSplit = Number.isSafeInteger(stats.giftHorsesReceived) && Number.isSafeInteger(stats.tradeHorsesReceived)
+    ? ` 🎁 ${stats.giftHorsesReceived} gifts · 🤝 ${stats.tradeHorsesReceived} trade receipts.` : "";
   return [
     {
-      key: "herd", title: "Herd roundup 🐎",
+      key: "herd", title: "Herd roundup 🐎", receivedBreakdown: true,
       metrics: [`${stats.received} received editions`, `${stats.uniqueReceived} distinct horses`, `${stats.sendingRiders} sending riders`],
-      draft: `🐎 My ${seasonLabel} roundup: ${stats.received} horse editions received, ${stats.uniqueReceived} distinct horses, from ${stats.sendingRiders} riders. See the herd on HORF: ${url}`,
+      draft: `🐎 My ${seasonLabel} roundup: ${stats.received} horse editions received.${receivedSplit} ${stats.uniqueReceived} distinct horses, from ${stats.sendingRiders} riders. See the herd on HORF: ${url}`,
     },
     {
       key: "return", title: "Return rides 🪢",
@@ -87,9 +92,9 @@ function buildStories(seasonLabel: string, stats: HorfShareStats, url: string): 
       draft: `🪢 ${seasonLabel} return rides: ${answered} of ${stats.directReceived} direct horse editions answered (${reciprocation}); ${stats.waiting} still waiting. See my received horses on HORF: ${url}`,
     },
     {
-      key: "race", title: "Race report 🤠",
-      metrics: [`${stats.sent} sent`, `${stats.received} received`, `${stats.trades} trades`, `${stats.rank ? `#${stats.rank} standing` : "Unranked"}`],
-      draft: `🤠 ${seasonLabel} race report: ${stats.sent} horses sent, ${stats.received} received, ${stats.trades} counted trades${stats.rank ? `, #${stats.rank} on the board` : ""}. See my received horses on HORF: ${url}`,
+      key: "race", title: "Race report 🤠", receivedBreakdown: true,
+      metrics: [`${stats.sent} sent`, `${stats.received} received`, `${stats.trades} horse transfers`, `${stats.rank ? `#${stats.rank} standing` : "Unranked"}`],
+      draft: `🤠 ${seasonLabel} race report: ${stats.sent} horses sent, ${stats.received} received.${receivedSplit} ${stats.trades} horse transfers${stats.rank ? `, #${stats.rank} on the board` : ""}. See my received horses on HORF: ${url}`,
     },
   ];
 }
@@ -162,7 +167,7 @@ export function HorfStableShare({ address, seasonKey, seasonLabel, stats }: {
         <p>Pick a story. The link opens every recognized horse you received {seasonKey === "all-time" ? "across all tracked seasons" : `in ${seasonLabel}`}, including ones you’ve sent on.</p>
         <fieldset><legend>Your story</legend>{stories.map((story) => <label className="story" key={story.key}>
           <input data-horf-share-story={story.key} type="radio" name="horf-share-story" value={story.key} checked={storyKey === story.key} onChange={() => selectStory(story.key)} />
-          <span><strong>{story.title}</strong><ul>{story.metrics.map((metric) => <li key={metric}>{metric}</li>)}</ul></span>
+          <span><strong>{story.title}</strong><ul>{story.metrics.map((metric) => <li key={metric}>{metric}</li>)}</ul>{story.receivedBreakdown && <HorfReceivedBreakdown gifts={stats?.giftHorsesReceived} trades={stats?.tradeHorsesReceived} />}</span>
         </label>)}</fieldset>
         <label className="draft" htmlFor="horf-share-draft">Your draft · edit before posting</label>
         <textarea id="horf-share-draft" data-horf-share-draft value={draft} onChange={(event) => setDraft(event.currentTarget.value)} />

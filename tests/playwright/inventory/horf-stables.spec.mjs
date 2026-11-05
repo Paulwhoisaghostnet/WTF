@@ -224,6 +224,141 @@ test.describe("Horf Stables", () => {
     await expect(stables.getByRole("alert")).toContainText("Cancel amount exceeds the editions still listed");
   });
 
+  test("guides a zero-credit rider from a listed horse to deposit review and its later claim", async ({ page, request }) => {
+    await seedTrader(request);
+    await mockSeason(page);
+    await mockLinkedWallet(page);
+    let reciprocalCredits = "0";
+    const target = { ...listings[0], token: {
+      contract: tokenContract, tokenId: "1", name: "Neighvember Dawn",
+      image: null, artifactUri: null, mime: "image/png",
+    } };
+    await page.route(/\/api\/horf\/stables(?:\?.*)?$/, (route) => route.fulfill({
+      status: 200, contentType: "application/json",
+      body: JSON.stringify({ ...stableSnapshot(true), reciprocalCredits, listings: [target] }),
+    }));
+    await page.route("**/api/horf/wallet/tokens?*", (route) => route.fulfill({
+      status: 200, contentType: "application/json",
+      body: JSON.stringify({
+        items: [{ contract: tokenContract, tokenId: "7", name: "My Marshal Horse", balance: "2", walletAddress: traderWallet }],
+        pagination: { hasMore: false, nextOffset: 1 },
+      }),
+    }));
+    await page.route(/\/api\/horf\/traders\/[^/]+\/horses(?:\?.*)?$/, (route) => route.fulfill({
+      status: 200, contentType: "application/json",
+      body: JSON.stringify({ address: traderWallet,
+        items: [{ contract: tokenContract, tokenId: "7", name: "My Marshal Horse", balance: "2", approvedForMarshalsMarket: true }],
+        pagination: { hasMore: false, nextOffset: 1 } }),
+    }));
+    await page.route("**/api/horf/inspections/status?*", (route) => route.fulfill({
+      status: 200, contentType: "application/json",
+      body: JSON.stringify({ status: "approved", inspectionId: 17, reason: null }),
+    }));
+
+    await page.goto("/horf/marshals-market");
+    const stables = page.locator('[data-horf-region="stables"]');
+    const card = stables.locator('[data-horf-stable-listing-id="1"]');
+    const start = card.locator("[data-horf-stable-start-trade]");
+    await expect(start).toBeEnabled();
+    await expect(start).toHaveText("Trade for this horse");
+    await expect(stables.locator("[data-horf-stable-deposit]")).toHaveCount(0);
+    await start.click();
+
+    const deposit = stables.locator("[data-horf-stable-deposit]");
+    const guide = deposit.locator('[data-horf-stable-trade-guide][data-horf-stable-trade-target="1"]');
+    await expect(deposit).toBeVisible();
+    await expect(deposit).toContainText("Deposit in Reciprocal Stable");
+    await expect(guide).toContainText("Riding for Neighvember Dawn");
+    await expect(guide).toContainText("second wallet transaction");
+    await expect(guide).toContainText("not reserved");
+    await expect(deposit.locator("#horf-owned-token")).toBeFocused();
+    await expect(guide.locator("[data-horf-stable-target-refresh]")).toBeVisible();
+    await expect(guide.locator("[data-horf-stable-target-claim]")).toHaveCount(0);
+
+    const owned = deposit.locator("[data-horf-owned-select]");
+    await expect(owned.locator("option")).toHaveCount(2);
+    await owned.selectOption(`${tokenContract}:7`);
+    await deposit.getByRole("button", { name: "Add approved horse" }).click();
+    const editions = deposit.getByRole("textbox", { name: "Editions of My Marshal Horse" });
+    await expect(editions).toHaveValue("0");
+    await editions.fill("1");
+    await deposit.locator("[data-horf-stable-submit]").click();
+    await expect(deposit.locator("[data-horf-stable-review]")).toContainText("Reciprocal Stable · Tezos Mainnet");
+    await expect(deposit.locator("[data-horf-stable-review-row]")).toContainText("My Marshal Horse · 1 edition");
+    await expect(guide).toContainText("Riding for Neighvember Dawn");
+
+    // Simulate the deposit confirming and indexing; the claim remains a separate wallet action.
+    reciprocalCredits = "1";
+    await guide.locator("[data-horf-stable-target-refresh]").click();
+    await expect(stables.locator("[data-horf-stable-credits]")).toContainText("Reciprocal claims: 1");
+    await expect(guide.locator("[data-horf-stable-target-claim]")).toBeEnabled();
+    await expect(guide.locator("[data-horf-stable-target-claim]")).toHaveText("Claim Neighvember Dawn now");
+    await expect(card.locator("[data-horf-stable-claim]")).toBeEnabled();
+  });
+
+  test("only offers approved owned horses for deposit and checks pasted Objkt links", async ({ page, request }) => {
+    await seedTrader(request);
+    await mockSeason(page);
+    await mockLinkedWallet(page);
+    await page.route(/\/api\/horf\/stables(?:\?.*)?$/, (route) => route.fulfill({
+      status: 200, contentType: "application/json", body: JSON.stringify(stableSnapshot(true)),
+    }));
+    await page.route(/\/api\/horf\/traders\/[^/]+\/horses(?:\?.*)?$/, (route) => route.fulfill({
+      status: 200, contentType: "application/json",
+      body: JSON.stringify({ address: traderWallet, items: [
+        { contract: tokenContract, tokenId: "7", name: "Approved Mare", balance: "2", approvedForMarshalsMarket: true },
+        { contract: tokenContract, tokenId: "8", name: "Waiting Colt", balance: "3", approvedForMarshalsMarket: false },
+        { contract: tokenContract, tokenId: "9", name: "Spent Pony", balance: "0", approvedForMarshalsMarket: true },
+      ], pagination: { hasMore: false, nextOffset: 3 } }),
+    }));
+    let eligibilityReads = 0;
+    let mareApproved = true;
+    await page.route("**/api/horf/inspections/status?*", (route) => {
+      const tokenId = new URL(route.request().url()).searchParams.get("tokenId");
+      return route.fulfill({ status: 200, contentType: "application/json",
+        body: JSON.stringify({ status: tokenId === "8" || (tokenId === "7" && !mareApproved) ? "pending" : "approved", reason: null }) });
+    });
+    await page.route("**/api/horf/token-eligibility?*", (route) => {
+      eligibilityReads += 1;
+      const tokenId = new URL(route.request().url()).searchParams.get("tokenId");
+      return route.fulfill({ status: tokenId === "10" ? 422 : 200, contentType: "application/json",
+        body: JSON.stringify(tokenId === "10" ? { eligible: false, error: "That is not a horse" }
+          : { eligible: true, token: { name: "Approved Mare" } }) });
+    });
+
+    await page.goto("/horf/marshals-market");
+    const deposit = page.locator('[data-horf-region="stables"] [data-horf-stable-deposit]');
+    await page.locator("[data-horf-stable-manage-toggle]").click();
+    const selector = deposit.locator("[data-horf-owned-select]");
+    await expect(selector.locator("option")).toHaveCount(2);
+    await expect(selector.locator(`option[value="${tokenContract}:7"]`)).toContainText("Approved Mare");
+    await expect(selector.locator(`option[value="${tokenContract}:8"]`)).toHaveCount(0);
+    await expect(selector.locator(`option[value="${tokenContract}:9"]`)).toHaveCount(0);
+
+    const input = deposit.locator("[data-horf-objkt-input]");
+    await input.fill(`https://objkt.com/tokens/${tokenContract}/8`);
+    await deposit.getByRole("button", { name: "Add approved Objkt horse" }).click();
+    await expect(deposit.getByRole("alert")).toContainText("active Marshal approval");
+    await expect(deposit.locator("[data-horf-stable-deposit-row]")).toHaveCount(0);
+    expect(eligibilityReads).toBe(0);
+
+    await input.fill(`https://objkt.com/tokens/${tokenContract}/10`);
+    await deposit.getByRole("button", { name: "Add approved Objkt horse" }).click();
+    await expect(deposit.getByRole("alert")).toContainText("not a horse");
+    await expect(deposit.locator("[data-horf-stable-deposit-row]")).toHaveCount(0);
+
+    await selector.selectOption(`${tokenContract}:7`);
+    await deposit.getByRole("button", { name: "Add approved horse" }).click();
+    await deposit.getByRole("textbox", { name: "Editions of Approved Mare" }).fill("1");
+    await deposit.locator("[data-horf-stable-submit]").click();
+    await expect(deposit.locator("[data-horf-stable-review]")).toContainText("Approved Mare · 1 edition");
+    await deposit.locator("[data-horf-stable-review-back]").click();
+    mareApproved = false;
+    await deposit.locator("[data-horf-stable-submit]").click();
+    await expect(deposit.getByRole("alert")).toContainText("Every horse in this deposit needs active Marshal approval");
+    await expect(deposit.locator("[data-horf-stable-review]")).toHaveCount(0);
+  });
+
   test("shows each listed horse's own artwork in public and owner stable cards", async ({ page, request }) => {
     await seedTrader(request);
     await mockSeason(page);
@@ -346,7 +481,7 @@ test.describe("Horf Stables", () => {
       status: 200, contentType: "application/json",
       body: JSON.stringify({
         address: traderWallet,
-        items: [{ contract: tokenContract, tokenId: "7", name: "Neighvember Seven", balance: "2", image: null, artifactUri: null, mime: "image/png", mintedAt: "2026-11-03T12:00:00.000Z" }],
+        items: [{ contract: tokenContract, tokenId: "7", name: "Neighvember Seven", balance: "2", image: null, artifactUri: null, mime: "image/png", mintedAt: "2026-11-03T12:00:00.000Z", approvedForMarshalsMarket: false }],
         pagination: { hasMore: false, nextOffset: 1 },
       }),
     }));
@@ -401,16 +536,19 @@ test.describe("Horf Stables", () => {
     await page.goto("/horf/marshals-market");
     const inspectedStables = page.locator('[data-horf-region="stables"]');
     await inspectedStables.locator("[data-horf-stable-manage-toggle]").click();
-    await inspectedStables.locator("[data-horf-owned-select]").selectOption(`${tokenContract}:7`);
-    await inspectedStables.getByRole("button", { name: "Add owned horse" }).click();
-    await expect(inspectedStables.locator("[data-horf-stable-deposit-row]")).toContainText("Inspection required · pending");
+    await expect(inspectedStables.locator("[data-horf-owned-select] option")).toHaveCount(1);
+    await expect(inspectedStables.locator("[data-horf-owned-select]")).toContainText("No approved horses found");
+    await inspectedStables.locator("[data-horf-objkt-input]").fill(`https://objkt.com/tokens/${tokenContract}/7`);
+    await inspectedStables.getByRole("button", { name: "Add approved Objkt horse" }).click();
+    await expect(inspectedStables.getByRole("alert")).toContainText("active Marshal approval");
+    await expect(inspectedStables.locator("[data-horf-stable-deposit-row]")).toHaveCount(0);
     await expect(inspectedStables.locator("[data-horf-stable-submit]")).toBeDisabled();
     await expect(page.locator('[data-horf-region="personal-stable"]')).toHaveCount(0);
     await page.goto("/horf/outlaw-corral");
     const outlawCorral = page.locator('[data-horf-region="outlaw-corral"]');
     await expect(outlawCorral).toContainText("Outlaw Corral");
-    await expect(outlawCorral).toContainText("without inspection");
-    await expect(outlawCorral).toContainText("without inspection or escrow");
+    await expect(outlawCorral).toContainText("Your wallet sends first");
+    await expect(outlawCorral).toContainText("outside escrow");
     await page.goto("/horf/gifts");
     const directTrade = page.locator('[data-horf-region="gifts"]');
     await directTrade.locator("[data-horf-gift-owned]").selectOption(`${tokenContract}:7`);
@@ -418,7 +556,7 @@ test.describe("Horf Stables", () => {
     await directTrade.locator("[data-horf-gift-recipient]").fill(otherTrader);
     await expect(directTrade.locator("[data-horf-gift-submit]")).toHaveText("Review horse send");
     await expect(directTrade.locator("[data-horf-gift-submit]")).toBeEnabled();
-    await expect(directTrade).toContainText("Direct trades count when the season ledger scans each transfer");
+    await expect(directTrade).toContainText("Sends count in the race; reciprocal trades complete when a rider sends a horse back.");
     await page.goto("/horf/stable");
     await expect(personal.locator("[data-horf-personal-saved-row]")).toHaveCount(1);
     await personal.scrollIntoViewIfNeeded();
@@ -874,6 +1012,16 @@ test.describe("Horf Stables", () => {
         pagination: { hasMore: false, nextOffset: 1 },
       }),
     }));
+    await page.route(/\/api\/horf\/traders\/[^/]+\/horses(?:\?.*)?$/, (route) => route.fulfill({
+      status: 200, contentType: "application/json",
+      body: JSON.stringify({ address: traderWallet,
+        items: [{ contract: tokenContract, tokenId: "7", name: "Neighvember Seven", balance: "2", approvedForMarshalsMarket: true }],
+        pagination: { hasMore: false, nextOffset: 1 } }),
+    }));
+    await page.route("**/api/horf/token-eligibility?*", (route) => route.fulfill({
+      status: 200, contentType: "application/json",
+      body: JSON.stringify({ eligible: true, token: { name: "Token #8" } }),
+    }));
     await page.route("**/api/horf/inspections/status?*", (route) => {
       const params = new URL(route.request().url()).searchParams;
       return route.fulfill({
@@ -909,7 +1057,8 @@ test.describe("Horf Stables", () => {
     await expect(stables).toBeVisible();
     await expect(stables.locator("[data-horf-stable-credits]")).toContainText("Reciprocal claims: 0");
     await expect(stables.locator("[data-horf-stable-credits]")).toContainText("Group claims: 30");
-    await expect(stables.locator('[data-horf-stable-listing-id="1"] [data-horf-stable-claim]')).toBeDisabled();
+    await expect(stables.locator('[data-horf-stable-listing-id="1"] [data-horf-stable-start-trade]')).toBeEnabled();
+    await expect(stables.locator('[data-horf-stable-listing-id="1"] [data-horf-stable-claim]')).toHaveCount(0);
     await expect(stables.locator('[data-horf-stable-listing-id="2"] [data-horf-stable-cancel]')).toBeEnabled();
 
     await stables.locator('[data-horf-stable-mode="honor"]').click();
@@ -918,9 +1067,9 @@ test.describe("Horf Stables", () => {
     await stables.locator("[data-horf-stable-manage-toggle]").click();
     await expect(stables.locator("[data-horf-owned-select] option")).toHaveCount(2);
     await stables.locator("[data-horf-owned-select]").selectOption(`${tokenContract}:7`);
-    await stables.getByRole("button", { name: "Add owned horse" }).click();
+    await stables.getByRole("button", { name: "Add approved horse" }).click();
     await stables.locator("[data-horf-objkt-input]").fill(`https://objkt.com/tokens/${tokenContract}/8`);
-    await stables.getByRole("button", { name: "Add Objkt token" }).click();
+    await stables.getByRole("button", { name: "Add approved Objkt horse" }).click();
     await expect(stables.locator("[data-horf-stable-deposit-row]")).toHaveCount(2);
     await expect(stables.getByRole("textbox", { name: "Editions of Neighvember Seven" })).toHaveValue("0");
     await expect(stables.getByRole("textbox", { name: "Editions of Token #8" })).toHaveValue("0");
@@ -957,7 +1106,7 @@ test.describe("Horf Stables", () => {
     await expect(stables.locator('[data-horf-stable-listing-id="6"] [data-horf-stable-claim]')).toBeEnabled();
     await expect(stables.locator('[data-horf-stable-listing-id="7"] [data-horf-stable-cancel]')).toBeEnabled();
     await stables.locator("[data-horf-owned-select]").selectOption(`${tokenContract}:7`);
-    await stables.getByRole("button", { name: "Add owned horse" }).click();
+    await stables.getByRole("button", { name: "Add approved horse" }).click();
     await stables.getByRole("textbox", { name: "Editions of Neighvember Seven" }).fill("2");
     await stables.locator("[data-horf-stable-submit]").click();
     const groupReview = stables.locator("[data-horf-stable-review]");

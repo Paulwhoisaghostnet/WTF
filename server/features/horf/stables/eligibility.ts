@@ -3,7 +3,7 @@ import { horfInspectionApprovals } from "@shared/schema";
 import { and, eq } from "drizzle-orm";
 import { db } from "../../../db";
 import { objkt } from "../../../lib/upstream";
-import { approvedHorseTags, horseTagEvidence, type ObjktToken } from "../model";
+import { approvedHorseTags, creditedObjktCreator, horseTagEvidence, type ObjktToken } from "../model";
 import { HORF_MAINNET_BLOCK_MS } from "../mainnet";
 import { isExcludedHorseToken } from "../nonhorse-reports";
 
@@ -18,6 +18,7 @@ export const HORF_STABLE_TOKEN_QUERY = `query HorfStableToken($contract: String!
     display_uri
     artifact_uri
     mime
+    creators { creator_address holder { alias } }
     tags { tag { name token_count } }
   }
 }`;
@@ -109,6 +110,7 @@ export async function inspectHorseToken(
   return {
     contract,
     tokenId,
+    ...creditedObjktCreator(token),
     name: String(token.name || `Token #${tokenId}`).trim() || `Token #${tokenId}`,
     image: safeImage(token.thumbnail_uri || token.display_uri),
     displayUri: safeImage(token.display_uri),

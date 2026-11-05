@@ -34,6 +34,56 @@ async function mockMarket(page, ready, token = { name: "Neighvember Chestnut", i
 }
 
 test.describe("HORSE market", () => {
+  test("uses one Horse Market nav item for three tabs and preserves legacy trade links", async ({ page, request }) => {
+    expect((await request.post("/__test/state", { data: { userRole: "anonymous" } })).ok()).toBeTruthy();
+    await mockMarket(page, true);
+    await page.route("**/api/horf/open-range/offers", (route) => json(route, { offers: [{
+      id: 71, ownerAddress: seller, ownerName: "Sir Canter", tokenContract: horse, tokenId: "7",
+      amount: "2", acceptedTokenPolicy: "any_qualifying", name: "Neighvember Chestnut",
+      image: "/horf-art/horse-portrait-photo.jpg", creatorAddress: buyer, creatorName: "Mare Force",
+      createdAt: "2026-11-03T12:00:00.000Z",
+    }] }));
+
+    await page.goto("/horf/horse-market?season=current-2026");
+    const nav = page.locator("[data-horf-left-nav]");
+    await expect(nav.locator('[data-horf-nav="horse-market"]')).toHaveCount(1);
+    await expect(nav.locator('[data-horf-nav="marshal"], [data-horf-nav="outlaw"]')).toHaveCount(0);
+    const tabs = page.getByRole("tablist", { name: "Horse market areas" });
+    await expect(tabs.getByRole("tab")).toHaveCount(3);
+    const horse4horse = tabs.getByRole("tab", { name: /Horse4HORSE/ });
+    const marshals = tabs.getByRole("tab", { name: /Marshal’s Market/ });
+    const outlaw = tabs.getByRole("tab", { name: /Outlaw Corral/ });
+    await expect(horse4horse).toHaveAttribute("aria-selected", "true");
+    await expect(page.locator('[data-horf-region="horse-market"]')).toBeVisible();
+    await expect(page.locator('[data-horf-region="marshals-market"], [data-horf-region="outlaw-corral"]')).toHaveCount(0);
+
+    await marshals.click();
+    await expect(page).toHaveURL(/\/horf\/horse-market\?season=current-2026&market=marshals$/);
+    await expect(marshals).toHaveAttribute("aria-selected", "true");
+    await expect(page.locator('[data-horf-region="marshals-market"]')).toBeVisible();
+    await expect(page.locator('[data-horf-region="horse-market"], [data-horf-region="outlaw-corral"]')).toHaveCount(0);
+    await outlaw.click();
+    await expect(page).toHaveURL(/\/horf\/horse-market\?season=current-2026&market=outlaw$/);
+    await expect(outlaw).toHaveAttribute("aria-selected", "true");
+    await expect(page.locator('[data-horf-region="outlaw-corral"] [data-horf-outlaw-offer]')).toHaveCount(1);
+    await expect(page.locator('[data-horf-region="horse-market"], [data-horf-region="marshals-market"]')).toHaveCount(0);
+    await horse4horse.click();
+    await expect(page).toHaveURL(/\/horf\/horse-market\?season=current-2026&market=horse4horse$/);
+    await expect(horse4horse).toHaveAttribute("aria-selected", "true");
+
+    await page.goto("/horf/outlaw-corral?season=current-2026&offer=71");
+    await expect.poll(() => new URL(page.url()).pathname).toBe("/horf/horse-market");
+    expect(new URL(page.url()).searchParams.get("market")).toBe("outlaw");
+    expect(new URL(page.url()).searchParams.get("offer")).toBe("71");
+    const featured = page.locator('[data-horf-outlaw-offer-id="71"]');
+    await expect(featured).toHaveAttribute("data-horf-outlaw-featured", "");
+    await expect(featured).toBeFocused();
+    await page.goto("/horf/marshals-market?season=current-2026");
+    await expect.poll(() => new URL(page.url()).pathname).toBe("/horf/horse-market");
+    expect(new URL(page.url()).searchParams.get("market")).toBe("marshals");
+    await expect(page.locator('[data-horf-region="marshals-market"]')).toBeVisible();
+  });
+
   test("shows a clear pending state to a guest before the Mainnet contract is configured", async ({ page, request }) => {
     expect((await request.post("/__test/state", { data: { userRole: "anonymous" } })).ok()).toBeTruthy();
     await mockMarket(page, false);
@@ -133,12 +183,14 @@ test.describe("HORSE market", () => {
       mime: "video/mp4",
     });
     await page.reload();
-    await expect(card.locator("[data-horf-horse-market-card-video]")).toBeVisible();
-    await expect(card.locator("[data-horf-horse-market-card-video]")).toHaveAttribute("src", /talk\.mp4/);
-    await expect(card.locator("[data-horf-horse-market-card-video]")).toHaveAttribute("autoplay", "");
-    expect(await card.locator("[data-horf-horse-market-card-video]").evaluate((video) => video.muted)).toBe(true);
-    await expect(card.locator("[data-horf-horse-market-card-video]")).toHaveAttribute("loop", "");
-    await expect.poll(() => card.locator("[data-horf-horse-market-card-video]").evaluate(
+    const cardVideo = card.locator("[data-horf-horse-market-card-video]");
+    await expect(cardVideo).toBeVisible();
+    await cardVideo.scrollIntoViewIfNeeded();
+    await expect(cardVideo).toHaveAttribute("src", /talk\.mp4/);
+    await expect(cardVideo).toHaveAttribute("autoplay", "");
+    expect(await cardVideo.evaluate((video) => video.muted)).toBe(true);
+    await expect(cardVideo).toHaveAttribute("loop", "");
+    await expect.poll(() => cardVideo.evaluate(
       (video) => !video.paused && video.readyState >= 2,
     )).toBe(true);
     await card.locator("[data-horf-horse-market-art-trigger]").click();
@@ -178,8 +230,18 @@ test.describe("HORSE market", () => {
     }, { address: seller });
     await mockMarket(page, true);
     await page.route("**/api/horf/wallet/session", (route) => json(route, { walletAddress: seller, verified: true }));
+    await page.route(/\/api\/horf\/traders\/[^/]+\/horses\?.*$/, (route) => {
+      const offset = Number(new URL(route.request().url()).searchParams.get("offset") || "0");
+      return json(route, {
+        address: seller,
+        items: offset === 0
+          ? [{ contract: horse, tokenId: "8", name: "Uninspected Foal", balance: "1", approvedForMarshalsMarket: false }]
+          : [{ contract: horse, tokenId: "7", name: "Neighvember Chestnut", balance: "5", approvedForMarshalsMarket: true }],
+        pagination: { hasMore: offset === 0, nextOffset: offset === 0 ? 48 : 49 },
+      });
+    });
     await page.route(/\/api\/horf\/wallet\/tokens\?.*$/, (route) => json(route, {
-      items: [{ contract: horse, tokenId: "7", name: "Neighvember Chestnut", balance: "5", walletAddress: seller }],
+      items: [{ contract: horse, tokenId: "9", name: "Unrelated Wallet Token", balance: "7", walletAddress: seller }],
       pagination: { hasMore: false, nextOffset: 1 },
     }));
     await page.route(/\/api\/horf\/inspections\/status\?.*$/, (route) => json(route, { status: "approved", reason: null }));
@@ -196,6 +258,11 @@ test.describe("HORSE market", () => {
     await page.goto("/horf/horse-market");
     const form = page.locator("[data-horf-horse-market-list-form]");
     await expect(form.locator("[data-horf-horse-market-quantity]")).toHaveValue("0");
+    await expect(form.locator("[data-horf-horse-market-owned] option")).toHaveCount(1);
+    await form.getByRole("button", { name: "More horses from this wallet" }).click();
+    await expect(form.locator("[data-horf-horse-market-owned] option")).toHaveCount(2);
+    await expect(form.locator("[data-horf-horse-market-owned]")).not.toContainText("Uninspected Foal");
+    await expect(form.locator("[data-horf-horse-market-owned]")).not.toContainText("Unrelated Wallet Token");
     await form.locator("[data-horf-horse-market-owned]").selectOption(`${horse}:7`);
     await expect(form.getByRole("button", { name: "Review listing" })).toBeDisabled();
     await form.locator("[data-horf-horse-market-quantity]").fill("3");

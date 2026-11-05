@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import styled from "styled-components";
 import { HorfFrame } from "../features/horf/HorfFrame";
+import { HorfGifts } from "../features/horf/HorfGifts";
 import { HorfObjktBuy } from "../features/horf/HorfObjktBuy";
 import { HorfOwnedHorsePicker, type HorfOwnedHorse } from "../features/horf/HorfOwnedHorsePicker";
 import { useHorfWallet } from "../features/horf/useHorfWallet";
@@ -32,7 +33,7 @@ type RangeHorse = {
   approvedForMarshalsMarket: boolean;
   inspectionStatus?: "none" | "pending" | "approved" | "rejected" | "reviewed";
   viewerBalance?: string | null;
-  offers: Array<{ id: number; ownerAddress: string; amount: string; acceptedTokenPolicy: AcceptedTokenPolicy }>;
+  offers: Array<{ id: number; ownerAddress: string; ownerName?: string | null; amount: string; acceptedTokenPolicy: AcceptedTokenPolicy }>;
 };
 type RangePage = { season: Season; items: RangeHorse[]; nextCursor: string | null; hasMore: boolean; asOf: string | null };
 
@@ -278,6 +279,45 @@ const HorseDetail = styled.dialog`
   @media (max-width: 650px) { .detail-grid { grid-template-columns: 1fr; } .detail-grid > img, .detail-grid > video, .detail-grid > .detail-glyph { max-height: 36vh; } }
 `;
 
+const QuickTradeDialog = styled.dialog`
+  width: min(500px, calc(100vw - 24px));
+  max-height: calc(100dvh - 24px);
+  overflow: auto;
+  padding: 0;
+  border: 1px solid var(--horf-line);
+  border-radius: 18px;
+  background: var(--horf-surface);
+  color: var(--horf-ink);
+  box-shadow: 0 28px 70px #06100dd9;
+  font-family: var(--horf-font, ui-sans-serif, system-ui, sans-serif);
+  &::backdrop { background: #07120fd9; backdrop-filter: blur(4px); }
+  .quick-head { display: flex; justify-content: space-between; align-items: start; gap: 12px; padding: 20px 20px 13px; border-bottom: 1px solid var(--horf-line); }
+  .quick-head small { display: block; color: var(--horf-gold); font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+  .quick-head h2 { margin: 5px 0 0; font-family: var(--horf-display, Georgia, serif); font-size: 25px; line-height: 1.08; overflow-wrap: anywhere; }
+  .quick-head button { flex: 0 0 auto; min-width: 38px; min-height: 38px; border: 1px solid var(--horf-line); border-radius: 999px; background: var(--horf-field); color: var(--horf-ink); cursor: pointer; font-size: 18px; }
+  .quick-head button:disabled { cursor: wait; opacity: .5; }
+  .quick-body { padding: 16px 20px 20px; }
+  .quick-body > p { margin: 0 0 12px; color: var(--horf-muted); font-size: 14px; line-height: 1.5; }
+  .quick-body label { display: block; margin: 0 0 6px; font-size: 13px; font-weight: 800; }
+  .quick-body select { width: 100%; min-height: 42px; padding: 9px 11px; border: 1px solid var(--horf-line); border-radius: 9px; background: var(--horf-field); color: var(--horf-ink); font: inherit; }
+  .quick-body button:focus-visible, .quick-body select:focus-visible, .quick-head button:focus-visible { outline: 3px solid var(--horf-focus); outline-offset: 2px; }
+  @media (max-width: 480px) { .quick-head { padding: 16px 16px 12px; } .quick-body { padding: 14px 16px 16px; } }
+`;
+
+const OwnedMarker = styled.span`
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  margin-top: 10px;
+  padding: 4px 11px;
+  border: 1px solid #5aab95;
+  border-radius: 999px;
+  background: #1e3a33;
+  color: #a6dfce;
+  font-size: 12px;
+  font-weight: 800;
+`;
+
 const Note = styled.div<{ $error?: boolean }>`
   margin: 16px 0;
   padding: 14px 18px;
@@ -364,8 +404,13 @@ export function HorfOpenRange() {
   const [offerHorse, setOfferHorse] = useState<RangeHorse | null>(null);
   const [offerWalletAddress, setOfferWalletAddress] = useState<string | null>(null);
   const [detailHorse, setDetailHorse] = useState<RangeHorse | null>(null);
+  const [quickTradeHorse, setQuickTradeHorse] = useState<RangeHorse | null>(null);
+  const [quickTradeOfferId, setQuickTradeOfferId] = useState<number | null>(null);
+  const [quickTradeBusy, setQuickTradeBusy] = useState(false);
   const [selectedHorse, setSelectedHorse] = useState<RangeHorse | null>(null);
   const detailRef = useRef<HTMLDialogElement>(null);
+  const quickTradeRef = useRef<HTMLDialogElement>(null);
+  const quickTradeTriggerRef = useRef<HTMLButtonElement | null>(null);
   const [offerAmount, setOfferAmount] = useState("1");
   const [acceptedTokenPolicy, setAcceptedTokenPolicy] = useState<AcceptedTokenPolicy>("any_qualifying");
   const [busy, setBusy] = useState(false);
@@ -414,6 +459,8 @@ export function HorfOpenRange() {
     refetchOnWindowFocus: true,
   });
   const myOffers = Array.isArray(offersQuery.data?.offers) ? offersQuery.data.offers : [];
+  const quickTradeOffers = quickTradeHorse?.offers.filter((offer) => offer.ownerAddress !== address) ?? [];
+  const quickTradeOffer = quickTradeOffers.find((offer) => offer.id === quickTradeOfferId) ?? null;
 
   useEffect(() => {
     const dialog = detailRef.current;
@@ -421,6 +468,33 @@ export function HorfOpenRange() {
     if (detailHorse && !dialog.open) dialog.showModal();
     if (!detailHorse && dialog.open) dialog.close();
   }, [detailHorse]);
+
+  useEffect(() => {
+    const dialog = quickTradeRef.current;
+    if (!dialog) return;
+    if (quickTradeHorse && !dialog.open) dialog.showModal();
+    if (!quickTradeHorse && dialog.open) dialog.close();
+  }, [quickTradeHorse]);
+
+  function openQuickTrade(horse: RangeHorse, trigger: HTMLButtonElement) {
+    const offers = horse.offers.filter((offer) => offer.ownerAddress !== address);
+    if (!offers.length) return;
+    quickTradeTriggerRef.current = trigger;
+    setQuickTradeBusy(false);
+    setQuickTradeOfferId(offers.length === 1 ? offers[0]!.id : null);
+    setQuickTradeHorse(horse);
+  }
+
+  function closeQuickTrade() {
+    setQuickTradeHorse(null);
+    setQuickTradeOfferId(null);
+    setQuickTradeBusy(false);
+    requestAnimationFrame(() => {
+      const trigger = quickTradeTriggerRef.current;
+      if (trigger?.isConnected) trigger.focus();
+      else document.querySelector<HTMLElement>("[data-horf-open-range-grid]")?.focus();
+    });
+  }
 
   function viewHorse(horse: RangeHorse) {
     setSelectedHorse(horse);
@@ -438,6 +512,7 @@ export function HorfOpenRange() {
     setSeasonKey(key);
     setOfferHorse(null);
     setSelectedHorse(null);
+    setQuickTradeHorse(null);
     writeSeason(key);
   }
 
@@ -579,7 +654,7 @@ export function HorfOpenRange() {
       {selectedVideo ? <video key={`${railHorse.contract}/${railHorse.tokenId}`} src={selectedVideo.src} controls playsInline preload="metadata" aria-label={`${railHorse.name} video artwork`} onError={(event) => { if (!advanceResolvedMediaFallback(event.currentTarget, selectedVideo)) event.currentTarget.style.display = "none"; }} /> : <img src={selectedArt?.src ?? "/horf-art/horse-gallop-photo.jpg"} alt="" onError={(event) => { if (!selectedArt || !advanceResolvedMediaFallback(event.currentTarget, selectedArt)) event.currentTarget.src = "/horf-art/horse-gallop-photo.jpg"; }} />}
       <h3>{railHorse.name || `Horse token #${railHorse.tokenId}`}</h3>
       <p>{railHorse.mintedAt ? `Minted ${new Date(railHorse.mintedAt).toLocaleDateString()}` : "Mint date unknown"} · #{railHorse.tokenId}</p>
-      <StatusFrame $kind="traded" $active={railHorse.tradedThroughHorf}>{railHorse.tradedThroughHorf ? "Traded through Horf" : "No Horf trade yet"}</StatusFrame>
+      <StatusFrame $kind="traded" $active={railHorse.tradedThroughHorf}>{railHorse.tradedThroughHorf ? "Traded before on Horf" : "No Horf trade yet"}</StatusFrame>
       <StatusFrame $kind="offered" $active={railHorse.activelyForTradeOnHorf}>{railHorse.activelyForTradeOnHorf ? "For direct trade now" : "No active Horf offer"}</StatusFrame>
       <StatusFrame $kind="approved" $active={railHorse.approvedForMarshalsMarket}>{railHorse.approvedForMarshalsMarket ? "Marshal approved" : "Not Marshal approved"}</StatusFrame>
       <Action type="button" onClick={() => viewHorse(railHorse)}>View horse details</Action>
@@ -592,7 +667,7 @@ export function HorfOpenRange() {
       {rangeQuery.isPending && <p role="status">Rounding up horses…</p>}
       {rangeQuery.isError && <p role="alert">This range is unavailable. Refresh the gallery to try again.</p>}
       <div className="aside-rule" />
-      <Legend data-horf-open-range-legend><strong>Color key</strong><StatusFrame $kind="traded" $active>Traded through Horf</StatusFrame><StatusFrame $kind="offered" $active>For direct trade now</StatusFrame><StatusFrame $kind="approved" $active>Marshal approved</StatusFrame></Legend>
+      <Legend data-horf-open-range-legend><strong>Color key</strong><StatusFrame $kind="traded" $active>Traded before on Horf</StatusFrame><StatusFrame $kind="offered" $active>For direct trade now</StatusFrame><StatusFrame $kind="approved" $active>Marshal approved</StatusFrame></Legend>
       <div className="aside-rule" />
       <p>{address ? `${myOffers.length} active ${myOffers.length === 1 ? "offer" : "offers"}.` : "Connect your wallet to offer a horse."} Direct offers have no escrow.</p>
     </>}
@@ -620,7 +695,7 @@ export function HorfOpenRange() {
       {rangeQuery.isPending && <Note role="status">Rounding up the season’s minted horses…</Note>}
       {rangeQuery.isError && <Note $error role="alert">{rangeQuery.error instanceof Error ? rangeQuery.error.message : "The Open Range is unavailable."} Refresh to try again.</Note>}
       <GalleryHeading><div><h2>{shownSeason?.label || "Horses on the range"}</h2><p>{horses.length} in view · frames show trades, offers, and Marshal approval.</p></div>{asOf && <small>Indexed {new Date(asOf).toLocaleString()}</small>}</GalleryHeading>
-      <Grid data-horf-open-range-grid>{horses.map((horse, index) => {
+      <Grid data-horf-open-range-grid tabIndex={-1}>{horses.map((horse, index) => {
         const art = marshalStatusQuery.data?.active ? horseArt(horse) : resolveHorfHorseCardArt(horse, uniqueThumbnails);
         const video = resolveHorfHorseVideo(horse);
         return <Card key={`${horse.contract}:${horse.tokenId}`} data-horf-open-range-horse data-horf-frame-traded={horse.tradedThroughHorf} data-horf-frame-offered={horse.activelyForTradeOnHorf} data-horf-frame-approved={horse.approvedForMarshalsMarket} $traded={horse.tradedThroughHorf} $offered={horse.activelyForTradeOnHorf} $approved={horse.approvedForMarshalsMarket}>
@@ -632,13 +707,13 @@ export function HorfOpenRange() {
           {horse.description && <p className="horse-description">{horse.description}</p>}
           <small>{horse.mintedAt ? `Minted ${new Date(horse.mintedAt).toLocaleDateString()}` : "Mint date unknown"} · {shortAddress(horse.contract)} / #{horse.tokenId}</small>
           {horse.creatorAddress && <small>Creator: <a href={`https://objkt.com/profile/${encodeURIComponent(horse.creatorAddress)}`} target="_blank" rel="noopener noreferrer">{shortAddress(horse.creatorAddress)}</a></small>}
-          <CardFlags data-horf-open-range-flags><StatusFrame data-horf-open-range-status="traded" $kind="traded" $active={horse.tradedThroughHorf}>{horse.tradedThroughHorf ? "Traded through Horf" : "No Horf trade yet"}</StatusFrame><StatusFrame data-horf-open-range-status="offered" $kind="offered" $active={horse.activelyForTradeOnHorf}>{horse.activelyForTradeOnHorf ? "For direct trade now" : "No active Horf offer"}</StatusFrame><StatusFrame data-horf-open-range-status="approved" $kind="approved" $active={horse.approvedForMarshalsMarket}>{horse.approvedForMarshalsMarket ? "Marshal approved" : "Not Marshal approved"}</StatusFrame></CardFlags>
+          <CardFlags data-horf-open-range-flags><StatusFrame data-horf-open-range-status="traded" $kind="traded" $active={horse.tradedThroughHorf}>{horse.tradedThroughHorf ? "Traded before on Horf" : "No Horf trade yet"}</StatusFrame><StatusFrame data-horf-open-range-status="offered" $kind="offered" $active={horse.activelyForTradeOnHorf}>{horse.activelyForTradeOnHorf ? "For direct trade now" : "No active Horf offer"}</StatusFrame><StatusFrame data-horf-open-range-status="approved" $kind="approved" $active={horse.approvedForMarshalsMarket}>{horse.approvedForMarshalsMarket ? "Marshal approved" : "Not Marshal approved"}</StatusFrame></CardFlags>
           {horse.inspectionStatus === "rejected" && <StatusFrame $kind="traded" $active>Marshal reviewed · rejected for trade</StatusFrame>}
           {horse.inspectionStatus === "reviewed" && <StatusFrame $kind="approved" $active>Marshal reviewed · kept</StatusFrame>}
-          {horse.offers.length > 0 && <p>{horse.offers.map((offer, index) => <span key={offer.id}>{index > 0 ? " · " : ""}<a href={`https://objkt.com/profile/${encodeURIComponent(offer.ownerAddress)}`} target="_blank" rel="noopener noreferrer">{shortAddress(offer.ownerAddress)}</a> offers {offer.amount} · {policyLabel(offer.acceptedTokenPolicy)}</span>)}. These are owner preferences, not escrow rules; contact them on Objkt before any direct wallet transfer.</p>}
+          {horse.offers.length > 0 && <><p>{horse.offers.map((offer, index) => <span key={offer.id}>{index > 0 ? " · " : ""}<a href={`https://objkt.com/profile/${encodeURIComponent(offer.ownerAddress)}`} target="_blank" rel="noopener noreferrer">{shortAddress(offer.ownerAddress)}</a> offers {offer.amount} · {policyLabel(offer.acceptedTokenPolicy)}</span>)}. These are direct trust offers, not escrow claims.</p><Action data-horf-open-range-find-offer type="button" onClick={() => windowManager.openPage(`/horf/horse-market?season=${encodeURIComponent(seasonKey)}&market=outlaw${horse.offers.length === 1 ? `&offer=${horse.offers[0]!.id}` : ""}`)}>{horse.offers.length === 1 ? "Open trade sign in Outlaw Corral →" : "Browse trade signs in Outlaw Corral →"}</Action></>}
+          {address && ownsHorse(horse.viewerBalance) ? <OwnedMarker data-horf-open-range-owned>You own this horse</OwnedMarker> : horse.activelyForTradeOnHorf && horse.offers.some((offer) => offer.ownerAddress !== address) ? <Action data-horf-open-range-initiate-trade type="button" $primary onClick={(event) => openQuickTrade(horse, event.currentTarget)}>Initiate trade for this horse</Action> : null}
           {marshalStatusQuery.data?.active && !horse.approvedForMarshalsMarket && <Action data-horf-open-range-approve type="button" disabled={busy} onClick={() => void approveHorseNow(horse)}>{busy ? "Checking horse…" : "Approve for Marshal’s Market"}</Action>}
           <Action data-horf-open-range-not-horse type="button" disabled={reportBusyKey !== null || reportedKeys.has(`${horse.contract}/${horse.tokenId}`)} onClick={() => void reportNotHorse(horse)}>{reportedKeys.has(`${horse.contract}/${horse.tokenId}`) ? "Sent to Marshal review" : reportBusyKey === `${horse.contract}/${horse.tokenId}` ? marshalStatusQuery.data?.active ? "Hiding from Horf…" : "Sending to Marshal…" : "That’s not a horse"}</Action>
-          {address && ownsHorse(horse.viewerBalance) && <Action data-horf-open-range-trade-owned type="button" onClick={() => { setSelectedHorse(horse); setOfferHorse(horse); setOfferWalletAddress(address); setError(null); setSuccess(null); document.getElementById("horf-open-range-offer")?.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" }); }}>Trade horse from wallet</Action>}
         </Card>;
       })}</Grid>
       {!rangeQuery.isPending && !rangeQuery.isError && !horses.length && <EmptyRange data-horf-open-range-empty>{rangeQuery.hasNextPage ? "No qualifying horses appeared on the pages read so far. Keep riding to the next page." : "No qualifying horse mints were found in this range. Try All Horse Search to look beyond known campaign windows."}</EmptyRange>}
@@ -656,10 +731,20 @@ export function HorfOpenRange() {
           <div className="detail-head"><div><small>🐎 Open Range · horse papers</small><h2>{detailHorse.name || `Horse token #${detailHorse.tokenId}`}</h2></div><Action type="button" onClick={() => setDetailHorse(null)}>Close details</Action></div>
           <div className="detail-grid">
             {resolveHorfHorseVideo(detailHorse) ? <video key={`${detailHorse.contract}/${detailHorse.tokenId}`} data-horf-open-range-detail-video src={resolveHorfHorseVideo(detailHorse)!.src} controls playsInline preload="metadata" aria-label={`${detailHorse.name || `Horse token #${detailHorse.tokenId}`} video artwork`} onError={(event) => { const resolved = resolveHorfHorseVideo(detailHorse); if (!resolved || !advanceResolvedMediaFallback(event.currentTarget, resolved)) event.currentTarget.style.display = "none"; }} /> : horseArt(detailHorse) ? <img src={horseArt(detailHorse)!.src} alt={`${detailHorse.name || `Horse token #${detailHorse.tokenId}`} artwork`} onError={(event) => { const resolved = horseArt(detailHorse); if (!resolved || !advanceResolvedMediaFallback(event.currentTarget, resolved)) { event.currentTarget.src = "/horf-art/horse-gallop-photo.jpg"; event.currentTarget.alt = "Horse photograph placeholder"; } }} /> : <div className="detail-glyph" aria-hidden="true"><img src="/horf-art/horse-gallop-photo.jpg" alt="" /></div>}
-            <div><p>{detailHorse.description || "This horse has no description from Objkt yet."}</p><CardFlags><StatusFrame $kind="traded" $active={detailHorse.tradedThroughHorf}>{detailHorse.tradedThroughHorf ? "Traded through Horf" : "No Horf trade yet"}</StatusFrame><StatusFrame $kind="offered" $active={detailHorse.activelyForTradeOnHorf}>{detailHorse.activelyForTradeOnHorf ? "For direct trade now" : "No active Horf offer"}</StatusFrame><StatusFrame $kind="approved" $active={detailHorse.approvedForMarshalsMarket}>{detailHorse.approvedForMarshalsMarket ? "Marshal approved" : "Not Marshal approved"}</StatusFrame></CardFlags>{detailHorse.inspectionStatus === "rejected" && <StatusFrame $kind="traded" $active>Marshal reviewed · rejected for trade</StatusFrame>}{detailHorse.inspectionStatus === "reviewed" && <StatusFrame $kind="approved" $active>Marshal reviewed · kept</StatusFrame>}<small>{detailHorse.mintedAt ? `Minted ${new Date(detailHorse.mintedAt).toLocaleDateString()}` : "Mint date unknown"} · {detailHorse.contract} / #{detailHorse.tokenId}</small>{detailHorse.creatorAddress && <small>Creator: <a href={`https://objkt.com/profile/${encodeURIComponent(detailHorse.creatorAddress)}`} target="_blank" rel="noopener noreferrer">{shortAddress(detailHorse.creatorAddress)}</a></small>}{detailHorse.offers.map((offer) => <p key={offer.id}>🤠 <a href={`https://objkt.com/profile/${encodeURIComponent(offer.ownerAddress)}`} target="_blank" rel="noopener noreferrer">{shortAddress(offer.ownerAddress)}</a> offers {offer.amount} · {policyLabel(offer.acceptedTokenPolicy)}</p>)}<p>Offers are owner preferences, not escrow protection. Confirm terms before any direct wallet transfer.</p><a href={objktTokenUrl(detailHorse.contract, detailHorse.tokenId)} target="_blank" rel="noopener noreferrer">View this horse on Objkt ↗</a><Action data-horf-open-range-detail-not-horse type="button" disabled={reportBusyKey !== null || reportedKeys.has(`${detailHorse.contract}/${detailHorse.tokenId}`)} onClick={() => void reportNotHorse(detailHorse)}>{reportedKeys.has(`${detailHorse.contract}/${detailHorse.tokenId}`) ? "Sent to Marshal review" : reportBusyKey === `${detailHorse.contract}/${detailHorse.tokenId}` ? "Sending to Marshal…" : "That’s not a horse"}</Action>{marshalStatusQuery.data?.active && !detailHorse.approvedForMarshalsMarket && <Action data-horf-open-range-inspect type="button" onClick={() => { setDetailHorse(null); windowManager.openPage(`/horf/inspection-desk?season=${encodeURIComponent(seasonKey)}&inspect=${encodeURIComponent(`${detailHorse.contract}/${detailHorse.tokenId}`)}`); }}>Inspect for Marshal’s Market</Action>}<HorfObjktBuy key={`${detailHorse.contract}:${detailHorse.tokenId}`} tokenContract={detailHorse.contract} tokenId={detailHorse.tokenId} address={address} connectWallet={connectWallet} isConnecting={isConnecting} /></div>
+            <div><p>{detailHorse.description || "This horse has no description from Objkt yet."}</p><CardFlags><StatusFrame $kind="traded" $active={detailHorse.tradedThroughHorf}>{detailHorse.tradedThroughHorf ? "Traded before on Horf" : "No Horf trade yet"}</StatusFrame><StatusFrame $kind="offered" $active={detailHorse.activelyForTradeOnHorf}>{detailHorse.activelyForTradeOnHorf ? "For direct trade now" : "No active Horf offer"}</StatusFrame><StatusFrame $kind="approved" $active={detailHorse.approvedForMarshalsMarket}>{detailHorse.approvedForMarshalsMarket ? "Marshal approved" : "Not Marshal approved"}</StatusFrame></CardFlags>{detailHorse.inspectionStatus === "rejected" && <StatusFrame $kind="traded" $active>Marshal reviewed · rejected for trade</StatusFrame>}{detailHorse.inspectionStatus === "reviewed" && <StatusFrame $kind="approved" $active>Marshal reviewed · kept</StatusFrame>}<small>{detailHorse.mintedAt ? `Minted ${new Date(detailHorse.mintedAt).toLocaleDateString()}` : "Mint date unknown"} · {detailHorse.contract} / #{detailHorse.tokenId}</small>{detailHorse.creatorAddress && <small>Creator: <a href={`https://objkt.com/profile/${encodeURIComponent(detailHorse.creatorAddress)}`} target="_blank" rel="noopener noreferrer">{shortAddress(detailHorse.creatorAddress)}</a></small>}{detailHorse.offers.map((offer) => <p key={offer.id}>🤠 <a href={`https://objkt.com/profile/${encodeURIComponent(offer.ownerAddress)}`} target="_blank" rel="noopener noreferrer">{shortAddress(offer.ownerAddress)}</a> offers {offer.amount} · {policyLabel(offer.acceptedTokenPolicy)} <Action data-horf-open-range-detail-find-offer type="button" onClick={() => { setDetailHorse(null); windowManager.openPage(`/horf/horse-market?season=${encodeURIComponent(seasonKey)}&market=outlaw&offer=${offer.id}`); }}>Open in Outlaw Corral →</Action></p>)}<p>Offers are owner preferences, not escrow protection. Confirm terms before any direct wallet transfer.</p><a href={objktTokenUrl(detailHorse.contract, detailHorse.tokenId)} target="_blank" rel="noopener noreferrer">View this horse on Objkt ↗</a><Action data-horf-open-range-detail-not-horse type="button" disabled={reportBusyKey !== null || reportedKeys.has(`${detailHorse.contract}/${detailHorse.tokenId}`)} onClick={() => void reportNotHorse(detailHorse)}>{reportedKeys.has(`${detailHorse.contract}/${detailHorse.tokenId}`) ? "Sent to Marshal review" : reportBusyKey === `${detailHorse.contract}/${detailHorse.tokenId}` ? "Sending to Marshal…" : "That’s not a horse"}</Action>{marshalStatusQuery.data?.active && !detailHorse.approvedForMarshalsMarket && <Action data-horf-open-range-inspect type="button" onClick={() => { setDetailHorse(null); windowManager.openPage(`/horf/inspection-desk?season=${encodeURIComponent(seasonKey)}&inspect=${encodeURIComponent(`${detailHorse.contract}/${detailHorse.tokenId}`)}`); }}>Inspect for Marshal’s Market</Action>}<HorfObjktBuy key={`${detailHorse.contract}:${detailHorse.tokenId}`} tokenContract={detailHorse.contract} tokenId={detailHorse.tokenId} address={address} connectWallet={connectWallet} isConnecting={isConnecting} /></div>
           </div>
         </>}
       </HorseDetail>
+      <QuickTradeDialog ref={quickTradeRef} data-horf-open-range-quick-trade aria-labelledby="horf-open-range-quick-title" onCancel={(event) => { if (quickTradeBusy) event.preventDefault(); }} onClose={closeQuickTrade} onClick={(event) => { if (event.target === event.currentTarget && !quickTradeBusy) event.currentTarget.close(); }}>
+        {quickTradeHorse && <>
+          <div className="quick-head"><div><small>🐎 Direct trade</small><h2 id="horf-open-range-quick-title">Offer a horse for {quickTradeHorse.name || `token #${quickTradeHorse.tokenId}`}</h2></div><button type="button" data-horf-open-range-quick-close aria-label="Close direct trade" disabled={quickTradeBusy} onClick={() => quickTradeRef.current?.close()}>×</button></div>
+          <div className="quick-body">
+            <p data-horf-open-range-quick-warning>Your horse goes straight to the chosen trader. Their listed horse stays in their wallet; their return is voluntary. No escrow or atomic swap.</p>
+            {quickTradeOffers.length > 1 && <><label htmlFor="horf-open-range-trader-offer">Choose a trader and offer</label><select id="horf-open-range-trader-offer" data-horf-open-range-trader-offer value={quickTradeOfferId ?? ""} onChange={(event) => setQuickTradeOfferId(event.target.value ? Number(event.target.value) : null)} disabled={quickTradeBusy}><option value="">Choose a trade sign</option>{quickTradeOffers.map((offer) => <option key={offer.id} value={offer.id}>{offer.ownerName?.trim() || shortAddress(offer.ownerAddress)} · {offer.amount} editions · {policyLabel(offer.acceptedTokenPolicy)}</option>)}</select></>}
+            {quickTradeOffer ? <><Note data-horf-open-range-selected-offer>Trader: {quickTradeOffer.ownerName?.trim() || shortAddress(quickTradeOffer.ownerAddress)} · {quickTradeOffer.ownerAddress}<br />{quickTradeOffer.amount} editions offered · {policyLabel(quickTradeOffer.acceptedTokenPolicy)}</Note><HorfGifts key={`${quickTradeOffer.ownerAddress}:${quickTradeOffer.id}`} address={address} isGuest={isGuest} connectWallet={connectWallet} isConnecting={isConnecting} quickRecipient={{ address: quickTradeOffer.ownerAddress, name: quickTradeOffer.ownerName }} quickOffer={{ id: quickTradeOffer.id, ownerAddress: quickTradeOffer.ownerAddress, tokenContract: quickTradeHorse.contract, tokenId: quickTradeHorse.tokenId, name: quickTradeHorse.name, acceptedTokenPolicy: quickTradeOffer.acceptedTokenPolicy }} onQuickBusyChange={setQuickTradeBusy} /></> : <Note>Choose the trader whose horse you want before selecting your own.</Note>}
+          </div>
+        </>}
+      </QuickTradeDialog>
     </Shell>
   </HorfFrame>;
 }

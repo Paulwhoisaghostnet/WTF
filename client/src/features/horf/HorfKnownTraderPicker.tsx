@@ -12,6 +12,8 @@ type SeasonRider = {
   trades?: number;
   sent?: number;
   received?: number;
+  giftHorsesReceived?: number;
+  tradeHorsesReceived?: number;
   blacklisted?: boolean;
 };
 type SeasonResponse = { leaderboard?: SeasonRider[] };
@@ -24,6 +26,8 @@ export type HorfTraderChoice = {
   trades: number | null;
   sent: number | null;
   received: number | null;
+  giftHorsesReceived: number | null;
+  tradeHorsesReceived: number | null;
   blacklisted: boolean;
 };
 
@@ -55,6 +59,8 @@ function choice(address: string, name: unknown, counts?: SeasonRider): HorfTrade
     trades: count(counts?.trades),
     sent: count(counts?.sent),
     received: count(counts?.received),
+    giftHorsesReceived: count(counts?.giftHorsesReceived),
+    tradeHorsesReceived: count(counts?.tradeHorsesReceived),
     blacklisted: counts?.blacklisted === true,
   };
 }
@@ -139,10 +145,19 @@ function shortAddress(address: string) {
   return `${address.slice(0, 8)}…${address.slice(-6)}`;
 }
 
+export function horfTraderReceiptLabel(rider: HorfTraderChoice): string {
+  if (rider.received === null) return "";
+  const gifts = rider.giftHorsesReceived;
+  const trades = rider.tradeHorsesReceived;
+  if (gifts === null || trades === null || gifts + trades !== rider.received) return `received ${rider.received}`;
+  return `received ${rider.received} (🎁 ${gifts} gift / 🤝 ${trades} trade)`;
+}
+
 function optionLabel(rider: HorfTraderChoice): string {
   const name = rider.name ? `${rider.name} · ` : "";
-  const trades = rider.trades !== null ? ` · ${rider.trades} trades` : "";
-  return `${name}${shortAddress(rider.address)}${trades}${rider.blacklisted ? " · blacklisted" : ""}`;
+  const trades = rider.trades !== null ? ` · ${rider.trades} transfers` : "";
+  const received = horfTraderReceiptLabel(rider);
+  return `${name}${shortAddress(rider.address)}${trades}${received ? ` · ${received}` : ""}${rider.blacklisted ? " · blacklisted" : ""}`;
 }
 
 export function HorfKnownTraderPicker({ choices, onSelect, disabled = false, excludeAddress, label = "rider", showPosse = true, includeBlacklisted = false, posseDataAttribute, knownDataAttribute }: {

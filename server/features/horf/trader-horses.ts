@@ -2,11 +2,12 @@ import { normalizeIpfsUri } from "@shared/ipfs-gateways";
 import { objkt } from "../../lib/upstream";
 import { type OwnedFa2Token } from "../../tzkt";
 import { horseContractAddress } from "./horse-config";
-import { approvedHorseTags, horseTagEvidence, type ObjktToken } from "./model";
+import { approvedHorseTags, creditedObjktCreator, horseTagEvidence, type ObjktToken } from "./model";
 
 export const HORF_TRADER_TOKEN_QUERY = `query HorfTraderTokens($where: token_bool_exp!) {
   token(where: $where) {
     fa_contract token_id timestamp name description decimals thumbnail_uri display_uri artifact_uri mime
+    creators { creator_address holder { alias } }
     tags { tag { name token_count } }
   }
 }`;
@@ -44,6 +45,10 @@ export function traderTokenMedia(token: ObjktToken) {
     artifactUri: safeImage(token.artifact_uri),
     mime: typeof token.mime === "string" ? token.mime.trim().toLowerCase() || null : null,
   };
+}
+
+export function traderTokenCreator(token: ObjktToken) {
+  return creditedObjktCreator(token);
 }
 
 /** One Objkt query hydrates the current TzKT balance page with authoritative tags. */
@@ -93,7 +98,7 @@ export function qualifyingTraderHorses(
       name: String(token.name || balance.name || `Token #${balance.tokenId}`).trim() || `Token #${balance.tokenId}`,
       description: typeof token.description === "string" ? token.description : null,
       ...traderTokenMedia(token),
-      creatorAddress: balance.creatorAddress || null,
+      creatorAddress: creditedObjktCreator(token).creatorAddress,
     }];
   });
 }

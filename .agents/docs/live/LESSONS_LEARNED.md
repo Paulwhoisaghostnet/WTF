@@ -14560,3 +14560,53 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: Traders could not see the horse they might claim, and the escrow market looked less trustworthy than other HORF galleries.
 
 **Rule**: Keep chain data authoritative for escrow balances, then attach exact-token media from the existing Marshal inspection snapshot before rendering. Use the shared media resolver, handle shared collection thumbnails and animated media, and keep claims and cancellation available if a preview is missing.
+
+---
+
+## 2026-11-05 - A listed horse needs an actionable path to obtain it
+
+**What happened**: Marshal’s Market disabled Claim when a rider had no credit, while the deposit form that earns credit was hidden in a separate management panel. Trader profiles showed direct offers without a send action, and Outlaw Corral showed no offer cards at all.
+
+**Why it mattered**: A rider could see a horse listed for trade but could not tell how to act. The reciprocal escrow pool and trust-based wallet offers also have different guarantees, which the card did not explain.
+
+**Rule**: Put an enabled action on each offer card. For pool escrow, preserve the chosen listing while guiding an approved deposit and a separate claim, and state that the target is not reserved. For a direct offer, identify its owner and credited creator, open a target-specific horse-send flow, enforce any Marshal-only preference, and say plainly that the return horse is voluntary.
+
+---
+
+## 2026-11-05 - Horse transfers and completed trades need separate labels
+
+**What happened**: My Stable presented 13 qualifying transfer legs as completed trades for a rider who had received seven horses, returned six, and received one gift. The actual reciprocal count was six.
+
+**Why it mattered**: A race can rank transfer activity while a rider's Stable needs to report whether opposite-direction rides were matched. A gift receipt must also remain visible without becoming an owed return.
+
+**Rule**: Keep race activity and sender rewards on their existing transfer ledger. Calculate completed reciprocal trades separately, exclude confirmed gifts, and show every received total with its confirmed-gift and other-receipt split. Explain that an unmarked receipt is not proof that a reciprocal trade has completed.
+
+---
+
+## 2026-11-05 - An owned horse card must not pose as an incoming trade
+
+**What happened**: Open Range labeled the card action on a horse the viewer already owned as “Trade horse from wallet,” while a horse with someone else's active trade sign had no direct in-place path to offer a horse for it. Historical Horf trade status also looked too much like a current listing.
+
+**Why it mattered**: Riders could not identify which action obtains a listed horse, and ownership, prior activity, and current availability were blurred.
+
+**Rule**: Mark a positive viewer balance as ownership, offer “Initiate trade for this horse” only on a non-owned horse with an active sign, require the rider to choose among multiple sellers, and open the exact sign in the quick trade flow with its terms. Keep owner listing controls in the offer panel and label past Horf activity as historical.
+
+---
+
+## 2026-11-05 - Query-driven tabs need a reactive search hook
+
+**What happened**: The unified Horse Market changed the `market` query parameter when a tab was clicked, but the page derived its selected tab from `window.location.search` while subscribing only to Wouter's pathname hook. The URL changed and the old tab stayed rendered.
+
+**Why it mattered**: The left navigation reached the market, but riders could not switch from Horse4HORSE to Marshal’s Market or Outlaw Corral.
+
+**Rule**: Subscribe to Wouter's `useSearch()` for query-driven UI state. Test the URL and selected tab content together, including old links that redirect to a specific tab.
+
+---
+
+## 2026-11-05 - Wallet balance alone does not make a horse selectable
+
+**What happened**: Some HORF listing and inspection pickers read raw wallet-token pages, which can contain unrelated art and HAHA-only tokens awaiting review. Riders could select those tokens and learn they were ineligible only after proceeding through the form.
+
+**Why it mattered**: A quick selector that says “horse” should reflect the same mint-tag policy as the public gallery. Escrow and paid-market forms also need active Marshal approval before listing.
+
+**Rule**: Build horse-art selectors from paginated Horf-qualified holdings, not raw wallet tokens. Keep the HAHA-only Marshal gate in that source, filter paid and escrow listing choices to active approvals, and still recheck exact token approval and eligibility before a wallet transaction.

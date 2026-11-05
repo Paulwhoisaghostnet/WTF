@@ -174,8 +174,6 @@ test.describe("Horf horse trading", () => {
       ["race", "/horf/race", "intro"],
       ["traders", "/horf/traders", "trader-directory"],
       ["range", "/horf/open-range", null],
-      ["marshal", "/horf/marshals-market", "marshals-market"],
-      ["outlaw", "/horf/outlaw-corral", "outlaw-corral"],
       ["stable", "/horf/stable", "personal-stable"],
       ["horse", "/horf/send-horse", "horse-send"],
       ["horse-market", "/horf/horse-market", "horse-market"],
@@ -272,9 +270,12 @@ test.describe("Horf horse trading", () => {
     await expect(app.locator('[data-horf-region="personal-stable"] [data-horf-personal-token]')).toBeDisabled();
     await expect(app.locator('[data-horf-region="trader-ledger"]')).toContainText("Connect and verify your Tezos wallet");
     await expect(app.locator('[data-horf-region="race"]')).toHaveCount(0);
-    await page.locator('[data-horf-left-nav] a[href^="/horf/marshals-market"]').click();
-    await expect(page).toHaveURL(/\/horf\/marshals-market\?season=current-2026$/);
-    await expect(app).toHaveAttribute("data-horf-page", "marshal");
+    await page.locator('[data-horf-left-nav] a[href^="/horf/horse-market"]').click();
+    await expect(page).toHaveURL(/\/horf\/horse-market\?season=current-2026$/);
+    await page.getByRole("tab", { name: /Marshal’s Market/ }).click();
+    await expect(page).toHaveURL(/\/horf\/horse-market\?season=current-2026&market=marshals$/);
+    await expect(app).toHaveAttribute("data-horf-page", "horse-market");
+    await expect(app.locator('[data-horf-region="marshals-market"]')).toBeVisible();
     await expect(app.locator('[data-horf-region="inspector-desk"]')).toHaveCount(0);
     await expect(page.locator('[data-horf-nav="inspection-desk"]')).toHaveCount(0);
     await expect(app.locator('[data-horf-region="personal-stable"]')).toHaveCount(0);
@@ -347,8 +348,8 @@ test.describe("Horf horse trading", () => {
     const badge = app.locator("[data-horf-blacklist-badge]");
     await expect(badge).toHaveCount(1);
     await badge.click();
-    await expect(page).toHaveURL(new RegExp(`/horf/outlaw-corral\\?season=current-2026&trader=${leadWallet}$`));
-    await expect(app).toHaveAttribute("data-horf-page", "outlaw");
+    await expect(page).toHaveURL(new RegExp(`/horf/horse-market\\?season=current-2026&market=outlaw&trader=${leadWallet}$`));
+    await expect(app).toHaveAttribute("data-horf-page", "horse-market");
     const standing = app.locator('[data-horf-region="trader-status"]');
     await expect(standing.locator("[data-horf-status-address]")).toHaveValue(leadWallet);
     await expect(standing.locator("[data-horf-status-result]")).toContainText("Repeated failed horse handoffs");

@@ -13,7 +13,7 @@ import { requireHorfCsrf, requireHorfWallet } from "../features/horf/wallet-scop
 import { sanitizeProfilePfpImageUrl } from "../features/profile/pfp-policy";
 import { loadHorfTraderNames } from "../features/horf/trader-names";
 import {
-  loadTraderObjktTokens, qualifyingTraderHorses, traderTokenMedia, traderTokenKey,
+  loadTraderObjktTokens, qualifyingTraderHorses, traderTokenCreator, traderTokenMedia, traderTokenKey,
 } from "../features/horf/trader-horses";
 import { editionKey, getTraderEditionCounts } from "../features/horf/trader-editions";
 import { excludedHorseTokenKeys } from "../features/horf/nonhorse-reports";
@@ -278,6 +278,18 @@ router.get("/api/horf/traders/:address/offers", async (req, res) => {
       const evidence = horseTagEvidence(token, new Set(approvedHorseTags(tags)));
       return evidence === "horse" || (evidence === "haha-review" && approved.has(traderTokenKey({ contract: row.tokenContract, tokenId: row.tokenId })));
     });
+    const creatorByToken = new Map(visibleRows.map((row) => {
+      const tokenKey = traderTokenKey({ contract: row.tokenContract, tokenId: row.tokenId });
+      const token = byKey.get(tokenKey);
+      return [tokenKey, token ? traderTokenCreator(token) : { creatorAddress: null, creatorName: null }] as const;
+    }));
+    let creatorNames: Awaited<ReturnType<typeof loadHorfTraderNames>> = new Map();
+    try {
+      creatorNames = await loadHorfTraderNames([...creatorByToken.values()].flatMap((creator) =>
+        creator.creatorAddress ? [creator.creatorAddress] : []));
+    } catch (error) {
+      console.warn("[horf] trader offer creator names unavailable:", error);
+    }
     let ownerBalances: Map<string, string> | null = null;
     let viewerBalances: Map<string, string> | null = null;
     try {
@@ -299,6 +311,8 @@ router.get("/api/horf/traders/:address/offers", async (req, res) => {
       offers: visibleRows.map((row) => {
         const token = byKey.get(traderTokenKey({ contract: row.tokenContract, tokenId: row.tokenId }));
         const key = editionKey({ contract: row.tokenContract, tokenId: row.tokenId });
+        const creator = creatorByToken.get(traderTokenKey({ contract: row.tokenContract, tokenId: row.tokenId }))
+          ?? { creatorAddress: null, creatorName: null };
         return {
           id: row.id,
           ownerAddress: row.ownerWalletAddress,
@@ -312,6 +326,8 @@ router.get("/api/horf/traders/:address/offers", async (req, res) => {
           updatedAt: row.updatedAt.toISOString(),
           name: String(token?.name || `Token #${row.tokenId}`).trim() || `Token #${row.tokenId}`,
           ...(token ? traderTokenMedia(token) : { image: null, artifactUri: null, mime: null }),
+          creatorAddress: creator.creatorAddress,
+          creatorName: (creator.creatorAddress ? creatorNames.get(creator.creatorAddress)?.displayName : null) || creator.creatorName,
         };
       }),
     });

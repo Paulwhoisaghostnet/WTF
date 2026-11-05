@@ -6,7 +6,6 @@ import { logClientSystemEvent } from "../../lib/system-log";
 import { toNatString } from "../../lib/tezos/nat";
 import { advanceResolvedMediaFallback, type ResolvedThumbnail } from "../../lib/media-resolve";
 import { objktTokenUrl as tokenUrl, parseObjktToken } from "./token-input";
-import { parseHorfOwnedTokenPage } from "./owned-tokens";
 import { resolveHorfHorseCardArt, resolveHorfHorseVideo, uniqueHorfThumbnailIdentities } from "./horse-media";
 import {
   HORF_STABLES_CHAIN_ID,
@@ -59,7 +58,33 @@ type DepositReview = {
   mode: HorfStableMode;
   rows: Array<HorfSelectedDeposit & { name: string }>;
 };
+type TradeTarget = { listingId: string; mode: HorfStableMode; name: string };
 type InspectionStatus = { status: "none" | "pending" | "approved" | "rejected" | "revoked"; reason: string | null };
+type OwnedHorse = {
+  contract: string;
+  tokenId: string;
+  balance: string;
+  name: string | null;
+  approvedForMarshalsMarket: boolean;
+};
+type OwnedHorsePage = {
+  address: string;
+  items: OwnedHorse[];
+  pagination: { hasMore: boolean; nextOffset: number };
+};
+function parseOwnedHorsePage(value: unknown, address: string): OwnedHorsePage {
+  const page = value as Partial<OwnedHorsePage> | null;
+  if (!page || page.address !== address || !Array.isArray(page.items) ||
+      page.items.some((horse) => !horse || typeof horse.contract !== "string" ||
+        typeof horse.tokenId !== "string" || typeof horse.balance !== "string" ||
+        (horse.name !== null && typeof horse.name !== "string") ||
+        typeof horse.approvedForMarshalsMarket !== "boolean") ||
+      !page.pagination || typeof page.pagination.hasMore !== "boolean" ||
+      !Number.isSafeInteger(page.pagination.nextOffset) || page.pagination.nextOffset < 0) {
+    throw new Error("Approved wallet horses could not be read. Refresh and try again.");
+  }
+  return page as OwnedHorsePage;
+}
 type PendingAction = {
   action: "deposit" | "claim" | "cancel";
   stage: "eligibility" | "preflight" | "preparing" | "wallet" | "confirming";
@@ -305,6 +330,17 @@ const ListingActions = styled.div`
   label { width: 92px; margin: 0; }
 `;
 
+const TradeGuide = styled.div`
+  margin: 0 0 18px;
+  padding: 15px;
+  border: 1px solid var(--horf-gold, #d8a34a);
+  border-radius: 12px;
+  background: #302d22;
+  strong { display: block; margin-bottom: 6px; color: var(--horf-ink, #f4ead6); font: 700 17px/1.2 var(--horf-display, Georgia, serif); }
+  p { margin: 0 0 10px; color: var(--horf-ink, #f4ead6); font-size: 13px; line-height: 1.45; }
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+`;
+
 function StableVideoPreview({ video, poster }: { video: ResolvedThumbnail; poster: ResolvedThumbnail | null }) {
   const ref = useRef<HTMLVideoElement>(null);
   const [visible, setVisible] = useState(false);
@@ -404,6 +440,7 @@ export function HorfStables({
   const [ownedSearch, setOwnedSearch] = useState("");
   const [selectedOwned, setSelectedOwned] = useState("");
   const [objktInput, setObjktInput] = useState("");
+  const [checkingObjkt, setCheckingObjkt] = useState(false);
   const [cancelAmounts, setCancelAmounts] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -411,7 +448,10 @@ export function HorfStables({
   const [success, setSuccess] = useState<{ action: string; opHash: string } | null>(null);
   const [pending, setPending] = useState<PendingAction | null>(null);
   const [depositReview, setDepositReview] = useState<DepositReview | null>(null);
+  const [reviewingDeposit, setReviewingDeposit] = useState(false);
+  const [tradeTarget, setTradeTarget] = useState<TradeTarget | null>(null);
   const [showManagement, setShowManagement] = useState(false);
+  const depositPanelRef = useRef<HTMLDivElement>(null);
 
   const snapshotQuery = useQuery({
     queryKey: ["horf", "stables-market", address],
@@ -431,19 +471,24 @@ export function HorfStables({
   const depositReady = configured && snapshot?.permitReady === true && snapshot?.custodyReady === true;
   const contract = configured ? { contractAddress: snapshot!.contractAddress!, chainId: snapshot!.chainId } : null;
   const ownedQuery = useInfiniteQuery({
-    queryKey: ["horf", "owned-tokens", address, ownedSearch],
-    queryFn: ({ pageParam }) => {
-      const params = new URLSearchParams({ address: address!, offset: String(pageParam) });
-      if (ownedSearch) params.set("q", ownedSearch);
-      return api.get<unknown>(`/api/horf/wallet/tokens?${params}`).then(parseHorfOwnedTokenPage);
-    },
+    queryKey: ["horf", "trader-profile-horses", address],
+    queryFn: ({ pageParam }) => api.get<unknown>(`/api/horf/traders/${encodeURIComponent(address!)}/horses?offset=${pageParam}`)
+      .then((page) => parseOwnedHorsePage(page, address!)),
     initialPageParam: 0,
     getNextPageParam: (lastPage) => lastPage.pagination.hasMore ? lastPage.pagination.nextOffset : undefined,
     enabled: Boolean(address && showManagement),
+    refetchOnWindowFocus: true,
   });
+  const scannedOwnedPages = ownedQuery.data?.pages.length ?? 0;
+  useEffect(() => {
+    if (!address || !showManagement || !ownedQuery.hasNextPage || ownedQuery.isFetching || ownedQuery.isError) return;
+    void ownedQuery.fetchNextPage();
+  }, [address, showManagement, scannedOwnedPages, ownedQuery.hasNextPage, ownedQuery.isFetching, ownedQuery.isError]);
   const ownedTokens = useMemo(
-    () => (ownedQuery.data?.pages.flatMap((page) => page.items) ?? []).filter((token) => token.walletAddress === address && isPositive(token.balance)),
-    [address, ownedQuery.data],
+    () => (ownedQuery.data?.pages.flatMap((page) => page.items) ?? []).filter((token) =>
+      token.approvedForMarshalsMarket && isPositive(token.balance) &&
+      (!ownedSearch || `${token.name ?? ""} ${token.contract} ${token.tokenId}`.toLowerCase().includes(ownedSearch.toLowerCase()))),
+    [ownedQuery.data, ownedSearch],
   );
   const chosenOwned = ownedTokens.find((token) => `${token.contract}:${token.tokenId}` === selectedOwned);
   const activeStable = STABLES[mode];
@@ -454,6 +499,10 @@ export function HorfStables({
   })) });
   const allRowsApproved = rows[mode].length > 0 && inspectionQueries.every((query) => query.data?.status === "approved");
   const activeListings = (snapshot?.listings ?? []).filter((listing) => listing.mode === mode && isPositive(listing.remaining));
+  const targetListing = tradeTarget && (snapshot?.listings ?? []).find((listing) =>
+    listing.id === tradeTarget.listingId && listing.mode === tradeTarget.mode && isPositive(listing.remaining));
+  const targetHasCredit = tradeTarget?.mode === 0 ? creditsAboveZero(snapshot?.reciprocalCredits)
+    : tradeTarget?.mode === 2 ? creditsAboveZero(snapshot?.groupCredits) : true;
   const ownListings = (managementQuery.data?.listings ?? []).filter((listing) =>
     listing.mode === mode && listing.owner === address && isPositive(listing.remaining));
   const uniqueThumbnails = useMemo(() => uniqueHorfThumbnailIdentities(
@@ -462,6 +511,30 @@ export function HorfStables({
       .filter((token): token is NonNullable<StableListing["token"]> => Boolean(token)),
   ), [snapshot?.listings, managementQuery.data?.listings]);
   const busy = pending !== null;
+
+  useEffect(() => {
+    if (!tradeTarget || !showManagement || !depositPanelRef.current) return;
+    depositPanelRef.current.scrollIntoView({ block: "start", behavior: "smooth" });
+    (document.getElementById("horf-owned-token") ?? depositPanelRef.current).focus({ preventScroll: true });
+  }, [tradeTarget, showManagement, address]);
+
+  useEffect(() => {
+    if (!tradeTarget || tradeTarget.mode !== mode || !targetHasCredit || !targetListing || busy) return;
+    const claimButton = depositPanelRef.current?.querySelector<HTMLButtonElement>("[data-horf-stable-target-claim]");
+    claimButton?.scrollIntoView({ block: "center", behavior: "smooth" });
+    claimButton?.focus({ preventScroll: true });
+  }, [tradeTarget, mode, targetHasCredit, targetListing, busy]);
+
+  function startTrade(listing: StableListing) {
+    setMode(listing.mode);
+    setTradeTarget({ listingId: listing.id, mode: listing.mode,
+      name: listing.token?.name?.trim() || `Horse token #${listing.tokenId}` });
+    setShowManagement(true);
+    setDepositReview(null);
+    setFormError(null);
+    setActionError(null);
+    if (!address) void connectWallet();
+  }
 
   function addRow(contractAddress: string, tokenId: string, name: string) {
     setDepositReview(null);
@@ -478,15 +551,26 @@ export function HorfStables({
     setNextRowId((id) => id + 1);
   }
 
-  function addObjkt(event: FormEvent) {
+  async function addObjkt(event: FormEvent) {
     event.preventDefault();
+    if (!address || !depositReady || busy || checkingObjkt) return;
+    setCheckingObjkt(true);
+    setFormError(null);
     try {
       const token = parseObjktToken(objktInput);
-      addRow(token.contract, token.tokenId, `Token #${token.tokenId}`);
+      if (rows[mode].some((row) => row.tokenContract === token.contract && row.tokenId === token.tokenId)) {
+        throw new Error("This token is already in the deposit. Increase its edition amount on that row.");
+      }
+      const params = new URLSearchParams({ contract: token.contract, tokenId: token.tokenId });
+      const inspection = await api.get<InspectionStatus>(`/api/horf/inspections/status?${params}`);
+      if (inspection.status !== "approved") throw new Error("This horse needs active Marshal approval before it can enter a Stable.");
+      const eligibility = await api.get<{ eligible: boolean; token?: { name?: string | null } }>(`/api/horf/token-eligibility?${params}`);
+      if (eligibility.eligible !== true) throw new Error("This token does not pass Horf’s horse test.");
+      addRow(token.contract, token.tokenId, eligibility.token?.name?.trim() || `Token #${token.tokenId}`);
       setObjktInput("");
     } catch (error) {
-      setFormError(error instanceof Error ? error.message : "That Objkt token link could not be read.");
-    }
+      setFormError(error instanceof Error ? error.message : "That Objkt horse could not be checked.");
+    } finally { setCheckingObjkt(false); }
   }
 
   function changeRow(id: number, amount: string) {
@@ -508,13 +592,14 @@ export function HorfStables({
     };
   }
 
-  function reviewDeposit(event: FormEvent) {
+  async function reviewDeposit(event: FormEvent) {
     event.preventDefault();
-    if (!address || !contract || !depositReady || busy) return;
+    if (!address || !contract || !depositReady || busy || reviewingDeposit) return;
     setFormError(null);
     setActionError(null);
     setPermitScopeDenied(null);
     setSuccess(null);
+    setReviewingDeposit(true);
     try {
       const selected = rows[mode].map((row) => ({
         tokenContract: row.tokenContract,
@@ -523,11 +608,19 @@ export function HorfStables({
         name: row.name,
       }));
       if (!selected.length) throw new Error("Add at least one eligible horse token to this stable.");
+      const inspectionResults = await Promise.all(selected.map((row) => qc.fetchQuery({
+        queryKey: ["horf", "inspection-status", row.tokenContract, row.tokenId],
+        queryFn: () => api.get<InspectionStatus>(`/api/horf/inspections/status?contract=${encodeURIComponent(row.tokenContract)}&tokenId=${encodeURIComponent(row.tokenId)}`),
+        staleTime: 0,
+      })));
+      if (inspectionResults.some((inspection) => inspection.status !== "approved")) {
+        throw new Error("Every horse in this deposit needs active Marshal approval.");
+      }
       setDepositReview({ address, contract, mode, rows: selected });
     } catch (error) {
       setDepositReview(null);
       setFormError(error instanceof Error ? error.message : "Check the horse editions before continuing.");
-    }
+    } finally { setReviewingDeposit(false); }
   }
 
   async function deposit() {
@@ -675,40 +768,55 @@ export function HorfStables({
       </CreditStrip>
       <Status $warn data-horf-stable-trust-note>Marshal approval is a documented human review, not proof that an arbitrary FA2 transfers honestly. Check the token contract and trader before depositing or claiming.</Status>
       <Inside $single={!showManagement}>
-        {showManagement && <Panel id="horf-stable-management" data-horf-stable-deposit>
+        {showManagement && <Panel ref={depositPanelRef} tabIndex={-1} id="horf-stable-management" data-horf-stable-deposit>
           <Eyebrow>Offer a horse</Eyebrow>
           <h3>Deposit in {activeStable.name}</h3>
           <p>{activeStable.rule} Add several horses in one wallet transaction. Operator access is removed with it.</p>
+          {tradeTarget?.mode === mode && <TradeGuide data-horf-stable-trade-guide data-horf-stable-trade-target={tradeTarget.listingId} role="status">
+            <strong>Riding for {tradeTarget.name}</strong>
+            <p>{mode === 0
+              ? "Deposit a Marshal-approved horse to earn one claim per edition. Then claim this horse in a second wallet transaction. Your target is not reserved."
+              : "Deposit a distinct Marshal-approved horse token to earn 30 Group claims. Then claim this horse in a second wallet transaction. Your target is not reserved."}</p>
+            <p>Need an approval? <a href="/horf">Request inspection from My Stable ↗</a></p>
+            <div className="actions">
+              {targetHasCredit && targetListing
+                ? <SmallButton data-horf-stable-target-claim type="button" $strong onClick={() => void claim(targetListing)} disabled={!configured || busy || (mode === 2 && targetListing.claimedByWallet === true)}>Claim {tradeTarget.name} now</SmallButton>
+                : <SmallButton data-horf-stable-target-refresh type="button" onClick={() => void snapshotQuery.refetch()} disabled={snapshotQuery.isFetching}>Refresh credits & listing</SmallButton>}
+              <SmallButton type="button" onClick={() => setTradeTarget(null)}>Choose another horse</SmallButton>
+            </div>
+            {!targetListing && !snapshotQuery.isPending && <p>This horse is no longer listed. Choose another from the stable.</p>}
+            {targetListing?.claimedByWallet && mode === 2 && <p>You already claimed this token with this wallet.</p>}
+          </TradeGuide>}
           {address ? (
             <>
               <form onSubmit={(event) => { event.preventDefault(); setOwnedSearch(ownedSearchDraft.trim()); setSelectedOwned(""); }}>
-                <label htmlFor="horf-owned-search">Find a token in this wallet</label>
+                <label htmlFor="horf-owned-search">Find an approved horse in this wallet</label>
                 <InputAction>
                   <input id="horf-owned-search" value={ownedSearchDraft} onChange={(event) => setOwnedSearchDraft(event.target.value)} placeholder="Name, collection, contract…" />
-                  <SmallButton type="submit">Search owned</SmallButton>
+                  <SmallButton type="submit">Search approved</SmallButton>
                 </InputAction>
               </form>
-              <label htmlFor="horf-owned-token">Indexed owned tokens · {shortAddress(address)}</label>
+              <label htmlFor="horf-owned-token">Marshal-approved horses you own · {shortAddress(address)}</label>
               <InputAction>
                 <select id="horf-owned-token" data-horf-owned-select value={chosenOwned ? selectedOwned : ""} onChange={(event) => setSelectedOwned(event.target.value)}>
-                  <option value="">{ownedQuery.isPending ? "Loading owned tokens…" : "Choose an owned token"}</option>
+                  <option value="">{ownedQuery.isPending || ownedQuery.isFetchingNextPage ? "Checking approved horses…" : ownedTokens.length ? "Choose an approved horse" : "No approved horses found"}</option>
                   {ownedTokens.map((token) => (
                     <option key={`${token.contract}:${token.tokenId}`} value={`${token.contract}:${token.tokenId}`}>
                       {token.name || `Token #${token.tokenId}`} · {token.balance} owned
                     </option>
                   ))}
                 </select>
-                <SmallButton type="button" onClick={() => chosenOwned && addRow(chosenOwned.contract, chosenOwned.tokenId, chosenOwned.name || `Token #${chosenOwned.tokenId}`)} disabled={!chosenOwned || !depositReady || busy}>Add owned horse</SmallButton>
+                <SmallButton type="button" onClick={() => chosenOwned && addRow(chosenOwned.contract, chosenOwned.tokenId, chosenOwned.name || `Token #${chosenOwned.tokenId}`)} disabled={!chosenOwned || !depositReady || busy}>Add approved horse</SmallButton>
               </InputAction>
-              {ownedQuery.isError && <p role="alert">Owned tokens could not be loaded. You can still paste an Objkt token link below.</p>}
-              {ownedQuery.hasNextPage && <SmallButton type="button" onClick={() => void ownedQuery.fetchNextPage()} disabled={ownedQuery.isFetchingNextPage}>{ownedQuery.isFetchingNextPage ? "Loading…" : "Load more owned tokens"}</SmallButton>}
+              {ownedQuery.isError && <p role="alert">Approved wallet horses could not be loaded. You can still paste an Objkt token link below.</p>}
+              {ownedQuery.hasNextPage && <SmallButton type="button" onClick={() => void ownedQuery.fetchNextPage()} disabled={ownedQuery.isFetchingNextPage}>{ownedQuery.isFetchingNextPage ? "Loading…" : "Load more wallet horses"}</SmallButton>}
             </>
           ) : <p>Connect your wallet to prepare a deposit. You may still view all open stable listings.</p>}
           <form onSubmit={addObjkt}>
-            <label htmlFor="horf-objkt-token">Or paste an Objkt token link</label>
+            <label htmlFor="horf-objkt-token">Or paste a Marshal-approved Objkt horse link</label>
             <InputAction>
-              <input id="horf-objkt-token" data-horf-objkt-input value={objktInput} onChange={(event) => setObjktInput(event.target.value)} placeholder="https://objkt.com/tokens/KT1…/123" disabled={!address || !depositReady || busy} />
-              <SmallButton type="submit" disabled={!address || !depositReady || busy || !objktInput.trim()}>Add Objkt token</SmallButton>
+              <input id="horf-objkt-token" data-horf-objkt-input value={objktInput} onChange={(event) => setObjktInput(event.target.value)} placeholder="https://objkt.com/tokens/KT1…/123" disabled={!address || !depositReady || busy || checkingObjkt} />
+              <SmallButton type="submit" disabled={!address || !depositReady || busy || checkingObjkt || !objktInput.trim()}>{checkingObjkt ? "Checking approval…" : "Add approved Objkt horse"}</SmallButton>
             </InputAction>
           </form>
           <form onSubmit={reviewDeposit}>
@@ -728,8 +836,8 @@ export function HorfStables({
               </DraftList>
             ) : <p>No horse editions added to this deposit yet.</p>}
             {formError && <Status $warn role="alert">{formError}</Status>}
-            {!depositReview && <SmallButton data-horf-stable-submit type="submit" $strong disabled={!address || !depositReady || !allRowsApproved || busy}>
-              Review horse deposit
+            {!depositReview && <SmallButton data-horf-stable-submit type="submit" $strong disabled={!address || !depositReady || !allRowsApproved || busy || reviewingDeposit}>
+              {reviewingDeposit ? "Checking approvals…" : "Review horse deposit"}
             </SmallButton>}
             <p>Set the edition count for each horse. Deposits require active inspection and enough editions. Tezos fees apply.</p>
           </form>
@@ -784,9 +892,13 @@ export function HorfStables({
                       </>
                     ) : (
                       <>
-                        <SmallButton data-horf-stable-claim type="button" $strong onClick={() => void claim(listing)} disabled={!address || !configured || noCredit || claimed || busy}>Claim 1 horse</SmallButton>
+                        {!address
+                          ? <SmallButton data-horf-stable-connect type="button" $strong onClick={() => void connectWallet()} disabled={isConnecting}>{isConnecting ? "Connecting…" : "Connect wallet to claim"}</SmallButton>
+                          : noCredit && !claimed
+                            ? <SmallButton data-horf-stable-start-trade type="button" $strong onClick={() => startTrade(listing)} disabled={busy}>Trade for this horse</SmallButton>
+                            : <SmallButton data-horf-stable-claim type="button" $strong onClick={() => void claim(listing)} disabled={!configured || claimed || busy}>Claim 1 horse</SmallButton>}
                         {claimed && <p>Already claimed this token ID with this wallet.</p>}
-                        {!claimed && noCredit && address && <p>{mode === 0 ? "Deposit in the Reciprocal Stable to earn a claim." : "Deposit in the Group Stable to earn claims."}</p>}
+                        {!claimed && noCredit && address && <p>{mode === 0 ? "Deposit one approved edition to earn a claim." : "Deposit an approved token to earn Group claims."}</p>}
                       </>
                     )}
                     </ListingCopy>

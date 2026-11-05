@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import styled from "styled-components";
 import { api } from "../../lib/api";
 import { advanceResolvedMediaFallback, resolveTokenThumbnail, type ResolvedThumbnail } from "../../lib/media-resolve";
@@ -19,7 +19,7 @@ import {
 } from "../../lib/tezos/horf-horse-market";
 import { toNatString } from "../../lib/tezos/nat";
 import { HorfObjktBuy } from "./HorfObjktBuy";
-import { parseHorfOwnedTokenPage } from "./owned-tokens";
+import { HorfOwnedHorsePicker, type HorfOwnedHorse } from "./HorfOwnedHorsePicker";
 import { objktTokenUrl } from "./token-input";
 
 type MarketSnapshot = {
@@ -220,9 +220,7 @@ export function HorfHorseMarket({ address, connectWallet, isConnecting }: {
   const [artListing, setArtListing] = useState<HorfHorseMarketListing | null>(null);
   const [artVideoFailed, setArtVideoFailed] = useState(false);
   const [artImageFailed, setArtImageFailed] = useState(false);
-  const [selectedOwnedKey, setSelectedOwnedKey] = useState("");
-  const [ownedSearchDraft, setOwnedSearchDraft] = useState("");
-  const [ownedSearch, setOwnedSearch] = useState("");
+  const [selectedOwned, setSelectedOwned] = useState<HorfOwnedHorse | null>(null);
   const [quantity, setQuantity] = useState("0");
   const [price, setPrice] = useState("");
   const [review, setReview] = useState<ListingReview | null>(null);
@@ -241,20 +239,6 @@ export function HorfHorseMarket({ address, connectWallet, isConnecting }: {
   } : null;
   const listings = (listingQuery.data?.listings ?? []).filter((item) => isPositive(item.remaining));
   const selected = listings.find((item) => item.id === selectedId) ?? listings[0] ?? null;
-  const ownedQuery = useInfiniteQuery({
-    queryKey: ["horf", "owned-tokens", address, ownedSearch],
-    queryFn: ({ pageParam }) => {
-      const params = new URLSearchParams({ address: address!, offset: String(pageParam) });
-      if (ownedSearch) params.set("q", ownedSearch);
-      return api.get<unknown>(`/api/horf/wallet/tokens?${params}`).then(parseHorfOwnedTokenPage);
-    },
-    initialPageParam: 0,
-    getNextPageParam: (page) => page.pagination.hasMore ? page.pagination.nextOffset : undefined,
-    enabled: Boolean(address),
-  });
-  const owned = useMemo(() => (ownedQuery.data?.pages.flatMap((page) => page.items) ?? [])
-    .filter((token) => token.walletAddress === address && isPositive(token.balance)), [address, ownedQuery.data]);
-  const selectedOwned = owned.find((item) => `${item.contract}:${item.tokenId}` === selectedOwnedKey) ?? null;
   const inspectionQuery = useQuery({
     queryKey: ["horf", "inspection-status", selectedOwned?.contract, selectedOwned?.tokenId],
     queryFn: () => api.get<Inspection>(`/api/horf/inspections/status?contract=${encodeURIComponent(selectedOwned!.contract)}&tokenId=${encodeURIComponent(selectedOwned!.tokenId)}`),
@@ -264,7 +248,7 @@ export function HorfHorseMarket({ address, connectWallet, isConnecting }: {
     selectedOwned.contract === review.tokenContract && selectedOwned.tokenId === review.tokenId &&
     selectedOwned.balance === review.ownedBalance && quantity === review.quantity &&
     price.trim() === review.priceInput && inspectionQuery.data?.status === "approved");
-  useEffect(() => { setReview(null); }, [address]);
+  useEffect(() => { setSelectedOwned(null); setQuantity("0"); setReview(null); }, [address]);
   useEffect(() => {
     const dialog = artDialogRef.current;
     if (!dialog) return;
@@ -360,8 +344,8 @@ export function HorfHorseMarket({ address, connectWallet, isConnecting }: {
       });
       setSuccess({ text: "Horse listed for HORSE. Your editions are now held by the Market contract until sold or cancelled.", opHash });
       logClientSystemEvent({ eventType: "horf.horse_market.listed", message: "Marshal-approved horse listed for HORSE", metadata: { tokenContract: selectedOwned.contract, tokenId: selectedOwned.tokenId, quantity: units, unitPriceHorseRaw: rawPrice, opHash } });
-      setSelectedOwnedKey(""); setQuantity("0"); setPrice(""); setReview(null);
-      await Promise.all([listingQuery.refetch(), qc.invalidateQueries({ queryKey: ["horf", "owned-tokens", address] })]);
+      setSelectedOwned(null); setQuantity("0"); setPrice(""); setReview(null);
+      await Promise.all([listingQuery.refetch(), qc.invalidateQueries({ queryKey: ["horf", "owned-qualifying-horses", address] })]);
     } catch (cause) {
       setError(`${cause instanceof Error ? cause.message : "Could not list this horse."}${submitted ? " The transaction was submitted; check its explorer status before retrying." : ""}`);
     } finally { setPending(null); }
@@ -460,15 +444,7 @@ export function HorfHorseMarket({ address, connectWallet, isConnecting }: {
           <p>Marshal approval required. Signing deposits your editions into the Market.</p>
           {!address && <Action type="button" onClick={() => void connectWallet()} disabled={isConnecting}>{isConnecting ? "Connecting…" : "Connect to list"}</Action>}
           {address && <form onSubmit={reviewListing}>
-            <label htmlFor="horf-market-search">Find a horse in your wallet</label>
-            <div style={{ display: "flex", gap: 7 }}><input id="horf-market-search" value={ownedSearchDraft} onChange={(event) => setOwnedSearchDraft(event.target.value)} placeholder="Name, contract or ID" /><Action type="button" onClick={() => { setOwnedSearch(ownedSearchDraft.trim()); setSelectedOwnedKey(""); setQuantity("0"); setReview(null); }}>Find</Action></div>
-            <label htmlFor="horf-market-owned">Choose a horse token</label>
-            <select id="horf-market-owned" data-horf-horse-market-owned value={selectedOwnedKey} onChange={(event) => { setSelectedOwnedKey(event.target.value); setQuantity("0"); setReview(null); }} disabled={busy}>
-              <option value="">{ownedQuery.isPending ? "Loading horses…" : "Select a horse"}</option>
-              {owned.map((token) => <option key={`${token.contract}:${token.tokenId}`} value={`${token.contract}:${token.tokenId}`}>{token.name || `Token #${token.tokenId}`} · {token.balance} owned</option>)}
-            </select>
-            {ownedQuery.hasNextPage && <Action type="button" onClick={() => void ownedQuery.fetchNextPage()} disabled={ownedQuery.isFetchingNextPage}>More wallet tokens</Action>}
-            {ownedQuery.isError && <p role="alert">Wallet tokens are unavailable. Search again to retry.</p>}
+            <HorfOwnedHorsePicker address={address} selected={selectedOwned} onSelect={(horse) => { setSelectedOwned(horse); setQuantity("0"); setReview(null); }} disabled={busy} id="horf-market-owned" label="Choose a Marshal-approved horse" selectDataAttr="data-horf-horse-market-owned" marshalApprovedOnly />
             {selectedOwned && <p role="status">Inspection: <strong>{inspectionQuery.isPending ? "checking…" : inspectionQuery.isError ? "unavailable" : inspectionQuery.data?.status}</strong>{inspectionQuery.data?.status !== "approved" && <><br />Take this horse to <a href="/horf/stable">your personal stable</a> and ask a Marshal to inspect it.</>}</p>}
             <label htmlFor="horf-market-quantity">Editions to list</label>
             <input id="horf-market-quantity" data-horf-horse-market-quantity type="number" inputMode="numeric" min="0" max={selectedOwned?.balance} step="1" value={quantity} onChange={(event) => { setQuantity(event.target.value); setReview(null); }} disabled={busy} />
