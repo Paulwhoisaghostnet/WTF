@@ -14680,3 +14680,13 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: The environment cutover could not proceed, even though the root-owned runtime file was writable through the authorized SSH wrapper.
 
 **Rule**: Open the existing `/tmp/wtf-app-deploy.lock` with `r+` before taking `flock`; preserve the runtime file's owner and mode and replace it atomically. Never print the secret-bearing env file.
+
+---
+
+## 2026-11-05 - Regenerate environment inventory when contract configuration changes
+
+**What happened**: Quality Gates rejected the V3 launch because the checked-in environment inventory still reflected the earlier source tree.
+
+**Why it mattered**: The production deployment could proceed while the repository's required quality workflow was red.
+
+**Rule**: After adding or changing environment variables or their references, run `npm run env:inventory` and `npm run env:inventory:check` before pushing main.
