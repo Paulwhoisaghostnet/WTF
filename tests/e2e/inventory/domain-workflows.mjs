@@ -910,6 +910,7 @@ export const DOMAIN_WORKFLOWS = [
     eventHandles: ["horf.traders.viewed", "horf.trader.quick_send_opened", "horf.trader_profile.viewed", "horf.trader_profile.tab_selected", "horf.trader_profile.address_copied", "horf.trader_offer.selected", "horf.posse.added", "horf.posse.removed", "horf.info.viewed"],
     apiProbes: [
       { method: "GET", path: "/api/horf/traders/tz1VSUr8wwNhLAzempoch5d6hLRiTh8Cjcjb/profile?season=current-2026", expectedStatuses: [200, 503] },
+      { method: "GET", path: "/api/horf/horse/rewards?address=tz1VSUr8wwNhLAzempoch5d6hLRiTh8Cjcjb", expectedStatuses: [200, 503] },
       { method: "GET", path: "/api/horf/traders/tz1VSUr8wwNhLAzempoch5d6hLRiTh8Cjcjb/profile-picture", expectedStatuses: [200, 404, 503] },
       { method: "GET", path: "/api/horf/traders/tz1VSUr8wwNhLAzempoch5d6hLRiTh8Cjcjb/offers", expectedStatuses: [200, 503] },
       { method: "GET", path: "/api/horf/traders/tz1VSUr8wwNhLAzempoch5d6hLRiTh8Cjcjb/horses?offset=0", expectedStatuses: [200, 503] },

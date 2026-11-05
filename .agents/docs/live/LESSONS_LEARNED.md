@@ -14760,3 +14760,13 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: The stale assertion stopped the release gate before the longer inventory browser suite could run.
 
 **Rule**: Search for repository tests that assert a workflow limit whenever that limit changes, update the owning assertion in the same commit, and run the focused test before pushing.
+
+---
+
+## 2026-11-05 - Show race activity and sender rewards as separate trader records
+
+**What happened**: The race displayed only a transfer score, while public trader profiles hid their available sent, received, completed-trade, and recent-transfer data. HORSE rewards appeared only on the connected wallet's send page, so a leading rider's score could look like their earnings or balance.
+
+**Why it mattered**: A rider's race rank includes receipts, but only qualifying sends earn HORSE. Accrued rewards, vault claims, and HORSE received from other people are different amounts. Adding the received breakdown in another profile region also made an older browser selector match multiple chips.
+
+**Rule**: On public profiles, show the viewed wallet's season transfer record beside the exact current-season reward ledger and its earning sources; label claimable and claimed separately. In browser proofs, scope repeated stats and receipt chips to their owning panel.

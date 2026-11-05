@@ -105,6 +105,32 @@ type HorfSeasonResponse = {
   } | null;
 };
 
+type HorfRewardSummary = {
+  season: string;
+  rateHorse: string;
+  countedUnits: string;
+  accruedRaw: string;
+  claimedRaw: string;
+  claimableRaw: string;
+  sourceDiscrepancies: string;
+  sourceComplete: boolean;
+  asOf: string | null;
+  status: "ready" | "syncing" | "error";
+  claimReady: boolean;
+  bySource?: Array<{ kind: "direct" | "stable" | "market" | "objkt"; units: string; amountRaw: string }>;
+};
+
+function horseRawLabel(raw: string): string {
+  return /^\d+$/.test(raw) ? formatHorseAmount(raw, 8) : "—";
+}
+
+const rewardSourceLabels: Record<NonNullable<HorfRewardSummary["bySource"]>[number]["kind"], string> = {
+  direct: "Wallet sends",
+  stable: "Stable claims & swaps",
+  market: "HORSE Market sales",
+  objkt: "Objkt sale sends",
+};
+
 type PublicOffer = {
   id: number;
   ownerAddress: string;
@@ -522,6 +548,13 @@ const Rider = styled.div`
   }
 `;
 
+const RiderIdentity = styled.div`
+  flex: 1 1 100px;
+  min-width: 0;
+  a { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  small { display: block; margin-top: 4px; color: var(--horf-muted); font: 700 11px/1.3 var(--horf-font); }
+`;
+
 const BlacklistBadge = styled.button`
   flex: 0 0 calc(100% - 37px);
   margin-left: 37px;
@@ -614,6 +647,47 @@ const MetricStrip = styled.div`
   strong { display: block; color: var(--horf-teal); font: 800 30px/1 var(--horf-display, Georgia, serif); }
   > div > span { display: block; margin-top: 7px; color: var(--horf-muted); font: 750 11px/1.25 ui-sans-serif, system-ui, sans-serif; text-transform: uppercase; letter-spacing: .04em; }
   @container (max-width: 510px) { grid-template-columns: 1fr; }
+`;
+
+const TraderActivity = styled.section`
+  margin: 16px 0 20px;
+  padding: clamp(16px, 2cqw, 22px);
+  border: 1px solid var(--horf-line);
+  border-radius: 16px;
+  background: var(--horf-surface);
+  h3 { margin: 0 0 5px; font: 800 22px/1.15 var(--horf-display); }
+  p { margin: 0; color: var(--horf-muted); font: 13px/1.5 var(--horf-font); }
+  a:focus-visible, summary:focus-visible { outline: 3px solid var(--horf-focus); outline-offset: 3px; }
+`;
+
+const TraderActivityStats = styled.div`
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 9px;
+  margin: 15px 0;
+  > div { min-width: 0; padding: 13px; border: 1px solid var(--horf-line); border-radius: 11px; background: var(--horf-elevated); }
+  strong { display: block; color: var(--horf-teal); font: 800 25px/1 var(--horf-display); }
+  span { display: block; margin-top: 5px; color: var(--horf-muted); font: 750 11px/1.3 var(--horf-font); text-transform: uppercase; letter-spacing: .04em; }
+  @container (max-width: 700px) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+`;
+
+const RewardLedger = styled.div`
+  padding: 15px;
+  border: 1px solid #827044;
+  border-radius: 12px;
+  background: #302b20;
+  h4 { margin: 0 0 5px; color: var(--horf-gold); font: 800 16px/1.2 var(--horf-display); }
+  .reward-totals { display: flex; flex-wrap: wrap; gap: 8px 20px; margin-top: 12px; }
+  .reward-totals span { display: grid; gap: 3px; color: var(--horf-muted); font: 700 11px/1.2 var(--horf-font); text-transform: uppercase; }
+  .reward-totals strong { color: var(--horf-ink); font: 800 21px/1 var(--horf-display); text-transform: none; }
+  .reward-sources { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 0; padding: 0; list-style: none; }
+  .reward-sources li { padding: 6px 9px; border: 1px solid #786446; border-radius: 8px; color: var(--horf-ink); font: 700 11px/1.3 var(--horf-font); }
+`;
+
+const TraderTrail = styled.details`
+  margin-top: 16px;
+  summary { width: fit-content; color: var(--horf-teal); cursor: pointer; font: 800 13px/1.4 var(--horf-font); }
+  &[open] summary { margin-bottom: 12px; }
 `;
 
 const RuleNote = styled.p`
@@ -834,6 +908,14 @@ function formatDate(value: string): string {
   }).format(date);
 }
 
+function trailKind(receipt: HorfReceipt): string {
+  if (receipt.settlement === "gift") return "Gift";
+  if (receipt.settlement === "market") return "HORSE Market sale";
+  if (receipt.settlement === "objkt") return "Objkt sale";
+  if (receipt.settlement === "stable") return receipt.stableMode === 2 || receipt.stableMode === 3 ? "Escrow swap" : "Stable claim";
+  return "Wallet transfer";
+}
+
 function formatSeasonDate(value: string): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
@@ -998,8 +1080,14 @@ export function Horf() {
   });
   const claimAlertQuery = useQuery({
     queryKey: ["horf", "horse-rewards", address],
-    queryFn: () => api.get<{ claimableRaw: string; claimReady: boolean; asOf: string | null; status: "ready" | "syncing" | "error" }>(`/api/horf/horse/rewards?address=${encodeURIComponent(address!)}`),
+    queryFn: () => api.get<HorfRewardSummary>(`/api/horf/horse/rewards?address=${encodeURIComponent(address!)}`),
     enabled: Boolean(address),
+    refetchOnWindowFocus: true,
+  });
+  const profileRewardsQuery = useQuery({
+    queryKey: ["horf", "horse-rewards", validProfileAddress],
+    queryFn: () => api.get<HorfRewardSummary>(`/api/horf/horse/rewards?address=${encodeURIComponent(validProfileAddress!)}`),
+    enabled: routeSection === "profile" && Boolean(validProfileAddress),
     refetchOnWindowFocus: true,
   });
   const posseQuery = useQuery({
@@ -1072,6 +1160,7 @@ export function Horf() {
     return [...rows.values()].sort((a, b) => b.trades - a.trades || b.offerCount - a.offerCount || a.address.localeCompare(b.address));
   }, [leaderboard, directoryOffersQuery.data?.offers]);
   const profileRider = leaderboard.find((row) => row.address === validProfileAddress);
+  const profileRank = leaderboard.findIndex((row) => row.address === validProfileAddress);
   const possePartners = new Map((posseQuery.data?.partners ?? []).map((partner) => [partner.address, partner]));
   const profileHorses = useMemo(() => profileHorsesQuery.data?.pages.flatMap((page) => page.items) ?? [], [profileHorsesQuery.data]);
   const profileThumbnails = useMemo(() => uniqueHorfThumbnailIdentities([
@@ -1582,6 +1671,49 @@ export function Horf() {
             <Link href={`/horf/traders?season=${encodeURIComponent(selectedSeasonKey)}`}>← Back to other traders</Link>
             {renderPosseAction(validProfileAddress, profileIdentityQuery.data?.displayName ?? profileRider?.name ?? null)}
             <HorfPublicTraderProfile address={validProfileAddress} seasonKey={profileSeasonKey} seasonLabel={profileSeasonLabel} />
+            <TraderActivity data-horf-profile-activity aria-label="Trader activity and HORSE rewards">
+              <h3>Trail record · {seasonDisplayName}</h3>
+              <p>Race position tracks horse-transfer activity. HORSE rewards belong to the sender.</p>
+              {query.isPending ? <p role="status">Reading this rider’s trail…</p> : hasError ? <p role="alert">Activity is unavailable. Retry the season ledger.</p> : profilePersonal && <>
+                <TraderActivityStats>
+                  <div data-horf-profile-stat="rank"><strong>{profileRank >= 0 ? `#${profileRank + 1}` : "—"}</strong><span>Race position</span></div>
+                  <div data-horf-profile-stat="sent"><strong>{profilePersonal.sent}</strong><span>Horses sent</span></div>
+                  <div data-horf-profile-stat="received"><strong>{profilePersonal.received}</strong><span>Horses received</span><HorfReceivedBreakdown gifts={profilePersonal.giftHorsesReceived} trades={profilePersonal.tradeHorsesReceived} /></div>
+                  <div data-horf-profile-stat="completed"><strong>{profilePersonal.completedTrades ?? "—"}</strong><span>Completed trades</span></div>
+                </TraderActivityStats>
+                <p>{profilePersonal.trades} race {profilePersonal.trades === 1 ? "point" : "points"} from qualifying transfers. A completed trade pairs return rides or records a settled exchange; gifts do not complete one.</p>
+                <TraderTrail data-horf-profile-trail>
+                  <summary>View transfer trail · {profilePersonal.recent.length} {profilePersonal.recent.length === 1 ? "entry" : "entries"}</summary>
+                  {profilePersonal.recent.length ? <ReceiptList>
+                    {profilePersonal.recent.map((receipt) => <li key={`${receipt.id}:${receipt.direction}:${receipt.timestamp}`}>
+                      <ReceiptDirection $in={receipt.direction === "in"}>{receipt.direction === "in" ? "In" : "Out"}</ReceiptDirection>
+                      <div><a href={tokenUrl(receipt.token)} target="_blank" rel="noopener noreferrer">{receipt.token.name || `Horse #${receipt.token.tokenId}`}</a><small>{trailKind(receipt)} · {receipt.direction === "in" ? "From" : "To"} <TraderLink address={receipt.counterparty} /> · {formatDate(receipt.timestamp)}</small></div>
+                      <strong>{receipt.amount} {receipt.amount === 1 ? "edition" : "editions"}</strong>
+                    </li>)}
+                  </ReceiptList> : <p>No qualifying transfers in this season.</p>}
+                </TraderTrail>
+              </>}
+              <RewardLedger data-horf-profile-rewards>
+                <h4>🪙 Neighvember 2026 HORSE rewards</h4>
+                <p>10 HORSE per qualifying outbound horse edition. Receiving adds race activity, not a HORSE reward.</p>
+                {profileRewardsQuery.isPending ? <p role="status">Checking reward receipts…</p>
+                  : profileRewardsQuery.isError ? <p role="alert">Reward receipts are unavailable. Refresh to try again.</p>
+                  : profileRewardsQuery.data?.asOf ? <>
+                    <div className="reward-totals">
+                      <span data-horf-reward="sends"><strong>{profileRewardsQuery.data.countedUnits}</strong>Rewardable sends</span>
+                      <span data-horf-reward="accrued"><strong>{horseRawLabel(profileRewardsQuery.data.accruedRaw)}</strong>HORSE accrued</span>
+                      <span data-horf-reward="claimed"><strong>{horseRawLabel(profileRewardsQuery.data.claimedRaw)}</strong>HORSE claimed</span>
+                      <span data-horf-reward="claimable"><strong>{horseRawLabel(profileRewardsQuery.data.claimableRaw)}</strong>HORSE claimable</span>
+                    </div>
+                    {profileRewardsQuery.data.bySource?.length ? <ul className="reward-sources" aria-label="HORSE earned by trade source">
+                      {profileRewardsQuery.data.bySource.map((source) => <li key={source.kind}>{rewardSourceLabels[source.kind]} · {source.units} {source.units === "1" ? "edition" : "editions"} · {horseRawLabel(source.amountRaw)} HORSE</li>)}
+                    </ul> : null}
+                    {!profileRewardsQuery.data.sourceComplete && <p role="status">Reward sources are syncing; totals may change.</p>}
+                    {/^[1-9]\d*$/.test(profileRewardsQuery.data.sourceDiscrepancies) && <p role="alert">Claimed HORSE exceeds the currently recognized reward sources. This ledger needs review.</p>}
+                    <p>Claimed is the vault’s on-chain total. A rider may also hold HORSE sent by other people.</p>
+                  </> : <p role="status">The reward ledger is syncing.</p>}
+              </RewardLedger>
+            </TraderActivity>
             <ProfileTabs role="tablist" aria-label="Trader horse collections">
               <button type="button" role="tab" id="horf-profile-tab-for-trade" data-horf-profile-tab="for-trade" aria-selected={profileTab === "for-trade"} aria-controls="horf-profile-panel" onClick={() => selectProfileTab("for-trade")}>For trade on Horf</button>
               <button type="button" role="tab" id="horf-profile-tab-all-horses" data-horf-profile-tab="all-horses" aria-selected={profileTab === "all-horses"} aria-controls="horf-profile-panel" onClick={() => selectProfileTab("all-horses")}>All horses held</button>
@@ -1674,7 +1806,7 @@ export function Horf() {
         {routeSection === "race" && <Section id="horf-race" data-horf-region="race" aria-label="Horse trader race leaderboard">
           <SectionLabel><img src="/horf-art/horseshoe.svg" alt="" aria-hidden="true" width="20" height="20" style={{ verticalAlign: "middle", marginRight: 5 }} />Midway race board</SectionLabel>
           <h2>Who’s out in front?</h2>
-          <p>Each qualifying horse transfer moves both riders along the track. Race totals show transfer activity; completed reciprocal trades are tallied separately in My Stable.</p>
+          <p>Both riders score race activity when a horse moves. The sender earns 10 HORSE per qualifying edition. Completed return trades are counted separately.</p>
           <RaceFrame>
             <RaceHeader><span>Riders · {seasonDisplayName}</span><span>Finish line</span></RaceHeader>
             {leaderboard.length ? (
@@ -1683,7 +1815,11 @@ export function Horf() {
                 <Lane key={row.address} data-horf-lane data-horf-trades={row.trades}>
                   <Rider>
                     <Rank aria-label={`Rank ${index + 1}`}>{index + 1}</Rank>
-                    <TraderLink address={row.address} name={row.name} />
+                    <RiderIdentity data-horf-race-split>
+                      <TraderLink address={row.address} name={row.name} />
+                      <small>↑ {row.sent} sent · ↓ {row.received} received</small>
+                      <HorfReceivedBreakdown gifts={row.giftHorsesReceived} trades={row.tradeHorsesReceived} />
+                    </RiderIdentity>
                     {row.blacklisted === true && <BlacklistBadge data-horf-blacklist-badge type="button" onClick={() => viewTraderStatus(row.address)} aria-label={`View Horf blacklist details for ${row.name || row.address}`}>Blacklisted · details</BlacklistBadge>}
                   </Rider>
                   <Track aria-hidden="true">

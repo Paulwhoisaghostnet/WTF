@@ -224,6 +224,22 @@ test.describe("Horf Stable and trader profile", () => {
     expect((await request.post("/__test/state", { data: { userRole: "admin" } })).ok()).toBeTruthy();
     await mockConnectedWallet(page);
     await mockSeason(page);
+    const recent = [
+      ...Array.from({ length: 6 }, (_, index) => ({ id: index + 1, timestamp: `2026-11-05T10:00:${String(index).padStart(2, "0")}.000Z`,
+        direction: "out", counterparty: firstReturnWallet, token: { contract, tokenId: "4", name: "Return Mare" }, amount: 1 })),
+      ...Array.from({ length: 6 }, (_, index) => ({ id: index + 7, timestamp: `2026-11-05T11:00:${String(index).padStart(2, "0")}.000Z`,
+        direction: "in", counterparty: firstReturnWallet, token: { contract, tokenId: "5", name: "Bay Pony" }, amount: 1 })),
+      { id: 13, timestamp: "2026-11-05T12:00:00.000Z", direction: "in", counterparty: secondReturnWallet,
+        token: { contract, tokenId: "6", name: "Gift Filly" }, amount: 1, settlement: "gift" },
+    ];
+    await page.route("**/api/horf/horse/rewards?*", (route) => json(route, {
+      season: "current-2026", rateHorse: "10", countedUnits: "6",
+      accruedRaw: "6000000000", claimedRaw: "5000000000", claimableRaw: "1000000000",
+      sourceDiscrepancies: "0", sourceComplete: true, asOf: "2026-11-05T12:00:00.000Z",
+      status: "ready", claimReady: true,
+      bySource: [{ kind: "direct", units: "5", amountRaw: "5000000000" },
+        { kind: "market", units: "1", amountRaw: "1000000000" }],
+    }));
     await page.route("**/api/horf/season*", (route) => json(route, {
       season, seasons: [allTimeSeason, season, archiveSeason],
       asOf: "2026-11-05T12:00:00.000Z", status: "ready", error: null, nextRefreshAt: null,
@@ -231,7 +247,7 @@ test.describe("Horf Stable and trader profile", () => {
       currentUser: {
         address: wallet, received: 7, giftHorsesReceived: 1, tradeHorsesReceived: 6,
         sent: 6, trades: 13, completedTrades: 6,
-        owedTo: [], owedBy: [], waitingHorses: [], recent: [],
+        owedTo: [], owedBy: [], waitingHorses: [], recent,
       },
     }));
 
@@ -252,6 +268,7 @@ test.describe("Horf Stable and trader profile", () => {
     const lane = page.locator('[data-horf-region="race"] [data-horf-lane]');
     await expect(lane).toHaveAttribute("data-horf-trades", "13");
     await expect(lane).toContainText(/13\s*transfers/);
+    await expect(lane.locator("[data-horf-race-split]")).toContainText("6 sent · ↓ 7 received");
 
     await page.route(/\/api\/horf\/traders\/[^/]+\/profile\?season=current-2026$/, (route) => json(route, {
       address: wallet, seasonKey: season.key, imageUrl: null, description: "", updatedAt: null,
@@ -262,9 +279,23 @@ test.describe("Horf Stable and trader profile", () => {
     }));
     await page.goto(`/horf/traders/${wallet}?season=current-2026`);
     const profile = page.locator('[data-horf-region="trader-profile"]');
+    const activity = profile.locator("[data-horf-profile-activity]");
+    await expect(activity.locator('[data-horf-profile-stat="rank"] strong')).toHaveText("#1");
+    await expect(activity.locator('[data-horf-profile-stat="sent"] strong')).toHaveText("6");
+    await expect(activity.locator('[data-horf-profile-stat="received"] strong')).toHaveText("7");
+    await expect(activity.locator('[data-horf-profile-stat="completed"] strong')).toHaveText("6");
+    const rewards = activity.locator("[data-horf-profile-rewards]");
+    await expect(rewards.locator('[data-horf-reward="sends"] strong')).toHaveText("6");
+    await expect(rewards.locator('[data-horf-reward="accrued"] strong')).toHaveText("60");
+    await expect(rewards.locator('[data-horf-reward="claimed"] strong')).toHaveText("50");
+    await expect(rewards.locator('[data-horf-reward="claimable"] strong')).toHaveText("10");
+    await expect(rewards).toContainText("HORSE Market sales · 1 edition · 10 HORSE");
+    await activity.locator("[data-horf-profile-trail] summary").click();
+    await expect(activity.locator("[data-horf-profile-trail]")).toContainText("Gift Filly");
+    await expect(activity.locator("[data-horf-profile-trail]")).toContainText("Gift · From");
     await profile.locator('[data-horf-profile-tab="received"]').click();
     await expect(profile.locator("[data-horf-profile-received-summary]")).toContainText("7 horse editions received");
-    const profileBreakdown = profile.locator("[data-horf-received-breakdown]");
+    const profileBreakdown = profile.locator("#horf-profile-panel > [data-horf-received-breakdown]");
     await expect(profileBreakdown.getByRole("note", { name: "1 gift horses received" })).toContainText("🎁1");
     await expect(profileBreakdown.getByRole("note", { name: "6 trade horses received" })).toContainText("🤝6");
     await expect(profileBreakdown.getByRole("note", { name: "1 gift horses received" })).toHaveAccessibleDescription(/no return ride is expected/i);

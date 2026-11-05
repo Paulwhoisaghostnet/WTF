@@ -299,11 +299,29 @@ export async function reconcileCurrentHorfRewards(): Promise<{ status: "ready" |
 export async function getHorfRewardActivity(address: string) {
   if (!isTezosWallet(address)) throw new Error("Invalid HORSE reward wallet");
   const reconciliation = await reconcileCurrentHorfRewards();
-  const result = await pool.query<{ units: string; accrued_raw: string }>(
-    `SELECT COALESCE(SUM(CASE WHEN source_active AND status = 'pending' THEN units::numeric ELSE 0 END),0)::text AS units,
-            COALESCE(SUM(CASE WHEN source_active AND status = 'pending' THEN amount_raw::numeric ELSE 0 END),0)::text AS accrued_raw
-       FROM public.horf_reward_entitlements
-      WHERE season_start = $1::timestamptz AND trader_address = $2`,
+  const result = await pool.query<{
+    units: string;
+    accrued_raw: string;
+    by_source: { kind: HorfRewardSourceEvent["kind"]; units: string; amountRaw: string }[];
+  }>(
+    `WITH active AS (
+       SELECT source_kind, units::numeric AS units, amount_raw::numeric AS amount_raw
+         FROM public.horf_reward_entitlements
+        WHERE season_start = $1::timestamptz AND trader_address = $2
+          AND source_active AND status = 'pending'
+     ), totals AS (
+       SELECT COALESCE(SUM(units), 0)::text AS units,
+              COALESCE(SUM(amount_raw), 0)::text AS accrued_raw
+         FROM active
+     ), sources AS (
+       SELECT source_kind, SUM(units)::text AS units, SUM(amount_raw)::text AS amount_raw
+         FROM active GROUP BY source_kind
+     )
+     SELECT totals.units, totals.accrued_raw,
+            COALESCE((SELECT jsonb_agg(jsonb_build_object(
+              'kind', source_kind, 'units', units, 'amountRaw', amount_raw
+            ) ORDER BY source_kind) FROM sources), '[]'::jsonb) AS by_source
+       FROM totals`,
     [CURRENT.startsAt, address],
   );
   const row = result.rows[0]!;
@@ -316,6 +334,7 @@ export async function getHorfRewardActivity(address: string) {
     BigInt(vault.balanceRaw) >= claimableRaw;
   return { season: HORF_CURRENT_SEASON_KEY, rateHorse: HORF_HORSE_REWARD_PER_UNIT.toString(),
     rateRaw: HORF_HORSE_REWARD_RAW_PER_UNIT.toString(), countedUnits: row.units,
+    bySource: row.by_source,
     pendingRaw: claimableRaw.toString(), paidRaw: claimedRaw.toString(),
     sourceDiscrepancies: sourceDiscrepancies.toString(),
     asOf: reconciliation.asOf, status: reconciliation.status,
