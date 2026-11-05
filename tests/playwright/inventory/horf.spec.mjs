@@ -348,7 +348,7 @@ test.describe("Horf horse trading", () => {
     const badge = app.locator("[data-horf-blacklist-badge]");
     await expect(badge).toHaveCount(1);
     await badge.click();
-    await expect(page).toHaveURL(new RegExp(`/horf/horse-market\\?season=current-2026&market=outlaw&trader=${leadWallet}$`));
+    await expect(page).toHaveURL(new RegExp(`/horf/horse-market\\?season=current-2026&market=outlaw&outlaw=available&trader=${leadWallet}$`));
     await expect(app).toHaveAttribute("data-horf-page", "horse-market");
     const standing = app.locator('[data-horf-region="trader-status"]');
     await expect(standing.locator("[data-horf-status-address]")).toHaveValue(leadWallet);
@@ -395,7 +395,7 @@ test.describe("Horf horse trading", () => {
         }),
       });
     });
-    await page.goto("/horf/outlaw-corral");
+    await page.goto("/horf/horse-market?season=current-2026&market=outlaw&outlaw=available");
 
     const standing = page.locator('[data-horf-region="trader-status"]');
     const admin = standing.locator("[data-horf-admin-blacklist]");

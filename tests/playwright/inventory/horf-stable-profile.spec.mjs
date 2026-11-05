@@ -605,11 +605,12 @@ test.describe("Horf Stable and trader profile", () => {
     await expect(horseCard).toContainText(`${contract} / #9`);
     await horseCard.getByRole("button", { name: "Close horse card" }).click();
     await expect(horseCard).toBeHidden();
-    await page.locator("[data-horf-primary]").evaluate((node) => { node.scrollTop = 0; });
+    await cards.first().locator(".art img").scrollIntoViewIfNeeded();
     await expect(cards.first().locator(".art img")).toBeInViewport();
     await page.screenshot({ path: "/tmp/horf-stable-all-horses-entry-desktop.png" });
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.locator("[data-horf-primary]").evaluate((node) => { node.scrollTop = 0; });
+    await cards.first().locator(".art img").scrollIntoViewIfNeeded();
+    await expect(cards.first().locator(".art img")).toBeInViewport();
     await expect(page.locator("[data-horf-right-rail]")).toBeHidden();
     expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
     await page.screenshot({ path: "/tmp/horf-stable-all-horses-entry-mobile.png" });

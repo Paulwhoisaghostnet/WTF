@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **777** · Open: **9** · Claimed: **43** · In Progress: **18** · Blocked: **4** · Fixed: **153** · Verified: **545** · Archived: **5**
+Total: **777** · Open: **9** · Claimed: **42** · In Progress: **19** · Blocked: **4** · Fixed: **153** · Verified: **545** · Archived: **5**
 
 ## Canonical Board
 
@@ -77,11 +77,11 @@ Total: **777** · Open: **9** · Claimed: **43** · In Progress: **18** · Block
 | WTF-BB-569 | Claimed | Codex human-alpha bridge read repair | - | Pasta Protocol / UI-live read reliability | P0 | 13 | 194 | 3 | 4 | 1 | Pasta UI-live bridge reads fail on a single transient RPC response |
 | WTF-BB-561 | Claimed | Codex human-alpha proof completion | - | Pasta Protocol / Rotini proof finalization | P0 | 13 | 194 | 3 | 4 | 1 | Rotini's completed manifest omits authenticated RPC provenance |
 | WTF-BB-587 | Claimed | Codex human-alpha proof completion | - | Pasta Protocol / Ravioli pre-write policy proof | P0 | 12 | 287 | 2 | 5 | 0 | Ravioli's LE ordering red probe exceeds the browser date domain |
-| WTF-BB-808 | Claimed | Codex HORF V3 escrow pivot | 2026-11-05 | HORF / atomic horse exchange and pool fairness | P1 | 17 | 39 | 4 | 5 | 4 | Direct Outlaw signs are unilateral sends, and Reciprocal credits permit repeat or already-owned horse claims |
 | WTF-BB-547 | Claimed | Codex Hoard removal pass | - | Desktop OS / retired app cleanup | P1 | 11 | 402 | 2 | 4 | 1 | Hoard app removal can leave live registry and launcher ghosts |
 | WTF-BB-390 | Claimed | Codex full-send cleanup pass | 2026-07-15 | CI / environment inventory determinism | P1 | 11 | 402 | 3 | 4 | 0 | Environment inventory passed locally but failed in clean CI because the generator recursively scanned ignored local desktop asset outputs; restrict discovery to Git-tracked source inputs |
 | WTF-BB-741 | Claimed | Codex Pasta alpha remaining release gates | 2026-10-27 | CI / Playwright runner compatibility | P1 | 8 | 655 | 1 | 3 | 0 | Quality job cannot install Playwright Chromium on Ubuntu 26.04 latest runner |
 | WTF-BB-662 | In Progress | Codex Macaroni V3.5 secure lifecycle pass; native self-host setup recovery; hosted alpha production rollout; Codex Pasta review handoff; Codex Pasta alpha readiness implementation | 2026-10-27 | Macaroni / predictable allocation and mutable sale inventory | P0 | 17 | 39 | 4 | 5 | 3 | Macaroni V3 derives draws from public state and permits inventory mutation after sales begin |
+| WTF-BB-808 | In Progress | Codex HORF V3 escrow pivot | 2026-11-05 | HORF / atomic horse exchange and pool fairness | P1 | 17 | 39 | 4 | 5 | 4 | Direct Outlaw signs are unilateral sends, and Reciprocal credits permit repeat or already-owned horse claims |
 | WTF-BB-138 | In Progress | Codex casino backend audit pass | 2026-05-09 | Casino / compliance and economy | P1 | 16 | 73 | 4 | 5 | 3 | Casino wagering must stay fail-closed until compliance, settlement, and house accounting exist |
 | WTF-BB-810 | In Progress | Codex HORF V3 settlement ledger | 2026-11-05 | HORF / V3 race and HORSE reward settlement | P1 | 15 | 95 | 3 | 5 | 3 | V3 horse swaps lack two-leg race and HORSE reward accounting |
 | WTF-BB-809 | In Progress | Codex HORF legacy claim-source migration | 2026-11-05 | HORF / V2 to V3 season and reward history | P1 | 15 | 95 | 3 | 5 | 3 | Switching the active Stable KT1 would erase V2 claim events from season stats and HORSE reward reconciliation |
@@ -1757,18 +1757,6 @@ Total: **777** · Open: **9** · Claimed: **43** · In Progress: **18** · Block
 - Verification idea:
   - Unit-test the exact maximum-horizon child conversion, retain the no-pin/no-write rejection assertions, and continue through the pre-write resume path with the original intent and screenshots.
 
-### WTF-BB-808 - Direct Outlaw signs are unilateral sends, and Reciprocal credits permit repeat or already-owned horse claims
-
-- Category: HORF / atomic horse exchange and pool fairness
-- Priority: P1
-- Status: Claimed
-- Owner/Session: Codex HORF V3 escrow pivot
-- Last touched: 2026-11-05
-- Score: C4 + F5 + S4 + P1(4) = 17
-- Evidence (2026-11-05): The Outlaw Corral trade sign leaves the horse in its owner’s wallet; the interested rider sends first with no escrow or enforceable return. V2 Reciprocal Stable grants one credit per edition but can claim multiple editions of the same token across listings and does not check whether a claimant already holds that token. Group Stable grants 30 claims per distinct token, conflicting with the requested 1:1 pool rule.
-- Correction direction: Originate a V3 Mainnet custody contract with atomic Outlaw horse-for-horse rooms, 1:1 Reciprocal credit/claim limits, one claim per exact token per wallet, current-balance rejection, and no new Group mode. Preserve access to existing V2 escrow until owners resolve it; align UI, permits, indexers, stats, and HORSE rewards.
-- Verification idea: SmartPy scenarios prove both Outlaw transfer legs or neither, reject existing balance and repeat exact-token claims, and bound Reciprocal withdrawals by total deposited editions. Browser and actor-backed flows prove room creation, claim, cancellation, and legacy recovery. Live proof requires a signed V3 origination and real wallet exchange; local simulation alone is not deployment evidence.
-
 ### WTF-BB-547 - Hoard app removal can leave live registry and launcher ghosts
 
 - Category: Desktop OS / retired app cleanup
@@ -1864,6 +1852,19 @@ Total: **777** · Open: **9** · Claimed: **43** · In Progress: **18** · Block
   - Companion unit tests, Suite and standalone desktop policy tests, root build, inventory coverage, and focused browser recovery tests pass. A dirty-preflight Universal macOS Suite ZIP and DMG were built and installed-package smoke passed both formats, including launch, all eight tool entries, and stable-origin relaunch. A fresh funded installed-app Shadownet purchase, clean-source artifact provenance, and platform signing remain required before release verification.
 - Funded installed-app alpha proof (2026-10-27): A real doctor-ready Universal Macaroni ZIP used a dedicated Shadownet finalizer and local Kubo. Creator setup, exact failed-attempt recovery, full private Objkt duplicate scan, on-chain arm, activation, distinct-buyer paid purchase, FIFO settlement, CAR publication, buyer-owned token 0, and final sweep completed on KT1KRkw1DjCbHdf63q3tjYTqJAQqJ7TG8WNh. Public metadata and artwork CID bytes matched independently. Controlled local loopback is proved; remote HTTPS/CORS, broader contract variants, Apple signing/notarization, and production host promotion remain open, so status stays In Progress.
 
+### WTF-BB-808 - Direct Outlaw signs are unilateral sends, and Reciprocal credits permit repeat or already-owned horse claims
+
+- Category: HORF / atomic horse exchange and pool fairness
+- Priority: P1
+- Status: In Progress
+- Owner/Session: Codex HORF V3 escrow pivot
+- Last touched: 2026-11-05
+- Score: C4 + F5 + S4 + P1(4) = 17
+- Evidence (2026-11-05): The Outlaw Corral trade sign leaves the horse in its owner’s wallet; the interested rider sends first with no escrow or enforceable return. V2 Reciprocal Stable grants one credit per edition but can claim multiple editions of the same token across listings and does not check whether a claimant already holds that token. Group Stable grants 30 claims per distinct token, conflicting with the requested 1:1 pool rule.
+- Correction direction: Originate a V3 Mainnet custody contract with atomic Outlaw horse-for-horse rooms, 1:1 Reciprocal credit/claim limits, one claim per exact token per wallet, current-balance rejection, and no new Group mode. Preserve access to existing V2 escrow until owners resolve it; align UI, permits, indexers, stats, and HORSE rewards.
+- Verification idea: SmartPy scenarios prove both Outlaw transfer legs or neither, reject existing balance and repeat exact-token claims, and bound Reciprocal withdrawals by total deposited editions. Browser and actor-backed flows prove room creation, claim, cancellation, and legacy recovery. Live proof requires a signed V3 origination and real wallet exchange; local simulation alone is not deployment evidence.
+- Mainnet cutover verification (2026-11-05): V3 origination op6wfKbjk8SzNEyvyyCgECfLZVfgUeSSq2DaocPTXs8ysAcDPJt applied at KT1PGhfmETCoE79Pg6BNSZWJfwFHRKscb5gi with compiled Micheline and wtf.tez admin verified. Production reports V3 ready with permits enabled; the old V2 contract still exposes three recoverable listings and issues no new deposit permits. A real wallet exchange remains unproven.
+
 ### WTF-BB-138 - Casino wagering must stay fail-closed until compliance, settlement, and house accounting exist
 
 - Category: Casino / compliance and economy
@@ -1909,6 +1910,7 @@ Total: **777** · Open: **9** · Claimed: **43** · In Progress: **18** · Block
 - Correction direction: Index confirmed Mainnet V3 horse_claimed, horse_swapped, and private_offer_fulfilled events by contract and TzKT event ID. Synthesize both swap sender legs, suppress the matching Objkt direct input once, count one race exchange per trader, and reconcile one 10 HORSE reward per valid sender leg. Preserve V2 claim sources.
 - Verification idea: Prove claimed and swapped modes, listing zero, applied event source, exact operation-hash deduplication, nonhorse exclusions, distinct reward keys, and claim gating while V3 sync is incomplete. Verify a live V3 exchange after origination.
 - Local verification (2026-11-05): 30 focused HORF ledger, model, reward, and V3 settlement tests pass. Mainnet event and wallet exchange proof remains pending.
+- Cutover verification (2026-11-05): Production V3 snapshot is ready and permit signing is enabled at the verified Mainnet contract. No V3 exchange has occurred yet, so live two-leg race and HORSE reconciliation remain unproven.
 
 ### WTF-BB-809 - Switching the active Stable KT1 would erase V2 claim events from season stats and HORSE reward reconciliation
 
@@ -1922,6 +1924,7 @@ Total: **777** · Open: **9** · Claimed: **43** · In Progress: **18** · Block
 - Correction direction: Add an explicit Mainnet-only list of legacy Stable claim-source KT1s. Cursor-sync, aggregate, and require readiness of every active and legacy source for season stats and HORSE reward signing; keep new deposit permits scoped to the active contract. Preserve a separate V2 recovery path for escrowed editions and credits.
 - Verification idea: Test active-only parity, V3+V2 deduplication, Mainnet isolation, cross-contract event aggregation, distinct HORSE reward source keys, and an incomplete legacy source blocking claims. After V3 deployment, verify V2 and V3 events coexist in the live season ledger and old entitlements remain active.
 - Local verification (2026-11-05): 20 focused HORF reward, Stable service, and legacy-source tests pass. Full typecheck, build, and production configuration verification remain pending.
+- Cutover verification (2026-11-05): Typecheck and build pass. Production keeps V2 KT1Rg7ippRJGrFgKBDCGUyiFG7jKdcU7Dmsg with its three listings and enables V3 KT1PGhfmETCoE79Pg6BNSZWJfwFHRKscb5gi separately. A fresh claim across both contracts remains unproven.
 
 ### WTF-BB-392 - Private Objkt Operator is deployed with owner-gated PostgreSQL persistence and non-custodial signing boundaries
 

@@ -14710,3 +14710,23 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: The test reported a missing artifact even though the feature under review was elsewhere.
 
 **Rule**: Run these suites serially unless each has an isolated Playwright output directory. Rerun any test affected by artifact contention after the other suite stops.
+
+---
+
+## 2026-11-05 - Update route and viewport assertions with HORF tab changes
+
+**What happened**: The broad browser suite still expected the old Outlaw route and assumed a horse card sat above the fold after the Stable gained a proposal panel.
+
+**Why it mattered**: Three HORF checks failed despite the relevant cards and moderation controls rendering in their new locations.
+
+**Rule**: When changing navigation tabs or the vertical order of a page, update the domain browser tests to visit the exact tab and scroll a target card into view before asserting viewport visibility. Keep separate assertions for the content and controls themselves.
+
+---
+
+## 2026-11-05 - Stub external popup destinations in local browser journeys
+
+**What happened**: The WTF LIVE schedule test opened a real TTC submission URL, and local Chromium reported `chrome-error://chromewebdata/` when the external page failed to load.
+
+**Why it mattered**: The test failed after the app had scheduled the event and opened the requested destination, making local and CI results depend on an unrelated site.
+
+**Rule**: Fulfill external popup navigation locally in browser tests, then assert the generated destination URL and the app's persisted result and success message.

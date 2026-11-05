@@ -495,10 +495,13 @@ test.describe("interaction inventory — WTF LIVE owner controls", () => {
     await roomCard.locator("[data-wtf-live-room-schedule='my-room']").click();
     await page.locator("[data-wtf-live-room-event-title='my-room']").fill("Smart Controls Live");
     await page.locator("[data-wtf-live-room-event-target='my-room']").selectOption("both");
+    await page.context().route("https://thetezos.com/**", (route) => route.fulfill({
+      status: 200, contentType: "text/html", body: "<!doctype html><title>TTC submission</title>",
+    }));
     const ttcPopupPromise = page.waitForEvent("popup");
     await page.locator("[data-wtf-live-room-event-save='my-room']").click();
     const ttcPopup = await ttcPopupPromise;
-    expect(ttcPopup.url()).toContain("thetezos.com");
+    await expect(ttcPopup).toHaveURL(/thetezos\.com/);
     await ttcPopup.close();
     await expect(page.getByText("My Room event scheduled and TTC submission opened.")).toBeVisible();
 
