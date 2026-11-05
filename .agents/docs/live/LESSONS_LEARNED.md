@@ -14740,3 +14740,13 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: The test failed after the app had scheduled the event and opened the requested destination, making local and CI results depend on an unrelated site.
 
 **Rule**: Fulfill external popup navigation locally in browser tests, then assert the generated destination URL and the app's persisted result and success message.
+
+---
+
+## 2026-11-05 - Budget the full CI browser suite from observed progress and test deadlines
+
+**What happened**: Main Quality Gates run `42084879560` reached test 992 of 998, then GitHub killed the inventory browser step at its 30-minute limit. The in-flight test was allowed 180 seconds and six tests remained; no HORF assertion failure appeared in the log.
+
+**Why it mattered**: The step limit ended the release gate before Playwright could report whether the final tests passed or failed.
+
+**Rule**: When a growing browser suite reaches its step deadline while still making progress, derive the step budget from the measured CI elapsed time, the remaining tests' configured deadlines, and runner cleanup. Leave individual test deadlines and assertions intact.

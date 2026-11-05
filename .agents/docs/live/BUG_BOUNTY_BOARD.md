@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **777** · Open: **9** · Claimed: **42** · In Progress: **19** · Blocked: **4** · Fixed: **153** · Verified: **545** · Archived: **5**
+Total: **777** · Open: **9** · Claimed: **42** · In Progress: **19** · Blocked: **4** · Fixed: **154** · Verified: **544** · Archived: **5**
 
 ## Canonical Board
 
@@ -250,6 +250,7 @@ Total: **777** · Open: **9** · Claimed: **42** · In Progress: **19** · Block
 | WTF-BB-811 | Fixed | Codex HORF posse batch send | 2026-11-05 | HORF / horse-art batch recipients | P2 | 7 | 713 | 1 | 3 | 0 | Horse-art batch sends wrongly inherit the HORSE payout recipient cap |
 | WTF-BB-801 | Fixed | Codex Horf inspection and Market action repair | 2026-11-04 | HORF / inspection and purchase wayfinding | P2 | 7 | 713 | 1 | 3 | 0 | HORF inspect actions change state below the viewport without revealing the next step |
 | WTF-BB-773 | Fixed | Codex coLILseum escrow completion | 2026-11-03 | coLILseum / prepaid payout clarity | P2 | 7 | 713 | 1 | 2 | 1 | Prepaid tie receipt says XTZ paid when the guest receives credit |
+| WTF-BB-348 | Fixed | Codex Pasta CI smoke heartbeat | 2026-11-05 | E2E / Quality Gates observability | P2 | 7 | 713 | 1 | 3 | 0 | Main Quality Gates inventory smoke can run for ~14 minutes with no CLI-visible progress before a production push is fully proven, making healthy CI hard to distinguish from a wedged release gate; verified by branch, PR, and main Quality Gates through PR #23 with 60-second heartbeat output through the long smoke step |
 | WTF-BB-800 | Fixed | Codex Horf return-ride browser correction | 2026-11-04 | E2E / Horf horse-send signer preflight | P2 | 6 | 752 | 1 | 2 | 0 | Horf gift browser stories expect eligibility after a send without an active signer |
 | WTF-BB-755 | Fixed | Codex release integration | 2026-11-02 | AT Protocol / Profile OAuth CI test precondition | P2 | 6 | 752 | 1 | 2 | 0 | Profile AT OAuth client metadata tests reject a clean CI local origin before assertions |
 | WTF-BB-747 | Fixed | Codex Pasta mainnet alpha integration | 2026-10-29 | Pasta Protocol / IPFS Pinning inventory test | P2 | 6 | 752 | 1 | 2 | 0 | Gamma pinning inventory waits for obsolete Connect Porcupin button |
@@ -769,7 +770,6 @@ Total: **777** · Open: **9** · Claimed: **42** · In Progress: **19** · Block
 | WTF-BB-380 | Verified | Codex full-send cleanup pass | 2026-07-15 | E2E / health diagnostics contract | P2 | 7 | 713 | 2 | 2 | 0 | The authenticated admin diagnostics probe admits the route's designed 503 degraded result; the focused admin actor workflow passes |
 | WTF-BB-376 | Verified | Codex full-send cleanup pass | 2026-07-15 | E2E / contract configuration precedence | P2 | 7 | 713 | 2 | 2 | 0 | Marketplace Shadownet proof now derives the expected in-app market address with the same env precedence as server diagnostics; the focused Marketplace/WTF LIVE run and complete actor suite reached and passed the configured Marketplace state assertions |
 | WTF-BB-374 | Verified | Codex full-send cleanup pass | 2026-07-15 | E2E / Macaroni RPC fallback signal | P2 | 7 | 713 | 2 | 2 | 0 | Macaroni live proof now exercises the configured browser RPC fallback instead of bypassing it with a raw toolkit call, while classifying only the recovered primary's exact CORS pair as non-fatal |
-| WTF-BB-348 | Verified | Codex Pasta CI smoke heartbeat | 2026-07-02 | E2E / Quality Gates observability | P2 | 7 | 713 | 1 | 3 | 0 | Main Quality Gates inventory smoke can run for ~14 minutes with no CLI-visible progress before a production push is fully proven, making healthy CI hard to distinguish from a wedged release gate; verified by branch, PR, and main Quality Gates through PR #23 with 60-second heartbeat output through the long smoke step |
 | WTF-BB-326 | Verified | Codex Gamma live verification pass | 2026-06-30 | E2E / inventory workflow timeout | P2 | 7 | 713 | 1 | 3 | 0 | Broad inventory smoke could time out the healthy `social post to reward automation loop` under the fixed 60s Playwright budget; verified fixed by workload-based timeout budgeting, local focused/full domain-interoperability proof, and branch Quality Gates `28420704957` |
 | WTF-BB-278 | Verified | Codex external-link quality gate repair | 2026-06-18 | Frontend security / tabnabbing link safety | P2 | 7 | 713 | 1 | 2 | 1 | Colander explorer links now include `rel="noopener noreferrer"` with `target="_blank"`; verified by `node scripts/check-external-links.mjs`, GitHub Quality Gates `27734260941`, Deploy to Hetzner `27734260925`, and live Colander asset smoke |
 | WTF-BB-172 | Verified | Codex route-smoke sparse payload repair | 2026-05-24 | Inventory E2E / sparse API fixtures | P2 | 7 | 713 | 1 | 3 | 0 | Inventory route smoke exposed sparse Discovery/Porcupin/CSRF fixtures that could mask or trigger UI failures |
@@ -5320,6 +5320,43 @@ Total: **777** · Open: **9** · Claimed: **42** · In Progress: **19** · Block
 - Evidence (2026-11-03): A prepaid Duel tie restored the guest entry as credit, while the room panel called the total XTZ paid.
 - Correction: Label the total pot as distributed and show the guest refund medium as prepaid credit from verified seat and settlement state.
 - Verification: Funding browser tests compare ordinary win, prepaid win, and prepaid tie receipts against the contract behavior. A live tie receipt remains to be observed.
+
+### WTF-BB-348 - Main Quality Gates inventory smoke can run for ~14 minutes with no CLI-visible progress before a production push is fully proven, making healthy CI hard to distinguish from a wedged release gate; verified by branch, PR, and main Quality Gates through PR #23 with 60-second heartbeat output through the long smoke step
+
+- Category: E2E / Quality Gates observability
+- Priority: P2
+- Status: Fixed
+- Owner/Session: Codex Pasta CI smoke heartbeat
+- Last touched: 2026-11-05
+- Score: C1 + F3 + S0 + P2(3) = 7
+- Evidence:
+  - Main Quality Gates run `28553414410` on live evidence commit `9209829c` passed, but the `Inventory Playwright smoke` step stayed active for roughly 14 minutes before any CLI-visible completion detail was available.
+  - `gh run view --log` could not stream the in-progress step, so release verification had to poll the Actions job API to distinguish a slow healthy run from a stuck smoke gate.
+- Why it matters:
+  - The inventory smoke is the final broad browser gate before a production push is trustworthy. When it is opaque, agents may either wait blindly or interrupt a healthy release proof.
+- Likely correction direction:
+  - Add an explicit step timeout and periodic heartbeat output around the Quality Gates inventory Playwright smoke command.
+- Verification idea:
+  - Validate the workflow YAML/shell syntax, run inventory coverage locally, and let branch Quality Gates prove the real inventory smoke still passes with the diagnostic wrapper.
+- Current pass verification:
+  - Added a 30-minute timeout to the `Inventory Playwright smoke` Quality Gates step and wrapped the Playwright command with a 60-second elapsed-time heartbeat.
+  - Passed `git diff --check`.
+  - Passed workflow YAML parsing plus `bash -n` syntax validation of the new run block.
+  - Passed `npm run test:e2e:inventory:coverage`.
+  - Passed `npm run pasta:repo-cleanup:audit`; the active branch is classified as `valid_ongoing_work` and the retained Pasta readiness branch remains historical evidence unsafe to replay.
+  - Passed `PASTA_LIVE_READINESS_ALLOW_BLOCKERS=1 npm run pasta:live-readiness`; live `wtfos.app` commit `9209829` still proves static Pasta runtime markers, suite/individual installer assets, the installer catalog, and recorded Colander action proof while blocking only on WTF.ME credentials and `PASTA_WTFME_LIVE_HOST`.
+  - Branch push Quality Gates `28554283936` passed; app-quality completed in 15m11s and the log shows 60-second heartbeat messages from 60s through 720s before `Inventory Playwright smoke completed`.
+  - PR Quality Gates `28554285946` passed; app-quality completed in 15m41s and the log shows the same 60-second heartbeat pattern through 720s before completion.
+  - Current-head branch push Quality Gates `28554974401` and PR Quality Gates `28554976557` also passed on commit `663f8d9a`.
+  - Final branch push Quality Gates `28555655135` and PR Quality Gates `28555657254` passed on commit `a556db84` after the evidence-status alignment.
+  - PR #22 merged as live commit `984b3f5`; Deploy to Hetzner `28556324686` passed, main Quality Gates `28556324696` passed, and the main log shows heartbeat messages every 60 seconds from 60s through 720s before `Inventory Playwright smoke completed`.
+  - PR #23 branch push Quality Gates `28557872687`, PR Quality Gates `28557873981`, and main Quality Gates `28558457383` all passed; each long app-quality log showed Inventory Playwright smoke heartbeat output every 60 seconds through 720s before completion.
+- 2026-11-05 regression evidence:
+  - Main Quality Gates run `42084879560` reached `[992/998]` at 19:07:17 UTC and was killed at the 30-minute step limit at 19:07:42 UTC, with no HORF assertion failure in the log. The in-flight test is marked `test.slow()` (180-second deadline), and the remaining six tests use Playwright's 60-second default.
+- Correction (2026-11-05):
+  - Raised only the Quality Gates inventory step limit to 40 minutes: 30 minutes already elapsed + up to 3 minutes for the in-flight slow test + 6 times 1 minute for remaining tests + 1 minute for runner cleanup. The test assertions and per-test deadlines are unchanged.
+- Verification pending:
+  - Workflow syntax and board generation checks passed locally; a new full Quality Gates run must verify the step finishes on GitHub.
 
 ### WTF-BB-800 - Horf gift browser stories expect eligibility after a send without an active signer
 
@@ -16476,37 +16513,6 @@ Copy this when adding a new issue:
   - Run the focused Macaroni actor suite with the primary rejecting localhost CORS and confirm all five tests pass through the configured fallback.
 - Verification:
   - The live chain assertion now calls `MD.withRpcReadFallback(() => MD.getToolkit().rpc.getChainId())`; its error classifier recognizes only the paired Octez-primary localhost CORS failure, and the mismatch case supplies the canonical mainnet chain ID deterministically so public-node availability cannot turn a negative security assertion into a wallet connection.
-
-### WTF-BB-348 - Main Quality Gates inventory smoke can run for ~14 minutes with no CLI-visible progress before a production push is fully proven, making healthy CI hard to distinguish from a wedged release gate; verified by branch, PR, and main Quality Gates through PR #23 with 60-second heartbeat output through the long smoke step
-
-- Category: E2E / Quality Gates observability
-- Priority: P2
-- Status: Verified
-- Owner/Session: Codex Pasta CI smoke heartbeat
-- Last touched: 2026-07-02
-- Score: C1 + F3 + S0 + P2(3) = 7
-- Evidence:
-  - Main Quality Gates run `28553414410` on live evidence commit `9209829c` passed, but the `Inventory Playwright smoke` step stayed active for roughly 14 minutes before any CLI-visible completion detail was available.
-  - `gh run view --log` could not stream the in-progress step, so release verification had to poll the Actions job API to distinguish a slow healthy run from a stuck smoke gate.
-- Why it matters:
-  - The inventory smoke is the final broad browser gate before a production push is trustworthy. When it is opaque, agents may either wait blindly or interrupt a healthy release proof.
-- Likely correction direction:
-  - Add an explicit step timeout and periodic heartbeat output around the Quality Gates inventory Playwright smoke command.
-- Verification idea:
-  - Validate the workflow YAML/shell syntax, run inventory coverage locally, and let branch Quality Gates prove the real inventory smoke still passes with the diagnostic wrapper.
-- Current pass verification:
-  - Added a 30-minute timeout to the `Inventory Playwright smoke` Quality Gates step and wrapped the Playwright command with a 60-second elapsed-time heartbeat.
-  - Passed `git diff --check`.
-  - Passed workflow YAML parsing plus `bash -n` syntax validation of the new run block.
-  - Passed `npm run test:e2e:inventory:coverage`.
-  - Passed `npm run pasta:repo-cleanup:audit`; the active branch is classified as `valid_ongoing_work` and the retained Pasta readiness branch remains historical evidence unsafe to replay.
-  - Passed `PASTA_LIVE_READINESS_ALLOW_BLOCKERS=1 npm run pasta:live-readiness`; live `wtfos.app` commit `9209829` still proves static Pasta runtime markers, suite/individual installer assets, the installer catalog, and recorded Colander action proof while blocking only on WTF.ME credentials and `PASTA_WTFME_LIVE_HOST`.
-  - Branch push Quality Gates `28554283936` passed; app-quality completed in 15m11s and the log shows 60-second heartbeat messages from 60s through 720s before `Inventory Playwright smoke completed`.
-  - PR Quality Gates `28554285946` passed; app-quality completed in 15m41s and the log shows the same 60-second heartbeat pattern through 720s before completion.
-  - Current-head branch push Quality Gates `28554974401` and PR Quality Gates `28554976557` also passed on commit `663f8d9a`.
-  - Final branch push Quality Gates `28555655135` and PR Quality Gates `28555657254` passed on commit `a556db84` after the evidence-status alignment.
-  - PR #22 merged as live commit `984b3f5`; Deploy to Hetzner `28556324686` passed, main Quality Gates `28556324696` passed, and the main log shows heartbeat messages every 60 seconds from 60s through 720s before `Inventory Playwright smoke completed`.
-  - PR #23 branch push Quality Gates `28557872687`, PR Quality Gates `28557873981`, and main Quality Gates `28558457383` all passed; each long app-quality log showed Inventory Playwright smoke heartbeat output every 60 seconds through 720s before completion.
 
 ### WTF-BB-326 - Broad inventory smoke could time out the healthy `social post to reward automation loop` under the fixed 60s Playwright budget; verified fixed by workload-based timeout budgeting, local focused/full domain-interoperability proof, and branch Quality Gates `28420704957`
 
