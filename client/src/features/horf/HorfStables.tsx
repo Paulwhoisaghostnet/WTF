@@ -1,11 +1,13 @@
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useInfiniteQuery, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import styled from "styled-components";
 import { api, isApiRequestError } from "../../lib/api";
 import { logClientSystemEvent } from "../../lib/system-log";
 import { toNatString } from "../../lib/tezos/nat";
+import { advanceResolvedMediaFallback, type ResolvedThumbnail } from "../../lib/media-resolve";
 import { objktTokenUrl as tokenUrl, parseObjktToken } from "./token-input";
 import { parseHorfOwnedTokenPage } from "./owned-tokens";
+import { resolveHorfHorseCardArt, resolveHorfHorseVideo, uniqueHorfThumbnailIdentities } from "./horse-media";
 import {
   HORF_STABLES_CHAIN_ID,
   cancelHorfListing,
@@ -26,6 +28,14 @@ type StableListing = {
   submitted: string;
   remaining: string;
   claimedByWallet: boolean | null;
+  token?: {
+    contract: string;
+    tokenId: string;
+    name: string | null;
+    image: string | null;
+    artifactUri: string | null;
+    mime: string | null;
+  } | null;
 };
 
 type StableSnapshot = {
@@ -257,11 +267,34 @@ const ListingList = styled.ul`
   list-style: none;
   margin: 0;
   padding: 0;
-  li { padding: 13px 0; border-top: 1px solid var(--horf-line, #3d5148); }
-  li:first-child { border-top: 0; }
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr));
+  gap: 14px;
+  li { min-width: 0; overflow: hidden; border: 1px solid var(--horf-line, #3d5148); border-radius: 12px; background: var(--horf-field, #24332d); }
   strong { display: block; font-size: 14px; overflow-wrap: anywhere; }
   small { display: block; margin: 4px 0 9px; color: var(--horf-muted, #b7b5a7); font: 12px/1.4 var(--horf-font, "Avenir Next", sans-serif); overflow-wrap: anywhere; }
   p { margin: 5px 0 0; font-size: 12px; }
+`;
+
+const ListingPreview = styled.a`
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  background: #101816;
+  color: var(--horf-muted, #b7b5a7);
+  text-decoration: none;
+  img, video { width: 100%; height: 100%; object-fit: contain; display: block; }
+  span { padding: 12px; text-align: center; font-size: 13px; }
+  &:hover { box-shadow: inset 0 0 0 2px var(--horf-teal, #71b7a0); }
+`;
+
+const ListingCopy = styled.div`
+  padding: 13px;
+  > strong a { color: var(--horf-ink, #f4ead6); text-decoration: none; }
+  > strong a:hover { color: var(--horf-teal, #71b7a0); text-decoration: underline; }
 `;
 
 const ListingActions = styled.div`
@@ -271,6 +304,51 @@ const ListingActions = styled.div`
   gap: 7px;
   label { width: 92px; margin: 0; }
 `;
+
+function StableVideoPreview({ video, poster }: { video: ResolvedThumbnail; poster: ResolvedThumbnail | null }) {
+  const ref = useRef<HTMLVideoElement>(null);
+  const [visible, setVisible] = useState(false);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    const element = ref.current;
+    if (!element) return;
+    if (typeof IntersectionObserver === "undefined") { setVisible(true); return; }
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) { setVisible(true); observer.disconnect(); }
+    });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!visible || failed) return;
+    void ref.current?.play().catch(() => { /* The poster stays visible when autoplay is blocked. */ });
+  }, [visible, failed, video.src]);
+
+  if (failed) return poster ? <img src={poster.src} alt="" onError={(event) => { advanceResolvedMediaFallback(event.currentTarget, poster); }} /> : <span>Preview unavailable</span>;
+  return <video ref={ref} data-horf-stable-preview-video src={visible ? video.src : undefined} poster={poster?.src} muted autoPlay loop playsInline preload={visible ? "metadata" : "none"} aria-hidden="true" onError={(event) => { if (!advanceResolvedMediaFallback(event.currentTarget, video)) setFailed(true); }} />;
+}
+
+function StableHorsePreview({ listing, uniqueThumbnails }: { listing: StableListing; uniqueThumbnails: ReadonlySet<string> }) {
+  const token = listing.token;
+  const media = token && token.contract === listing.tokenContract && token.tokenId === listing.tokenId
+    ? token : null;
+  const mime = media?.mime?.trim().toLowerCase() || "";
+  // Non-image artifacts such as HTML directories cannot be displayed in an art card.
+  const cardMedia = media && !mime.startsWith("image/") && !mime.startsWith("video/")
+    ? { ...media, artifactUri: null } : media;
+  const art = cardMedia ? resolveHorfHorseCardArt(cardMedia, uniqueThumbnails) : null;
+  const video = media ? resolveHorfHorseVideo(media) : null;
+  const [imageFailed, setImageFailed] = useState(false);
+  const name = media?.name?.trim() || `Horse token #${listing.tokenId}`;
+
+  return <ListingPreview data-horf-stable-preview href={tokenUrl(listing.tokenContract, listing.tokenId)} target="_blank" rel="noopener noreferrer" aria-label={`View ${name} on Objkt`}>
+    {video ? <StableVideoPreview video={video} poster={art} /> : art && !imageFailed
+      ? <img src={art.src} alt={name} loading="lazy" decoding="async" onError={(event) => { if (!advanceResolvedMediaFallback(event.currentTarget, art)) setImageFailed(true); }} />
+      : <span>Preview unavailable</span>}
+  </ListingPreview>;
+}
 
 function shortAddress(address: string): string {
   return address.length > 18 ? `${address.slice(0, 8)}…${address.slice(-6)}` : address;
@@ -378,6 +456,11 @@ export function HorfStables({
   const activeListings = (snapshot?.listings ?? []).filter((listing) => listing.mode === mode && isPositive(listing.remaining));
   const ownListings = (managementQuery.data?.listings ?? []).filter((listing) =>
     listing.mode === mode && listing.owner === address && isPositive(listing.remaining));
+  const uniqueThumbnails = useMemo(() => uniqueHorfThumbnailIdentities(
+    [...(snapshot?.listings ?? []), ...(managementQuery.data?.listings ?? [])]
+      .map((listing) => listing.token)
+      .filter((token): token is NonNullable<StableListing["token"]> => Boolean(token)),
+  ), [snapshot?.listings, managementQuery.data?.listings]);
   const busy = pending !== null;
 
   function addRow(contractAddress: string, tokenId: string, name: string) {
@@ -685,7 +768,9 @@ export function HorfStables({
                 const claimed = mode === 2 && listing.claimedByWallet === true;
                 return (
                   <li key={listing.id} data-horf-stable-listing data-horf-stable-listing-id={listing.id}>
-                    <strong><a href={tokenUrl(listing.tokenContract, listing.tokenId)} target="_blank" rel="noopener noreferrer">Horse token #{listing.tokenId}</a> · {listing.remaining} {listing.remaining === "1" ? "edition" : "editions"} left</strong>
+                    <StableHorsePreview key={`${listing.token?.image}:${listing.token?.artifactUri}`} listing={listing} uniqueThumbnails={uniqueThumbnails} />
+                    <ListingCopy>
+                    <strong><a href={tokenUrl(listing.tokenContract, listing.tokenId)} target="_blank" rel="noopener noreferrer">{listing.token?.name?.trim() || `Horse token #${listing.tokenId}`}</a> · {listing.remaining} {listing.remaining === "1" ? "edition" : "editions"} left</strong>
                     <small>Listing #{listing.id} · {shortAddress(listing.tokenContract)} · offered by <a href={`https://objkt.com/profile/${encodeURIComponent(listing.owner)}`} target="_blank" rel="noopener noreferrer">{own ? "you" : shortAddress(listing.owner)}</a></small>
                     {own ? (
                       <>
@@ -704,6 +789,7 @@ export function HorfStables({
                         {!claimed && noCredit && address && <p>{mode === 0 ? "Deposit in the Reciprocal Stable to earn a claim." : "Deposit in the Group Stable to earn claims."}</p>}
                       </>
                     )}
+                    </ListingCopy>
                   </li>
                 );
               })}
@@ -719,9 +805,12 @@ export function HorfStables({
         {managementQuery.isError && <Status $warn role="alert">Your listings could not be loaded. Refresh stables to try again.</Status>}
         {!managementQuery.isPending && !managementQuery.isError && (ownListings.length ? <ListingList>
           {ownListings.map((listing) => <li key={listing.id} data-horf-stable-owner-listing data-horf-stable-owner-listing-id={listing.id}>
-            <strong><a href={tokenUrl(listing.tokenContract, listing.tokenId)} target="_blank" rel="noopener noreferrer">Horse token #{listing.tokenId}</a> · {listing.remaining} {listing.remaining === "1" ? "edition" : "editions"} left</strong>
+            <StableHorsePreview key={`${listing.token?.image}:${listing.token?.artifactUri}`} listing={listing} uniqueThumbnails={uniqueThumbnails} />
+            <ListingCopy>
+            <strong><a href={tokenUrl(listing.tokenContract, listing.tokenId)} target="_blank" rel="noopener noreferrer">{listing.token?.name?.trim() || `Horse token #${listing.tokenId}`}</a> · {listing.remaining} {listing.remaining === "1" ? "edition" : "editions"} left</strong>
             <small>Listing #{listing.id} · {activeListings.some((marketListing) => marketListing.id === listing.id) ? "On Marshal’s Market" : "Off the public market"}</small>
             <ListingActions><label>Return editions<input aria-label={`Return my editions from listing ${listing.id}`} inputMode="numeric" pattern="[0-9]+" value={cancelAmounts[listing.id] ?? listing.remaining} onChange={(event) => setCancelAmounts((current) => ({ ...current, [listing.id]: event.target.value }))} disabled={!configured || busy} /></label><SmallButton data-horf-stable-owner-cancel type="button" onClick={() => void cancel(listing)} disabled={!configured || busy}>Cancel listing</SmallButton></ListingActions>
+            </ListingCopy>
           </li>)}
         </ListingList> : <p>No open listings of yours in this stable.</p>)}
       </Panel>}

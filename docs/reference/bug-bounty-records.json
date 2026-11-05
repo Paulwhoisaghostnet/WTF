@@ -12164,6 +12164,21 @@
       "rank": 762,
       "title": "Known trader loses display name after joining Posse",
       "body": "- Evidence (2026-11-04): A known trader appears as PixelSushiRobot in the Posse dropdown, but after adding with no nickname the saved card shows only a shortened Tezos address. The picker sends the address and the card only read the optional saved nickname.\n- Correction direction: Resolve each saved Posse card against the same known-trader names already loaded for the picker, with a personal nickname taking precedence and the address as fallback. Include existing saved members without requiring resave.\n- Verification idea: Select a named known trader, add with a blank nickname, check the saved card and remove label, reload, and confirm the name remains. Check a manually entered nickname still wins.\n- Local verification (2026-11-04): The new dropdown-to-saved-card browser regression passes 1/1; the existing named nickname story remains in the Horf social suite. Production verification follows deployment."
+    },
+    {
+      "id": "WTF-BB-804",
+      "status": "Verified",
+      "owner": "Codex HORF stable artwork repair",
+      "lastTouched": "2026-11-05",
+      "category": "HORF / Marshal Market stable previews",
+      "priority": "P3",
+      "complexity": 1,
+      "functionalityDanger": 2,
+      "securityDanger": 0,
+      "points": 5,
+      "rank": 762,
+      "title": "Marshal Market escrow listings show only token identifiers instead of horse artwork",
+      "body": "- Evidence (2026-11-05): The live Marshal Market stable API returns chain listing identifiers and edition counts without token media. Reciprocal, Honor, and Group listing cards consequently render text only, including an active Makiuma listing whose inspected token has image metadata.\n- Correction direction: Attach the exact token’s cached Marshal inspection name and media to stable listings without a new Objkt lookup, and render small cards with the wtfOS media resolver and distinct-token artifact fallback. Keep claims and owner cancellations functional when artwork is unavailable.\n- Verification idea: In focused browser coverage, verify each stable mode and owned listing displays its token name and loaded artwork; two tokens sharing one Objkt thumbnail must use distinct exact artifacts. Confirm the public live listing displays media after deployment.\n- Local verification (2026-11-05): Focused Stables server tests passed 11/11. The full HORF Stables Chromium browser spec passed 13/13, including public and owner previews in all three modes, distinct exact artwork when Objkt thumbnails match, muted video playback after lazy load, and a non-renderable directory artifact falling back to its thumbnail. Inventory coverage passes 285/285 rows, 1065/1065 handles, 138/138 routes, and 30/30 workflows. Production smoke follows deployment."
     }
   ]
 }

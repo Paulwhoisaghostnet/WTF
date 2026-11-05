@@ -224,6 +224,100 @@ test.describe("Horf Stables", () => {
     await expect(stables.getByRole("alert")).toContainText("Cancel amount exceeds the editions still listed");
   });
 
+  test("shows each listed horse's own artwork in public and owner stable cards", async ({ page, request }) => {
+    await seedTrader(request);
+    await mockSeason(page);
+    await mockLinkedWallet(page);
+    const sharedObjktThumbnail = "https://ipfs.fileship.xyz/QmSharedStableCollectionThumbnail";
+    const horseNames = {
+      "1": "Neighvember Dawn",
+      "2": "Neighvember Dusk",
+      "3": "Honor Trail",
+      "4": "Honor Filly",
+      "5": "Group Gallop",
+      "6": "Group Canter",
+      "7": "Group Mare",
+    };
+    const artListings = listings.map((listing) => {
+      const isVideo = listing.tokenId === "6";
+      const isDirectory = listing.tokenId === "7";
+      return {
+        ...listing,
+        token: {
+          contract: listing.tokenContract,
+          tokenId: listing.tokenId,
+          name: horseNames[listing.tokenId],
+          image: ["1", "2"].includes(listing.tokenId)
+            ? sharedObjktThumbnail
+            : isVideo ? "/horf-art/horse-portrait-photo.jpg"
+              : `https://ipfs.fileship.xyz/QmStableThumbnail${listing.tokenId}`,
+          artifactUri: isVideo ? "/desktop/paul-tutorials/talk.mp4"
+            : isDirectory ? "https://ipfs.fileship.xyz/QmNonRenderableDirectory7"
+              : `https://ipfs.fileship.xyz/QmExactStableHorse${listing.tokenId}`,
+          mime: isVideo ? "video/mp4" : isDirectory ? "application/x-directory" : "image/png",
+        },
+      };
+    });
+    await page.route(/\/api\/horf\/stables(?:\?.*)?$/, (route) => route.fulfill({
+      status: 200, contentType: "application/json",
+      body: JSON.stringify({ ...stableSnapshot(true), listings: artListings }),
+    }));
+    await page.route("**/api/horf/wallet/tokens?*", (route) => route.fulfill({
+      status: 200, contentType: "application/json",
+      body: JSON.stringify({ items: [], pagination: { hasMore: false, nextOffset: 0 } }),
+    }));
+    await page.route(/\/api\/cache\/(?:artifact|media)\?/, (route) => route.fulfill({
+      status: 200, contentType: "image/svg+xml",
+      body: '<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180"><rect width="180" height="180" fill="#a56e47"/></svg>',
+    }));
+
+    await page.goto("/horf/marshals-market");
+    const stables = page.locator('[data-horf-region="stables"]');
+    await expect(stables.locator('[data-horf-stable-listing-id="1"]')).toBeVisible();
+    await stables.locator("[data-horf-stable-manage-toggle]").click();
+
+    async function expectHorsePreview(listingId, ownerCard = false, exactArtwork = false) {
+      const card = stables.locator(ownerCard
+        ? `[data-horf-stable-owner-listing-id="${listingId}"]`
+        : `[data-horf-stable-listing-id="${listingId}"]`);
+      const preview = card.locator("[data-horf-stable-preview]");
+      const image = preview.locator("img");
+      await expect(card).toContainText(horseNames[listingId]);
+      await expect(preview).toBeVisible();
+      await expect(image).toHaveCount(1);
+      const source = await image.getAttribute("src");
+      expect(source).toMatch(exactArtwork
+        ? new RegExp(`/api/cache/artifact\\?.*QmExactStableHorse${listingId}`)
+        : new RegExp(`/api/cache/(?:artifact|media)\\?.*Qm(?:ExactStableHorse|StableThumbnail)${listingId}`));
+      await image.scrollIntoViewIfNeeded();
+      await expect(image).toHaveJSProperty("naturalWidth", 180);
+      return image;
+    }
+
+    const dawn = await expectHorsePreview("1", false, true);
+    const dusk = await expectHorsePreview("2", false, true);
+    expect(await dawn.getAttribute("src")).not.toBe(await dusk.getAttribute("src"));
+    await expectHorsePreview("2", true, true);
+
+    await stables.locator('[data-horf-stable-mode="honor"]').click();
+    await expectHorsePreview("3");
+    await expectHorsePreview("4", true);
+
+    await stables.locator('[data-horf-stable-mode="group"]').click();
+    await expectHorsePreview("5");
+    const videoCard = stables.locator('[data-horf-stable-listing-id="6"]');
+    await expect(videoCard).toContainText("Group Canter");
+    const video = videoCard.locator("[data-horf-stable-preview-video]");
+    await video.scrollIntoViewIfNeeded();
+    await expect(video).toHaveAttribute("src", /\/desktop\/paul-tutorials\/talk\.mp4/);
+    await expect(video).toHaveAttribute("poster", /\/horf-art\/horse-portrait-photo\.jpg/);
+    await expect.poll(() => video.evaluate((element) => !element.paused && element.readyState >= 2)).toBe(true);
+    await expectHorsePreview("7", true);
+    const directoryPreview = stables.locator('[data-horf-stable-owner-listing-id="7"] [data-horf-stable-preview] img');
+    await expect(directoryPreview).toHaveAttribute("src", /QmStableThumbnail7/);
+    expect(await directoryPreview.getAttribute("src")).not.toContain("QmNonRenderableDirectory7");
+  });
+
   test("saves an owned horse in the personal stable before requesting inspection", async ({ page, request }) => {
     await seedTrader(request);
     await mockSeason(page);

@@ -14550,3 +14550,13 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: A rider could recognize the trader while selecting them, then lose that identity in the address book immediately after saving.
 
 **Rule**: Resolve saved Posse cards through the same known-trader name source as the picker before falling back to an address. Preserve an explicit personal nickname and cover selection, save, and reload in one browser story.
+
+---
+
+## 2026-11-05 - Escrow identifiers need inspected media for market cards
+
+**What happened**: Marshal’s Market stable listings came directly from the chain index with token IDs and edition counts, so all three stable modes showed text rows even when the approved token’s inspection already held its name and artwork.
+
+**Why it mattered**: Traders could not see the horse they might claim, and the escrow market looked less trustworthy than other HORF galleries.
+
+**Rule**: Keep chain data authoritative for escrow balances, then attach exact-token media from the existing Marshal inspection snapshot before rendering. Use the shared media resolver, handle shared collection thumbnails and animated media, and keep claims and cancellation available if a preview is missing.

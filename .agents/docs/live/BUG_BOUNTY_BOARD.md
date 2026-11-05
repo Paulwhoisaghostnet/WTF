@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **769** · Open: **9** · Claimed: **42** · In Progress: **16** · Blocked: **4** · Fixed: **152** · Verified: **541** · Archived: **5**
+Total: **770** · Open: **9** · Claimed: **42** · In Progress: **16** · Blocked: **4** · Fixed: **152** · Verified: **542** · Archived: **5**
 
 ## Canonical Board
 
@@ -787,6 +787,7 @@ Total: **769** · Open: **9** · Claimed: **42** · In Progress: **16** · Block
 | WTF-BB-511 | Verified | Codex wtfOS contract release | - | Rewards / in-app market reconciliation | P3 | 11 | 399 | 3 | 3 | 3 | Numeric TzKT transaction ids were queried as operation hashes |
 | WTF-BB-317 | Verified | Codex challenge automation harness parity verification | 2026-09-02 | E2E / Playwright harness parity | P3 | 7 | 709 | 2 | 3 | 0 | Local Playwright harness returns `/api/admin/challenge-automation/registry` with legacy `actions` instead of production-shaped `rewardActions`, so direct Automation tab proofs need local route stubs or can crash the admin UI under harness data despite the real server route returning `rewardActions`; likely correction is to align `tests/playwright/harness.mjs` with `server/challenges/routes/admin.ts` and add a focused harness contract assertion |
 | WTF-BB-230 | Verified | Codex WTF LIVE chat toolbox pass | 2026-06-09 | WTF LIVE / room chat style controls | P3 | 6 | 745 | 2 | 2 | 0 | WTF LIVE chat now has a compact one-row style toolbox with bounded font, color, 8-14 size, bold/italic, and reset controls, plus sanitized realtime style relay |
+| WTF-BB-804 | Verified | Codex HORF stable artwork repair | 2026-11-05 | HORF / Marshal Market stable previews | P3 | 5 | 762 | 1 | 2 | 0 | Marshal Market escrow listings show only token identifiers instead of horse artwork |
 | WTF-BB-735 | Verified | Codex Pasta alpha remaining release gates | 2026-10-27 | E2E / Gamma IPFS Pinning route coverage | P3 | 5 | 762 | 1 | 2 | 0 | Gamma media infrastructure inventory story waits for a retired Own-node setup button |
 | WTF-BB-721 | Verified | Codex October 28 security full send | 2026-10-28 | Dependencies / conditional and build-only leaf advisories | P3 | 5 | 762 | 1 | 1 | 1 | New qs and desktop fast-uri advisory matches have compatible leaf patches |
 | WTF-BB-672 | Verified | Codex profile picture preview repair | 2026-09-03 | Profile / IPFS preview reliability | P3 | 5 | 762 | 1 | 2 | 0 | Profile picture picker bypassed FileShip and had no alternate gateway recovery |
@@ -16835,6 +16836,19 @@ Copy this when adding a new issue:
   - `npx playwright test tests/playwright/inventory/wtf-live-owner-controls.spec.mjs` passed, 9/9, after shrinking the themed toolbar from 46px to a capped 36px row.
   - `npm run test:e2e:inventory` ran after the fix; WTF LIVE passed inside the full suite and the suite ended 294/295 because `/trade-boards` hit a transient `dist/public/index.html` 404 resource read unrelated to WTF LIVE. The exact failed route then passed with `npx playwright test tests/playwright/inventory/routes.spec.mjs -g "Trade boards/barter"`.
   - `git diff --check` passed.
+
+### WTF-BB-804 - Marshal Market escrow listings show only token identifiers instead of horse artwork
+
+- Category: HORF / Marshal Market stable previews
+- Priority: P3
+- Status: Verified
+- Owner/Session: Codex HORF stable artwork repair
+- Last touched: 2026-11-05
+- Score: C1 + F2 + S0 + P3(2) = 5
+- Evidence (2026-11-05): The live Marshal Market stable API returns chain listing identifiers and edition counts without token media. Reciprocal, Honor, and Group listing cards consequently render text only, including an active Makiuma listing whose inspected token has image metadata.
+- Correction direction: Attach the exact token’s cached Marshal inspection name and media to stable listings without a new Objkt lookup, and render small cards with the wtfOS media resolver and distinct-token artifact fallback. Keep claims and owner cancellations functional when artwork is unavailable.
+- Verification idea: In focused browser coverage, verify each stable mode and owned listing displays its token name and loaded artwork; two tokens sharing one Objkt thumbnail must use distinct exact artifacts. Confirm the public live listing displays media after deployment.
+- Local verification (2026-11-05): Focused Stables server tests passed 11/11. The full HORF Stables Chromium browser spec passed 13/13, including public and owner previews in all three modes, distinct exact artwork when Objkt thumbnails match, muted video playback after lazy load, and a non-renderable directory artifact falling back to its thumbnail. Inventory coverage passes 285/285 rows, 1065/1065 handles, 138/138 routes, and 30/30 workflows. Production smoke follows deployment.
 
 ### WTF-BB-735 - Gamma media infrastructure inventory story waits for a retired Own-node setup button
 
