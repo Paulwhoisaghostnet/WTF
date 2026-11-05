@@ -14750,3 +14750,13 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: The step limit ended the release gate before Playwright could report whether the final tests passed or failed.
 
 **Rule**: When a growing browser suite reaches its step deadline while still making progress, derive the step budget from the measured CI elapsed time, the remaining tests' configured deadlines, and runner cleanup. Leave individual test deadlines and assertions intact.
+
+---
+
+## 2026-11-05 - Update repository policy tests with workflow limits
+
+**What happened**: Quality Gates run `42092599661` failed in Aggregate unit tests because the PixAlerce timeout policy test still expected the inventory workflow's old 30-minute step limit after the workflow changed to 40 minutes.
+
+**Why it mattered**: The stale assertion stopped the release gate before the longer inventory browser suite could run.
+
+**Rule**: Search for repository tests that assert a workflow limit whenever that limit changes, update the owning assertion in the same commit, and run the focused test before pushing.

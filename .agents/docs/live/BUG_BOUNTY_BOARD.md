@@ -5357,6 +5357,7 @@ Total: **777** · Open: **9** · Claimed: **42** · In Progress: **19** · Block
   - Raised only the Quality Gates inventory step limit to 40 minutes: 30 minutes already elapsed + up to 3 minutes for the in-flight slow test + 6 times 1 minute for remaining tests + 1 minute for runner cleanup. The test assertions and per-test deadlines are unchanged.
 - Verification pending:
   - Workflow syntax and board generation checks passed locally; a new full Quality Gates run must verify the step finishes on GitHub.
+- Follow-up (2026-11-05): Main Quality Gates `42092599661` stopped in Aggregate unit tests because `tests/e2e/inventory/pixalerce-timeout-policy.test.mjs` still required `timeout-minutes: 30`. Updated that single policy assertion to the evidence-derived 40-minute workflow limit; focused unit test, inventory coverage, board check, and diff check pass locally. Full Quality Gates rerun remains pending.
 
 ### WTF-BB-800 - Horf gift browser stories expect eligibility after a send without an active signer
 

@@ -8,7 +8,7 @@ const qualityWorkflow = readFileSync(".github/workflows/quality-gates.yml", "utf
 
 test("PixAlerce keeps every action and the complete encoder journey bounded by repository contracts", () => {
   assert.match(playwrightConfig, /timeout:\s*60_000/u);
-  assert.match(qualityWorkflow, /timeout-minutes:\s*30/u);
+  assert.match(qualityWorkflow, /timeout-minutes:\s*40/u);
   assert.match(pixalerceSpec, /PIXALERCE_ACTION_TIMEOUT_MS = 60_000/u);
   assert.match(pixalerceSpec, /PIXALERCE_JOURNEY_TIMEOUT_MS = 30 \* 60_000/u);
   assert.match(pixalerceSpec, /test\.setTimeout\(PIXALERCE_JOURNEY_TIMEOUT_MS\)/u);
