@@ -925,7 +925,7 @@ export function HorfGifts({
           <p>These are verified gifts received by {address ? shortAddress(address) : "your connected wallet"}. Marking a returned favor is your own note, not a blockchain debt.</p>
           {giftsQuery.isPending && address && <p>Reading your gift book…</p>}
           {giftScopeDenied ? <Note $error role="alert">
-            {giftRestricted ? "This wallet is restricted from Horf private features. Check Trader standing by the race board." : "Your Horf wallet proof is missing or expired. Reconnect and verify this wallet to read its gift book."}
+            {giftRestricted ? "This wallet is restricted from Horf private features. Check its trader profile for standing details." : "Your Horf wallet proof is missing or expired. Reconnect and verify this wallet to read its gift book."}
             {!giftRestricted && <> <Action type="button" onClick={() => void connectWallet()} disabled={isConnecting}>{isConnecting ? "Connecting…" : "Reconnect and verify wallet"}</Action></>}
           </Note> : giftsQuery.isError && <p role="alert">Gift book unavailable. Refresh to try again.</p>}
           {receivedGifts.length ? <GiftList>{receivedGifts.map((gift) => (

@@ -12,15 +12,30 @@ const horseCurrency = "KT1E9s2ncE5vXjofmzqwE6gEg9JPruTRBdrM";
 const stableV2 = "KT1Rg7ippRJGrFgKBDCGUyiFG7jKdcU7Dmsg";
 const stableV3 = "KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton";
 
-test("each outbound current-season edition accrues 10 HORSE only to its sender", () => {
+test("each outbound interaction accrues 10 HORSE only to its sender, regardless of edition quantity", () => {
   const rows = buildHorfRewardEntitlements([
     { kind: "direct", sourceKey: "100", from: sender, to: recipient, units: "3", tokenContract: horseArt, tokenId: "1" },
     { kind: "stable", sourceKey: "KT1Stable:200", from: recipient, to: sender, units: "1", tokenContract: horseArt, tokenId: "1" },
   ], horseCurrency);
   assert.equal(HORF_HORSE_REWARD_RAW_PER_UNIT.toString(), "1000000000");
   assert.deepEqual(rows.map((row) => [row.sourceKind, row.sourceKey, row.traderAddress, row.units, row.amountRaw]), [
-    ["direct", "100", sender, "3", "3000000000"],
+    ["direct", "100", sender, "1", "1000000000"],
     ["stable", "KT1Stable:200", recipient, "1", "1000000000"],
+  ]);
+});
+
+test("same-operation token legs share one award per recipient while batch recipients each earn one", () => {
+  const rows = buildHorfRewardEntitlements([
+    { kind: "direct", sourceKey: "op:sender:recipient", from: sender, to: recipient,
+      units: "9990", tokenContract: horseArt, tokenId: "1" },
+    { kind: "direct", sourceKey: "op:sender:recipient", from: sender, to: recipient,
+      units: "1", tokenContract: horseArt, tokenId: "2" },
+    { kind: "direct", sourceKey: "op:sender:other", from: sender, to: "tz1LNDLoU3Juoc6sWeKbHRsoCNtP1GTJXvRQ",
+      units: "1", tokenContract: horseArt, tokenId: "3" },
+  ], horseCurrency);
+  assert.deepEqual(rows.map((row) => [row.counterpartyAddress, row.units, row.amountRaw]), [
+    [recipient, "1", "1000000000"],
+    ["tz1LNDLoU3Juoc6sWeKbHRsoCNtP1GTJXvRQ", "1", "1000000000"],
   ]);
 });
 

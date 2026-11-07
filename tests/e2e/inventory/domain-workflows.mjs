@@ -883,10 +883,10 @@ export const DOMAIN_WORKFLOWS = [
     ],
   },
   {
-    name: "horf welcome to race and horse market loop",
+    name: "horf welcome, gated race, and horse market loop",
     domain: "Market, Exchange, Inventory, and Commerce",
     routes: ["/horf", "/horf/race", "/horf/horse-market"],
-    uiHandles: ["data-horf-neighvember-banner", "data-horf-horse-market-open", "data-horf-wanted-mint", "data-horf-season-art", "data-horf-lane"],
+    uiHandles: ["data-horf-neighvember-banner", "data-horf-horse-market-open", "data-horf-wanted-mint", "data-horf-season-art", "data-horf-race-closed", "data-horf-lane"],
     eventHandles: ["horf.race.viewed", "horf.season.selected"],
     apiProbes: [
       { method: "GET", path: "/api/horf/season?season=current-2026", expectedStatuses: [200, 503] },

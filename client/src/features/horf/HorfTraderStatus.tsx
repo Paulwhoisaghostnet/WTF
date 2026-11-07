@@ -251,7 +251,7 @@ export function HorfTraderStatus({
         <HorfKnownTraderPicker choices={traderChoices} onSelect={(wallet) => { setLookupAddress(wallet); setLookupError(null); onSelect(wallet); }} label="trader to check" includeBlacklisted posseDataAttribute="data-horf-status-posse-picker" knownDataAttribute="data-horf-status-trader-picker" />
       </form>
       {lookupError && <Report $listed role="alert">{lookupError}</Report>}
-      {!selectedAddress && <p>Choose a rider on the race board or enter a Tezos wallet address above.</p>}
+      {!selectedAddress && <p>Choose a known trader or enter a Tezos wallet address above.</p>}
       {selectedAddress && statusQuery.isPending && <p role="status">Checking Horf trader standing…</p>}
       {selectedAddress && statusQuery.isError && <Report $listed role="alert">Trader standing is unavailable. Try the lookup again.</Report>}
       {status && <Report $listed={status.blacklisted} data-horf-status-result role={status.blacklisted ? "alert" : "status"}>

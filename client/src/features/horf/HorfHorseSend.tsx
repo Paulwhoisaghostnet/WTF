@@ -25,6 +25,7 @@ type HorseRewards = {
   rateHorse: string;
   rateRaw: string;
   countedUnits: string;
+  countedTrades?: string;
   accruedRaw: string;
   claimableRaw: string;
   claimedRaw: string;
@@ -34,6 +35,7 @@ type HorseRewards = {
   claimReady: boolean;
   sourceComplete: boolean;
   sourceDiscrepancies: string;
+  priorRulePaidRaw?: string;
 };
 type ClaimPermitResponse = {
   contractAddress: string;
@@ -363,7 +365,7 @@ export function HorfHorseSend({
           <small>Pass the reins · Tezos Mainnet</small>
           <h2>Send $HORSE to your posse</h2>
           <p>Send HORSE to up to 50 wallets at once. Add riders, pick your posse, or upload a CSV.</p>
-          <p>Send a qualifying horse to earn 10 HORSE. Return rides earn another 10. Stable claims reward the listing owner. Claimants pay Tezos gas.</p>
+          <p>Earn 10 HORSE per qualifying send, no matter how many editions move. A return send earns another 10. Stable claims reward the depositor; claimants pay gas.</p>
         </div>
         <Action type="button" onClick={() => { void configQuery.refetch(); void activityQuery.refetch(); void rewardsQuery.refetch(); }} disabled={configQuery.isFetching || activityQuery.isFetching || rewardsQuery.isFetching}>Refresh $HORSE</Action>
       </Header>
@@ -386,14 +388,14 @@ export function HorfHorseSend({
       {address && rewardsQuery.isError && <Note $error role="alert">The participation reward ledger is unavailable. Refresh $HORSE to try again; on-chain receipts above remain separate.</Note>}
       {address && reward && !reward.asOf && <Note data-horf-horse-rewards role="status">Horf is building the current-season reward ledger. Claimable and claimed totals will appear after its first indexed snapshot; vault claims need a configured and funded Mainnet contract. <Action data-horf-horse-claim type="button" disabled>Claim HORSE · unavailable while scanning</Action></Note>}
       {address && reward?.asOf && <Note data-horf-horse-rewards role="status">
-        <strong>Current-season reward ledger</strong> · {reward.rateHorse} HORSE per qualifying horse sent · {reward.countedUnits} rewardable outbound horse trades · {formatHorseAmount(reward.accruedRaw, 8)} HORSE accrued · {formatHorseAmount(reward.claimableRaw, 8)} HORSE claimable · {formatHorseAmount(reward.claimedRaw, 8)} HORSE claimed on-chain.
+        <strong>Current-season reward ledger</strong> · {reward.rateHorse} HORSE per qualifying outbound interaction · {reward.countedTrades ?? reward.countedUnits} rewarded sends · {formatHorseAmount(reward.accruedRaw, 8)} HORSE accrued · {formatHorseAmount(reward.claimableRaw, 8)} HORSE claimable · {formatHorseAmount(reward.claimedRaw, 8)} HORSE claimed on-chain.
         {reward.status !== "ready" && <> {reward.status === "syncing" ? "Counts are provisional while Horf scans Mainnet." : "The ledger needs a refresh; shown figures are the last available snapshot."}</>}
         <> Indexed through {new Date(reward.asOf).toLocaleString()}.</>
-        {!reward.claimReady && (/^0+$/.test(reward.claimableRaw) ? <> No HORSE to claim yet. This wallet earns 10 HORSE for each qualifying horse it sends.</> : <> Vault claiming is paused until the season scan, Mainnet vault signer, and HORSE reserve are ready.</>)}
+        {!reward.claimReady && (/^0+$/.test(reward.claimableRaw) ? <> No HORSE to claim yet. This wallet earns 10 HORSE per qualifying outbound interaction.</> : <> Vault claiming is paused until the season scan, Mainnet vault signer, and HORSE reserve are ready.</>)}
         {reward.claimReady && reward.vaultAddress && <> Vault: <a href={`https://tzkt.io/${reward.vaultAddress}`} target="_blank" rel="noopener noreferrer">{shortAddress(reward.vaultAddress)}</a>.</>}
         <div style={{ marginTop: 8 }}><Action data-horf-horse-claim type="button" onClick={() => void claimReward()} disabled={!canClaimReward || claimStage !== null || busy}>{claimStage ? "Claim in progress…" : "Claim HORSE · pay XTZ gas"}</Action></div>
       </Note>}
-      {address && reward && /^\d+$/.test(reward.sourceDiscrepancies) && BigInt(reward.sourceDiscrepancies) > 0n && <Note $error role="alert">Some previously claimed reward entries no longer match their source trades. The reward ledger needs review; do not treat its accrued and claimable figures as final.</Note>}
+      {address && reward && reward.priorRulePaidRaw && /^\d+$/.test(reward.priorRulePaidRaw) && BigInt(reward.priorRulePaidRaw) > 0n && <Note>Previously claimed under the edition-based rule: {formatHorseAmount(reward.priorRulePaidRaw, 8)} HORSE. Paid claims remain final; current claimable totals use 10 HORSE per outbound interaction.</Note>}
       {claimStage && <Note role="status" aria-live="polite">{claimStage === "permit" ? "Requesting your cumulative HORSE claim permit…" : claimStage === "preflight" ? "Checking wallet and Tezos Mainnet…" : claimStage === "preparing" ? "Preparing the vault claim…" : claimStage === "wallet" ? "Approve the vault claim and XTZ gas in your wallet…" : "Waiting for Tezos confirmation…"} {claimHash && <a href={`https://tzkt.io/${encodeURIComponent(claimHash)}`} target="_blank" rel="noopener noreferrer">View submitted claim</a>}</Note>}
       {claimError && <Note $error role="alert">{claimError}</Note>}
       {claimSuccess && <Note role="status">{claimSuccess} {claimHash && <a href={`https://tzkt.io/${encodeURIComponent(claimHash)}`} target="_blank" rel="noopener noreferrer">View transaction</a>}</Note>}

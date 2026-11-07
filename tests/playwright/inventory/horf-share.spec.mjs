@@ -86,7 +86,7 @@ test("a rider shares three editable received-horse stories and visitors see the 
     "3 direct receipts", "2 answered", "1 waiting", "67% reciprocation",
   ]);
   await expect(dialog.locator('label.story:has([data-horf-share-story="race"]) li')).toHaveText([
-    "2 sent", "4 received", "6 horse transfers", "#2 standing",
+    "2 sent", "4 received", "6 outbound rides", "#2 standing",
   ]);
   const herdDraft = await draft.inputValue();
   expect(herdDraft).toContain("4");

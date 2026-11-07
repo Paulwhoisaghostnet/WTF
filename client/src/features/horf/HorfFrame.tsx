@@ -13,6 +13,7 @@ type HorfFrameProps = {
   onDisconnectWallet?: () => Promise<void>;
   walletConnecting?: boolean;
   marshalActive?: boolean;
+  raceEnabled?: boolean;
 };
 
 const Frame = styled.div`
@@ -264,7 +265,7 @@ const links = [
   { path: "/horf/info", label: "Is It a Horse?", icon: "?", section: "info" },
 ];
 
-export function HorfFrame({ title, children, aside, walletAddress, onConnectWallet, onDisconnectWallet, walletConnecting = false, marshalActive = false }: HorfFrameProps) {
+export function HorfFrame({ title, children, aside, walletAddress, onConnectWallet, onDisconnectWallet, walletConnecting = false, marshalActive = false, raceEnabled = false }: HorfFrameProps) {
   const [location, navigate] = useLocation();
   const wm = useWindowManager();
   const pagePath = useContext(WindowPathContext);
@@ -333,7 +334,7 @@ export function HorfFrame({ title, children, aside, walletAddress, onConnectWall
       <a className="wtf-origin" data-horf-wtf-home href="/" onClick={openWtfHome} aria-label="Brought to you by wtfOS.app — visit WTF OS home" title="Visit wtfOS.app"><span className="wtf-mark" aria-hidden="true">WTF<span>OS</span></span><span className="wtf-statement">Brought to you by <strong>wtfOS.app</strong></span></a>
       <a className="brand" href={`/horf?season=${encodeURIComponent(ledgerSeason)}`} onClick={(event) => navigateTo(event, `/horf?season=${encodeURIComponent(ledgerSeason)}`)} aria-label="Horf home"><span className="brand-horse" aria-hidden="true">🐎</span><span>HORF<small>Horse trading</small></span></a>
       <span className="nav-caption">The trails</span>
-      <div className="links">{links.filter((link) => link.section !== "inspection-desk" || marshalActive).map((link) => {
+      <div className="links">{links.filter((link) => (link.section !== "inspection-desk" || marshalActive) && (link.section !== "race" || raceEnabled)).map((link) => {
         const linkSeason = link.section === "range" ? rangeSeason
           : link.section === "race" || link.section === "stable" || link.section === "traders" ? ledgerSeason : "current-2026";
         const href = `${link.path}?season=${encodeURIComponent(linkSeason)}`;
@@ -357,7 +358,7 @@ export function HorfFrame({ title, children, aside, walletAddress, onConnectWall
     <Aside id="horf-context-rail" data-horf-right-rail $open={asideOpen} aria-label="Horse trading updates and details">
       <button ref={asideCloseRef} className="rail-close" type="button" onClick={() => setAsideOpen(false)}>← Back to horses</button>
       <span className="rail-kicker">Live from the trail</span>
-      {aside ?? <><h2>Keep your reins handy</h2><p>Race standings, horse details and trader notes appear here as you explore Horf.</p></>}
+      {aside ?? <><h2>Keep your reins handy</h2><p>{raceEnabled ? "Race standings, horse details and trader notes appear here as you explore Horf." : "Horse details and trader notes appear here as you explore Horf."}</p></>}
     </Aside>
   </Frame>;
 }

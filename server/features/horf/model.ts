@@ -86,6 +86,14 @@ export interface HorfTransfer {
   roomInput?: boolean;
 }
 
+/** One wallet-to-wallet horse interaction, independent of edition quantity. */
+export function horfInteractionKey(transfer: Pick<HorfTransfer, "id" | "operationHash" | "exchangeKey" | "from" | "to">): string {
+  const source = transfer.exchangeKey
+    ? `exchange:${transfer.exchangeKey}`
+    : transfer.operationHash ? `operation:${transfer.operationHash}` : `event:${transfer.id}`;
+  return `${source}\u0000${transfer.from}\u0000${transfer.to}`;
+}
+
 export function isTezosWallet(value: unknown): value is string {
   return typeof value === "string" && TEZOS_WALLET_RE.test(value) && value !== TEZOS_BURN_ADDRESS;
 }
@@ -188,8 +196,14 @@ export function normalizeHorfTransfer(
 export interface HorfLeaderboardEntry {
   address: string;
   name: null;
-  /** One activity point per direct edition or settled exchange per rider. */
+  /** Outbound wallet-to-wallet horse interactions; edition quantity does not multiply rank. */
   trades: number;
+  sentInteractions: number;
+  receivedInteractions: number;
+  /** Distinct wallet links in this season; all-time combines season links. */
+  riderLinks: number;
+  /** Horse editions matched by a return ride or verified settlement. */
+  completedTrades: number;
   received: number;
   /** Explicitly confirmed horse gifts received through Horf. */
   giftHorsesReceived: number;
@@ -220,6 +234,9 @@ export interface HorfCurrentUser extends HorfLeaderboardEntry {
     settlement?: "stable" | "gift" | "market" | "objkt";
     stableMode?: 0 | 1 | 2 | 3;
     exchangeKey?: string;
+    operationHash?: string;
+    racePoints: number;
+    horseReward: string;
   }>;
 }
 
@@ -227,34 +244,83 @@ export function summarizeSeason(transfers: HorfTransfer[], address: string | nul
   leaderboard: HorfLeaderboardEntry[];
   currentUser: HorfCurrentUser | null;
 } {
-  const totals = new Map<string, { received: number; giftHorsesReceived: number; tradeHorsesReceived: number; sent: number; trades: number }>();
-  const countedExchanges = new Map<string, Set<string>>();
+  type Counts = { received: number; giftHorsesReceived: number; tradeHorsesReceived: number; sent: number;
+    trades: number; sentInteractions: number; receivedInteractions: number; riderLinks: number; completedTrades: number };
+  const totals = new Map<string, Counts>();
+  const countedSentInteractions = new Set<string>();
+  const countedReceivedInteractions = new Set<string>();
   const completedExchanges = new Set<string>();
+  const completedLeaderboardExchanges = new Set<string>();
+  const completedSettlementEvents = new Set<string>();
+  const riderConnections = new Map<string, Set<string>>();
+  const reciprocalPairs = new Map<string, { first: string; second: string; firstToSecond: number; secondToFirst: number }>();
   let completedTrades = 0;
   const pair = new Map<string, {
     sendCredit: number;
     waiting: HorfCurrentUser["waitingHorses"];
   }>();
   const recent: HorfCurrentUser["recent"] = [];
+  const countsFor = (wallet: string): Counts => {
+    let counts = totals.get(wallet);
+    if (!counts) {
+      counts = { received: 0, giftHorsesReceived: 0, tradeHorsesReceived: 0, sent: 0,
+        trades: 0, sentInteractions: 0, receivedInteractions: 0, riderLinks: 0, completedTrades: 0 };
+      totals.set(wallet, counts);
+    }
+    return counts;
+  };
+  const addCompleted = (wallet: string, amount: number) => { countsFor(wallet).completedTrades += amount; };
+  const connectRiders = (left: string, right: string) => {
+    const leftLinks = riderConnections.get(left) || new Set<string>();
+    const rightLinks = riderConnections.get(right) || new Set<string>();
+    leftLinks.add(right);
+    rightLinks.add(left);
+    riderConnections.set(left, leftLinks);
+    riderConnections.set(right, rightLinks);
+  };
   for (const transfer of [...transfers].sort((a, b) => a.timestamp.localeCompare(b.timestamp) || a.id - b.id)) {
-    const sender = totals.get(transfer.from) || { received: 0, giftHorsesReceived: 0, tradeHorsesReceived: 0, sent: 0, trades: 0 };
+    const sender = countsFor(transfer.from);
     sender.sent += transfer.amount;
-    if (transfer.exchangeKey) {
-      const seen = countedExchanges.get(transfer.from) || new Set<string>();
-      if (!seen.has(transfer.exchangeKey)) { sender.trades += 1; seen.add(transfer.exchangeKey); }
-      countedExchanges.set(transfer.from, seen);
-    } else sender.trades += transfer.amount;
-    totals.set(transfer.from, sender);
-    const recipient = totals.get(transfer.to) || { received: 0, giftHorsesReceived: 0, tradeHorsesReceived: 0, sent: 0, trades: 0 };
+    const interactionKey = horfInteractionKey(transfer);
+    const firstSenderInteraction = !countedSentInteractions.has(interactionKey);
+    if (firstSenderInteraction) {
+      sender.trades += 1;
+      sender.sentInteractions += 1;
+      countedSentInteractions.add(interactionKey);
+    }
+    const recipient = countsFor(transfer.to);
     recipient.received += transfer.amount;
-    if (transfer.exchangeKey) {
-      const seen = countedExchanges.get(transfer.to) || new Set<string>();
-      if (!seen.has(transfer.exchangeKey)) { recipient.trades += 1; seen.add(transfer.exchangeKey); }
-      countedExchanges.set(transfer.to, seen);
-    } else recipient.trades += transfer.amount;
+    if (!countedReceivedInteractions.has(interactionKey)) {
+      recipient.receivedInteractions += 1;
+      countedReceivedInteractions.add(interactionKey);
+    }
     if (transfer.settlement === "gift") recipient.giftHorsesReceived += transfer.amount;
     else recipient.tradeHorsesReceived += transfer.amount;
-    totals.set(transfer.to, recipient);
+    connectRiders(transfer.from, transfer.to);
+
+    if (!transfer.settlement) {
+      const [first, second] = transfer.from.localeCompare(transfer.to) < 0
+        ? [transfer.from, transfer.to] : [transfer.to, transfer.from];
+      const pairKey = `${first}\u0000${second}`;
+      const reciprocal = reciprocalPairs.get(pairKey) || { first, second, firstToSecond: 0, secondToFirst: 0 };
+      if (transfer.from === first) reciprocal.firstToSecond += transfer.amount;
+      else reciprocal.secondToFirst += transfer.amount;
+      reciprocalPairs.set(pairKey, reciprocal);
+    } else if (transfer.exchangeKey) {
+      if (!completedLeaderboardExchanges.has(transfer.exchangeKey)) {
+        addCompleted(transfer.from, 1);
+        addCompleted(transfer.to, 1);
+        completedLeaderboardExchanges.add(transfer.exchangeKey);
+      }
+    } else if (transfer.settlement === "market" || transfer.settlement === "objkt" ||
+        (transfer.settlement === "stable" && (transfer.stableMode === 0 || transfer.stableMode === 2))) {
+      const settlementKey = `${transfer.settlement}:${transfer.id}:${transfer.from}:${transfer.to}`;
+      if (!completedSettlementEvents.has(settlementKey)) {
+        addCompleted(transfer.from, 1);
+        addCompleted(transfer.to, 1);
+        completedSettlementEvents.add(settlementKey);
+      }
+    }
     if (address === transfer.from || address === transfer.to) {
       const counterparty = address === transfer.from ? transfer.to : transfer.from;
       if (!transfer.settlement) {
@@ -304,12 +370,27 @@ export function summarizeSeason(transfers: HorfTransfer[], address: string | nul
         ...(transfer.settlement ? { settlement: transfer.settlement } : {}),
         ...(transfer.stableMode !== undefined ? { stableMode: transfer.stableMode } : {}),
         ...(transfer.exchangeKey ? { exchangeKey: transfer.exchangeKey } : {}),
+        ...(transfer.operationHash ? { operationHash: transfer.operationHash } : {}),
+        racePoints: address === transfer.from && firstSenderInteraction ? 1 : 0,
+        horseReward: address === transfer.from && firstSenderInteraction ? "10" : "0",
       });
     }
   }
+  for (const reciprocal of reciprocalPairs.values()) {
+    const matched = Math.min(reciprocal.firstToSecond, reciprocal.secondToFirst);
+    if (matched > 0) {
+      addCompleted(reciprocal.first, matched);
+      addCompleted(reciprocal.second, matched);
+    }
+  }
+  for (const [wallet, partners] of riderConnections) countsFor(wallet).riderLinks = partners.size;
   const leaderboard = Array.from(totals, ([wallet, counts]) => ({
     address: wallet,
     name: null,
+    sentInteractions: counts.sentInteractions,
+    receivedInteractions: counts.receivedInteractions,
+    riderLinks: counts.riderLinks,
+    completedTrades: counts.completedTrades,
     received: counts.received,
     giftHorsesReceived: counts.giftHorsesReceived,
     tradeHorsesReceived: counts.tradeHorsesReceived,
@@ -317,7 +398,8 @@ export function summarizeSeason(transfers: HorfTransfer[], address: string | nul
     trades: counts.trades,
   })).sort((a, b) => b.trades - a.trades || b.received - a.received || a.address.localeCompare(b.address));
   if (!address) return { leaderboard, currentUser: null };
-  const own = totals.get(address) || { received: 0, giftHorsesReceived: 0, tradeHorsesReceived: 0, sent: 0, trades: 0 };
+  const own = totals.get(address) || { received: 0, giftHorsesReceived: 0, tradeHorsesReceived: 0,
+    sent: 0, trades: 0, sentInteractions: 0, receivedInteractions: 0, riderLinks: 0, completedTrades: 0 };
   const owedTo: HorfCurrentUser["owedTo"] = [];
   const owedBy: HorfCurrentUser["owedBy"] = [];
   const waitingHorses: HorfCurrentUser["waitingHorses"] = [];
@@ -337,6 +419,9 @@ export function summarizeSeason(transfers: HorfTransfer[], address: string | nul
       address,
       name: null,
       completedTrades,
+      sentInteractions: own.sentInteractions,
+      receivedInteractions: own.receivedInteractions,
+      riderLinks: own.riderLinks,
       received: own.received,
       giftHorsesReceived: own.giftHorsesReceived,
       tradeHorsesReceived: own.tradeHorsesReceived,

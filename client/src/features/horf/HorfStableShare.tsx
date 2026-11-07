@@ -93,8 +93,8 @@ function buildStories(seasonLabel: string, stats: HorfShareStats, url: string): 
     },
     {
       key: "race", title: "Race report 🤠", receivedBreakdown: true,
-      metrics: [`${stats.sent} sent`, `${stats.received} received`, `${stats.trades} horse transfers`, `${stats.rank ? `#${stats.rank} standing` : "Unranked"}`],
-      draft: `🤠 ${seasonLabel} race report: ${stats.sent} horses sent, ${stats.received} received.${receivedSplit} ${stats.trades} horse transfers${stats.rank ? `, #${stats.rank} on the board` : ""}. See my received horses on HORF: ${url}`,
+      metrics: [`${stats.sent} sent`, `${stats.received} received`, `${stats.trades} outbound rides`, `${stats.rank ? `#${stats.rank} standing` : "Unranked"}`],
+      draft: `🤠 ${seasonLabel} race report: ${stats.sent} horses sent, ${stats.received} received.${receivedSplit} ${stats.trades} outbound horse interactions${stats.rank ? `, #${stats.rank} on the board` : ""}. See my received horses on HORF: ${url}`,
     },
   ];
 }

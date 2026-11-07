@@ -7,7 +7,7 @@ export type HorfListingPath = { id: string; kind: "outlaw" | "marshal" | "horse"
 function key(contract: string, tokenId: string): string { return `${contract}/${tokenId}`; }
 
 /** Contract-backed choices, kept separate from wallet-held availability signs. */
-export function useHorfListedHorsePaths(seasonKey: string) {
+export function useHorfListedHorsePaths(seasonKey: string, horseMarketEnabled = false) {
   const rooms = useQuery({
     queryKey: ["horf", "rooms", "public-listings"],
     queryFn: () => api.get<{ listings: Array<{ id: string; mode: 0 | 1 | 2; tokenContract: string; tokenId: string; publicVisible?: boolean }> }>("/api/horf/rooms?market=all"),
@@ -16,6 +16,7 @@ export function useHorfListedHorsePaths(seasonKey: string) {
   const sales = useQuery({
     queryKey: ["horf", "horse-market", "listings"],
     queryFn: () => api.get<{ listings: Array<{ id: string; tokenContract: string; tokenId: string }> }>("/api/horf/horse-market/listings"),
+    enabled: horseMarketEnabled,
     refetchOnWindowFocus: true,
   });
   const paths = useMemo(() => {
@@ -33,13 +34,13 @@ export function useHorfListedHorsePaths(seasonKey: string) {
           : `/horf/horse-market?season=${encodeURIComponent(seasonKey)}&market=marshals&listing=${encodeURIComponent(listing.id)}`,
       });
     }
-    for (const listing of sales.data?.listings ?? []) {
+    for (const listing of horseMarketEnabled ? sales.data?.listings ?? [] : []) {
       add(listing.tokenContract, listing.tokenId, {
         id: listing.id, kind: "horse", label: "For sale now · HORSE",
         href: `/horf/horse-market?season=${encodeURIComponent(seasonKey)}&market=horse4horse&listing=${encodeURIComponent(listing.id)}`,
       });
     }
     return result;
-  }, [rooms.data, sales.data, seasonKey]);
+  }, [rooms.data, sales.data, seasonKey, horseMarketEnabled]);
   return { paths, roomsPending: rooms.isPending, salesPending: sales.isPending };
 }

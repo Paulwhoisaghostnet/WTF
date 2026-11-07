@@ -12,8 +12,12 @@ import { horseMarketAddress } from "./horse-market/market";
 import { isTezosWallet } from "./model";
 import { HorfHorseClaimSyncError, readConfiguredHorseClaimVault, readHorseClaimVault, signHorseClaimPermit } from "./horse-claims";
 
-export const HORF_HORSE_REWARD_PER_UNIT = 10n;
-export const HORF_HORSE_REWARD_RAW_PER_UNIT = HORF_HORSE_REWARD_PER_UNIT * 100_000_000n;
+export const HORF_HORSE_REWARD_PER_TRADE = 10n;
+export const HORF_HORSE_REWARD_RAW_PER_TRADE = HORF_HORSE_REWARD_PER_TRADE * 100_000_000n;
+/** @deprecated Kept as a compatibility export; rewards are per trade, not per edition. */
+export const HORF_HORSE_REWARD_PER_UNIT = HORF_HORSE_REWARD_PER_TRADE;
+/** @deprecated Kept as a compatibility export; rewards are per trade, not per edition. */
+export const HORF_HORSE_REWARD_RAW_PER_UNIT = HORF_HORSE_REWARD_RAW_PER_TRADE;
 const CURRENT = HORF_SEASONS.find((season) => season.key === HORF_CURRENT_SEASON_KEY)!;
 let lastReconciledSourceFingerprint: string | null = null;
 
@@ -50,13 +54,17 @@ export function buildHorfRewardEntitlements(
   excludedTokens: ReadonlySet<string> = new Set(),
 ): HorfRewardEntitlementInput[] {
   const rows: HorfRewardEntitlementInput[] = [];
+  const countedInteractions = new Set<string>();
   for (const event of events) {
     if (!isTezosWallet(event.from) || !isTezosWallet(event.to) || event.from === event.to ||
         !/^\d+$/.test(event.units) || BigInt(event.units) <= 0n ||
         (excludedHorseContract && event.tokenContract === excludedHorseContract) ||
         excludedTokens.has(`${event.tokenContract}/${event.tokenId}`)) continue;
-    const units = BigInt(event.units).toString();
-    const amountRaw = (BigInt(units) * HORF_HORSE_REWARD_RAW_PER_UNIT).toString();
+    const interactionKey = `${event.kind}\u0000${event.sourceKey}\u0000${event.from}`;
+    if (countedInteractions.has(interactionKey)) continue;
+    countedInteractions.add(interactionKey);
+    const units = "1";
+    const amountRaw = HORF_HORSE_REWARD_RAW_PER_TRADE.toString();
     rows.push({ sourceKind: event.kind, sourceKey: event.sourceKey,
       traderAddress: event.from, counterpartyAddress: event.to, units, amountRaw });
   }
@@ -236,8 +244,9 @@ export async function reconcileCurrentHorfRewards(): Promise<{ status: "ready" |
       (row) => ({ operationHash: row.operation_hash, from: row.from_address, to: row.to_address,
         amount: row.amount, tokenContract: row.token_contract, tokenId: row.token_id }));
     const events: HorfRewardSourceEvent[] = [
-      ...directWithoutRoomInput.map((row) => ({ kind: "direct" as const, sourceKey: String(row.event_id),
-        from: row.from_address, to: row.to_address, units: String(row.amount),
+      ...directWithoutRoomInput.map((row) => ({ kind: "direct" as const,
+        sourceKey: row.operation_hash ? `${row.operation_hash}:${row.from_address}:${row.to_address}` : `event:${row.event_id}`,
+        from: row.from_address, to: row.to_address, units: "1",
         tokenContract: row.token_contract, tokenId: row.token_id })),
       ...stableClaimRewardEvents(stable.rows),
       ...roomSettlementRewardEvents(room.rows),
@@ -329,14 +338,14 @@ export async function getHorfRewardActivity(address: string) {
   const vault = await readConfiguredHorseClaimVault(address);
   const claimedRaw = BigInt(vault?.claimedRaw ?? "0");
   const claimableRaw = accruedRaw > claimedRaw ? accruedRaw - claimedRaw : 0n;
-  const sourceDiscrepancies = claimedRaw > accruedRaw ? 1n : 0n;
+  const priorRulePaidRaw = claimedRaw > accruedRaw ? claimedRaw - accruedRaw : 0n;
   const claimReady = reconciliation.reconciled && !!vault?.signer && claimableRaw > 0n &&
     BigInt(vault.balanceRaw) >= claimableRaw;
-  return { season: HORF_CURRENT_SEASON_KEY, rateHorse: HORF_HORSE_REWARD_PER_UNIT.toString(),
-    rateRaw: HORF_HORSE_REWARD_RAW_PER_UNIT.toString(), countedUnits: row.units,
+  return { season: HORF_CURRENT_SEASON_KEY, rateHorse: HORF_HORSE_REWARD_PER_TRADE.toString(),
+    rateRaw: HORF_HORSE_REWARD_RAW_PER_TRADE.toString(), countedUnits: row.units, countedTrades: row.units,
     bySource: row.by_source,
     pendingRaw: claimableRaw.toString(), paidRaw: claimedRaw.toString(),
-    sourceDiscrepancies: sourceDiscrepancies.toString(),
+    sourceDiscrepancies: "0", priorRulePaidRaw: priorRulePaidRaw.toString(),
     asOf: reconciliation.asOf, status: reconciliation.status,
     accruedRaw: accruedRaw.toString(), totalRaw: accruedRaw.toString(),
     claimableRaw: claimableRaw.toString(), claimedRaw: claimedRaw.toString(),

@@ -47,6 +47,7 @@ async function mockHorf(page, { readyHorse = false, initialPosse = [], initialGi
   await page.route(/\/api\/horf\/horse\/rewards(?:\?.*)?$/, (route) => json(route, {
     season: "current-2026", rateHorse: "10", rateRaw: "1000000000",
     countedUnits: readyHorse ? "3" : "0",
+    countedTrades: readyHorse ? "3" : "0",
     accruedRaw: readyHorse ? "3000000000" : "0",
     totalRaw: readyHorse ? "3000000000" : "0",
     claimableRaw: readyHorse ? "2000000000" : "0",
@@ -345,8 +346,8 @@ test.describe("Horf HORSE, posse, and horse gifts", () => {
     await expect(send.locator("[data-horf-horse-activity]")).toContainText("35");
     await expect(send.locator("[data-horf-horse-activity]")).toContainText("25");
     await expect(send.locator("[data-horf-horse-activity]")).toContainText("1");
-    await expect(send.locator("[data-horf-horse-rewards]")).toContainText("10 HORSE per qualifying horse sent");
-    await expect(send.locator("[data-horf-horse-rewards]")).toContainText("3 rewardable outbound horse trades");
+    await expect(send.locator("[data-horf-horse-rewards]")).toContainText("10 HORSE per qualifying outbound interaction");
+    await expect(send.locator("[data-horf-horse-rewards]")).toContainText("3 rewarded sends");
     await expect(send.locator("[data-horf-horse-rewards]")).toContainText("20 HORSE claimable");
     await expect(send.locator("[data-horf-horse-rewards]")).toContainText("10 HORSE claimed on-chain");
     await expect(send.locator("[data-horf-horse-claim]")).toBeDisabled();

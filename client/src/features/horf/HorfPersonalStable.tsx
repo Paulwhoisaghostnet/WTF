@@ -351,7 +351,7 @@ function shortAddress(value: string): string {
   return value.length > 18 ? `${value.slice(0, 8)}…${value.slice(-6)}` : value;
 }
 
-export function HorfPersonalStable({ address, connectWallet, isConnecting, seasonKey, seasonLabel, seasons, shareSeasonKey, shareSeasonLabel, shareStats, onSendHorse }: {
+export function HorfPersonalStable({ address, connectWallet, isConnecting, seasonKey, seasonLabel, seasons, shareSeasonKey, shareSeasonLabel, shareStats, onSendHorse, horseMarketEnabled = false }: {
   address: string | null;
   connectWallet: () => Promise<void>;
   isConnecting: boolean;
@@ -362,6 +362,7 @@ export function HorfPersonalStable({ address, connectWallet, isConnecting, seaso
   shareSeasonLabel: string;
   shareStats: HorfShareStats | null;
   onSendHorse?: (horse: Pick<HeldHorse, "contract" | "tokenId" | "name">, trigger: HTMLButtonElement) => void;
+  horseMarketEnabled?: boolean;
 }) {
   const qc = useQueryClient();
   const { user } = useAuth();
@@ -399,7 +400,7 @@ export function HorfPersonalStable({ address, connectWallet, isConnecting, seaso
     ? linkedWalletsQuery.data.filter((wallet) => typeof wallet?.walletAddress === "string").map((wallet) => wallet.walletAddress)
     : [];
   const linkedHere = Boolean(address && linkedWallets.includes(address));
-  const listedHorsePaths = useHorfListedHorsePaths(shareSeasonKey);
+  const listedHorsePaths = useHorfListedHorsePaths(shareSeasonKey, horseMarketEnabled);
   const availabilitySignsQuery = useQuery({
     queryKey: ["horf", "open-range-offers", address],
     queryFn: () => api.get<{ offers: Array<{ id: number; tokenContract: string; tokenId: string; amount: string; acceptedTokenPolicy: "marshal_only" | "any_qualifying" }> }>(`/api/horf/open-range/offers?address=${encodeURIComponent(address!)}`),
@@ -661,7 +662,7 @@ export function HorfPersonalStable({ address, connectWallet, isConnecting, seaso
           {availabilitySign && <p data-horf-stable-available-status>Available · {availabilitySign.amount} {availabilitySign.amount === "1" ? "edition" : "editions"}</p>}
           <div className="card-actions">
             <button data-horf-stable-mark-available type="button" onClick={() => markAvailable(horse)}>{availabilitySign ? "Update availability" : "Mark available for trade"}</button>
-            <a data-horf-stable-sell-horse href={`/horf/horse-market?season=${encodeURIComponent(shareSeasonKey)}&market=horse4horse&sell=${encodeURIComponent(horseKey)}`}>List for sale · HORSE ↗</a>
+            {horseMarketEnabled && <a data-horf-stable-sell-horse href={`/horf/horse-market?season=${encodeURIComponent(shareSeasonKey)}&market=horse4horse&sell=${encodeURIComponent(horseKey)}`}>List for sale · HORSE ↗</a>}
             <a className="secondary-action" data-horf-stable-room-horse href={`/horf/horse-market?season=${encodeURIComponent(shareSeasonKey)}&market=${inspection === "approved" ? "marshals" : "outlaw"}&outlaw=rooms&deposit=${encodeURIComponent(horseKey)}`}>{inspection === "approved" ? "Place in Marshal stable ↗" : "Place in Outlaw stable ↗"}</a>
             {inspection === "approved" ? <span data-horf-stable-approval-status>Marshal approved</span> : inspection === "pending" ? <span data-horf-stable-approval-status>Marshal review pending</span> : <button className="secondary-action" data-horf-stable-request-inspection type="button" onClick={() => void requestInspectionFromCard(horse)} disabled={busy}>Request Marshal approval</button>}
             {onSendHorse && <button className="quiet-action" data-horf-stable-direct-send type="button" onClick={(event) => onSendHorse(horse, event.currentTarget)}>Send to a trader ↗</button>}
@@ -760,7 +761,7 @@ export function HorfPersonalStable({ address, connectWallet, isConnecting, seaso
       <Panel data-horf-personal-saved>
         <h3>Saved horses</h3>
         {selectionsQuery.isPending && address && <p>Opening your personal stable…</p>}
-        {selectionsDenied ? <Note $error role="alert">{restricted ? "This wallet is restricted from Horf private features. Check Trader standing by the race board." : "Your Horf wallet proof is missing or expired. Reconnect and verify this wallet."} {!restricted && <Action type="button" onClick={() => void connectWallet()} disabled={isConnecting}>{isConnecting ? "Connecting…" : "Reconnect and verify wallet"}</Action>}</Note> : selectionsQuery.isError && <Note $error role="alert">Saved horses are unavailable. Refresh this section to try again.</Note>}
+        {selectionsDenied ? <Note $error role="alert">{restricted ? "This wallet is restricted from Horf private features. Check its trader profile for standing details." : "Your Horf wallet proof is missing or expired. Reconnect and verify this wallet."} {!restricted && <Action type="button" onClick={() => void connectWallet()} disabled={isConnecting}>{isConnecting ? "Connecting…" : "Reconnect and verify wallet"}</Action>}</Note> : selectionsQuery.isError && <Note $error role="alert">Saved horses are unavailable. Refresh this section to try again.</Note>}
         {selections.length ? <StableList>{selections.map((item) => {
           const name = item.token?.name || `Horse token #${item.tokenId}`;
           const art = item.token?.image ? resolveTokenThumbnail({ thumbnail: item.token.image }) : null;

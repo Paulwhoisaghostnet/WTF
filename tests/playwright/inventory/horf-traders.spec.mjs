@@ -435,7 +435,7 @@ test.describe("Horf trader discovery and horse test", () => {
     await expect(info).toContainText("A HAHA mint tag by itself needs a Marshal’s approval");
     await expect(info).toContainText("more than five tokens");
     await expect(info).toContainText("horsepower");
-    await expect(info).toContainText("different wallets");
+    await expect(info).toContainText("move between two wallets");
     await expect(info).toContainText("transfer date chooses which race season");
     await expect(info).toContainText("Marshal approval is required to enter inspected escrow");
     await expect(page.locator('[data-horf-region="race"]')).toHaveCount(0);

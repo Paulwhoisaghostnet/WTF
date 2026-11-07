@@ -14,6 +14,7 @@ import { advanceResolvedMediaFallback } from "../lib/media-resolve";
 import { logClientSystemEvent } from "../lib/system-log";
 import { useWindowManager } from "../lib/window-context";
 import { toNatString } from "../lib/tezos/nat";
+import { useAuth } from "../lib/auth-context";
 
 type Season = { key: string; label: string; startsAt: string | null; endsAt: string | null; inferred?: boolean };
 type AcceptedTokenPolicy = "marshal_only" | "any_qualifying";
@@ -397,11 +398,12 @@ function policyLabel(policy: AcceptedTokenPolicy | undefined): string {
 
 export function HorfOpenRange() {
   const { address, isGuest, connectWallet, isConnecting, walletError } = useHorfWallet();
+  const { isAdmin } = useAuth();
   const qc = useQueryClient();
   const windowManager = useWindowManager();
   const viewed = useRef(new Set<string>());
   const [seasonKey, setSeasonKey] = useState(initialSeason);
-  const listedHorsePaths = useHorfListedHorsePaths(seasonKey);
+  const listedHorsePaths = useHorfListedHorsePaths(seasonKey, isAdmin);
   const [offerHorse, setOfferHorse] = useState<RangeHorse | null>(null);
   const [offerWalletAddress, setOfferWalletAddress] = useState<string | null>(null);
   const [detailHorse, setDetailHorse] = useState<RangeHorse | null>(null);
@@ -655,7 +657,7 @@ export function HorfOpenRange() {
     </>}
   </RangeAside>;
 
-  return <HorfFrame title="Open Range" aside={sidebar} walletAddress={address} onConnectWallet={connectWallet} walletConnecting={isConnecting} marshalActive={marshalStatusQuery.data?.active === true}>
+  return <HorfFrame title="Open Range" aside={sidebar} walletAddress={address} onConnectWallet={connectWallet} walletConnecting={isConnecting} marshalActive={marshalStatusQuery.data?.active === true} raceEnabled={isAdmin}>
     <Shell data-horf-open-range>
       <Masthead>
         <div className="range-topline">

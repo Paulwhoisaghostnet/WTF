@@ -955,7 +955,7 @@ export function HorfStables({
         </ListingList> : <p>No open listings of yours in this stable.</p>)}
       </Panel>}
       {pending && <Status role="status" aria-live="polite">{pendingLabel(pending)} {pending.opHash && <a href={explorerUrl(pending.opHash)} target="_blank" rel="noopener noreferrer">View submitted transaction</a>}</Status>}
-      {actionError && <Status $warn role="alert">{actionError}{permitScopeDenied === "unverified" && <> Reconnect and verify this wallet to request a deposit permit. <SmallButton type="button" onClick={() => void connectWallet()} disabled={isConnecting}>{isConnecting ? "Connecting…" : "Reconnect and verify wallet"}</SmallButton></>}{permitScopeDenied === "restricted" && " Check Trader standing by the race board for this wallet’s restriction."}</Status>}
+      {actionError && <Status $warn role="alert">{actionError}{permitScopeDenied === "unverified" && <> Reconnect and verify this wallet to request a deposit permit. <SmallButton type="button" onClick={() => void connectWallet()} disabled={isConnecting}>{isConnecting ? "Connecting…" : "Reconnect and verify wallet"}</SmallButton></>}{permitScopeDenied === "restricted" && " Check this wallet’s trader profile for standing details."}</Status>}
       {success && <Status role="status">{success.action}. <a href={explorerUrl(success.opHash)} target="_blank" rel="noopener noreferrer">View Tezos transaction</a>. The indexed listing and credit totals may take a moment to catch up.</Status>}
     </Board>
   );

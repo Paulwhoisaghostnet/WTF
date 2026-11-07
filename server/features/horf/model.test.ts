@@ -124,9 +124,9 @@ test("season totals count token units and pairwise net horse obligations", () =>
   ];
   const result = summarizeSeason(rows, alice);
   assert.deepEqual(result.leaderboard.map(({ address, trades, received, sent }) => ({ address, trades, received, sent })), [
-    { address: alice, trades: 7, received: 3, sent: 4 },
-    { address: carol, trades: 4, received: 3, sent: 1 },
-    { address: bob, trades: 3, received: 1, sent: 2 },
+    { address: alice, trades: 2, received: 3, sent: 4 },
+    { address: carol, trades: 1, received: 3, sent: 1 },
+    { address: bob, trades: 1, received: 1, sent: 2 },
   ]);
   assert.deepEqual(result.currentUser?.owedTo, [{ address: bob, name: null, count: 1 }]);
   assert.deepEqual(result.currentUser?.owedBy, [{ address: carol, name: null, count: 2 }]);
@@ -136,6 +136,30 @@ test("season totals count token units and pairwise net horse obligations", () =>
   assert.equal(result.currentUser?.completedTrades, 2);
   assert.equal(result.currentUser?.recent[0]?.id, 76425268);
   assert.equal(result.currentUser?.recent[0]?.direction, "in");
+});
+
+test("bulk editions count as one outbound race ride while a multi-recipient batch counts each rider", () => {
+  const bulk = normalizeHorfTransfer(event({ amount: 9990, ophash: `o${"A".repeat(50)}` }), new Set())!;
+  const bulkSummary = summarizeSeason([bulk], alice);
+  const sender = bulkSummary.leaderboard.find((row) => row.address === alice)!;
+  const recipient = bulkSummary.leaderboard.find((row) => row.address === bob)!;
+  assert.deepEqual([sender.trades, sender.sentInteractions, sender.sent], [1, 1, 9990]);
+  assert.deepEqual([recipient.trades, recipient.receivedInteractions, recipient.received], [0, 1, 9990]);
+  assert.deepEqual([bulkSummary.currentUser?.recent[0]?.racePoints, bulkSummary.currentUser?.recent[0]?.horseReward], [1, "10"]);
+  const recipientSummary = summarizeSeason([bulk], bob);
+  assert.deepEqual([recipientSummary.currentUser?.recent[0]?.racePoints, recipientSummary.currentUser?.recent[0]?.horseReward], [0, "0"]);
+
+  const sharedOperation = `o${"B".repeat(50)}`;
+  const batch: HorfTransfer[] = [
+    { ...bulk, id: 76425270, operationHash: sharedOperation, to: bob, amount: 1 },
+    { ...bulk, id: 76425271, operationHash: sharedOperation, to: carol, amount: 1 },
+  ];
+  const batchSummary = summarizeSeason(batch, alice);
+  assert.equal(batchSummary.currentUser?.trades, 2);
+  assert.deepEqual(batchSummary.leaderboard.filter((row) => row.address !== alice)
+    .map((row) => [row.address, row.trades, row.receivedInteractions]).sort(), [
+    [bob, 0, 1], [carol, 0, 1],
+  ].sort());
 });
 
 test("waiting horse receipts use FIFO cancellation and earlier sends cover later receipts", () => {
@@ -167,8 +191,9 @@ test("stable claims advance the race without creating a return obligation", () =
       settlement: "stable", stableMode: 1 },
   ];
   const { leaderboard, currentUser } = summarizeSeason(rows, alice);
-  assert.equal(leaderboard.find((row) => row.address === alice)?.trades, 2);
-  assert.equal(leaderboard.find((row) => row.address === carol)?.sent, 1);
+  assert.equal(leaderboard.find((row) => row.address === alice)?.trades, 0);
+  assert.equal(leaderboard.find((row) => row.address === carol)?.trades, 1);
+  assert.equal(leaderboard.find((row) => row.address === bob)?.trades, 1);
   assert.equal(currentUser?.completedTrades, 0, "an honor claim and unreturned send are not completed trades");
   assert.deepEqual(currentUser?.owedTo, [{ address: bob, name: null, count: 1 }]);
   assert.deepEqual(currentUser?.waitingHorses.map((horse) => horse.id), [10]);
@@ -184,7 +209,7 @@ test("completed trades count reciprocal pairs once, excluding unreturned legs an
     { ...base, id: 3, timestamp: "2026-11-02T03:00:00Z", from: alice, to: bob, amount: 6 },
   ];
   const own = summarizeSeason(rows, alice).currentUser!;
-  assert.deepEqual([own.received, own.sent, own.trades, own.completedTrades], [7, 6, 13, 6]);
+  assert.deepEqual([own.received, own.sent, own.trades, own.completedTrades], [7, 6, 1, 6]);
   assert.deepEqual([own.giftHorsesReceived, own.tradeHorsesReceived], [1, 6]);
   assert.equal(own.giftHorsesReceived + own.tradeHorsesReceived, own.received);
   const ranked = summarizeSeason(rows, alice).leaderboard.find((entry) => entry.address === alice)!;
@@ -210,7 +235,7 @@ test("pool credit claims and verified sales settle trades, while honor claims an
   ];
   const own = summarizeSeason(rows, alice).currentUser!;
   assert.equal(own.completedTrades, 4);
-  assert.equal(own.trades, 6, "the raw transfer-activity race remains unchanged");
+  assert.equal(own.trades, 2, "the sender receives one race ride for each outbound interaction");
   assert.deepEqual(own.owedTo, []);
   assert.deepEqual(own.owedBy, []);
 });

@@ -23,7 +23,7 @@ function snapshot(index: number, transfers: HorfTransfer[], options: {
     status: options.status || "ready",
     error: options.status === "error" ? "One source is unavailable" : null,
     nextRefreshAt: options.nextRefreshAt === undefined ? null : options.nextRefreshAt,
-    countingRule: "Each qualifying horse counts for both traders.",
+    countingRule: "Each qualifying outbound sender-to-recipient operation counts once for the sender.",
     ...summarizeSeason(transfers, alice),
   };
 }
@@ -41,7 +41,7 @@ test("All time combines tracked windows and settles a return ride across seasons
   assert.deepEqual(combined.season, HORF_ALL_TIME_SEASON);
   assert.equal(combined.seasons[0]?.key, "all-time");
   assert.deepEqual(combined.leaderboard.map((row) => [row.address, row.sent, row.received, row.trades]), [
-    [alice, 2, 2, 4], [bob, 2, 1, 3], [stable, 0, 1, 1],
+    [alice, 2, 2, 2], [bob, 2, 1, 1], [stable, 0, 1, 0],
   ]);
   assert.equal(combined.currentUser?.recent.length, 3);
   assert.deepEqual(combined.currentUser?.owedTo, [{ address: bob, name: null, count: 1 }]);
@@ -84,7 +84,7 @@ test("completed closed seasons do not each launch a scan on an All time read", (
     season_end: new Date(archive.endsAt!), cursor: "0", status: "ready" as const,
     as_of: new Date("2026-11-02T00:00:00.000Z"),
     updated_at: new Date("2026-11-02T00:00:00.000Z"),
-    policy_version: `3:${horseContractAddress() ?? ""}`,
+    policy_version: `4:${horseContractAddress() ?? ""}`,
   } as Parameters<typeof dueForSync>[0];
   const now = Date.parse("2026-11-03T00:00:00.000Z");
   assert.equal(dueForSync(state, archive, now), false);

@@ -14890,3 +14890,13 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: Riders lost the familiar live-season horse picker, and the new direct-send shortcut opened with no horse selected even though it was launched from a specific horse card.
 
 **Rule**: Infer an unended season’s effective end from the next season’s start when available; a live season with no successor remains active. Keep wallet identity in the idempotency key only, and use the exact `contract:tokenId` for picker state. Cover current and archived season labels, archive pagination, and exact card-to-dialog preselection in browser checks.
+
+---
+
+## 2026-11-07 - Count horse interactions separately from edition volume
+
+**What happened**: HORF treated each moved edition as a race point for both wallets and multiplied sender HORSE rewards by the edition count. One 9,990-edition operation therefore gave both wallets 9,990 race points and accrued 99,900 HORSE to the sender.
+
+**Why it mattered**: A single bulk transfer could dominate the race and reward ledger, while hiding the difference between wallet reach, transfer volume, and actual reciprocation. The chain evidence established the quantity multiplier but did not establish a relationship between wallets or prove bot activity.
+
+**Rule**: Count one outgoing interaction per operation and recipient for sender race rank and the sender’s 10 HORSE award. A multi-recipient batch still counts each recipient; edition totals, inbound activity, unique rider links, and matched returns remain visible as separate measures. Keep raw ledger evidence and avoid inferring shared ownership or intent from transfer patterns alone.

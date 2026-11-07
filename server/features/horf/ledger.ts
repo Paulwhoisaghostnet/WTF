@@ -25,9 +25,9 @@ import { HORF_MAINNET_BLOCK_MS } from "./mainnet";
 // subscription, so one source scan per block is shared across all viewers.
 const MAINNET_BLOCK_MS = HORF_MAINNET_BLOCK_MS;
 export function horfLedgerPolicyVersion(): string {
-  // A classifier change or reward-token change must replay every season so
+  // A classifier, race-score, or reward-policy change must replay every season so
   // false positives leave the race, trade debts, and reward entitlements.
-  return `3:${horseContractAddress() ?? ""}`;
+  return `4:${horseContractAddress() ?? ""}`;
 }
 const PUBLIC_SYNC_ERROR = "The horse trade index is temporarily unavailable. Last completed data is shown when available.";
 
@@ -425,7 +425,7 @@ export async function getHorfSeasonSnapshot(address: string | null, season: Horf
     status,
     error: state.error || stableClaims.error || roomSettlements.error || marketSales.error,
     nextRefreshAt: refreshCandidates.length ? refreshCandidates.sort()[0] : null,
-    countingRule: "Each direct horse send or Stable claim counts once for each rider. A settled V3 swap sends one horse each way but counts once per rider; each sender earns 10 HORSE. Escrow deposits do not count. Only direct pairwise sends create return rides.",
+    countingRule: "Each qualifying outbound sender-to-recipient horse interaction counts once, regardless of edition quantity; recipients remain visible in activity totals but do not gain race rank from receipt alone. Each sender earns 10 HORSE per counted interaction. Escrow deposits do not count. Only direct pairwise sends create return rides.",
     leaderboard,
     currentUser,
   };
@@ -452,23 +452,33 @@ function sumCount(left: number, right: number): number {
 /** Combine only named, nonoverlapping campaign snapshots; gaps remain outside the count. */
 export function combineHorfSeasonSnapshots(snapshots: readonly HorfSeasonSnapshot[], address: string | null) {
   const totals = new Map<string, {
-    received: number; giftHorsesReceived: number; tradeHorsesReceived: number; sent: number; trades: number; name: null;
+    received: number; giftHorsesReceived: number; tradeHorsesReceived: number; sent: number; trades: number;
+    sentInteractions: number; receivedInteractions: number; riderLinks: number; completedTrades: number; name: null;
   }>();
   for (const snapshot of snapshots) {
     for (const rider of snapshot.leaderboard) {
       const previous = totals.get(rider.address) || {
-        received: 0, giftHorsesReceived: 0, tradeHorsesReceived: 0, sent: 0, trades: 0, name: null,
+        received: 0, giftHorsesReceived: 0, tradeHorsesReceived: 0, sent: 0, trades: 0,
+        sentInteractions: 0, receivedInteractions: 0, riderLinks: 0, completedTrades: 0, name: null,
       };
       previous.received = sumCount(previous.received, rider.received);
       previous.giftHorsesReceived = sumCount(previous.giftHorsesReceived, rider.giftHorsesReceived);
       previous.tradeHorsesReceived = sumCount(previous.tradeHorsesReceived, rider.tradeHorsesReceived);
       previous.sent = sumCount(previous.sent, rider.sent);
       previous.trades = sumCount(previous.trades, rider.trades);
+      previous.sentInteractions = sumCount(previous.sentInteractions, rider.sentInteractions);
+      previous.receivedInteractions = sumCount(previous.receivedInteractions, rider.receivedInteractions);
+      previous.riderLinks = sumCount(previous.riderLinks, rider.riderLinks);
+      previous.completedTrades = sumCount(previous.completedTrades, rider.completedTrades);
       totals.set(rider.address, previous);
     }
   }
   const leaderboard = [...totals].map(([wallet, counts]) => ({
     address: wallet, name: counts.name,
+    sentInteractions: counts.sentInteractions,
+    receivedInteractions: counts.receivedInteractions,
+    riderLinks: counts.riderLinks,
+    completedTrades: counts.completedTrades,
     received: counts.received,
     giftHorsesReceived: counts.giftHorsesReceived,
     tradeHorsesReceived: counts.tradeHorsesReceived,
@@ -485,13 +495,14 @@ export function combineHorfSeasonSnapshots(snapshots: readonly HorfSeasonSnapsho
       for (const row of snapshot.currentUser?.recent || []) {
         const identity = [row.settlement || "direct", row.id, row.timestamp,
           row.direction, row.counterparty, row.token.contract, row.token.tokenId,
-          row.amount].join("\u0000");
+          row.amount, row.operationHash || ""].join("\u0000");
         if (seenRecent.has(identity)) continue;
         seenRecent.add(identity);
         personalTransfers.push({
           id: row.id, timestamp: row.timestamp,
           from: row.direction === "out" ? address : row.counterparty,
           to: row.direction === "out" ? row.counterparty : address,
+          operationHash: row.operationHash || null,
           token: row.token, amount: row.amount,
           ...(row.settlement ? { settlement: row.settlement } : {}),
           ...(row.stableMode !== undefined ? { stableMode: row.stableMode } : {}),
@@ -516,7 +527,7 @@ export function combineHorfSeasonSnapshots(snapshots: readonly HorfSeasonSnapsho
     season: HORF_ALL_TIME_SEASON,
     seasons: HORF_SEASON_CHOICES,
     asOf, status, error, nextRefreshAt,
-    countingRule: `${snapshots[0]?.countingRule || "Each qualifying horse transfer counts for both traders."} All time combines only the named horse-trading seasons tracked by Horf; gaps between those campaigns are excluded. Return rides can settle a debt from an earlier season.`,
+    countingRule: `${snapshots[0]?.countingRule || "Each qualifying outbound horse interaction counts once for the sender."} All time combines only the named horse-trading seasons tracked by Horf; gaps between those campaigns are excluded. Return rides can settle a debt from an earlier season.`,
     leaderboard, currentUser,
   };
 }

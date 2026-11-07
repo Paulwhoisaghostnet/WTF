@@ -62,7 +62,12 @@ type HorfReceipt = {
   amount: number;
   settlement?: "stable" | "gift" | "market" | "objkt";
   stableMode?: 0 | 1 | 2 | 3;
+  operationHash?: string;
+  racePoints?: number;
+  horseReward?: string;
 };
+
+type RaceStory = "rides" | "received" | "volume" | "partners" | "returns";
 
 type WaitingHorse = {
   id: string | number;
@@ -87,6 +92,10 @@ type HorfSeasonResponse = {
     giftHorsesReceived?: number;
     tradeHorsesReceived?: number;
     sent: number;
+    sentInteractions?: number;
+    receivedInteractions?: number;
+    riderLinks?: number;
+    completedTrades?: number;
     blacklisted?: boolean;
   }>;
   currentUser: {
@@ -109,10 +118,12 @@ type HorfRewardSummary = {
   season: string;
   rateHorse: string;
   countedUnits: string;
+  countedTrades?: string;
   accruedRaw: string;
   claimedRaw: string;
   claimableRaw: string;
   sourceDiscrepancies: string;
+  priorRulePaidRaw?: string;
   sourceComplete: boolean;
   asOf: string | null;
   status: "ready" | "syncing" | "error";
@@ -508,6 +519,25 @@ const RaceFrame = styled.div`
   border-radius: 18px;
   background: var(--horf-surface);
   box-shadow: 0 14px 36px #0003;
+`;
+
+const RaceStoryPicker = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 18px 0 10px;
+  button {
+    min-height: 38px;
+    padding: 7px 12px;
+    border: 1px solid var(--horf-line);
+    border-radius: 999px;
+    background: var(--horf-elevated);
+    color: var(--horf-ink);
+    cursor: pointer;
+    font: 800 12px/1.1 var(--horf-font);
+  }
+  button[aria-pressed="true"] { border-color: var(--horf-gold); background: #dfaa49; color: #17130b; }
+  button:focus-visible { outline: 3px solid var(--horf-focus); outline-offset: 2px; }
 `;
 
 const Race = styled.ol`
@@ -915,6 +945,35 @@ function traderName(name: string | null | undefined, address: string): string {
   return name?.trim() || shortAddress(address);
 }
 
+function raceStoryValue(row: HorfSeasonResponse["leaderboard"][number], story: RaceStory): number {
+  if (story === "volume") return row.sent;
+  if (story === "received") return row.receivedInteractions ?? 0;
+  if (story === "partners") return row.riderLinks ?? 0;
+  if (story === "returns") return row.completedTrades ?? 0;
+  return row.sentInteractions ?? row.trades;
+}
+
+function raceStoryUnit(story: RaceStory, value: number): string {
+  if (story === "rides") return value === 1 ? "ride sent" : "rides sent";
+  if (story === "received") return value === 1 ? "ride received" : "rides received";
+  const unit = story === "volume" ? "edition" : story === "partners" ? "rider link" : "matched horse";
+  return `${unit}${value === 1 ? "" : "s"}`;
+}
+
+const raceStoryCopy: Record<RaceStory, { label: string; note: string }> = {
+  rides: { label: "Rides sent", note: "One point per outgoing horse interaction, no matter the edition count." },
+  received: { label: "Rides received", note: "Inbound horse interactions. Visible for context; receipts do not earn race points or sender rewards." },
+  volume: { label: "Edition volume", note: "Raw editions sent. A volume view, not the race score." },
+  partners: { label: "Rider reach", note: "Distinct wallets interacted with this season." },
+  returns: { label: "Return rides", note: "Horse editions matched by a return or verified settlement." },
+};
+
+function raceStoryNote(story: RaceStory, allTime: boolean): string {
+  if (allTime && story === "partners") return "Season links are combined; a partner can appear again in another campaign.";
+  if (allTime && story === "returns") return "Season matches are combined. Cross-season returns appear in each trader’s ledger.";
+  return raceStoryCopy[story].note;
+}
+
 function holdingsText(owner: string | null | undefined, viewer: string | null | undefined, connected: boolean): string {
   const editions = (value: string) => `${value} ${value === "1" ? "edition" : "editions"}`;
   const ownerText = owner == null ? "Trader holdings unavailable" : `Trader owns ${editions(owner)}`;
@@ -1032,7 +1091,8 @@ export function Horf() {
   const qc = useQueryClient();
   const [location, navigate] = useLocation();
   const search = useSearch();
-  const { isAdmin } = useAuth();
+  const [raceStory, setRaceStory] = useState<RaceStory>("rides");
+  const { isAdmin, isLoading: authLoading } = useAuth();
   const windowManager = useWindowManager();
   const pagePath = useContext(WindowPathContext);
   const routePath = location.split("?")[0]?.split("#")[0] || "/horf";
@@ -1041,7 +1101,8 @@ export function Horf() {
   const outlawTab = requestedOutlawTab === "available" ? "available" : "rooms";
   const marketTab = routePath === "/horf/marshals-market" ? "marshals"
     : routePath === "/horf/outlaw-corral" ? "outlaw"
-      : requestedMarketTab === "marshals" || requestedMarketTab === "outlaw" ? requestedMarketTab : "horse4horse";
+      : requestedMarketTab === "marshals" || requestedMarketTab === "outlaw" ? requestedMarketTab
+        : isAdmin ? "horse4horse" : "marshals";
   const profileAddress = routePath.match(/^\/horf\/traders\/([^/]+)$/)?.[1] ?? null;
   const validProfileAddress = profileAddress && /^tz[1-5][1-9A-HJ-NP-Za-km-z]{33}$/.test(profileAddress) ? profileAddress : null;
   const routeSection = routePath === "/horf/traders" ? "traders"
@@ -1055,7 +1116,8 @@ export function Horf() {
     : routePath === "/horf/haha-crp" ? "haha"
     : routePath === "/horf/posse" ? "posse"
     : routePath === "/horf/gifts" ? "gifts"
-    : routePath === "/horf" ? "home" : "race";
+    : routePath === "/horf/race" ? isAdmin ? "race" : "race-closed"
+    : routePath === "/horf" ? "home" : "not-found";
   const routeTitle = routeSection === "inspection-desk" ? "Inspection Desk"
     : routeSection === "legacy-stables" ? "Legacy Stable Recovery"
     : routeSection === "stable" ? "My Stable & Profile"
@@ -1067,11 +1129,24 @@ export function Horf() {
     : routeSection === "traders" ? "Find Other Traders"
     : routeSection === "profile" ? "Trader Profile"
     : routeSection === "info" ? "Is It a Horse?"
+    : routeSection === "race-closed" ? "Race reopening"
+    : routeSection === "not-found" ? "Trail not found"
     : routeSection === "home" ? "Welcome to Horf" : "The Race";
   const traderFromUrl = new URLSearchParams(search).get("trader");
   const offerFromUrl = new URLSearchParams(search).get("offer");
   const listingFromUrl = new URLSearchParams(search).get("listing");
   const depositFromUrl = new URLSearchParams(search).get("deposit");
+  useEffect(() => {
+    if (isAdmin || authLoading || routePath !== "/horf/horse-market") return;
+    const params = new URLSearchParams(search);
+    if (params.get("market") !== "horse4horse" && !params.has("sell")) return;
+    params.set("market", "marshals");
+    params.delete("sell");
+    params.delete("listing");
+    params.delete("offer");
+    params.delete("trader");
+    navigate(`/horf/horse-market?${params.toString()}`, { replace: true });
+  }, [authLoading, isAdmin, navigate, routePath, search]);
   const loggedViews = useRef(new Set<string>());
   const [selectedSeasonKey, setSelectedSeasonKey] = useState(readSeasonKeyFromUrl);
   const profileSeasonKey = selectedSeasonKey === "all-time" || selectedSeasonKey === "all-seasons" || selectedSeasonKey === "all-horse-search" ? CURRENT_SEASON_KEY : selectedSeasonKey;
@@ -1181,6 +1256,15 @@ export function Horf() {
     () => [...(data?.leaderboard ?? [])].sort((a, b) => b.trades - a.trades || a.address.localeCompare(b.address)),
     [data?.leaderboard],
   );
+  const raceLeaderboard = useMemo(() => [...leaderboard].sort((a, b) =>
+    raceStoryValue(b, raceStory) - raceStoryValue(a, raceStory) || a.address.localeCompare(b.address)),
+  [leaderboard, raceStory]);
+  const leadRaceValue = raceLeaderboard.reduce((lead, row) => Math.max(lead, raceStoryValue(row, raceStory)), 1);
+  const selectRaceStory = (story: RaceStory) => {
+    setRaceStory(story);
+    logClientSystemEvent({ eventType: "horf.race.story_selected", message: "Horf race story selected",
+      metadata: { seasonKey: selectedSeasonKey, story } });
+  };
   const directory = useMemo(() => {
     const rows = new Map<string, { address: string; name: string | null; trades: number; offerCount: number; raceRank: number | null }>();
     for (const [index, rider] of leaderboard.entries()) rows.set(rider.address, { address: rider.address, name: rider.name, trades: rider.trades, offerCount: 0, raceRank: index + 1 });
@@ -1206,7 +1290,6 @@ export function Horf() {
   ), [directoryOffersQuery.data?.offers]);
   const selectedProfileContract = selectedProfileHorse && ("contract" in selectedProfileHorse ? selectedProfileHorse.contract : selectedProfileHorse.tokenContract);
   const selectedProfileName = selectedProfileHorse?.name || (selectedProfileHorse ? `Horse token #${selectedProfileHorse.tokenId}` : "Horse card");
-  const leadTrades = leaderboard.reduce((lead, row) => Math.max(lead, row.trades), 1);
   const personal = address && data?.currentUser?.address === address
     ? data.currentUser
     : null;
@@ -1395,6 +1478,7 @@ export function Horf() {
   }
 
   function selectMarketTab(tab: "horse4horse" | "marshals" | "outlaw") {
+    if (tab === "horse4horse" && !isAdmin) return;
     if (tab === marketTab && routePath === "/horf/horse-market") return;
     const params = new URLSearchParams(window.location.search);
     params.set("market", tab);
@@ -1593,13 +1677,13 @@ export function Horf() {
   }
 
   return (
-    <HorfFrame title={`${routeTitle} · ${seasonDisplayName}`} walletAddress={address} onConnectWallet={connectWallet} onDisconnectWallet={disconnectWallet} walletConnecting={isConnecting} marshalActive={profileMarshalQuery.data?.active === true} aside={<AsideRail>
+    <HorfFrame title={`${routeTitle} · ${seasonDisplayName}`} walletAddress={address} onConnectWallet={connectWallet} onDisconnectWallet={disconnectWallet} walletConnecting={isConnecting} marshalActive={profileMarshalQuery.data?.active === true} raceEnabled={isAdmin} aside={<AsideRail>
       {walletError && <div className="rail-section" role="alert"><span className="eyebrow">Wallet alert</span><p>{walletError}</p></div>}
       {personal?.blacklisted === true && <div className="rail-section" role="alert"><span className="eyebrow">Trader standing</span><p>This wallet is restricted from private Horf actions. Review the public standing before trading.</p></div>}
       {routeSection === "haha" && <div className="rail-section"><span className="eyebrow">🏆 HAHA ballot</span><strong>Nominate a deserving rider</strong><p>Choose a different Tezos wallet for each nomination in a category. Your wallet signs in to the ballot.</p></div>}
       {routeSection === "horse-market" && <div className="rail-section"><span className="eyebrow">🐎 Horse Market</span><strong>{marketTab === "horse4horse" ? "Horse4HORSE" : marketTab === "marshals" ? "Marshal’s Market" : "Outlaw Corral"}</strong><p>{marketTab === "horse4horse" ? "Inspected horses for HORSE. Objkt asks use XTZ." : marketTab === "marshals" ? "Inspected horses in escrow." : outlawTab === "rooms" ? "One horse in, one horse out." : "Offer a horse; its owner decides."}</p></div>}
-      <div className="rail-section"><span className="eyebrow">Race leader</span><strong>{leaderboard[0] ? traderName(leaderboard[0].name, leaderboard[0].address) : "The starting gate"}</strong><p>{leaderboard[0] ? `${leaderboard[0].trades} horse ${leaderboard[0].trades === 1 ? "transfer" : "transfers"} this season` : "No riders ranked yet."}</p></div>
-      {routeSection === "profile" && validProfileAddress && <div className="rail-section"><span className="eyebrow">Trader in your sights</span><strong>{traderName(profileIdentityQuery.data?.displayName ?? profileRider?.name, validProfileAddress)}</strong><p>{profileRider?.trades ?? 0} season horse transfers · {profileOffersQuery.data?.offers.length ?? 0} active trade signs</p></div>}
+      {isAdmin && <div className="rail-section"><span className="eyebrow">Race leader</span><strong>{leaderboard[0] ? traderName(leaderboard[0].name, leaderboard[0].address) : "The starting gate"}</strong><p>{leaderboard[0] ? `${leaderboard[0].trades} outbound ${leaderboard[0].trades === 1 ? "ride" : "rides"} this season` : "No riders ranked yet."}</p></div>}
+      {routeSection === "profile" && validProfileAddress && <div className="rail-section"><span className="eyebrow">Trader in your sights</span><strong>{traderName(profileIdentityQuery.data?.displayName ?? profileRider?.name, validProfileAddress)}</strong><p>{profileRider?.trades ?? 0} outbound rides · {profileOffersQuery.data?.offers.length ?? 0} active trade signs</p></div>}
       {statusAddress && <div className="rail-section"><span className="eyebrow">Trader in your sights</span><strong>{shortAddress(statusAddress)}</strong></div>}
       {address && <div className="rail-section"><span className="eyebrow">Your saddle</span><strong>{shortAddress(address)}</strong><p>{personal ? `${personal.received} received · ${personal.sent} sent` : "Counting your horses…"}</p>{personal && <HorfReceivedBreakdown gifts={personal.giftHorsesReceived} trades={personal.tradeHorsesReceived} />}</div>}
       {claimAlert && <div className="rail-section"><span className="eyebrow">HORSE waiting</span><span className="rail-number">{formatHorseAmount(claimAlert.claimableRaw, 8)}</span><p>Earned HORSE · your wallet pays XTZ gas to claim.</p></div>}
@@ -1623,22 +1707,24 @@ export function Horf() {
             <div className="horse-art"><HorfWantedArtwork /></div>
             <h2>{seasonDisplayName}</h2>
             {selectedSeasonKey === CURRENT_SEASON_KEY ? <>
-              <span className="reward"><strong>10 $HORSE</strong><span>per qualifying horse sent</span></span>
+              <span className="reward"><strong>10 $HORSE</strong><span>per outbound interaction</span></span>
               <p>Sender earns the reward. Return a ride to earn yours.</p>
             </> : <>
-              <span className="reward"><strong>Past rides</strong><span>Archive race board</span></span>
-              <p>Follow the hoofprints from this earlier season.</p>
+              <span className="reward"><strong>{isAdmin ? "Past rides" : "Past season"}</strong><span>{isAdmin ? "Archive race board" : "Horse trading archive"}</span></span>
+              <p>{isAdmin ? "Follow the hoofprints from this earlier season." : "Explore horses and trading records from this season."}</p>
             </>}
           </WantedPoster>
         </Masthead>}
 
         {routeSection === "home" && <HorfSeasonArt />}
+        {routeSection === "race-closed" && <Section data-horf-region="race-closed" data-horf-race-closed aria-label="Race board relaunch notice"><SectionLabel>🏁 The gates are quiet</SectionLabel><h2>The race is getting ready for its public relaunch.</h2><p>Your stable and horse trading trails are still open. Come back when the starting bell rings.</p><Action type="button" $primary onClick={() => navigateHorf("/horf/horse-market")}>Visit Horse Market</Action></Section>}
+        {routeSection === "not-found" && <Section data-horf-region="not-found" aria-label="Horf page not found"><SectionLabel>🐎 Wrong trail</SectionLabel><h2>We couldn’t find that Horf page.</h2><Action type="button" $primary onClick={() => navigateHorf("/horf")}>Back to Horf</Action></Section>}
 
         {(routeSection === "home" || routeSection === "horse" || routeSection === "haha" || routeSection === "gifts" || routeSection === "posse" || routeSection === "legacy-stables" || routeSection === "inspection-desk") && <WalletStatus data-horf-wallet-status role="status">
           {address ? `${isGuest ? "Horf wallet verified" : "WTF OS wallet selected"}: ${shortAddress(address)} · Tezos Mainnet`
             : isGuest && guestSessionLoading ? "Checking for a saved Horf wallet proof…"
             : isGuest && localWalletAddress ? `Wallet ${shortAddress(localWalletAddress)} is connected. Verify it to open your stable.`
-            : isGuest ? "You can watch the race without signing in. Connect a wallet to open your stable and trade."
+            : isGuest ? "Browse horses without signing in. Connect a wallet to open your stable and trade."
             : "Connect your Tezos wallet to open your stable and trade."}
           {isGuest && address && <button data-horf-wallet-disconnect type="button" onClick={() => void disconnectWallet()} disabled={isConnecting}>{isConnecting ? "Disconnecting…" : "Disconnect Horf wallet"}</button>}
         </WalletStatus>}
@@ -1698,7 +1784,7 @@ export function Horf() {
             {directory.map((rider) => <DirectoryCard key={rider.address} data-horf-trader-card data-horf-active-offers={rider.offerCount > 0 ? "true" : "false"}>
               <span className="rider-rank">{rider.raceRank ? `Race #${rider.raceRank}` : "Horse for trade"}</span>
               <TraderLink address={rider.address} name={rider.name} />
-              <p><strong>{rider.trades}</strong> {rider.trades === 1 ? "horse transfer" : "horse transfers"}{rider.offerCount > 0 && <> · <strong>{rider.offerCount}</strong> {rider.offerCount === 1 ? "horse offered" : "horses offered"}</>}</p>
+              <p><strong>{rider.trades}</strong> {rider.trades === 1 ? "outbound ride" : "outbound rides"}{rider.offerCount > 0 && <> · <strong>{rider.offerCount}</strong> {rider.offerCount === 1 ? "horse offered" : "horses offered"}</>}</p>
               {rider.offerCount > 0 && <HorfTradeHorseCarousel address={rider.address} />}
               {rider.address !== address && <Action data-horf-trader-quick-send type="button" $primary aria-label={`Send a horse to ${traderName(rider.name, rider.address)}`} onClick={(event) => openQuickSend(rider, event.currentTarget)}>Send a horse 🐎</Action>}
               {renderPosseAction(rider.address, rider.name)}
@@ -1710,13 +1796,13 @@ export function Horf() {
           <SectionLabel>🐎 Trader’s saddle</SectionLabel>
           {validProfileAddress ? <>
             <h2>{traderName(profileIdentityQuery.data?.displayName ?? profileRider?.name, validProfileAddress)}</h2>
-            <p>{validProfileAddress} · {profileRider?.trades ?? 0} horse {profileRider?.trades === 1 ? "transfer" : "transfers"} in {seasonDisplayName}. <a href={profileUrl(validProfileAddress)} target="_blank" rel="noopener noreferrer">View wallet on Objkt ↗</a></p>
+            <p>{validProfileAddress} · {profileRider?.trades ?? 0} outbound {profileRider?.trades === 1 ? "ride" : "rides"} in {seasonDisplayName}. <a href={profileUrl(validProfileAddress)} target="_blank" rel="noopener noreferrer">View wallet on Objkt ↗</a></p>
             <Link href={`/horf/traders?season=${encodeURIComponent(selectedSeasonKey)}`}>← Back to other traders</Link>
             {renderPosseAction(validProfileAddress, profileIdentityQuery.data?.displayName ?? profileRider?.name ?? null)}
             <HorfPublicTraderProfile address={validProfileAddress} seasonKey={profileSeasonKey} seasonLabel={profileSeasonLabel} />
             <TraderActivity data-horf-profile-activity aria-label="Trader activity and HORSE rewards">
               <h3>Trail record · {seasonDisplayName}</h3>
-              <p>Race position tracks horse-transfer activity. HORSE rewards belong to the sender.</p>
+              <p>Public ledger: outgoing interactions count for race and earn 10 HORSE each. Edition volume and incoming activity stay visible.</p>
               {query.isPending ? <p role="status">Reading this rider’s trail…</p> : hasError ? <p role="alert">Activity is unavailable. Retry the season ledger.</p> : profilePersonal && <>
                 <TraderActivityStats>
                   <div data-horf-profile-stat="rank"><strong>{profileRank >= 0 ? `#${profileRank + 1}` : "—"}</strong><span>Race position</span></div>
@@ -1724,35 +1810,35 @@ export function Horf() {
                   <div data-horf-profile-stat="received"><strong>{profilePersonal.received}</strong><span>Horses received</span><HorfReceivedBreakdown gifts={profilePersonal.giftHorsesReceived} trades={profilePersonal.tradeHorsesReceived} /></div>
                   <div data-horf-profile-stat="completed"><strong>{profilePersonal.completedTrades ?? "—"}</strong><span>Completed trades</span></div>
                 </TraderActivityStats>
-              <p>{profilePersonal.trades} race {profilePersonal.trades === 1 ? "point" : "points"} from horse transfers. Completed trades pair return rides; gifts stay separate.</p>
+              <p>{profilePersonal.trades} outbound race {profilePersonal.trades === 1 ? "point" : "points"} · {profilePersonal.sent} editions sent · {profilePersonal.received} received. Returns pair horse editions; gifts stay separate.</p>
                 <TraderTrail data-horf-profile-trail>
                   <summary>View transfer trail · {profilePersonal.recent.length} {profilePersonal.recent.length === 1 ? "entry" : "entries"}</summary>
                   {profilePersonal.recent.length ? <ReceiptList>
                     {profilePersonal.recent.map((receipt) => <li key={`${receipt.id}:${receipt.direction}:${receipt.timestamp}`}>
                       <ReceiptDirection $in={receipt.direction === "in"}>{receipt.direction === "in" ? "In" : "Out"}</ReceiptDirection>
                       <div><a href={tokenUrl(receipt.token)} target="_blank" rel="noopener noreferrer">{receipt.token.name || `Horse #${receipt.token.tokenId}`}</a><small>{trailKind(receipt)} · {receipt.direction === "in" ? "From" : "To"} <TraderLink address={receipt.counterparty} /> · {formatDate(receipt.timestamp)}</small></div>
-                      <strong>{receipt.amount} {receipt.amount === 1 ? "edition" : "editions"}</strong>
+                      <strong>{receipt.amount} {receipt.amount === 1 ? "edition" : "editions"}<small>{receipt.racePoints ? ` · 🏁 +${receipt.racePoints}` : receipt.direction === "in" ? " · received" : " · same operation"}{receipt.horseReward && Number(receipt.horseReward) > 0 ? ` · 🪙 +${receipt.horseReward} HORSE` : ""}</small></strong>
                     </li>)}
                   </ReceiptList> : <p>No qualifying transfers in this season.</p>}
                 </TraderTrail>
               </>}
               <RewardLedger data-horf-profile-rewards>
                 <h4>🪙 Neighvember 2026 HORSE rewards</h4>
-                <p>10 HORSE per qualifying outbound horse edition. Receiving adds race activity, not a HORSE reward.</p>
+                <p>10 HORSE per qualifying outbound interaction, regardless of editions. Receipts earn no sender award.</p>
                 {profileRewardsQuery.isPending ? <p role="status">Checking reward receipts…</p>
                   : profileRewardsQuery.isError ? <p role="alert">Reward receipts are unavailable. Refresh to try again.</p>
                   : profileRewardsQuery.data?.asOf ? <>
                     <div className="reward-totals">
-                      <span data-horf-reward="sends"><strong>{profileRewardsQuery.data.countedUnits}</strong>Rewardable sends</span>
+                      <span data-horf-reward="sends"><strong>{profileRewardsQuery.data.countedTrades ?? profileRewardsQuery.data.countedUnits}</strong>Rewarded sends</span>
                       <span data-horf-reward="accrued"><strong>{horseRawLabel(profileRewardsQuery.data.accruedRaw)}</strong>HORSE accrued</span>
                       <span data-horf-reward="claimed"><strong>{horseRawLabel(profileRewardsQuery.data.claimedRaw)}</strong>HORSE claimed</span>
                       <span data-horf-reward="claimable"><strong>{horseRawLabel(profileRewardsQuery.data.claimableRaw)}</strong>HORSE claimable</span>
                     </div>
                     {profileRewardsQuery.data.bySource?.length ? <ul className="reward-sources" aria-label="HORSE earned by trade source">
-                      {profileRewardsQuery.data.bySource.map((source) => <li key={source.kind}>{rewardSourceLabels[source.kind]} · {source.units} {source.units === "1" ? "edition" : "editions"} · {horseRawLabel(source.amountRaw)} HORSE</li>)}
+                      {profileRewardsQuery.data.bySource.map((source) => <li key={source.kind}>{rewardSourceLabels[source.kind]} · {source.units} {source.units === "1" ? "send" : "sends"} · {horseRawLabel(source.amountRaw)} HORSE</li>)}
                     </ul> : null}
                     {!profileRewardsQuery.data.sourceComplete && <p role="status">Rewards are still being counted.</p>}
-                    {/^[1-9]\d*$/.test(profileRewardsQuery.data.sourceDiscrepancies) && <p role="alert">Claimed HORSE is higher than recognized earnings. A Marshal should review it.</p>}
+                    {profileRewardsQuery.data.priorRulePaidRaw && /^[1-9]\d*$/.test(profileRewardsQuery.data.priorRulePaidRaw) && <p>Previously claimed under the edition-based rule: {horseRawLabel(profileRewardsQuery.data.priorRulePaidRaw)} HORSE. Paid claims remain final; new claimable totals use 10 HORSE per send.</p>}
                     <p>Claimed shows HORSE taken from the vault. Other riders can send HORSE too.</p>
                   </> : <p role="status">Counting rewards…</p>}
               </RewardLedger>
@@ -1838,7 +1924,7 @@ export function Horf() {
             <li>Other equine-related Objkt tag groups, such as pony, mare, or foal, when Objkt shows more than five tokens in that tag. Substrings such as “horsepower” and “neighbor” do not count.</li>
           </HorseTestList></LedgerPanel>
           <LedgerPanel><h3>What counts as a trade?</h3><HorseTestList>
-            <li>The horse edition must actually move between two different wallets on Tezos Mainnet during the selected trading season.</li>
+            <li>A qualifying horse must move between two wallets on Tezos Mainnet. The sender gets one race ride and 10 HORSE per sender-to-recipient operation, no matter how many editions move; receiving is shown separately.</li>
             <li>Failed transfers, marketplace handoffs, fractional tokens, and HORSE rewards do not count as horse trades.</li>
             <li>A token’s mint date chooses its Open Range season. Its transfer date chooses which race season counts the ride.</li>
             <li>Marshal approval is required to enter inspected escrow; the horse test alone does not grant it.</li>
@@ -1849,28 +1935,35 @@ export function Horf() {
         {routeSection === "race" && <Section id="horf-race" data-horf-region="race" aria-label="Horse trader race leaderboard">
           <SectionLabel><img src="/horf-art/horseshoe.svg" alt="" aria-hidden="true" width="20" height="20" style={{ verticalAlign: "middle", marginRight: 5 }} />Midway race board</SectionLabel>
           <h2>Who’s out in front?</h2>
-          <p>Both riders gain race activity when a horse moves. Only the sender earns 10 HORSE.</p>
+          <p>One outgoing horse interaction earns one race ride and 10 HORSE. Edition volume and incoming activity have their own views.</p>
+          <RaceStoryPicker role="group" aria-label="Race story">
+            {(Object.entries(raceStoryCopy) as [RaceStory, typeof raceStoryCopy[RaceStory]][]).map(([story, copy]) =>
+              <button key={story} type="button" data-horf-race-story={story} aria-pressed={raceStory === story}
+                onClick={() => selectRaceStory(story)}>{copy.label}</button>)}
+          </RaceStoryPicker>
+          <p data-horf-race-story-note>{raceStoryNote(raceStory, selectedSeasonKey === "all-time")}</p>
           <RaceFrame>
-            <RaceHeader><span>Riders · {seasonDisplayName}</span><span>Finish line</span></RaceHeader>
-            {leaderboard.length ? (
+            <RaceHeader><span>{raceStoryCopy[raceStory].label} · {seasonDisplayName}</span><span>Finish line</span></RaceHeader>
+            {raceLeaderboard.length ? (
               <Race>
-                {leaderboard.map((row, index) => (
-                <Lane key={row.address} data-horf-lane data-horf-trades={row.trades}>
+                {raceLeaderboard.map((row, index) => {
+                  const score = raceStoryValue(row, raceStory);
+                  return <Lane key={row.address} data-horf-lane data-horf-trades={row.trades} data-horf-race-score={score}>
                   <Rider>
                     <Rank aria-label={`Rank ${index + 1}`}>{index + 1}</Rank>
                     <RiderIdentity data-horf-race-split>
                       <TraderLink address={row.address} name={row.name} />
-                      <small>↑ {row.sent} sent · ↓ {row.received} received</small>
+                      <small>↑ {row.sent} sent editions · ↓ {row.received} received</small>
                       <HorfReceivedBreakdown gifts={row.giftHorsesReceived} trades={row.tradeHorsesReceived} />
                     </RiderIdentity>
                     {row.blacklisted === true && <BlacklistBadge data-horf-blacklist-badge type="button" onClick={() => viewTraderStatus(row.address)} aria-label={`View Horf blacklist details for ${row.name || row.address}`}>Blacklisted · details</BlacklistBadge>}
                   </Rider>
                   <Track aria-hidden="true">
-                    <Runner style={{ left: `${5 + (row.trades / leadTrades) * 74}%` }}><HorseGlyph /></Runner>
+                    <Runner style={{ left: `${5 + (score / leadRaceValue) * 74}%` }}><HorseGlyph /></Runner>
                   </Track>
-                  <LaneScore><strong>{row.trades}</strong><span>{row.trades === 1 ? "transfer" : "transfers"}</span></LaneScore>
-                </Lane>
-                ))}
+                  <LaneScore><strong>{score}</strong><span>{raceStoryUnit(raceStory, score)}</span></LaneScore>
+                </Lane>;
+                })}
               </Race>
             ) : (
               <p style={{ margin: 0, padding: "18px 12px" }}>
@@ -1959,7 +2052,7 @@ export function Horf() {
           )}
         </Section>}
 
-        {routeSection === "stable" && <HorfPersonalStable address={address} connectWallet={connectWallet} isConnecting={isConnecting} seasonKey={profileSeasonKey} seasonLabel={profileSeasonLabel} seasons={availableSeasons} shareSeasonKey={selectedSeasonKey} shareSeasonLabel={selectedSeasonKey === "all-time" ? "All tracked seasons" : seasonDisplayName} shareStats={shareStats} onSendHorse={openQuickHorseSend} />}
+        {routeSection === "stable" && <HorfPersonalStable address={address} connectWallet={connectWallet} isConnecting={isConnecting} seasonKey={profileSeasonKey} seasonLabel={profileSeasonLabel} seasons={availableSeasons} shareSeasonKey={selectedSeasonKey} shareSeasonLabel={selectedSeasonKey === "all-time" ? "All tracked seasons" : seasonDisplayName} shareStats={shareStats} onSendHorse={openQuickHorseSend} horseMarketEnabled={isAdmin} />}
         {routeSection === "legacy-stables" && <Section data-horf-legacy-page aria-label="Legacy horse stable recovery">
           <SectionLabel>🐎 Earlier escrow</SectionLabel>
           <h2>Legacy Stable Recovery</h2>
@@ -1970,7 +2063,7 @@ export function Horf() {
           <SectionLabel>🐎 The horse trading grounds</SectionLabel>
           <h2>Horse Market</h2>
           <ProfileTabs role="tablist" aria-label="Horse market areas">
-            <button type="button" role="tab" id="horf-market-tab-horse4horse" aria-controls="horf-horse4horse-market" aria-selected={marketTab === "horse4horse"} onClick={() => selectMarketTab("horse4horse")}>Horse4HORSE 🪙</button>
+            {isAdmin && <button type="button" role="tab" id="horf-market-tab-horse4horse" aria-controls="horf-horse4horse-market" aria-selected={marketTab === "horse4horse"} onClick={() => selectMarketTab("horse4horse")}>Horse4HORSE 🪙</button>}
             <button type="button" role="tab" id="horf-market-tab-marshals" aria-controls="horf-marshals-market" aria-selected={marketTab === "marshals"} onClick={() => selectMarketTab("marshals")}>Marshal’s Market ✦</button>
             <button type="button" role="tab" id="horf-market-tab-outlaw" aria-controls="horf-outlaw-corral" aria-selected={marketTab === "outlaw"} onClick={() => selectMarketTab("outlaw")}>Outlaw Corral 🪢</button>
           </ProfileTabs>

@@ -35,7 +35,7 @@ async function mockMarket(page, ready, token = { name: "Neighvember Chestnut", i
 
 test.describe("HORSE market", () => {
   test("uses one Horse Market nav item for three tabs and preserves legacy trade links", async ({ page, request }) => {
-    expect((await request.post("/__test/state", { data: { userRole: "anonymous" } })).ok()).toBeTruthy();
+    expect((await request.post("/__test/state", { data: { userRole: "admin" } })).ok()).toBeTruthy();
     await mockMarket(page, true);
     await page.route("**/api/horf/open-range/offers", (route) => json(route, { offers: [{
       id: 71, ownerAddress: seller, ownerName: "Sir Canter", tokenContract: horse, tokenId: "7",
@@ -89,19 +89,18 @@ test.describe("HORSE market", () => {
     await expect(page.locator('[data-horf-region="marshals-market"]')).toBeVisible();
   });
 
-  test("shows a clear pending state to a guest before the Mainnet contract is configured", async ({ page, request }) => {
+  test("keeps Horse4HORSE off the public Horse Market trail", async ({ page, request }) => {
     expect((await request.post("/__test/state", { data: { userRole: "anonymous" } })).ok()).toBeTruthy();
-    await mockMarket(page, false);
     await page.goto("/horf/horse-market");
     await expect(page.locator('[data-horf-app]')).toHaveAttribute("data-horf-page", "horse-market");
     await expect(page.locator('[data-horf-nav="horse-market"]')).toHaveAttribute("aria-current", "page");
-    await expect(page.locator('[data-horf-region="horse-market"]')).toContainText("being prepared for Mainnet");
-    await expect(page.locator('[data-horf-horse-market-list-form]').getByRole("button", { name: "Connect to list" })).toBeVisible();
-    await expect(page.locator('[data-horf-horse-market-listing]')).toHaveCount(0);
+    await expect(page.getByRole("tab", { name: /Horse4HORSE/ })).toHaveCount(0);
+    await expect(page.locator('[data-horf-region="marshals-market"]')).toBeVisible();
+    await expect(page.locator('[data-horf-region="horse-market"]')).toHaveCount(0);
   });
 
   test("features a live listing mint before the sale cards and opens its artwork by keyboard", async ({ page, request }) => {
-    expect((await request.post("/__test/state", { data: { userRole: "anonymous" } })).ok()).toBeTruthy();
+    expect((await request.post("/__test/state", { data: { userRole: "admin" } })).ok()).toBeTruthy();
     await mockMarket(page, true, { name: "Galloping Mare", image: "/horf-art/horse-gallop-photo.jpg" });
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto("/horf/horse-market");
@@ -117,7 +116,7 @@ test.describe("HORSE market", () => {
   });
 
   test("shows separate HORSE and Objkt XTZ purchase choices with exact prices", async ({ page, request }) => {
-    expect((await request.post("/__test/state", { data: { userRole: "anonymous" } })).ok()).toBeTruthy();
+    expect((await request.post("/__test/state", { data: { userRole: "admin" } })).ok()).toBeTruthy();
     await mockMarket(page, true);
     await page.goto("/horf/horse-market");
     await expect(page.locator('[data-horf-horse-market-listing]')).toHaveCount(1);
@@ -131,7 +130,7 @@ test.describe("HORSE market", () => {
   });
 
   test("focuses an exact active HORSE listing link and explains a missing listing", async ({ page, request }) => {
-    expect((await request.post("/__test/state", { data: { userRole: "anonymous" } })).ok()).toBeTruthy();
+    expect((await request.post("/__test/state", { data: { userRole: "admin" } })).ok()).toBeTruthy();
     await mockMarket(page, true, undefined, [
       { id: "2", sellerAddress: seller, tokenContract: horse, tokenId: "7", remaining: "3", unitPriceHorseRaw: "123000000", token: { name: "First Chestnut" } },
       { id: "9", sellerAddress: seller, tokenContract: horse, tokenId: "8", remaining: "1", unitPriceHorseRaw: "250000000", token: { name: "Linked Mare" } },
@@ -156,7 +155,7 @@ test.describe("HORSE market", () => {
   });
 
   test("opens the first horse's payment choices where the rider can see them", async ({ page, request }) => {
-    expect((await request.post("/__test/state", { data: { userRole: "anonymous" } })).ok()).toBeTruthy();
+    expect((await request.post("/__test/state", { data: { userRole: "admin" } })).ok()).toBeTruthy();
     await mockMarket(page, true);
     await page.setViewportSize({ width: 390, height: 600 });
     await page.goto("/horf/horse-market");
@@ -172,7 +171,7 @@ test.describe("HORSE market", () => {
   });
 
   test("opens exact token artwork and details in a full-screen viewer with every close control", async ({ page, request }) => {
-    expect((await request.post("/__test/state", { data: { userRole: "anonymous" } })).ok()).toBeTruthy();
+    expect((await request.post("/__test/state", { data: { userRole: "admin" } })).ok()).toBeTruthy();
     await mockMarket(page, true);
     await page.goto("/horf/horse-market");
     const open = page.locator("[data-horf-horse-market-art-trigger]");
@@ -207,7 +206,7 @@ test.describe("HORSE market", () => {
   });
 
   test("keeps animated GIFs on cards and plays video art in the full-screen viewer", async ({ page, request }) => {
-    expect((await request.post("/__test/state", { data: { userRole: "anonymous" } })).ok()).toBeTruthy();
+    expect((await request.post("/__test/state", { data: { userRole: "admin" } })).ok()).toBeTruthy();
     await mockMarket(page, true, {
       name: "Galloping GIF",
       image: "/creation-tools/industrializer/background.gif",
@@ -246,7 +245,7 @@ test.describe("HORSE market", () => {
   });
 
   test("lets a connected buyer reach the exact HORSE purchase control and validates quantity", async ({ page, request }) => {
-    expect((await request.post("/__test/state", { data: { userRole: "anonymous" } })).ok()).toBeTruthy();
+    expect((await request.post("/__test/state", { data: { userRole: "admin" } })).ok()).toBeTruthy();
     await page.addInitScript(({ address }) => {
       window.localStorage.setItem("wtf:wallet-session", JSON.stringify({ address, providerName: "octez.connect" }));
     }, { address: buyer });
@@ -270,7 +269,7 @@ test.describe("HORSE market", () => {
   });
 
   test("starts at zero editions and reviews an exact listing before requesting a permit", async ({ page, request }) => {
-    expect((await request.post("/__test/state", { data: { userRole: "anonymous" } })).ok()).toBeTruthy();
+    expect((await request.post("/__test/state", { data: { userRole: "admin" } })).ok()).toBeTruthy();
     await page.addInitScript(({ address }) => {
       window.localStorage.setItem("wtf:wallet-session", JSON.stringify({ address, providerName: "octez.connect" }));
     }, { address: seller });
@@ -326,7 +325,7 @@ test.describe("HORSE market", () => {
   });
 
   test("opens the exact older stable horse in the sale form after wallet and Marshal checks", async ({ page, request }) => {
-    expect((await request.post("/__test/state", { data: { userRole: "anonymous" } })).ok()).toBeTruthy();
+    expect((await request.post("/__test/state", { data: { userRole: "admin" } })).ok()).toBeTruthy();
     await page.addInitScript(({ address }) => {
       window.localStorage.setItem("wtf:wallet-session", JSON.stringify({ address, providerName: "octez.connect" }));
     }, { address: seller });

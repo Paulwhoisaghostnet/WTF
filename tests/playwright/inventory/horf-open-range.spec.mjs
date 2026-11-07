@@ -529,7 +529,7 @@ test.describe("Horf Open Range", () => {
     await expect(card.locator('[data-horf-open-range-status="offered"]')).toHaveText("Available in a wallet ↗");
     await expect(card.locator("[data-horf-open-range-quick-trade]")).toHaveCount(0);
     await expect(card.locator("[data-horf-open-range-view-availability]")).toHaveText("View availability");
-    await expect(card.locator("[data-horf-open-range-for-trade-now]")).toHaveCount(2);
+    await expect(card.locator("[data-horf-open-range-for-trade-now]")).toHaveCount(1);
     await expect(card.locator("[data-horf-open-range-for-trade-now]").first()).toHaveText("For trade now · Outlaw room →");
     await expect(card.locator("[data-horf-open-range-find-offer]")).toHaveCount(0);
     await card.locator("[data-horf-open-range-view-horse]").click();
