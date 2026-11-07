@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **787** · Open: **10** · Claimed: **42** · In Progress: **20** · Blocked: **5** · Fixed: **158** · Verified: **547** · Archived: **5**
+Total: **787** · Open: **10** · Claimed: **42** · In Progress: **19** · Blocked: **5** · Fixed: **158** · Verified: **548** · Archived: **5**
 
 ## Canonical Board
 
@@ -87,7 +87,6 @@ Total: **787** · Open: **10** · Claimed: **42** · In Progress: **20** · Bloc
 | WTF-BB-810 | In Progress | Codex HORF V3 settlement ledger | 2026-11-05 | HORF / V3 race and HORSE reward settlement | P1 | 15 | 95 | 3 | 5 | 3 | V3 horse swaps lack two-leg race and HORSE reward accounting |
 | WTF-BB-809 | In Progress | Codex HORF legacy claim-source migration | 2026-11-05 | HORF / V2 to V3 season and reward history | P1 | 15 | 95 | 3 | 5 | 3 | Switching the active Stable KT1 would erase V2 claim events from season stats and HORSE reward reconciliation |
 | WTF-BB-392 | In Progress | Codex Objkt Operator production verification | 2026-09-02 | Commerce / private Objkt operator availability | P1 | 15 | 95 | 4 | 5 | 2 | Private Objkt Operator is deployed with owner-gated PostgreSQL persistence and non-custodial signing boundaries |
-| WTF-BB-821 | In Progress | Codex HORF race and reward integrity | 2026-11-07 | HORF / race score and HORSE reward inflation | P1 | 14 | 133 | 3 | 5 | 2 | Edition quantities inflate HORF race rank and HORSE rewards |
 | WTF-BB-266 | In Progress | Codex gameshow production user-site serving | 2026-10-18 | Macaroni / PDS-backed user-site serving | P1 | 14 | 133 | 4 | 5 | 1 | App-side publish now writes renderable PDS snapshot/index records, flushes/checks exact outbox rows, and reports pending until PDS + public serving are ready; final `.me` renderer deployment remains blocked by missing SSH access to the `.me` host, while the per-host bridge keeps `paulwhoisaghost.wtfos.me` live |
 | WTF-BB-177 | In Progress | Codex WTFOS tz2at PDS/firehose pass | 2026-05-26 | AT Protocol architecture / identity boundary | P1 | 14 | 133 | 4 | 5 | 1 | Canonical user AT repos still carry WTFOS/tz2at state and no sovereign WTFOS DID boundary exists |
 | WTF-BB-707 | In Progress | Codex coLILseum open-seat wagering | 2026-10-24 | WTFIAP escrow / open-seat admission | P1 | 13 | 195 | 3 | 4 | 2 | XTZ Duel wagers cannot be funded before a challenger takes a seat |
@@ -358,6 +357,7 @@ Total: **787** · Open: **10** · Claimed: **42** · In Progress: **20** · Bloc
 | WTF-BB-645 | Verified | Codex bounty-board reconciliation | 2026-08-30 | Authorization / background jobs | P1 | 15 | 95 | 4 | 4 | 3 | Any authenticated user can force-run registered cockpit jobs |
 | WTF-BB-057 | Verified | Codex bounty-board reconciliation | 2026-08-30 | Security / command safety | P1 | 15 | 95 | 4 | 4 | 3 | Supabase backup command builder interpolates DB URL into a shell command |
 | WTF-BB-049 | Verified | Codex bounty-board reconciliation | 2026-08-30 | Dependencies / supply chain | P1 | 15 | 95 | 2 | 4 | 5 | js-dos assets and fallback runtime fetch from CDN are unpinned and uncached |
+| WTF-BB-821 | Verified | Codex HORF race and reward integrity | 2026-11-07 | HORF / race score and HORSE reward inflation | P1 | 14 | 133 | 3 | 5 | 2 | Edition quantities inflate HORF race rank and HORSE rewards |
 | WTF-BB-689 | Verified | Codex October security remediation | 2026-10-22 | Desktop / October 2026 Electron certificate trust | P1 | 14 | 133 | 3 | 3 | 4 | All nine Pasta desktop manifests pin Electron affected by compromised-CA trust advisory |
 | WTF-BB-671 | Verified | Codex production dependency advisory response | 2026-09-02 | Dependencies / security | P1 | 14 | 133 | 2 | 4 | 4 | New fast-uri and qs advisories fail the production dependency audit |
 | WTF-BB-666 | Verified | Codex Kiln wallet dependency pass | 2026-09-01 | Kiln dependencies / wallet runtime advisories | P1 | 14 | 133 | 3 | 3 | 4 | Kiln retains three moderate production advisories in its legacy Beacon wallet tree |
@@ -1966,20 +1966,6 @@ Total: **787** · Open: **10** · Claimed: **42** · In Progress: **20** · Bloc
   - Focused owner-policy, settings, discovery, scoring, and candidate-policy tests pass 7/7. Focused Chromium passes the owner creator-review and reload-persistence story 1/1. Inventory coverage remains complete for 241 surfaces, 981 handles, 118 routes, and 16 workflows.
   - `https://operator.wtfos.app/` serves valid TLS, redirects to `/objkt-operator`, and the app route returns HTTP 200. Production has the migration table and one configured-owner row: `wtf-admin`, state version 16, 25 creator records, and an empty purchase queue. This verifies durable production use without mutating shared acquisition state.
   - A separate authenticated production administrator, `e2e_thecount`, receives `{ allowed: false }` from the read-only access probe and HTTP 403 from the state route. The production allowlist includes `wtf-admin` and excludes that test administrator. WTF-BB-392 is Verified.
-
-### WTF-BB-821 - Edition quantities inflate HORF race rank and HORSE rewards
-
-- Category: HORF / race score and HORSE reward inflation
-- Priority: P1
-- Status: In Progress
-- Owner/Session: Codex HORF race and reward integrity
-- Last touched: 2026-11-07
-- Score: C3 + F5 + S2 + P1(4) = 14
-- Evidence (2026-11-07): `summarizeSeason` adds each qualifying direct transfer's edition amount to both wallets' race score. `buildHorfRewardEntitlements` multiplies outbound edition amount by 10 HORSE. Mainnet operation `onohWEmnvoFAeSbcKGSrgJLN1M4Wu9gAkjrybtH5gtMJN75bCam` moved 9,990 editions of the 10,000-edition, horse-tagged `Incentive Alignment` token from opeculiar to RubisCO in one transaction. Under the current formulas that single operation contributes 9,990 points to each wallet and 99,900 pending HORSE to the sender. This proves a quantity multiplier, not wallet ownership relationships or malicious intent.
-- Why it matters: Edition batch size is not a count of distinct horse-trading interactions; one bulk transfer can dominate standings and mint rewards.
-- Likely correction direction: Count each qualifying sender-to-recipient operation once for race activity and 10 HORSE, award activity to the sender while retaining received transfers as an explicit public activity view, and show edition volume, rider reach, and return matches as separate rankings. Preserve all wallet-level transfer evidence and do not infer shared owners from behavior alone. Keep already claimed HORSE immutable; apply the corrected per-trade rule to unclaimed accruals.
-- Verification idea: One 9,990-edition operation to one rider yields one sender activity point and 10 HORSE, not 9,990 points/99,900 HORSE; multiple recipients in one batch each count once; inbound transfers remain visible but do not give race rank; room swap legs award one point and 10 HORSE to each sender; public profiles expose qualifying events, volume, score, and reward status.
-- Local verification (2026-11-07): TypeScript check and production build pass; focused HORF tests pass 32/32; the full interaction inventory passes 1,016/1,016, and inventory coverage passes. Browser coverage confirms public Race and Horse4HORSE are hidden, direct deep links are gated to the relaunch notice, the public Horse Market lands on Marshal’s Market, and the admin preview retains both surfaces. Production remains pending the operator bringing the server back online.
 
 ### WTF-BB-266 - App-side publish now writes renderable PDS snapshot/index records, flushes/checks exact outbox rows, and reports pending until PDS + public serving are ready; final `.me` renderer deployment remains blocked by missing SSH access to the `.me` host, while the per-host bridge keeps `paulwhoisaghost.wtfos.me` live
 
@@ -7646,6 +7632,20 @@ Copy this when adding a new issue:
 - Verification (2026-08-30):
   - `npm run security:jsdos-vendor` passed 3/3: URLs reject `latest`, every asset has a 64-character SHA-256 digest, a mismatch fails closed, and all checked-in bytes match their pinned digests.
   - `git blame scripts/jsdos-vendor.mjs` and the install integrity calls bind the correction to `38f806e3`.
+
+### WTF-BB-821 - Edition quantities inflate HORF race rank and HORSE rewards
+
+- Category: HORF / race score and HORSE reward inflation
+- Priority: P1
+- Status: Verified
+- Owner/Session: Codex HORF race and reward integrity
+- Last touched: 2026-11-07
+- Score: C3 + F5 + S2 + P1(4) = 14
+- Evidence (2026-11-07): `summarizeSeason` adds each qualifying direct transfer's edition amount to both wallets' race score. `buildHorfRewardEntitlements` multiplies outbound edition amount by 10 HORSE. Mainnet operation `onohWEmnvoFAeSbcKGSrgJLN1M4Wu9gAkjrybtH5gtMJN75bCam` moved 9,990 editions of the 10,000-edition, horse-tagged `Incentive Alignment` token from opeculiar to RubisCO in one transaction. Under the current formulas that single operation contributes 9,990 points to each wallet and 99,900 pending HORSE to the sender. This proves a quantity multiplier, not wallet ownership relationships or malicious intent.
+- Why it matters: Edition batch size is not a count of distinct horse-trading interactions; one bulk transfer can dominate standings and mint rewards.
+- Likely correction direction: Count each qualifying sender-to-recipient operation once for race activity and 10 HORSE, award activity to the sender while retaining received transfers as an explicit public activity view, and show edition volume, rider reach, and return matches as separate rankings. Preserve all wallet-level transfer evidence and do not infer shared owners from behavior alone. Keep already claimed HORSE immutable; apply the corrected per-trade rule to unclaimed accruals.
+- Verification idea: One 9,990-edition operation to one rider yields one sender activity point and 10 HORSE, not 9,990 points/99,900 HORSE; multiple recipients in one batch each count once; inbound transfers remain visible but do not give race rank; room swap legs award one point and 10 HORSE to each sender; public profiles expose qualifying events, volume, score, and reward status.
+- Local verification (2026-11-07): TypeScript check and production build pass; focused HORF tests pass 32/32; the full interaction inventory passes 1,016/1,016, and inventory coverage passes. Browser coverage confirms public Race and Horse4HORSE are hidden, direct deep links are gated to the relaunch notice, the public Horse Market lands on Marshal’s Market, and the admin preview retains both surfaces. Production verification (2026-11-07): commit e7613772 deployed via Hetzner run 42424221458; live readiness reports ready with database, chain, and jobs healthy at e7613772. Public Chromium smoke confirms /horf/race is gated, a Horse4HORSE deep link redirects to Marshal’s Market with the sale tab hidden, Marshal’s Market renders As Expected and I CAN DREAM, and Legacy Stable Recovery renders Prancelot. Quality Gates run 42424221463 passed, including inventory route smoke and SmartPy contract checks.
 
 ### WTF-BB-689 - All nine Pasta desktop manifests pin Electron affected by compromised-CA trust advisory
 
