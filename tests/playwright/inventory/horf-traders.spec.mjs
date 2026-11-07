@@ -17,6 +17,14 @@ const leadOffers = [
 ];
 
 async function mockPublicHorf(page) {
+  await page.route(/\/api\/horf\/horse-holders(?:\?.*)?$/, (route) => {
+    const url = new URL(route.request().url());
+    return json(route, {
+      address: url.searchParams.get("address"), contract: url.searchParams.get("contract"),
+      tokenId: url.searchParams.get("tokenId"), checkedAt: new Date().toISOString(),
+      members: url.searchParams.getAll("recipient").map((address) => ({ address, owns: false })),
+    });
+  });
   await page.route("**/api/horf/season*", (route) => json(route, {
     season, seasons: [season, archiveSeason], asOf: "2026-11-03T12:00:00.000Z", status: "ready", error: null,
     nextRefreshAt: null, currentUser: null,

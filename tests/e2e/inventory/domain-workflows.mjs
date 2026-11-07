@@ -917,7 +917,7 @@ export const DOMAIN_WORKFLOWS = [
     name: "horf trader directory, return-ride ledger, profile, and horse criteria loop",
     domain: "Market, Exchange, Inventory, and Commerce",
     routes: ["/horf/traders", "/horf/stable", "/horf/traders/tz1VSUr8wwNhLAzempoch5d6hLRiTh8Cjcjb", "/horf/info"],
-    uiHandles: ["data-horf-trader-card", "data-horf-active-offers", "data-horf-trader-offer-carousel", "data-horf-trader-quick-send"],
+    uiHandles: ["data-horf-trader-card", "data-horf-active-offers", "data-horf-trader-offer-carousel", "data-horf-trader-quick-send", "data-horf-batch-return", "data-horf-quick-batch-recipient", "data-horf-return-holders", "data-horf-return-holder-warning", "data-horf-return-recipient-toggle"],
     eventHandles: ["horf.traders.viewed", "horf.trader.quick_send_opened", "horf.trader_profile.viewed", "horf.trader_profile.tab_selected", "horf.trader_profile.address_copied", "horf.trader_offer.selected", "horf.posse.added", "horf.posse.removed", "horf.info.viewed"],
     apiProbes: [
       { method: "GET", path: "/api/horf/traders/tz1VSUr8wwNhLAzempoch5d6hLRiTh8Cjcjb/profile?season=current-2026", expectedStatuses: [200, 503] },
@@ -925,6 +925,7 @@ export const DOMAIN_WORKFLOWS = [
       { method: "GET", path: "/api/horf/traders/tz1VSUr8wwNhLAzempoch5d6hLRiTh8Cjcjb/profile-picture", expectedStatuses: [200, 404, 503] },
       { method: "GET", path: "/api/horf/traders/tz1VSUr8wwNhLAzempoch5d6hLRiTh8Cjcjb/offers", expectedStatuses: [200, 503] },
       { method: "GET", path: "/api/horf/traders/tz1VSUr8wwNhLAzempoch5d6hLRiTh8Cjcjb/horses?offset=0", expectedStatuses: [200, 503] },
+      { method: "GET", path: "/api/horf/horse-holders?address=invalid&contract=invalid&tokenId=0&recipient=invalid", expectedStatuses: [400] },
       { method: "GET", path: "/api/horf/open-range/offers", expectedStatuses: [200, 503] },
     ],
   },

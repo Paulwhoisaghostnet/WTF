@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { getPosseHorseHolders } from "./posse-holders";
+import { getPosseHorseHolders, parseHorseHolderRecipients, HORF_RETURN_RECIPIENT_LIMIT } from "./posse-holders";
 
 const contract = "KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton";
 const addresses = [
@@ -8,6 +8,17 @@ const addresses = [
   "tz1VSUr8wwNhLAzempoch5d6hLRiTh8Cjcjb",
   "tz1UakcrmXD82EinyTmZ4qLYE9ZGQwcXPt79",
 ];
+
+test("return recipient holder checks require distinct other wallets within the send limit", () => {
+  assert.deepEqual(parseHorseHolderRecipients(addresses[1], addresses[0]), [addresses[1]]);
+  assert.deepEqual(parseHorseHolderRecipients(addresses.slice(1), addresses[0]), addresses.slice(1));
+  assert.throws(() => parseHorseHolderRecipients(undefined, addresses[0]), /Choose 1 to 50/);
+  assert.throws(() => parseHorseHolderRecipients([], addresses[0]), /Choose 1 to 50/);
+  assert.throws(() => parseHorseHolderRecipients([addresses[0]], addresses[0]), /Choose 1 to 50/);
+  assert.throws(() => parseHorseHolderRecipients([addresses[1], addresses[1]], addresses[0]), /Choose 1 to 50/);
+  assert.throws(() => parseHorseHolderRecipients([addresses[1], 7], addresses[0]), /Choose 1 to 50/);
+  assert.throws(() => parseHorseHolderRecipients(Array.from({ length: HORF_RETURN_RECIPIENT_LIMIT + 1 }, () => addresses[1]), addresses[0]), /Choose 1 to 50/);
+});
 
 test("posse holder check batches exact token queries and excludes wallets with editions", async () => {
   const calls: Array<Record<string, unknown>> = [];

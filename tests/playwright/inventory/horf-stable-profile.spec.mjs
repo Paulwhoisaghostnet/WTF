@@ -42,6 +42,37 @@ async function mockConnectedWallet(page, onTokenRead = () => {}) {
     });
   });
   await page.route("**/api/horf/stable-selections?*", (route) => json(route, { selections: [] }));
+  await page.route(/\/api\/horf\/horse-holders(?:\?.*)?$/, (route) => {
+    const url = new URL(route.request().url());
+    return json(route, {
+      address: url.searchParams.get("address"), contract: url.searchParams.get("contract"),
+      tokenId: url.searchParams.get("tokenId"), checkedAt: new Date().toISOString(),
+      members: url.searchParams.getAll("recipient").map((address) => ({ address, owns: false })),
+    });
+  });
+}
+
+async function mockReturnStable(page, owedTo, ownedBalance = "2") {
+  await page.route("**/api/horf/season*", (route) => json(route, {
+    season, seasons: [allTimeSeason, season, archiveSeason],
+    asOf: "2026-11-05T12:00:00.000Z", status: "ready", error: null, nextRefreshAt: null,
+    leaderboard: [{ address: wallet, name: "Trail Rider", trades: 4, received: 2, sent: 2 }],
+    currentUser: {
+      address: wallet, received: 2, sent: 2, trades: 4, completedTrades: 0,
+      giftHorsesReceived: 0, tradeHorsesReceived: 2,
+      owedTo, owedBy: [], waitingHorses: [], recent: [],
+    },
+  }));
+  await page.route(/\/api\/horf\/traders\/[^/]+\/horses(?:\?.*)?$/, (route) => json(route, {
+    address: wallet,
+    items: [{ contract, tokenId: "7", balance: ownedBalance, name: "Neighvember Seven",
+      image: "/horf-art/horse-gallop-photo.jpg", mintedAt: season.startsAt, creatorAddress: wallet }],
+    pagination: { hasMore: false, nextOffset: 1 },
+  }));
+  await page.route("**/api/horf/wallet/tokens?*", (route) => json(route, {
+    items: [{ contract, tokenId: "7", balance: ownedBalance, walletAddress: wallet, name: "Neighvember Seven" }],
+    pagination: { limit: 48, offset: 0, total: 1, hasMore: false, nextOffset: 1 },
+  }));
 }
 
 test.describe("Horf Stable and trader profile", () => {
@@ -305,33 +336,27 @@ test.describe("Horf Stable and trader profile", () => {
   test("reviews one horse edition for each rider awaiting a return in one wallet operation", async ({ page, request }) => {
     expect((await request.post("/__test/state", { data: { userRole: "admin" } })).ok()).toBeTruthy();
     await mockConnectedWallet(page);
-    await mockSeason(page);
-    await page.route("**/api/horf/season*", (route) => json(route, {
-      season, seasons: [allTimeSeason, season, archiveSeason],
-      asOf: "2026-11-05T12:00:00.000Z", status: "ready", error: null, nextRefreshAt: null,
-      leaderboard: [{ address: wallet, name: "Trail Rider", trades: 4, received: 2, sent: 2 }],
-      currentUser: {
-        address: wallet, received: 2, sent: 2, trades: 4, completedTrades: 0,
-        owedTo: [
-          { address: firstReturnWallet, name: "Sir Canter", count: 1 },
-          { address: secondReturnWallet, name: "Mare Force", count: 1 },
-        ],
-        owedBy: [], waitingHorses: [], recent: [],
-      },
-    }));
-    await page.route(/\/api\/horf\/traders\/[^/]+\/horses(?:\?.*)?$/, (route) => json(route, {
-      address: wallet,
-      items: [{ contract, tokenId: "7", balance: "2", name: "Neighvember Seven",
-        image: "/horf-art/horse-gallop-photo.jpg", mintedAt: season.startsAt }],
-      pagination: { hasMore: false, nextOffset: 1 },
-    }));
-    await page.route("**/api/horf/wallet/tokens?*", (route) => json(route, {
-      items: [{ contract, tokenId: "7", balance: "2", walletAddress: wallet, name: "Neighvember Seven" }],
-      pagination: { limit: 48, offset: 0, total: 1, hasMore: false, nextOffset: 1 },
-    }));
+    await mockReturnStable(page, [
+      { address: firstReturnWallet, name: "Sir Canter", count: 1 },
+      { address: secondReturnWallet, name: "Mare Force", count: 1 },
+    ]);
+    await page.route(/\/api\/horf\/horse-holders(?:\?.*)?$/, (route) => {
+      const url = new URL(route.request().url());
+      expect(url.searchParams.get("address")).toBe(wallet);
+      expect(url.searchParams.get("contract")).toBe(contract);
+      expect(url.searchParams.get("tokenId")).toBe("7");
+      expect(url.searchParams.getAll("recipient")).toEqual([firstReturnWallet, secondReturnWallet]);
+      return json(route, { address: wallet, contract, tokenId: "7", checkedAt: new Date().toISOString(), members: [
+        { address: firstReturnWallet, owns: false }, { address: secondReturnWallet, owns: false },
+      ] });
+    });
 
     await page.goto("/horf/stable?season=current-2026");
     const ledger = page.locator('[data-horf-region="trader-ledger"]');
+    const stable = page.locator('[data-horf-region="personal-stable"]');
+    await expect(ledger.locator("[data-horf-received-breakdown]")).toContainText("🤝2");
+    expect(await ledger.evaluate((element, horseGallery) => Boolean(element.compareDocumentPosition(document.querySelector(horseGallery)) & Node.DOCUMENT_POSITION_FOLLOWING), '[data-horf-region="personal-stable"]')).toBeTruthy();
+    await expect(stable.locator("[data-horf-stable-inspection-workroom]")).not.toHaveAttribute("open", "");
     const batchReturn = ledger.locator("[data-horf-batch-return]");
     await expect(batchReturn).toBeVisible();
     await batchReturn.click();
@@ -355,6 +380,63 @@ test.describe("Horf Stable and trader profile", () => {
     await expect(review).toContainText("2 of 2 owned editions · 2 riders");
     await expect(review).toContainText("one Mainnet transfer");
     await expect(review.locator("[data-horf-gift-confirm]")).toBeEnabled();
+  });
+
+  test("warns when a batch recipient already owns the chosen horse and lets the rider choose a safe subset", async ({ page, request }) => {
+    expect((await request.post("/__test/state", { data: { userRole: "admin" } })).ok()).toBeTruthy();
+    await mockConnectedWallet(page);
+    await mockReturnStable(page, [
+      { address: firstReturnWallet, name: "Sir Canter", count: 1 },
+      { address: secondReturnWallet, name: "Mare Force", count: 1 },
+    ]);
+    await page.route(/\/api\/horf\/horse-holders(?:\?.*)?$/, (route) => {
+      const url = new URL(route.request().url());
+      return json(route, { address: wallet, contract, tokenId: "7", checkedAt: new Date().toISOString(),
+        members: url.searchParams.getAll("recipient").map((address) => ({ address, owns: address === secondReturnWallet })) });
+    });
+
+    await page.goto("/horf/stable?season=current-2026");
+    await page.locator("[data-horf-batch-return]").click();
+    const dialog = page.locator("[data-horf-quick-send-dialog]");
+    await dialog.locator("[data-horf-gift-owned]").selectOption(`${contract}:7`);
+    await expect(dialog.locator("[data-horf-return-holder-warning]")).toContainText("already owns this horse");
+    const riders = dialog.locator("[data-horf-quick-batch-recipient]");
+    await expect(riders.nth(1).locator("[data-horf-return-holder-owned]")).toContainText("Send anyway");
+    await expect(dialog.locator("[data-horf-gift-submit]")).toBeDisabled();
+
+    await riders.nth(1).locator("[data-horf-return-recipient-toggle]").uncheck();
+    await expect(dialog.locator("[data-horf-return-holder-warning]")).toHaveCount(0);
+    await expect(dialog.locator("[data-horf-gift-submit]")).toBeEnabled();
+    await dialog.locator("[data-horf-gift-submit]").click();
+    const review = dialog.locator("[data-horf-gift-review]");
+    await expect(review.locator("li")).toHaveCount(1);
+    await expect(review).toContainText(firstReturnWallet);
+    await expect(review).not.toContainText(secondReturnWallet);
+  });
+
+  test("shows the batch return action for one owed rider and requires consent for a horse they own", async ({ page, request }) => {
+    expect((await request.post("/__test/state", { data: { userRole: "admin" } })).ok()).toBeTruthy();
+    await mockConnectedWallet(page);
+    await mockReturnStable(page, [{ address: firstReturnWallet, name: "Sir Canter", count: 1 }], "1");
+    await page.route(/\/api\/horf\/horse-holders(?:\?.*)?$/, (route) => json(route, {
+      address: wallet, contract, tokenId: "7", checkedAt: new Date().toISOString(),
+      members: [{ address: firstReturnWallet, owns: true }],
+    }));
+
+    await page.goto("/horf/stable?season=current-2026");
+    const batchReturn = page.locator("[data-horf-batch-return]");
+    await expect(batchReturn).toBeVisible();
+    await batchReturn.click();
+    const dialog = page.locator("[data-horf-quick-send-dialog]");
+    await expect(dialog.locator("[data-horf-quick-batch-recipient]")).toHaveCount(1);
+    await dialog.locator("[data-horf-gift-owned]").selectOption(`${contract}:7`);
+    await expect(dialog.locator("[data-horf-return-holder-warning]")).toContainText("already owns this horse");
+    await expect(dialog.locator("[data-horf-gift-submit]")).toBeDisabled();
+    await dialog.locator("[data-horf-return-holder-owned] input[type=checkbox]").check();
+    await expect(dialog.locator("[data-horf-return-holder-warning]")).toHaveCount(0);
+    await dialog.locator("[data-horf-gift-submit]").click();
+    await expect(dialog.locator("[data-horf-gift-review]")).toContainText(firstReturnWallet);
+    await expect(dialog.locator("[data-horf-gift-review]")).toContainText("1 of 1 owned editions · 1 rider");
   });
 
   test("disconnects a signed-in rider from the header and starts reconnecting from the same chip", async ({ page, request }) => {
@@ -664,6 +746,7 @@ test.describe("Horf Stable and trader profile", () => {
     await expect(stable).toContainText("Mystery Foal");
     await expect(stable).toContainText("Between Seasons");
     await cards.filter({ hasText: "Old Mare" }).locator("[data-horf-stable-select-inspection]").click();
+    await expect(stable.locator("[data-horf-stable-inspection-workroom]")).toHaveAttribute("open", "");
     await expect(stable.locator("[data-horf-personal-selection]")).toContainText("Old Mare");
   });
 
@@ -697,6 +780,9 @@ test.describe("Horf Stable and trader profile", () => {
     const stable = page.locator('[data-horf-region="personal-stable"]');
     const picker = stable.locator("[data-horf-personal-token]");
     await expect(stable.locator("[data-horf-stable-scan-complete]")).toContainText("Showing 2 horses · scan complete");
+    const inspection = stable.locator("[data-horf-stable-inspection-workroom]");
+    await expect(inspection).not.toHaveAttribute("open", "");
+    await inspection.locator("summary").click();
     await expect(picker.locator("optgroup")).toHaveCount(2);
     await expect(picker.locator("optgroup").nth(0)).toHaveAttribute("label", "Created by you");
     await expect(picker.locator("optgroup").nth(0).locator("option")).toHaveAttribute("value", `${contract}:41`);

@@ -423,6 +423,15 @@ test.describe("live E2E puppet orchestration", () => {
       const noProof = await guest.get(`/api/horf/posse?address=${encodeURIComponent(actor.walletAddress)}`);
       expect(noProof.status()).toBe(403);
       expect((await noProof.json()).error).toMatch(/wallet|verify|proof/i);
+      const holderParams = new URLSearchParams({
+        address: actor.walletAddress,
+        contract: "KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton",
+        tokenId: "7",
+        recipient: witness.walletAddress,
+      });
+      const noHolderProof = await guest.get(`/api/horf/horse-holders?${holderParams}`);
+      expect(noHolderProof.status()).toBe(403);
+      expect((await noHolderProof.json()).error).toMatch(/wallet|verify|proof/i);
 
       const noCsrf = await guest.post("/api/horf/wallet/challenge", {
         data: { walletAddress: actor.walletAddress },

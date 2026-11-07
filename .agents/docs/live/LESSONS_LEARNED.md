@@ -14870,3 +14870,13 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: Setting the correct end date in one manifest line could freeze race and reward updates during the live event.
 
 **Rule**: Compare a configured end with the current time wherever refresh and closure are decided, then align HORF and HAHA boundaries and prove both before-boundary updates and after-boundary lock. A time-limited announcement may ship independently while season-close behavior is tracked as its own correction.
+
+---
+
+## 2026-11-07 - Put Stable return obligations before the horse gallery
+
+**What happened**: My Stable rendered a long profile, horse gallery, inspection lineup, waiting receipt list, and season log before the owed-rider cards. A batch return existed but was hidden for one owed rider, and its sender flow did not check whether a chosen recipient already held that exact horse.
+
+**Why it mattered**: Traders had to scroll to learn how many horses arrived and who was waiting for a return, then could unknowingly send a duplicate horse to a rider who already owned it.
+
+**Rule**: Put received counts and owed-rider actions at the top of My Stable, keep long receipt and inspection details expandable, and expose batch return whenever at least one rider is owed a horse. For direct return sends, show exact-token holder warnings before review, require an explicit send-anyway choice for existing holders, and recheck current holders after signer activation but before the wallet transfer.

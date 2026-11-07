@@ -254,6 +254,32 @@ const HorseGroup = styled.section`
   > p { margin: 0 0 10px; }
 `;
 
+const InspectionWorkroom = styled.details`
+  margin-top: 24px;
+  border: 1px solid var(--horf-line, #3d5148);
+  border-radius: 14px;
+  background: var(--horf-surface, #1b2723);
+  > summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 52px;
+    padding: 12px 18px;
+    color: var(--horf-ink, #f4ead6);
+    cursor: pointer;
+    font: 800 16px/1.25 var(--horf-display, Georgia, serif);
+    list-style: none;
+  }
+  > summary::-webkit-details-marker { display: none; }
+  > summary::after { content: "⌄"; color: var(--horf-teal, #71b7a0); font: 800 20px/1 var(--horf-font); transition: transform 160ms ease; }
+  &[open] > summary::after { transform: rotate(180deg); }
+  > summary:focus-visible { outline: 3px solid var(--horf-teal, #71b7a0); outline-offset: 2px; }
+  > summary small { margin-left: auto; color: var(--horf-muted, #b7b5a7); font: 700 12px/1.3 var(--horf-font); }
+  > div { margin: 0 16px 16px; }
+  @media (prefers-reduced-motion: reduce) { > summary::after { transition: none; } }
+`;
+
 function StableVideoPreview({ src }: { src: string }) {
   const elementRef = useRef<HTMLVideoElement>(null);
   const [visible, setVisible] = useState(false);
@@ -338,6 +364,7 @@ export function HorfPersonalStable({ address, connectWallet, isConnecting, seaso
   const [searchDraft, setSearchDraft] = useState("");
   const [search, setSearch] = useState("");
   const [selectedKey, setSelectedKey] = useState("");
+  const [inspectionOpen, setInspectionOpen] = useState(false);
   const [mintSeasonKey, setMintSeasonKey] = useState("all");
   const [detailHorse, setDetailHorse] = useState<HeldHorse | null>(null);
   const [availabilityHorse, setAvailabilityHorse] = useState<HeldHorse | null>(null);
@@ -346,6 +373,7 @@ export function HorfPersonalStable({ address, connectWallet, isConnecting, seaso
   const availabilityRef = useRef<HTMLDivElement>(null);
   const detailRef = useRef<HTMLDialogElement>(null);
   const inspectionSelectionRef = useRef<HTMLDivElement>(null);
+  const inspectionWorkroomRef = useRef<HTMLDetailsElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -507,9 +535,13 @@ export function HorfPersonalStable({ address, connectWallet, isConnecting, seaso
 
   function selectFromGallery(horse: HeldHorse) {
     setSelectedKey(`${horse.contract}:${horse.tokenId}`);
+    setInspectionOpen(true);
     window.requestAnimationFrame(() => {
       const selection = inspectionSelectionRef.current;
-      if (!selection) return;
+      if (!selection) {
+        inspectionWorkroomRef.current?.scrollIntoView({ behavior: "auto", block: "start" });
+        return;
+      }
       selection.focus({ preventScroll: true });
       selection.scrollIntoView({ behavior: "auto", block: "center" });
     });
@@ -658,6 +690,8 @@ export function HorfPersonalStable({ address, connectWallet, isConnecting, seaso
       </StableHorseDetail>
       {scanComplete && <p data-horf-stable-scan-complete role="status">{visibleHorses.length ? `Showing ${visibleHorses.length} ${visibleHorses.length === 1 ? "horse" : "horses"} · scan complete.` : mintSeasonKey === "all" ? "Scan complete. No qualifying horses found in this wallet." : `Scan complete. No held horses minted in ${selectedMintSeason?.label ?? "this season"}.`}</p>}
     </HorsePaddock>}
+    <InspectionWorkroom ref={inspectionWorkroomRef} data-horf-stable-inspection-workroom open={inspectionOpen} onToggle={(event) => setInspectionOpen(event.currentTarget.open)}>
+      <summary>Inspection & saved horses <small>{selections.length} saved</small></summary>
     <Columns>
       <Panel data-horf-personal-owned>
         <h3>Inspection lineup</h3>
@@ -695,6 +729,7 @@ export function HorfPersonalStable({ address, connectWallet, isConnecting, seaso
         })}</StableList> : address && !selectionsQuery.isPending && !selectionsQuery.isError && <p>Your stable has no saved horses yet.</p>}
       </Panel>
     </Columns>
+    </InspectionWorkroom>
     {error && <Note $error role="alert">{error}</Note>}
     {success && <Note role="status">{success}</Note>}
   </Shell>;

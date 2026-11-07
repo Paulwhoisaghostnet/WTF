@@ -1,4 +1,5 @@
 import { horfMainnetIndex } from "./mainnet-index";
+import { isTezosWallet } from "./model";
 
 type TokenKey = { contract: string; tokenId: string };
 type BalanceRow = {
@@ -6,6 +7,19 @@ type BalanceRow = {
   token?: { contract?: { address?: string }; tokenId?: string };
   balance?: string;
 };
+
+// The Stable's existing batch-return picker accepts up to 50 recipients.
+export const HORF_RETURN_RECIPIENT_LIMIT = 50;
+
+export function parseHorseHolderRecipients(value: unknown, sender: string): string[] {
+  const recipients = typeof value === "string" ? [value] : value;
+  if (!Array.isArray(recipients) || recipients.length < 1 || recipients.length > HORF_RETURN_RECIPIENT_LIMIT ||
+      recipients.some((recipient) => !isTezosWallet(recipient) || recipient === sender) ||
+      new Set(recipients).size !== recipients.length) {
+    throw new Error(`Choose 1 to ${HORF_RETURN_RECIPIENT_LIMIT} distinct Tezos recipient wallets other than your own`);
+  }
+  return recipients;
+}
 
 /** Read exact current holders in TzKT's documented default page-sized batches. */
 export async function getPosseHorseHolders(

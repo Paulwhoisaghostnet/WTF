@@ -8,7 +8,7 @@ import { getHorfHorseActivity, getHorfHorseConfig, horseContractAddress, HORF_HO
 import { getHorfRewardActivity, issueHorfHorseClaimPermit } from "../features/horf/rewards";
 import { HorfHorseClaimSyncError, HorfHorseClaimUnconfiguredError } from "../features/horf/horse-claims";
 import { isTezosWallet } from "../features/horf/model";
-import { getPosseHorseHolders } from "../features/horf/posse-holders";
+import { getPosseHorseHolders, parseHorseHolderRecipients } from "../features/horf/posse-holders";
 import { HorseTokenIneligibleError, HorseTokenNotFoundError, inspectHorseToken, inspectHorseTokenCached } from "../features/horf/stables/eligibility";
 import { matchGiftTransfers, parseGiftConfirmation, parsePossePartner, type IndexedGiftTransfer } from "../features/horf/social";
 import { requireHorfCsrf, requireHorfWallet } from "../features/horf/wallet-scope";
@@ -172,6 +172,38 @@ router.get("/api/horf/posse/horse-holders", async (req, res) => {
     if (error instanceof HorseTokenIneligibleError) return res.status(422).json({ error: error.message });
     console.error("[horf] posse horse holder check failed:", error);
     return res.status(503).json({ error: "Current posse horse holders could not be checked. Nothing was sent." });
+  }
+});
+
+router.get("/api/horf/horse-holders", async (req, res) => {
+  const address = req.query.address;
+  const contract = req.query.contract;
+  const tokenId = req.query.tokenId;
+  res.setHeader("Cache-Control", "no-store");
+  if (!isTezosWallet(address) || typeof contract !== "string" || !FA2_RE.test(contract) ||
+      typeof tokenId !== "string" || !/^\d+$/.test(tokenId)) {
+    return res.status(400).json({ error: "A verified wallet and exact horse token are required" });
+  }
+  let recipients: string[];
+  try {
+    recipients = parseHorseHolderRecipients(req.query.recipient, address);
+  } catch (error) {
+    return res.status(400).json({ error: error instanceof Error ? error.message : "Invalid horse recipients" });
+  }
+  try {
+    if (!(await requireHorfWallet(req, res, address))) return;
+    if (contract === horseContractAddress()) {
+      return res.status(422).json({ error: "HORSE rewards are not horse art" });
+    }
+    await inspectHorseTokenCached(contract, tokenId);
+    const holders = await getPosseHorseHolders(recipients, { contract, tokenId });
+    return res.json({ address, contract, tokenId, checkedAt: new Date().toISOString(),
+      members: recipients.map((recipient) => ({ address: recipient, owns: holders.has(recipient) })) });
+  } catch (error) {
+    if (error instanceof HorseTokenNotFoundError) return res.status(404).json({ error: error.message });
+    if (error instanceof HorseTokenIneligibleError) return res.status(422).json({ error: error.message });
+    console.error("[horf] horse recipient holder check failed:", error);
+    return res.status(503).json({ error: "Current horse holders could not be checked. Nothing was sent." });
   }
 });
 
