@@ -5,6 +5,7 @@ export type HorfOwnedToken = {
   balance: string;
   walletAddress: string;
   creatorAddress?: string | null;
+  mintedAt?: string | null;
 };
 
 export type HorfOwnedTokenPage = {
@@ -19,7 +20,8 @@ export function parseHorfOwnedTokenPage(value: unknown): HorfOwnedTokenPage {
         typeof item.contract !== "string" || typeof item.tokenId !== "string" ||
         typeof item.balance !== "string" || typeof item.walletAddress !== "string" ||
         (item.name != null && typeof item.name !== "string") ||
-        (item.creatorAddress != null && typeof item.creatorAddress !== "string")) ||
+        (item.creatorAddress != null && typeof item.creatorAddress !== "string") ||
+        (item.mintedAt != null && typeof item.mintedAt !== "string")) ||
       !page.pagination || typeof page.pagination.hasMore !== "boolean" ||
       !Number.isSafeInteger(page.pagination.nextOffset) || page.pagination.nextOffset < 0) {
     throw new Error("Owned horse tokens could not be read. Paste an Objkt token link instead.");

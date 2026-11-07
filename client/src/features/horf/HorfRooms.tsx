@@ -108,12 +108,19 @@ function abbreviated(address: string): string { return `${address.slice(0, 8)}�
 
 function horseIdentity(horse: HorfOwnedHorse): string { return `${horse.contract}/${horse.tokenId}`; }
 
-export function HorfRooms({ market, address, connectWallet, isConnecting, listingFromUrl }: {
+function parseHorseIdentity(value: string | null | undefined): { contract: string; tokenId: string } | null {
+  if (!value) return null;
+  const match = value.match(/^(KT1[1-9A-HJ-NP-Za-km-z]{33}):(\d+)$/);
+  return match ? { contract: match[1]!, tokenId: match[2]! } : null;
+}
+
+export function HorfRooms({ market, address, connectWallet, isConnecting, listingFromUrl, depositFromUrl }: {
   market: "marshal" | "outlaw";
   address: string | null;
   connectWallet: () => Promise<void>;
   isConnecting: boolean;
   listingFromUrl?: string | null;
+  depositFromUrl?: string | null;
 }) {
   const qc = useQueryClient();
   const [depositMode, setDepositMode] = useState<HorfPublicRoomMode>(market === "outlaw" ? 2 : 0);
@@ -128,6 +135,8 @@ export function HorfRooms({ market, address, connectWallet, isConnecting, listin
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const listingRefs = useRef(new Map<string, HTMLElement>());
+  const depositPanelRef = useRef<HTMLDivElement>(null);
+  const appliedDepositRef = useRef<string | null>(null);
   useEffect(() => { setDepositMode(market === "outlaw" ? 2 : 0); setStaged([]); setPicked(null); setQuantity("0"); }, [market]);
   const query = useQuery({
     queryKey: ["horf", "rooms", market, address],
@@ -137,6 +146,44 @@ export function HorfRooms({ market, address, connectWallet, isConnecting, listin
   const snapshot = query.data;
   const configured = snapshot?.status === "ready" && snapshot.network === "mainnet" &&
     snapshot.chainId === "NetXdQprcVkpaWU" && Boolean(snapshot.contractAddress && /^KT1[1-9A-HJ-NP-Za-km-z]{33}$/.test(snapshot.contractAddress));
+  const depositTarget = parseHorseIdentity(depositFromUrl);
+  const depositRequestKey = `${address ?? ""}:${market}:${depositFromUrl ?? ""}`;
+  const depositHorseQuery = useQuery({
+    queryKey: ["horf", "room-deposit-prefill", address, depositFromUrl, market],
+    queryFn: async () => {
+      let offset = 0;
+      while (true) {
+        const page = await api.get<{ address: string; items: HorfOwnedHorse[]; pagination: { hasMore: boolean; nextOffset: number } }>(
+          `/api/horf/traders/${encodeURIComponent(address!)}/horses?offset=${offset}`,
+        );
+        if (page.address !== address || !Array.isArray(page.items) || !page.pagination || typeof page.pagination.hasMore !== "boolean" ||
+            !Number.isSafeInteger(page.pagination.nextOffset) || page.pagination.nextOffset < 0) {
+          throw new Error("Your qualifying horses could not be read.");
+        }
+        const match = page.items.find((horse) => horse.contract === depositTarget?.contract && horse.tokenId === depositTarget?.tokenId &&
+          positive(horse.balance) && (market !== "marshal" || horse.approvedForMarshalsMarket === true));
+        if (match) return { status: "found" as const, horse: { ...match, walletAddress: address! } };
+        if (!page.pagination.hasMore) return { status: "missing" as const, horse: null };
+        if (page.pagination.nextOffset <= offset) throw new Error("Horse search stalled. Try again.");
+        offset = page.pagination.nextOffset;
+      }
+    },
+    enabled: Boolean(address && depositTarget),
+    refetchOnWindowFocus: true,
+  });
+  useEffect(() => {
+    if (!depositTarget || !depositFromUrl || !configured || !depositHorseQuery.data || appliedDepositRef.current === depositRequestKey) return;
+    appliedDepositRef.current = depositRequestKey;
+    if (depositHorseQuery.data.status === "found" && depositHorseQuery.data.horse) {
+      setPicked(depositHorseQuery.data.horse);
+      setQuantity("0");
+      requestAnimationFrame(() => {
+        const panel = depositPanelRef.current;
+        panel?.scrollIntoView({ block: "center", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+        panel?.focus({ preventScroll: true });
+      });
+    }
+  }, [depositTarget?.contract, depositTarget?.tokenId, depositFromUrl, depositRequestKey, depositHorseQuery.data, configured]);
   const contract: HorfRoomContract | null = configured ? { contractAddress: snapshot!.contractAddress!, chainId: snapshot!.chainId } : null;
   const listings = useMemo(() => (snapshot?.listings ?? []).filter((listing) => market === "outlaw" ? listing.mode === 2 : listing.mode === 0 || listing.mode === 1), [snapshot, market]);
   useEffect(() => {
@@ -278,8 +325,9 @@ export function HorfRooms({ market, address, connectWallet, isConnecting, listin
       {swapHorse && <p data-horf-room-swap-token>You give 1 edition of <a href={objktTokenUrl(swapHorse.contract, swapHorse.tokenId)} target="_blank" rel="noopener noreferrer">{swapHorse.name || `horse #${swapHorse.tokenId}`}</a>.</p>}
       <Controls><Button data-horf-room-swap-confirm type="button" $strong onClick={() => void swap()} disabled={!swapHorse || busy || !snapshot?.permitReady}>Confirm one-for-one swap in wallet</Button><Button type="button" onClick={() => { setSwapListing(null); setSwapHorse(null); }} disabled={busy}>Cancel</Button></Controls>
     </Panel>}
-    {address && configured && <Panel data-horf-room-deposit>
+    {address && configured && <Panel ref={depositPanelRef} tabIndex={-1} data-horf-room-deposit>
       <h3>{market === "outlaw" ? "Open an Outlaw room" : "Stock an inspected stable"}</h3>
+      {depositFromUrl && <Notice role={depositHorseQuery.isError ? "alert" : "status"} $error={depositHorseQuery.isError} data-horf-room-deposit-prefill>{!depositTarget ? "That horse link is invalid." : depositHorseQuery.isPending ? "Finding this horse in your wallet…" : depositHorseQuery.isError ? "This horse could not be loaded. Choose it from the wallet picker below." : depositHorseQuery.data?.status === "found" ? `${depositHorseQuery.data.horse?.name || `Horse #${depositTarget.tokenId}`} selected. Set its edition quantity to continue.` : market === "marshal" ? "This horse is not in your wallet or is not Marshal approved. Request review in My Stable, or use the Outlaw room." : "This horse is not available in your wallet. Choose another from the picker."}</Notice>}
       <p>{market === "outlaw" ? "Choose the horses and exact edition counts to place in escrow. A visitor gives one qualifying horse for each edition they take." : "Deposit approved horses. Reciprocal deposits earn one claim per edition; Honor deposits are gifts."}</p>
       {market === "outlaw" && <Notice $error>Depositing here accepts automatic swaps with uninspected FA2s. A malicious token contract can fake the visitor’s transfer and drain your horse. Check this risk before signing.</Notice>}
       {market === "marshal" && <Controls role="group" aria-label="Inspected room type"><Button data-horf-room-mode="0" type="button" $strong={depositMode === 0} onClick={() => { setDepositMode(0); setStaged([]); }}>Reciprocal pool</Button><Button data-horf-room-mode="1" type="button" $strong={depositMode === 1} onClick={() => { setDepositMode(1); setStaged([]); }}>Honor stable</Button></Controls>}

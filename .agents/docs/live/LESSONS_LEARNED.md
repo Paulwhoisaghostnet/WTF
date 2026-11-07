@@ -14880,3 +14880,13 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: Traders had to scroll to learn how many horses arrived and who was waiting for a return, then could unknowingly send a duplicate horse to a rider who already owned it.
 
 **Rule**: Put received counts and owed-rider actions at the top of My Stable, keep long receipt and inspection details expandable, and expose batch return whenever at least one rider is owed a horse. For direct return sends, show exact-token holder warnings before review, require an explicit send-anyway choice for existing holders, and recheck current holders after signer activation but before the wallet transfer.
+
+---
+
+## 2026-11-07 - Keep archive horse choices season-aware and exact
+
+**What happened**: The live Neighvember season has no stored end date, so treating a missing end as an archive changed its picker labels and order. A direct-send dialog also built its selected value with the wallet address included, so its token could not match the selector’s `contract:tokenId` value.
+
+**Why it mattered**: Riders lost the familiar live-season horse picker, and the new direct-send shortcut opened with no horse selected even though it was launched from a specific horse card.
+
+**Rule**: Infer an unended season’s effective end from the next season’s start when available; a live season with no successor remains active. Keep wallet identity in the idempotency key only, and use the exact `contract:tokenId` for picker state. Cover current and archived season labels, archive pagination, and exact card-to-dialog preselection in browser checks.

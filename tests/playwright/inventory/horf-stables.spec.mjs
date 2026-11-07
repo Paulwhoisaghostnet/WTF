@@ -394,4 +394,24 @@ test.describe("Horf Stables", () => {
     await expect(deposit.locator("[data-horf-room-deposit-confirm]")).toHaveText("Deposit 5 editions in wallet");
     await expect(deposit).toContainText("malicious token contract");
   });
+
+  test("prefills an exact older horse from My Stable into its Outlaw escrow room form", async ({ page, request }) => {
+    await seedTrader(request);
+    await mockSeason(page);
+    await mockLinkedWallet(page);
+    await page.route("**/api/horf/rooms?*", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(stableSnapshot(true)) }));
+    await page.route(/\/api\/horf\/traders\/[^/]+\/horses\?.*$/, (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({
+      address: traderWallet,
+      items: [{ contract: tokenContract, tokenId: "99", name: "Archive Pinto", balance: "3", image: null,
+        mintedAt: "2025-11-08T12:00:00.000Z", creatorAddress: traderWallet, approvedForMarshalsMarket: false }],
+      pagination: { hasMore: false, nextOffset: 1 },
+    }) }));
+    await page.goto(`/horf/horse-market?season=current-2026&market=outlaw&outlaw=rooms&deposit=${tokenContract}%3A99`);
+    const deposit = page.locator("[data-horf-room-deposit]");
+    await expect(deposit).toBeVisible();
+    await expect(deposit.locator("[data-horf-room-deposit-prefill]")).toContainText("Archive Pinto selected");
+    await expect(deposit.locator("#horf-room-deposit-horse")).toHaveValue(`${tokenContract}:99`);
+    await expect(deposit.locator("[data-horf-room-deposit-quantity]")).toHaveValue("0");
+    await expect(deposit).toBeFocused();
+  });
 });

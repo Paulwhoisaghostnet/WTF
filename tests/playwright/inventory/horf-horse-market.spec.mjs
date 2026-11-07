@@ -324,4 +324,25 @@ test.describe("HORSE market", () => {
     await expect(page.getByRole("alert")).toContainText("permit changed the reviewed horse");
     expect(permitCalls).toBe(1);
   });
+
+  test("opens the exact older stable horse in the sale form after wallet and Marshal checks", async ({ page, request }) => {
+    expect((await request.post("/__test/state", { data: { userRole: "anonymous" } })).ok()).toBeTruthy();
+    await page.addInitScript(({ address }) => {
+      window.localStorage.setItem("wtf:wallet-session", JSON.stringify({ address, providerName: "octez.connect" }));
+    }, { address: seller });
+    await mockMarket(page, true);
+    await page.route("**/api/horf/wallet/session", (route) => json(route, { walletAddress: seller, verified: true }));
+    await page.route(/\/api\/horf\/traders\/[^/]+\/horses\?.*$/, (route) => json(route, {
+      address: seller,
+      items: [{ contract: horse, tokenId: "99", name: "Old Neighvember Mare", balance: "4",
+        mintedAt: "2025-11-08T12:00:00.000Z", creatorAddress: seller, approvedForMarshalsMarket: true }],
+      pagination: { hasMore: false, nextOffset: 1 },
+    }));
+    await page.goto(`/horf/horse-market?season=current-2026&market=horse4horse&sell=${horse}%3A99`);
+    const form = page.locator("[data-horf-horse-market-list-form]");
+    await expect(form.locator("[data-horf-horse-market-sell-status]")).toContainText("Old Neighvember Mare is ready to list");
+    await expect(form.locator("[data-horf-horse-market-owned]")).toHaveValue(`${horse}:99`);
+    await expect(form.locator("[data-horf-horse-market-quantity]")).toHaveValue("0");
+    await expect(form).toBeFocused();
+  });
 });

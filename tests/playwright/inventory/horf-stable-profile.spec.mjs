@@ -93,6 +93,7 @@ test.describe("Horf Stable and trader profile", () => {
     const posts = [];
     await page.route("**/api/horf/open-range/offers?*", (route) => json(route, { offers: posts.map((post, index) => ({ ...post, id: index + 1 })) }));
     await page.route("**/api/horf/open-range/offers", (route) => {
+      if (route.request().method() !== "POST") return json(route, { offers: [] });
       posts.push(route.request().postDataJSON());
       return json(route, { id: posts.length });
     });
@@ -104,6 +105,14 @@ test.describe("Horf Stable and trader profile", () => {
       contractAddress: "KT1U4p17VUNcinntAzUULBhzpPK7f2a4Ht4P", permitReady: true,
       listings: [{ id: "5", mode: 2, tokenContract: contract, tokenId: "41", publicVisible: true }] }));
     await page.route("**/api/horf/horse-market/listings", (route) => json(route, { listings: [{ id: "8", tokenContract: contract, tokenId: "42" }] }));
+    await page.route("**/api/horf/wallet/tokens?*", (route) => {
+      const tokenId = new URL(route.request().url()).searchParams.get("q")?.match(/\b(41|42)\b/)?.[1] ?? "41";
+      return json(route, { items: [{ contract, tokenId, balance: tokenId === "41" ? "3" : "2", walletAddress: wallet, name: tokenId === "41" ? "My Mare" : "Received Pinto" }], pagination: { hasMore: false, nextOffset: 1 } });
+    });
+    await page.route("**/api/horf/inspections/status?*", (route) => json(route, { contract, tokenId: "41", status: "none", inspectionId: null, reason: null }));
+    await page.route("**/api/horf/stable-selections", (route) => route.request().method() === "POST"
+      ? json(route, { id: 12 }) : json(route, { selections: [] }));
+    await page.route("**/api/horf/inspections", (route) => json(route, { status: "pending" }));
     const incoming = [{ id: 9, signId: 1, offererAddress: firstReturnWallet, ownerAddress: wallet,
       requestedTokenContract: contract, requestedTokenId: "41", offeredTokenContract: contract,
       offeredTokenId: "77", message: "Trade, pardner?", status: "proposed", signActive: true,
@@ -131,6 +140,31 @@ test.describe("Horf Stable and trader profile", () => {
     await expect(received).toHaveCount(1);
     await expect(created.locator('[data-horf-stable-for-trade-now]')).toHaveAttribute("href", /market=outlaw&outlaw=rooms&listing=5$/);
     await expect(received.locator('[data-horf-stable-for-trade-now]')).toHaveAttribute("href", /market=horse4horse&listing=8$/);
+    await expect(created.locator("[data-horf-stable-sell-horse]")).toHaveAttribute("href", /market=horse4horse&sell=KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton%3A41$/);
+    await expect(created.locator("[data-horf-stable-room-horse]")).toHaveAttribute("href", /market=outlaw&outlaw=rooms&deposit=KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton%3A41$/);
+    await created.locator("[data-horf-stable-direct-send]").click();
+    const quickSend = page.locator("[data-horf-quick-send-dialog]");
+    await expect(quickSend).toBeVisible();
+    await expect(quickSend.locator("[data-horf-gift-owned]")).toHaveValue(`${contract}:41`);
+    await expect(quickSend.locator("[data-horf-quick-direct-recipient]")).toHaveCount(1);
+    await quickSend.locator("[data-horf-quick-direct-wallet]").fill(firstReturnWallet);
+    await expect(quickSend.locator("[data-horf-gift-submit]")).toBeEnabled();
+    await quickSend.locator("[data-horf-gift-submit]").click();
+    const oneRiderReview = quickSend.locator("[data-horf-gift-review]");
+    await expect(oneRiderReview).toContainText(firstReturnWallet);
+    await expect(oneRiderReview).toContainText("1 rider");
+    await oneRiderReview.getByRole("button", { name: "Edit horse or quantity" }).click();
+    await quickSend.locator("[data-horf-quick-direct-add-recipient]").click();
+    await expect(quickSend.locator("[data-horf-quick-direct-recipient]")).toHaveCount(2);
+    await quickSend.locator("[data-horf-quick-direct-wallet]").nth(1).fill(secondReturnWallet);
+    await expect(quickSend.locator("[data-horf-gift-submit]")).toBeEnabled();
+    await quickSend.locator("[data-horf-gift-submit]").click();
+    await expect(quickSend.locator("[data-horf-gift-review]")).toContainText(firstReturnWallet);
+    await expect(quickSend.locator("[data-horf-gift-review]")).toContainText(secondReturnWallet);
+    await quickSend.locator("[data-horf-quick-send-close]").click();
+    await created.locator("[data-horf-stable-request-inspection]").click();
+    await expect(created.locator("[data-horf-stable-inspection-result]")).toContainText("Sent to the Marshal’s review queue");
+    await expect(created.locator("[data-horf-stable-approval-status]")).toContainText("Marshal review pending");
     await created.locator('[data-horf-stable-mark-available]').click();
     const form = stable.locator('[data-horf-stable-availability]');
     await expect(form.locator('[data-horf-stable-available-amount]')).toHaveValue("0");
@@ -437,6 +471,58 @@ test.describe("Horf Stable and trader profile", () => {
     await dialog.locator("[data-horf-gift-submit]").click();
     await expect(dialog.locator("[data-horf-gift-review]")).toContainText(firstReturnWallet);
     await expect(dialog.locator("[data-horf-gift-review]")).toContainText("1 of 1 owned editions · 1 rider");
+  });
+
+  test("prioritizes selected-season mints and receipts in a return picker without hiding other held horses", async ({ page, request }) => {
+    expect((await request.post("/__test/state", { data: { userRole: "admin" } })).ok()).toBeTruthy();
+    await mockConnectedWallet(page);
+    const archiveWithoutExplicitEnd = { ...archiveSeason, endsAt: null };
+    await page.route("**/api/horf/season*", (route) => json(route, {
+      season: archiveWithoutExplicitEnd, seasons: [allTimeSeason, season, archiveWithoutExplicitEnd],
+      asOf: "2026-11-05T12:00:00.000Z", status: "ready", error: null, nextRefreshAt: null,
+      leaderboard: [{ address: wallet, name: "Trail Rider", trades: 2, received: 1, sent: 1 }],
+      currentUser: { address: wallet, received: 1, sent: 1, trades: 2, completedTrades: 0,
+        giftHorsesReceived: 0, tradeHorsesReceived: 1,
+        owedTo: [{ address: firstReturnWallet, name: "Sir Canter", count: 1 }],
+        owedBy: [], waitingHorses: [], recent: [{ id: "archive-receipt", timestamp: "2025-11-09T12:00:00.000Z",
+          direction: "in", counterparty: firstReturnWallet,
+          token: { contract, tokenId: "73", name: "Archive Pinto", image: "/horf-art/horse-beach-photo.jpg" },
+          amount: 1, settlement: "stable", stableMode: 0 }] },
+    }));
+    const observedOffsets = [];
+    await page.route(/\/api\/horf\/traders\/[^/]+\/horses(?:\?.*)?$/, (route) => {
+      const offset = Number(new URL(route.request().url()).searchParams.get("offset") || 0);
+      observedOffsets.push(offset);
+      return json(route, { address: wallet, items: offset === 0 ? [
+        { contract, tokenId: "70", balance: "2", name: "Current Colt", mintedAt: "2026-11-02T12:00:00.000Z", creatorAddress: wallet, image: "/horf-art/horse-gallop-photo.jpg" },
+        { contract, tokenId: "71", balance: "1", name: "Undated Pony", mintedAt: null, creatorAddress: wallet, image: "/horf-art/horse-beach-photo.jpg" },
+      ] : [
+        { contract, tokenId: "72", balance: "2", name: "Archive Mare", mintedAt: "2025-11-08T12:00:00.000Z", creatorAddress: wallet, image: "/horf-art/horse-portrait-photo.jpg" },
+        { contract, tokenId: "73", balance: "1", name: "Archive Pinto", mintedAt: "2024-07-09T12:00:00.000Z", creatorAddress: secondReturnWallet, image: "/horf-art/horse-beach-photo.jpg" },
+      ], pagination: { hasMore: offset === 0, nextOffset: offset === 0 ? 48 : 50 } });
+    });
+    await page.route("**/api/horf/wallet/tokens?*", (route) => {
+      const chosen = new URL(route.request().url()).searchParams.get("q")?.match(/\b(70|71|72|73)\b/)?.[1] ?? "72";
+      return json(route, { items: [{ contract, tokenId: chosen, balance: "2", walletAddress: wallet, name: "Archive Mare" }],
+        pagination: { hasMore: false, nextOffset: 1 } });
+    });
+
+    await page.goto("/horf/stable?season=neighvember-2025");
+    await page.locator("[data-horf-batch-return]").click();
+    const dialog = page.locator("[data-horf-quick-send-dialog]");
+    const picker = dialog.locator("[data-horf-gift-owned]");
+    await expect(picker.locator("option")).toHaveCount(5);
+    expect(observedOffsets).toContain(48);
+    await expect(picker.locator("optgroup").nth(0)).toHaveAttribute("label", /Created.*Neighvember 2025/);
+    await expect(picker.locator("optgroup").nth(0).locator("option")).toHaveAttribute("value", `${contract}:72`);
+    await expect(picker.locator("optgroup").nth(1)).toHaveAttribute("label", /Received.*Neighvember 2025/);
+    await expect(picker.locator("optgroup").nth(1).locator("option")).toHaveAttribute("value", `${contract}:73`);
+    await expect(picker).toContainText("Current Colt");
+    await expect(picker).toContainText("Undated Pony");
+    await picker.selectOption(`${contract}:72`);
+    await dialog.locator("[data-horf-gift-submit]").click();
+    await expect(dialog.locator("[data-horf-gift-review]")).toContainText("Archive Mare");
+    await expect(dialog.locator("[data-horf-gift-review]")).toContainText(firstReturnWallet);
   });
 
   test("disconnects a signed-in rider from the header and starts reconnecting from the same chip", async ({ page, request }) => {

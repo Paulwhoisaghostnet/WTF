@@ -959,7 +959,7 @@ export const DOMAIN_WORKFLOWS = [
     name: "horf personal stable and inspection request loop",
     domain: "Market, Exchange, Inventory, and Commerce",
     routes: ["/horf", "/horf/stable"],
-    uiHandles: ["data-horf-stable-for-trade-now", "data-horf-stable-available-status", "data-horf-stable-remove-availability", "data-horf-owned-horse-picker", "data-horf-personal-token"],
+    uiHandles: ["data-horf-stable-for-trade-now", "data-horf-stable-available-status", "data-horf-stable-remove-availability", "data-horf-stable-request-inspection", "data-horf-stable-sell-horse", "data-horf-stable-room-horse", "data-horf-stable-direct-send", "data-horf-quick-direct-add-recipient", "data-horf-owned-horse-picker", "data-horf-personal-token"],
     eventHandles: ["horf.personal_stable.selected", "horf.personal_stable.removed", "horf.inspection.submitted", "horf.trader_profile.updated", "horf.trader_profile.picture_uploaded", "horf.stable.mint_season_selected"],
     apiProbes: [
       { method: "GET", path: "/api/horf/traders/tz1VSUr8wwNhLAzempoch5d6hLRiTh8Cjcjb/horses?offset=48", expectedStatuses: [200, 503] },
@@ -1108,8 +1108,8 @@ export const DOMAIN_WORKFLOWS = [
   {
     name: "horf HORSE market loop",
     domain: "Market, Exchange, Inventory, and Commerce",
-    routes: ["/horf/horse-market?market=horse4horse", "/horf/horse-market?market=horse4horse&listing=8", "/horf/open-range"],
-    uiHandles: ["data-horf-horse-market-featured-mint", "data-horf-horse-market-listing", "data-horf-horse-market-owned"],
+    routes: ["/horf/horse-market?market=horse4horse", "/horf/horse-market?market=horse4horse&listing=8", "/horf/horse-market?market=horse4horse&sell=KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton:7", "/horf/horse-market?market=outlaw&outlaw=rooms&deposit=KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton:7", "/horf/open-range"],
+    uiHandles: ["data-horf-horse-market-featured-mint", "data-horf-horse-market-listing", "data-horf-horse-market-owned", "data-horf-room-deposit-prefill"],
     eventHandles: [
       "horf.horse_market.buying_options_opened",
       "horf.horse_market.artwork_opened",

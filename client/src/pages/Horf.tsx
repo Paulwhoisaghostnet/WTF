@@ -1071,6 +1071,7 @@ export function Horf() {
   const traderFromUrl = new URLSearchParams(search).get("trader");
   const offerFromUrl = new URLSearchParams(search).get("offer");
   const listingFromUrl = new URLSearchParams(search).get("listing");
+  const depositFromUrl = new URLSearchParams(search).get("deposit");
   const loggedViews = useRef(new Set<string>());
   const [selectedSeasonKey, setSelectedSeasonKey] = useState(readSeasonKeyFromUrl);
   const profileSeasonKey = selectedSeasonKey === "all-time" || selectedSeasonKey === "all-seasons" || selectedSeasonKey === "all-horse-search" ? CURRENT_SEASON_KEY : selectedSeasonKey;
@@ -1081,6 +1082,7 @@ export function Horf() {
   const profileHorseDialogRef = useRef<HTMLDialogElement>(null);
   const [quickSendRider, setQuickSendRider] = useState<{ address: string; name: string | null } | null>(null);
   const [quickSendBatch, setQuickSendBatch] = useState<Array<{ address: string; name: string | null }> | null>(null);
+  const [quickSendHorse, setQuickSendHorse] = useState<{ contract: string; tokenId: string; name: string | null } | null>(null);
   const [quickSendBusy, setQuickSendBusy] = useState(false);
   const quickSendDialogRef = useRef<HTMLDialogElement>(null);
   const quickSendTriggerRef = useRef<HTMLButtonElement | null>(null);
@@ -1167,6 +1169,10 @@ export function Horf() {
     ? claimAlertQuery.data : null;
   const data = query.data;
   const availableSeasons = data?.seasons ?? seasonManifest;
+  const priorityReceivedHorseKeys = useMemo(() => selectedSeasonKey === "all-time" ? [] : [
+    ...new Set((data?.currentUser?.recent ?? []).filter((receipt) => receipt.direction === "in")
+      .map((receipt) => `${receipt.token.contract}:${receipt.token.tokenId}`)),
+  ], [data?.currentUser?.recent, selectedSeasonKey]);
   const selectedSeason = data?.season ?? availableSeasons.find((season) => season.key === selectedSeasonKey);
   const seasonDisplayName = selectedSeasonKey === CURRENT_SEASON_KEY ? "Neighvember 2026" : selectedSeason?.label ?? "Horf archive";
   const receivedScope = selectedSeasonKey === "all-time" ? "across all tracked seasons" : `in ${seasonDisplayName}`;
@@ -1251,7 +1257,7 @@ export function Horf() {
 
   useEffect(() => {
     const dialog = quickSendDialogRef.current;
-    if ((!quickSendRider && !quickSendBatch) || !dialog || dialog.open) return;
+    if ((!quickSendRider && !quickSendBatch && !quickSendHorse) || !dialog || dialog.open) return;
     dialog.showModal();
     const focusFrame = window.requestAnimationFrame(() => {
       const horseSelect = dialog.querySelector<HTMLSelectElement>("[data-horf-gift-owned]");
@@ -1259,14 +1265,24 @@ export function Horf() {
       (horseSelect && !horseSelect.disabled ? horseSelect : closeButton)?.focus();
     });
     return () => window.cancelAnimationFrame(focusFrame);
-  }, [quickSendRider, quickSendBatch]);
+  }, [quickSendRider, quickSendBatch, quickSendHorse]);
 
   function openQuickSend(rider: { address: string; name: string | null }, trigger: HTMLButtonElement) {
     quickSendTriggerRef.current = trigger;
     setQuickSendBusy(false);
     setQuickSendBatch(null);
+    setQuickSendHorse(null);
     setQuickSendRider(rider);
     logClientSystemEvent({ eventType: "horf.trader.quick_send_opened", message: "Horf trader quick horse send opened", metadata: { targetWallet: rider.address } });
+  }
+
+  function openQuickHorseSend(horse: { contract: string; tokenId: string; name?: string | null }, trigger: HTMLButtonElement) {
+    quickSendTriggerRef.current = trigger;
+    setQuickSendBusy(false);
+    setQuickSendBatch(null);
+    setQuickSendRider(null);
+    setQuickSendHorse({ ...horse, name: horse.name ?? null });
+    logClientSystemEvent({ eventType: "horf.trader.quick_send_opened", message: "Horf Stable horse direct-send opened", metadata: { tokenContract: horse.contract, tokenId: horse.tokenId } });
   }
 
   function openBatchReturn(trigger: HTMLButtonElement) {
@@ -1278,6 +1294,7 @@ export function Horf() {
     setQuickSendBusy(false);
     setQuickSendRider(null);
     setQuickSendBatch(riders);
+    setQuickSendHorse(null);
     logClientSystemEvent({ eventType: "horf.trader.quick_send_opened", message: "Horf batch return horse send opened", metadata: { mode: "batch-return", recipientCount: riders.length } });
   }
 
@@ -1290,6 +1307,7 @@ export function Horf() {
   function closeQuickSend() {
     setQuickSendRider(null);
     setQuickSendBatch(null);
+    setQuickSendHorse(null);
     setQuickSendBusy(false);
     window.requestAnimationFrame(() => {
       const trigger = quickSendTriggerRef.current;
@@ -1941,7 +1959,7 @@ export function Horf() {
           )}
         </Section>}
 
-        {routeSection === "stable" && <HorfPersonalStable address={address} connectWallet={connectWallet} isConnecting={isConnecting} seasonKey={profileSeasonKey} seasonLabel={profileSeasonLabel} seasons={availableSeasons} shareSeasonKey={selectedSeasonKey} shareSeasonLabel={selectedSeasonKey === "all-time" ? "All tracked seasons" : seasonDisplayName} shareStats={shareStats} />}
+        {routeSection === "stable" && <HorfPersonalStable address={address} connectWallet={connectWallet} isConnecting={isConnecting} seasonKey={profileSeasonKey} seasonLabel={profileSeasonLabel} seasons={availableSeasons} shareSeasonKey={selectedSeasonKey} shareSeasonLabel={selectedSeasonKey === "all-time" ? "All tracked seasons" : seasonDisplayName} shareStats={shareStats} onSendHorse={openQuickHorseSend} />}
         {routeSection === "legacy-stables" && <Section data-horf-legacy-page aria-label="Legacy horse stable recovery">
           <SectionLabel>🐎 Earlier escrow</SectionLabel>
           <h2>Legacy Stable Recovery</h2>
@@ -1962,7 +1980,7 @@ export function Horf() {
           <h2>Marshal’s Market</h2>
           <p>Browse inspected horses in the reciprocal pool and honor stable.</p>
           <p><a href="/horf/legacy-stables">Manage earlier escrow listings ↗</a></p>
-          <HorfRooms market="marshal" address={address} connectWallet={connectWallet} isConnecting={isConnecting} listingFromUrl={listingFromUrl} />
+          <HorfRooms market="marshal" address={address} connectWallet={connectWallet} isConnecting={isConnecting} listingFromUrl={listingFromUrl} depositFromUrl={depositFromUrl} />
         </TradingZone>}
         {routeSection === "inspection-desk" && (profileMarshalQuery.isPending
           ? <Section role="status">Checking your Marshal badge…</Section>
@@ -1976,7 +1994,7 @@ export function Horf() {
             <button data-horf-outlaw-tab="rooms" type="button" role="tab" aria-selected={outlawTab === "rooms"} onClick={() => selectOutlawTab("rooms")}>Escrow rooms · For trade now 🪢</button>
             <button data-horf-outlaw-tab="available" type="button" role="tab" aria-selected={outlawTab === "available"} onClick={() => selectOutlawTab("available")}>Wallet-held · Available for trade 🐎</button>
           </ProfileTabs>
-          {outlawTab === "rooms" ? <HorfRooms market="outlaw" address={address} connectWallet={connectWallet} isConnecting={isConnecting} listingFromUrl={listingFromUrl} /> : <>
+          {outlawTab === "rooms" ? <HorfRooms market="outlaw" address={address} connectWallet={connectWallet} isConnecting={isConnecting} listingFromUrl={listingFromUrl} depositFromUrl={depositFromUrl} /> : <>
           <p>These horses stay in riders’ wallets. Offer one of yours; the owner can accept or decline. Accepted offers move through private escrow before either horse changes hands.</p>
           {offerFromUrl && /^\d+$/.test(offerFromUrl) && !directoryOffersQuery.isPending && !directoryOffersQuery.isError && !outlawOffers.some((offer) => String(offer.id) === offerFromUrl) && <Warning role="status">That trade sign has come down. Browse the active horses below.</Warning>}
           {directoryOffersQuery.isPending ? <p role="status">Rounding up the trade signs…</p>
@@ -2021,12 +2039,12 @@ export function Horf() {
         {routeSection === "horse" && <HorfHorseSend address={address} signedIn={!isGuest} connectWallet={connectWallet} isConnecting={isConnecting} />}
         {routeSection === "horse-market" && marketTab === "horse4horse" && <div id="horf-horse4horse-market" role="tabpanel" aria-labelledby="horf-market-tab-horse4horse" tabIndex={0}><HorfHorseMarket address={address} connectWallet={connectWallet} isConnecting={isConnecting} /></div>}
         {routeSection === "haha" && <HahaCrp />}
-        {routeSection === "gifts" && <HorfGifts address={address} isGuest={isGuest} connectWallet={connectWallet} isConnecting={isConnecting} />}
+        {routeSection === "gifts" && <HorfGifts address={address} isGuest={isGuest} connectWallet={connectWallet} isConnecting={isConnecting} prioritySeasonKey={selectedSeasonKey} priorityReceivedHorseKeys={priorityReceivedHorseKeys} mintSeasons={availableSeasons} />}
         {routeSection === "posse" && <HorfPosse address={address} isGuest={isGuest} connectWallet={connectWallet} isConnecting={isConnecting} />}
 
-        {(quickSendRider || quickSendBatch) && <QuickSendDialog ref={quickSendDialogRef} data-horf-quick-send-dialog aria-labelledby="horf-quick-send-title" onCancel={(event) => { if (quickSendBusy) event.preventDefault(); }} onClose={closeQuickSend} onClick={(event) => { if (event.target === event.currentTarget && !quickSendBusy) event.currentTarget.close(); }}>
-          <div className="quick-head"><div><small>🐎 Quick send</small><h2 id="horf-quick-send-title">{quickSendBatch ? `Return one horse to ${quickSendBatch.length} riders` : `Send a horse to ${traderName(quickSendRider!.name, quickSendRider!.address)}`}</h2></div><button data-horf-quick-send-close type="button" aria-label="Close horse send" disabled={quickSendBusy} onClick={() => quickSendDialogRef.current?.close()}>×</button></div>
-          <div className="quick-body">{quickSendBatch && <p>One edition of one horse goes to each selected rider in a single Mainnet wallet transaction. Review every wallet before signing.</p>}<HorfGifts key={quickSendBatch ? `batch-return:${quickSendBatch.map((rider) => rider.address).join(":")}` : `${quickSendRider!.address}:general`} address={address} isGuest={isGuest} connectWallet={connectWallet} isConnecting={isConnecting} quickRecipient={quickSendRider ?? undefined} quickRecipients={quickSendBatch ?? undefined} onQuickBusyChange={setQuickSendBusy} /></div>
+        {(quickSendRider || quickSendBatch || quickSendHorse) && <QuickSendDialog ref={quickSendDialogRef} data-horf-quick-send-dialog aria-labelledby="horf-quick-send-title" onCancel={(event) => { if (quickSendBusy) event.preventDefault(); }} onClose={closeQuickSend} onClick={(event) => { if (event.target === event.currentTarget && !quickSendBusy) event.currentTarget.close(); }}>
+          <div className="quick-head"><div><small>🐎 Quick send</small><h2 id="horf-quick-send-title">{quickSendBatch ? `Return one horse to ${quickSendBatch.length} riders` : quickSendHorse ? `Send ${quickSendHorse.name || `horse #${quickSendHorse.tokenId}`} to a trader` : `Send a horse to ${traderName(quickSendRider!.name, quickSendRider!.address)}`}</h2></div><button data-horf-quick-send-close type="button" aria-label="Close horse send" disabled={quickSendBusy} onClick={() => quickSendDialogRef.current?.close()}>×</button></div>
+          <div className="quick-body">{quickSendBatch && <p>One edition of one horse goes to each selected rider in a single Mainnet wallet transaction. Review every wallet before signing.</p>}<HorfGifts key={quickSendBatch ? `batch-return:${quickSendBatch.map((rider) => rider.address).join(":")}` : quickSendHorse ? `stable-horse:${quickSendHorse.contract}:${quickSendHorse.tokenId}` : `${quickSendRider!.address}:general`} address={address} isGuest={isGuest} connectWallet={connectWallet} isConnecting={isConnecting} quickRecipient={quickSendRider ?? undefined} quickRecipients={quickSendBatch ?? undefined} quickSendHorse={quickSendHorse ?? undefined} onQuickBusyChange={setQuickSendBusy} prioritySeasonKey={selectedSeasonKey} priorityReceivedHorseKeys={priorityReceivedHorseKeys} mintSeasons={availableSeasons} /></div>
         </QuickSendDialog>}
         <HorfProposalDialog sign={proposalSign} address={address} connectWallet={connectWallet} isConnecting={isConnecting} onClose={() => setProposalSign(null)} />
       </Shell>

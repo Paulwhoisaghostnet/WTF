@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearch } from "wouter";
 import styled from "styled-components";
 import { api } from "../../lib/api";
@@ -32,10 +32,20 @@ type MarketSnapshot = {
   permitReady: boolean;
 };
 type MarketListings = { listings: HorfHorseMarketListing[] };
+type OwnedHorsePage = {
+  address: string;
+  items: HorfOwnedHorse[];
+  pagination: { hasMore: boolean; nextOffset: number };
+};
 type Inspection = { status: "none" | "pending" | "approved" | "rejected" | "revoked"; reason: string | null };
 type Pending = { action: "list" | "buy" | "cancel"; stage: "eligibility" | "preflight" | "preparing" | "wallet" | "confirming"; opHash: string | null };
 type ListingReview = { address: string; tokenContract: string; tokenId: string; tokenName: string;
   quantity: string; ownedBalance: string; unitPriceHorseRaw: string; priceInput: string };
+
+function parseSellToken(value: string | null): { contract: string; tokenId: string } | null {
+  const match = value?.match(/^(KT1[1-9A-HJ-NP-Za-km-z]{33}):(\d+)$/);
+  return match ? { contract: match[1], tokenId: match[2] } : null;
+}
 
 const Page = styled.section`
   width: min(100%, 1400px);
@@ -235,10 +245,16 @@ export function HorfHorseMarket({ address, connectWallet, isConnecting }: {
 }) {
   const qc = useQueryClient();
   const search = useSearch();
-  const listingFromUrl = new URLSearchParams(search).get("listing")?.trim() || null;
+  const params = new URLSearchParams(search);
+  const listingFromUrl = params.get("listing")?.trim() || null;
+  const sellFromUrl = params.get("sell")?.trim() || null;
+  const sellToken = parseSellToken(sellFromUrl);
   const detailsRef = useRef<HTMLElement>(null);
+  const sellFormRef = useRef<HTMLElement>(null);
   const linkedCardRef = useRef<HTMLElement>(null);
   const focusedListingRef = useRef<string | null>(null);
+  const focusedSellRef = useRef<string | null>(null);
+  const appliedSellRef = useRef<string | null>(null);
   const artDialogRef = useRef<HTMLDialogElement>(null);
   const artCloseRef = useRef<HTMLButtonElement>(null);
   const artTriggerRef = useRef<HTMLButtonElement | null>(null);
@@ -258,6 +274,28 @@ export function HorfHorseMarket({ address, connectWallet, isConnecting }: {
 
   const configQuery = useQuery({ queryKey: ["horf", "horse-market", "config"], queryFn: () => api.get<MarketSnapshot>("/api/horf/horse-market/config"), refetchOnWindowFocus: true });
   const listingQuery = useQuery({ queryKey: ["horf", "horse-market", "listings"], queryFn: () => api.get<MarketListings>("/api/horf/horse-market/listings"), refetchOnWindowFocus: true });
+  const sellHorseQuery = useInfiniteQuery({
+    queryKey: ["horf", "owned-qualifying-horses", address],
+    queryFn: async ({ pageParam }) => {
+      const page = await api.get<OwnedHorsePage>(`/api/horf/traders/${encodeURIComponent(address!)}/horses?offset=${pageParam}`);
+      if (page.address !== address || !Array.isArray(page.items) || !page.pagination ||
+          typeof page.pagination.hasMore !== "boolean" || !Number.isSafeInteger(page.pagination.nextOffset) ||
+          page.pagination.nextOffset < 0 || (page.pagination.hasMore && page.pagination.nextOffset <= pageParam)) {
+        throw new Error("Your horse list could not be read.");
+      }
+      return page;
+    },
+    initialPageParam: 0,
+    getNextPageParam: (page) => page.pagination.hasMore ? page.pagination.nextOffset : undefined,
+    enabled: Boolean(address && sellToken),
+    refetchOnWindowFocus: true,
+  });
+  const linkedOwnedHorse = sellToken ? sellHorseQuery.data?.pages.flatMap((page) => page.items).find((horse) =>
+    horse.contract === sellToken.contract && horse.tokenId === sellToken.tokenId && isPositive(horse.balance)) ?? null : null;
+  const sellStatus = !sellToken ? null : !address ? "connect" : sellHorseQuery.isError ? "error"
+    : linkedOwnedHorse ? linkedOwnedHorse.approvedForMarshalsMarket === true ? "ready" : "unapproved"
+      : sellHorseQuery.isPending || sellHorseQuery.isFetching || sellHorseQuery.hasNextPage ? "loading" : "unavailable";
+  const sellRequestKey = sellToken ? `${address ?? ""}:${sellToken.contract}:${sellToken.tokenId}` : null;
   const snapshot = configQuery.data;
   const configured = snapshot?.status === "ready" && snapshot.chainId === HORF_MARKET_CHAIN_ID && snapshot.network === "mainnet" &&
     Boolean(snapshot.contractAddress && snapshot.horseContractAddress);
@@ -281,6 +319,30 @@ export function HorfHorseMarket({ address, connectWallet, isConnecting }: {
     price.trim() === review.priceInput && inspectionQuery.data?.status === "approved");
   useEffect(() => { setSelectedOwned(null); setQuantity("0"); setReview(null); }, [address]);
   useEffect(() => { setSelectedId(null); }, [listingFromUrl]);
+  useEffect(() => {
+    if (!sellToken || !address || linkedOwnedHorse || !sellHorseQuery.hasNextPage || sellHorseQuery.isFetching) return;
+    void sellHorseQuery.fetchNextPage();
+  }, [sellToken?.contract, sellToken?.tokenId, address, linkedOwnedHorse, sellHorseQuery.hasNextPage, sellHorseQuery.isFetching, sellHorseQuery.dataUpdatedAt]);
+  useEffect(() => {
+    if (!sellRequestKey || sellStatus !== "ready" || !linkedOwnedHorse || appliedSellRef.current === sellRequestKey) return;
+    appliedSellRef.current = sellRequestKey;
+    setSelectedOwned({ ...linkedOwnedHorse, walletAddress: address! });
+    setQuantity("0");
+    setReview(null);
+  }, [sellRequestKey, sellStatus, linkedOwnedHorse, address]);
+  useEffect(() => {
+    if (!sellRequestKey || !sellStatus || sellStatus === "loading") { if (!sellRequestKey) focusedSellRef.current = null; return; }
+    const focusKey = `${sellRequestKey}:${sellStatus}`;
+    if (focusedSellRef.current === focusKey) return;
+    const frame = window.requestAnimationFrame(() => {
+      const panel = sellFormRef.current;
+      if (!panel) return;
+      panel.scrollIntoView({ block: "start", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+      panel.focus({ preventScroll: true });
+      focusedSellRef.current = focusKey;
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [sellRequestKey, sellStatus]);
   useEffect(() => {
     if (!listingFromUrl) { focusedListingRef.current = null; return; }
     if (!linkedListing || focusedListingRef.current === listingFromUrl) return;
@@ -477,9 +539,16 @@ export function HorfHorseMarket({ address, connectWallet, isConnecting }: {
             <HorfObjktBuy key={`${selected.tokenContract}:${selected.tokenId}`} tokenContract={selected.tokenContract} tokenId={selected.tokenId} address={address} connectWallet={connectWallet} isConnecting={isConnecting} />
           </>}
         </Panel>
-        <Panel style={{ marginTop: 16 }} data-horf-horse-market-list-form>
+        <Panel ref={sellFormRef} tabIndex={-1} style={{ marginTop: 16 }} data-horf-horse-market-list-form>
           <h3>Hang a HORSE price 🤠</h3>
           <p>Marshal approval required. Signing deposits your editions into the Market.</p>
+          {sellFromUrl && !sellToken && <Notice $error role="alert" data-horf-horse-market-sell-status>That horse link is invalid. Choose a horse from your wallet below.</Notice>}
+          {sellStatus === "connect" && <Notice role="status" data-horf-horse-market-sell-status>Connect your wallet to find this horse and check its Marshal approval.</Notice>}
+          {sellStatus === "loading" && <Notice role="status" data-horf-horse-market-sell-status>Finding this horse in your wallet…</Notice>}
+          {sellStatus === "error" && <Notice $error role="alert" data-horf-horse-market-sell-status>Your horses could not be loaded. Retry from the horse picker below.</Notice>}
+          {sellStatus === "unapproved" && <Notice role="status" data-horf-horse-market-sell-status>This horse is in your wallet but needs Marshal approval. <a href="/horf/stable">Request inspection from My Stable</a>.</Notice>}
+          {sellStatus === "unavailable" && <Notice role="status" data-horf-horse-market-sell-status>This horse is not available in your connected wallet or does not pass Horf’s horse test. Choose another horse below.</Notice>}
+          {sellStatus === "ready" && <Notice role="status" data-horf-horse-market-sell-status>{linkedOwnedHorse?.name || `Horse #${sellToken?.tokenId}`} is ready to list. Choose the edition quantity and HORSE price.</Notice>}
           {!address && <Action type="button" onClick={() => void connectWallet()} disabled={isConnecting}>{isConnecting ? "Connecting…" : "Connect to list"}</Action>}
           {address && <form onSubmit={reviewListing}>
             <HorfOwnedHorsePicker address={address} selected={selectedOwned} onSelect={(horse) => { setSelectedOwned(horse); setQuantity("0"); setReview(null); }} disabled={busy} id="horf-market-owned" label="Choose a Marshal-approved horse" selectDataAttr="data-horf-horse-market-owned" marshalApprovedOnly />

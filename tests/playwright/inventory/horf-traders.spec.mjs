@@ -369,13 +369,10 @@ test.describe("Horf trader discovery and horse test", () => {
     await page.goto("/horf/traders?season=current-2026");
     await page.locator('[data-horf-region="trader-directory"] [data-horf-trader-card]').first().locator('[data-horf-trader-quick-send]').click();
     const dialog = page.locator('[data-horf-quick-send-dialog]');
-    await expect(dialog.getByRole("alert")).toContainText("qualifying horses are unavailable");
+    await expect(dialog.getByRole("alert")).toContainText("Horse search paused");
     unavailable = false;
     await dialog.getByRole("button", { name: "Retry horses" }).click();
-    await expect(dialog).toContainText("No horses on this page yet");
-    await expect(dialog.locator('[data-horf-gift-owned] option')).toHaveCount(1);
-    await dialog.getByRole("button", { name: "More horses" }).click();
-    await expect(dialog.locator('[data-horf-gift-owned]').locator(`option[value="${contract}:7"]`)).toHaveText("Later Page Pony · #7 · 2 owned");
+    await expect(dialog.locator('[data-horf-gift-owned]').locator(`option[value="${contract}:7"]`)).toHaveText(/Later Page Pony · #7 · 2 owned · Neighvember 2026/);
     expect(offsets).toContain(2);
   });
 
