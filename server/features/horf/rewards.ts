@@ -10,10 +10,12 @@ import { withoutRoomSwapInputDuplicates } from "./room-dedupe";
 import type { StoredRoomSettlement } from "./room-ledger";
 import { horseMarketAddress } from "./horse-market/market";
 import { isTezosWallet } from "./model";
+import { horfExcludedTransferReason } from "./integrity";
 import { HorfHorseClaimSyncError, readConfiguredHorseClaimVault, readHorseClaimVault, signHorseClaimPermit } from "./horse-claims";
 
 export const HORF_HORSE_REWARD_PER_TRADE = 10n;
 export const HORF_HORSE_REWARD_RAW_PER_TRADE = HORF_HORSE_REWARD_PER_TRADE * 100_000_000n;
+const HORF_REWARD_CALCULATION_VERSION = "2";
 /** @deprecated Kept as a compatibility export; rewards are per trade, not per edition. */
 export const HORF_HORSE_REWARD_PER_UNIT = HORF_HORSE_REWARD_PER_TRADE;
 /** @deprecated Kept as a compatibility export; rewards are per trade, not per edition. */
@@ -31,6 +33,7 @@ export function completedHorfRewardSource(source: {
 export interface HorfRewardSourceEvent {
   kind: "direct" | "stable" | "market" | "objkt";
   sourceKey: string;
+  operationHash?: string | null;
   from: string;
   to: string;
   units: string;
@@ -59,6 +62,7 @@ export function buildHorfRewardEntitlements(
     if (!isTezosWallet(event.from) || !isTezosWallet(event.to) || event.from === event.to ||
         !/^\d+$/.test(event.units) || BigInt(event.units) <= 0n ||
         (excludedHorseContract && event.tokenContract === excludedHorseContract) ||
+        horfExcludedTransferReason(event.operationHash, event.to, event.tokenContract, event.tokenId) ||
         excludedTokens.has(`${event.tokenContract}/${event.tokenId}`)) continue;
     const interactionKey = `${event.kind}\u0000${event.sourceKey}\u0000${event.from}`;
     if (countedInteractions.has(interactionKey)) continue;
@@ -198,7 +202,7 @@ export async function reconcileCurrentHorfRewards(): Promise<{ status: "ready" |
       FROM public.horf_objkt_purchase_intents WHERE status = 'verified'
         AND occurred_at >= $1::timestamptz
         AND ($2::timestamptz IS NULL OR occurred_at < $2::timestamptz)`, [CURRENT.startsAt, CURRENT.endsAt]);
-    const fingerprint = [CURRENT.startsAt, new Date(sourceRow.as_of).toISOString(),
+    const fingerprint = [HORF_REWARD_CALCULATION_VERSION, CURRENT.startsAt, new Date(sourceRow.as_of).toISOString(),
       ...stableFingerprints, roomFingerprint, marketAddress ?? "", marketAsOf ?? "",
       objktSource.rows[0]?.count ?? "0", horseContractAddress() ?? ""].join("|");
     if (lastReconciledSourceFingerprint === fingerprint) {
@@ -246,6 +250,7 @@ export async function reconcileCurrentHorfRewards(): Promise<{ status: "ready" |
     const events: HorfRewardSourceEvent[] = [
       ...directWithoutRoomInput.map((row) => ({ kind: "direct" as const,
         sourceKey: row.operation_hash ? `${row.operation_hash}:${row.from_address}:${row.to_address}` : `event:${row.event_id}`,
+        operationHash: row.operation_hash,
         from: row.from_address, to: row.to_address, units: "1",
         tokenContract: row.token_contract, tokenId: row.token_id })),
       ...stableClaimRewardEvents(stable.rows),

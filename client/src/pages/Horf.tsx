@@ -65,6 +65,7 @@ type HorfReceipt = {
   operationHash?: string;
   racePoints?: number;
   horseReward?: string;
+  excludedReason?: string;
 };
 
 type RaceStory = "rides" | "received" | "volume" | "partners" | "returns";
@@ -1817,7 +1818,7 @@ export function Horf() {
                     {profilePersonal.recent.map((receipt) => <li key={`${receipt.id}:${receipt.direction}:${receipt.timestamp}`}>
                       <ReceiptDirection $in={receipt.direction === "in"}>{receipt.direction === "in" ? "In" : "Out"}</ReceiptDirection>
                       <div><a href={tokenUrl(receipt.token)} target="_blank" rel="noopener noreferrer">{receipt.token.name || `Horse #${receipt.token.tokenId}`}</a><small>{trailKind(receipt)} · {receipt.direction === "in" ? "From" : "To"} <TraderLink address={receipt.counterparty} /> · {formatDate(receipt.timestamp)}</small></div>
-                      <strong>{receipt.amount} {receipt.amount === 1 ? "edition" : "editions"}<small>{receipt.racePoints ? ` · 🏁 +${receipt.racePoints}` : receipt.direction === "in" ? " · received" : " · same operation"}{receipt.horseReward && Number(receipt.horseReward) > 0 ? ` · 🪙 +${receipt.horseReward} HORSE` : ""}</small></strong>
+                      <strong>{receipt.amount} {receipt.amount === 1 ? "edition" : "editions"}<small title={receipt.excludedReason} aria-label={receipt.excludedReason}>{receipt.excludedReason ? " · excluded from race & HORSE" : receipt.racePoints ? ` · 🏁 +${receipt.racePoints}` : receipt.direction === "in" ? " · received" : " · same operation"}{receipt.horseReward && Number(receipt.horseReward) > 0 ? ` · 🪙 +${receipt.horseReward} HORSE` : ""}</small></strong>
                     </li>)}
                   </ReceiptList> : <p>No qualifying transfers in this season.</p>}
                 </TraderTrail>

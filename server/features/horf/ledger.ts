@@ -25,8 +25,8 @@ import { HORF_MAINNET_BLOCK_MS } from "./mainnet";
 // subscription, so one source scan per block is shared across all viewers.
 const MAINNET_BLOCK_MS = HORF_MAINNET_BLOCK_MS;
 export function horfLedgerPolicyVersion(): string {
-  // A classifier, race-score, or reward-policy change must replay every season so
-  // false positives leave the race, trade debts, and reward entitlements.
+  // This version describes source classification. Display and scoring overlays
+  // are recomputed from cached transfer rows and do not require an Objkt rescan.
   return `4:${horseContractAddress() ?? ""}`;
 }
 const PUBLIC_SYNC_ERROR = "The horse trade index is temporarily unavailable. Last completed data is shown when available.";
@@ -425,7 +425,7 @@ export async function getHorfSeasonSnapshot(address: string | null, season: Horf
     status,
     error: state.error || stableClaims.error || roomSettlements.error || marketSales.error,
     nextRefreshAt: refreshCandidates.length ? refreshCandidates.sort()[0] : null,
-    countingRule: "Each qualifying outbound sender-to-recipient horse interaction counts once, regardless of edition quantity; recipients remain visible in activity totals but do not gain race rank from receipt alone. Each sender earns 10 HORSE per counted interaction. Escrow deposits do not count. Only direct pairwise sends create return rides.",
+    countingRule: "Each qualifying outbound sender-to-recipient horse interaction counts once, regardless of edition quantity; recipients remain visible in activity totals but do not gain race rank from receipt alone. Each sender earns 10 HORSE per counted interaction. The audited Neighwatch #7 drop to wallets with no prior originated Tezos transactions remains visible but is excluded from race, return rides, and pending HORSE; other batches count normally. Escrow deposits do not count. Only direct pairwise sends create return rides.",
     leaderboard,
     currentUser,
   };

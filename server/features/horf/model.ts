@@ -1,4 +1,5 @@
 import { normalizeIpfsUri } from "@shared/ipfs-gateways";
+import { horfExcludedTransferReason } from "./integrity";
 
 export const HORF_SEASON_START = "2026-11-01T00:00:00.000Z";
 export const HORF_SEASON_LABEL = "Neighvember 2026";
@@ -237,6 +238,7 @@ export interface HorfCurrentUser extends HorfLeaderboardEntry {
     operationHash?: string;
     racePoints: number;
     horseReward: string;
+    excludedReason?: string;
   }>;
 }
 
@@ -279,6 +281,25 @@ export function summarizeSeason(transfers: HorfTransfer[], address: string | nul
     riderConnections.set(right, rightLinks);
   };
   for (const transfer of [...transfers].sort((a, b) => a.timestamp.localeCompare(b.timestamp) || a.id - b.id)) {
+    const excludedReason = horfExcludedTransferReason(transfer.operationHash, transfer.to,
+      transfer.token.contract, transfer.token.tokenId);
+    if (excludedReason) {
+      if (address === transfer.from || address === transfer.to) {
+        recent.push({
+          id: transfer.id,
+          timestamp: transfer.timestamp,
+          direction: address === transfer.from ? "out" : "in",
+          counterparty: address === transfer.from ? transfer.to : transfer.from,
+          token: transfer.token,
+          amount: transfer.amount,
+          ...(transfer.operationHash ? { operationHash: transfer.operationHash } : {}),
+          racePoints: 0,
+          horseReward: "0",
+          excludedReason,
+        });
+      }
+      continue;
+    }
     const sender = countsFor(transfer.from);
     sender.sent += transfer.amount;
     const interactionKey = horfInteractionKey(transfer);

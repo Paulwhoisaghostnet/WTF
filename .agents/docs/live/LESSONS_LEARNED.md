@@ -14900,3 +14900,13 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: A single bulk transfer could dominate the race and reward ledger, while hiding the difference between wallet reach, transfer volume, and actual reciprocation. The chain evidence established the quantity multiplier but did not establish a relationship between wallets or prove bot activity.
 
 **Rule**: Count one outgoing interaction per operation and recipient for sender race rank and the sender’s 10 HORSE award. A multi-recipient batch still counts each recipient; edition totals, inbound activity, unique rider links, and matched returns remain visible as separate measures. Keep raw ledger evidence and avoid inferring shared ownership or intent from transfer patterns alone.
+
+---
+
+## 2026-11-07 - Exclude audited dormant-wallet drops at the transfer-leg level
+
+**What happened**: A chain review found three exact FA2 `transfer` operations of Neighwatch token #7 distributing 300 editions to 300 distinct wallets. TzKT showed 299 recipients had no originated Tezos transaction before their batch receipt, while one recipient had older wallet activity. The operation records showed direct batch sends, not a wallet claim call; none of the cohort later moved that Neighwatch token.
+
+**Why it mattered**: Counting every recipient leg as a race interaction and sender HORSE award treated a large drop to never-active wallets like 299 trader exchanges. Excluding the whole sender wallet or every multi-recipient transfer would also erase unrelated community trades.
+
+**Rule**: For an audited case, exclude only the confirmed recipient legs from race, return-obligation, and pending-reward calculations; retain the chain event in public history with an uncounted reason. Preserve known active recipients and ordinary batch transfers. Confirm whether activity came from a direct send or recipient claim before describing it, and never infer wallet ownership or intent from a pattern alone. If a correction changes only how cached rows count, recalculate from that cache and version reward reconciliation separately; do not trigger a source re-index.

@@ -297,6 +297,9 @@ test.describe("Horf Stable and trader profile", () => {
         direction: "in", counterparty: firstReturnWallet, token: { contract, tokenId: "5", name: "Bay Pony" }, amount: 1 })),
       { id: 13, timestamp: "2026-11-05T12:00:00.000Z", direction: "in", counterparty: secondReturnWallet,
         token: { contract, tokenId: "6", name: "Gift Filly" }, amount: 1, settlement: "gift" },
+      { id: 14, timestamp: "2026-11-05T13:00:00.000Z", direction: "out", counterparty: "tz1a15MNEGD4Q8SqgKU441Kqafegwk2cqswY",
+        token: { contract: "KT1Wnvs5gHZZrgBPDBTcdFHYVfnd1xdupxE2", tokenId: "7", name: "Neighwatch" }, amount: 1,
+        racePoints: 0, horseReward: "0", excludedReason: "Excluded from HORF scoring: this batch went to wallets with no prior originated Tezos transactions." },
     ];
     await page.route("**/api/horf/horse/rewards?*", (route) => json(route, {
       season: "current-2026", rateHorse: "10", countedUnits: "6", countedTrades: "6",
@@ -364,6 +367,11 @@ test.describe("Horf Stable and trader profile", () => {
     await activity.locator("[data-horf-profile-trail] summary").click();
     await expect(activity.locator("[data-horf-profile-trail]")).toContainText("Gift Filly");
     await expect(activity.locator("[data-horf-profile-trail]")).toContainText("Gift · From");
+    const excluded = activity.locator("[data-horf-profile-trail]").getByText("Neighwatch", { exact: true });
+    await expect(excluded).toBeVisible();
+    const excludedRow = activity.locator("[data-horf-profile-trail] li").filter({ hasText: "Neighwatch" });
+    await expect(excludedRow).toContainText("excluded from race & HORSE");
+    await expect(excludedRow.locator("strong small")).toHaveAttribute("title", /no prior originated Tezos transactions/i);
     await profile.locator('[data-horf-profile-tab="received"]').click();
     await expect(profile.locator("[data-horf-profile-received-summary]")).toContainText("7 horse editions received");
     const profileBreakdown = profile.locator("#horf-profile-panel > [data-horf-received-breakdown]");

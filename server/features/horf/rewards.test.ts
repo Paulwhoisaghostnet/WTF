@@ -39,6 +39,39 @@ test("same-operation token legs share one award per recipient while batch recipi
   ]);
 });
 
+test("audited dormant-wallet drop legs do not earn HORSE but active recipients still do", () => {
+  const batchOperation = "onygheNzGzMVoPCJ5CT3MYMDX7V4hPKXgiw39zUD1LpG8LbdWgT";
+  const secondBatchOperation = "onpeyzWvKBXjaE5CHHmnnfts1WNyC7GyE1k8fi4fYEHCLhSMz9j";
+  const thirdBatchOperation = "ooLFLfj1hRZsrQrQxXTVXPuFGRfNGn1TPF9XXXRY37frh4emkSF";
+  const neighwatchContract = "KT1Wnvs5gHZZrgBPDBTcdFHYVfnd1xdupxE2";
+  const events = [
+    { kind: "direct" as const, sourceKey: `${batchOperation}:${sender}:tz1a15MNEGD4Q8SqgKU441Kqafegwk2cqswY`,
+      operationHash: batchOperation, from: sender, to: "tz1a15MNEGD4Q8SqgKU441Kqafegwk2cqswY", units: "1",
+      tokenContract: neighwatchContract, tokenId: "7" },
+    { kind: "direct" as const, sourceKey: `${batchOperation}:${sender}:tz1a1mbNDcuiQTidK7Kg19NFjmP6b6N4aFRi`,
+      operationHash: batchOperation, from: sender, to: "tz1a1mbNDcuiQTidK7Kg19NFjmP6b6N4aFRi", units: "1",
+      tokenContract: neighwatchContract, tokenId: "7" },
+    { kind: "direct" as const, sourceKey: `${batchOperation}:${sender}:tz1a15Ur2y3fkKzM6yPnVgWx2yd57D4QM61J`,
+      operationHash: batchOperation, from: sender, to: "tz1a15Ur2y3fkKzM6yPnVgWx2yd57D4QM61J", units: "1",
+      tokenContract: neighwatchContract, tokenId: "7" },
+    { kind: "direct" as const, sourceKey: `${secondBatchOperation}:${sender}:tz1a15MNEGD4Q8SqgKU441Kqafegwk2cqswY`,
+      operationHash: secondBatchOperation, from: sender, to: "tz1a15MNEGD4Q8SqgKU441Kqafegwk2cqswY", units: "1",
+      tokenContract: neighwatchContract, tokenId: "7" },
+    { kind: "direct" as const, sourceKey: `${thirdBatchOperation}:${sender}:tz1a15MNEGD4Q8SqgKU441Kqafegwk2cqswY`,
+      operationHash: thirdBatchOperation, from: sender, to: "tz1a15MNEGD4Q8SqgKU441Kqafegwk2cqswY", units: "1",
+      tokenContract: neighwatchContract, tokenId: "7" },
+    { kind: "direct" as const, sourceKey: `${batchOperation}:${sender}:tz1a15MNEGD4Q8SqgKU441Kqafegwk2cqswY`,
+      operationHash: batchOperation, from: sender, to: "tz1a15MNEGD4Q8SqgKU441Kqafegwk2cqswY", units: "1",
+      tokenContract: neighwatchContract, tokenId: "8" },
+    { kind: "direct" as const, sourceKey: "ordinary-batch-recipient", from: sender, to: recipient,
+      units: "1", tokenContract: horseArt, tokenId: "7" },
+  ];
+  const rows = buildHorfRewardEntitlements(events, horseCurrency);
+  assert.deepEqual(rows.map((row) => row.counterpartyAddress), [
+    "tz1a15Ur2y3fkKzM6yPnVgWx2yd57D4QM61J", "tz1a15MNEGD4Q8SqgKU441Kqafegwk2cqswY", recipient,
+  ]);
+});
+
 test("self sends and HORSE currency transfers never produce entitlement rows", () => {
   assert.deepEqual(buildHorfRewardEntitlements([
     { kind: "direct", sourceKey: "self", from: sender, to: sender, units: "1", tokenContract: horseArt, tokenId: "1" },

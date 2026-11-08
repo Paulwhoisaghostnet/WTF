@@ -162,6 +162,62 @@ test("bulk editions count as one outbound race ride while a multi-recipient batc
   ].sort());
 });
 
+test("audited dormant-wallet batch legs stay visible but do not count as trade activity", () => {
+  const opeculiar = "tz2K1rDmszPuzVQYUcyDFxeSm7ZEJdDvhXx4";
+  const dormant = "tz1a15MNEGD4Q8SqgKU441Kqafegwk2cqswY";
+  const dormantWithOnlyInbound = "tz1a1mbNDcuiQTidK7Kg19NFjmP6b6N4aFRi";
+  const active = "tz1a15Ur2y3fkKzM6yPnVgWx2yd57D4QM61J";
+  const batchOperation = "onygheNzGzMVoPCJ5CT3MYMDX7V4hPKXgiw39zUD1LpG8LbdWgT";
+  const secondBatchOperation = "onpeyzWvKBXjaE5CHHmnnfts1WNyC7GyE1k8fi4fYEHCLhSMz9j";
+  const thirdBatchOperation = "ooLFLfj1hRZsrQrQxXTVXPuFGRfNGn1TPF9XXXRY37frh4emkSF";
+  const neighwatch = { contract: "KT1Wnvs5gHZZrgBPDBTcdFHYVfnd1xdupxE2", tokenId: "7", name: "Neighwatch", image: null };
+  const otherOperation = `o${"C".repeat(50)}`;
+  const transfers: HorfTransfer[] = [
+    { ...normalizeHorfTransfer(event({ ophash: batchOperation, creator_address: opeculiar,
+      recipient_address: dormant, token: { fa_contract: neighwatch.contract, token_id: neighwatch.tokenId,
+        name: neighwatch.name, decimals: 0, thumbnail_uri: null, tags: [{ tag: { name: "horse" } }] } }), new Set())!, id: 76425280 },
+    { ...normalizeHorfTransfer(event({ ophash: batchOperation, creator_address: opeculiar,
+      recipient_address: dormantWithOnlyInbound, token: { fa_contract: neighwatch.contract, token_id: neighwatch.tokenId,
+        name: neighwatch.name, decimals: 0, thumbnail_uri: null, tags: [{ tag: { name: "horse" } }] } }), new Set())!, id: 76425281 },
+    { ...normalizeHorfTransfer(event({ ophash: batchOperation, creator_address: opeculiar,
+      recipient_address: active, token: { fa_contract: neighwatch.contract, token_id: neighwatch.tokenId,
+        name: neighwatch.name, decimals: 0, thumbnail_uri: null, tags: [{ tag: { name: "horse" } }] } }), new Set())!, id: 76425282 },
+    { ...normalizeHorfTransfer(event({ ophash: batchOperation, creator_address: opeculiar,
+      recipient_address: dormant, token: { fa_contract: neighwatch.contract, token_id: "8",
+        name: "Other edition", decimals: 0, thumbnail_uri: null, tags: [{ tag: { name: "horse" } }] } }), new Set())!, id: 76425283 },
+    { ...normalizeHorfTransfer(event({ ophash: secondBatchOperation, creator_address: opeculiar,
+      recipient_address: "tz1a15MNEGD4Q8SqgKU441Kqafegwk2cqswY", token: { fa_contract: neighwatch.contract,
+        token_id: neighwatch.tokenId, name: neighwatch.name, decimals: 0, thumbnail_uri: null,
+        tags: [{ tag: { name: "horse" } }] } }), new Set())!, id: 76425284 },
+    { ...normalizeHorfTransfer(event({ ophash: thirdBatchOperation, creator_address: opeculiar,
+      recipient_address: "tz1a15MNEGD4Q8SqgKU441Kqafegwk2cqswY", token: { fa_contract: neighwatch.contract,
+        token_id: neighwatch.tokenId, name: neighwatch.name, decimals: 0, thumbnail_uri: null,
+        tags: [{ tag: { name: "horse" } }] } }), new Set())!, id: 76425285 },
+    { ...normalizeHorfTransfer(event({ ophash: otherOperation, creator_address: opeculiar,
+      recipient_address: carol }), new Set())!, id: 76425286 },
+  ];
+  const { leaderboard, currentUser } = summarizeSeason(transfers, opeculiar);
+  const sender = leaderboard.find((row) => row.address === opeculiar)!;
+  assert.deepEqual([sender.trades, sender.sentInteractions, sender.sent], [3, 3, 3]);
+  assert.equal(leaderboard.some((row) => row.address === dormant), true,
+    "a different horse token in the same operation still establishes rider activity");
+  assert.equal(leaderboard.some((row) => row.address === dormantWithOnlyInbound), false);
+  const excluded = currentUser?.recent.find((row) => row.counterparty === dormant && row.token.tokenId === "7")!;
+  assert.deepEqual([excluded.racePoints, excluded.horseReward, excluded.excludedReason], [0, "0",
+    "Excluded from HORF scoring: this batch went to wallets with no prior originated Tezos transactions."]);
+
+  const largeTransfer = normalizeHorfTransfer(event({
+    ophash: "onohWEmnvoFAeSbcKGSrgJLN1M4Wu9gAkjrybtH5gtMJN75bCam",
+    creator_address: opeculiar,
+    recipient_address: "tz2Par94ss59B1Nsyw3FrAhABYgxbVa5ygAD",
+    amount: 9990,
+  }), new Set())!;
+  const largeTransferSender = summarizeSeason([largeTransfer], opeculiar).leaderboard
+    .find((row) => row.address === opeculiar)!;
+  assert.deepEqual([largeTransferSender.trades, largeTransferSender.sent], [1, 9990],
+    "the earlier 9,990-edition send remains one interaction instead of being wallet-blocked");
+});
+
 test("waiting horse receipts use FIFO cancellation and earlier sends cover later receipts", () => {
   const base = normalizeHorfTransfer(event(), new Set())!;
   const rows: HorfTransfer[] = [
