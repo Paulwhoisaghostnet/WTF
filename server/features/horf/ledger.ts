@@ -425,7 +425,7 @@ export async function getHorfSeasonSnapshot(address: string | null, season: Horf
     status,
     error: state.error || stableClaims.error || roomSettlements.error || marketSales.error,
     nextRefreshAt: refreshCandidates.length ? refreshCandidates.sort()[0] : null,
-    countingRule: "Each qualifying outbound sender-to-recipient horse interaction counts once, regardless of edition quantity; recipients remain visible in activity totals but do not gain race rank from receipt alone. Each sender earns 10 HORSE per counted interaction. The audited Neighwatch #7 drop to wallets with no prior originated Tezos transactions remains visible but is excluded from race, return rides, and pending HORSE; other batches count normally. Escrow deposits do not count. Only direct pairwise sends create return rides.",
+    countingRule: "Each qualifying outbound sender-to-recipient horse interaction counts once, regardless of edition quantity; recipients remain visible in activity totals but do not gain race rank from receipt alone. Each sender earns 10 HORSE per counted interaction. Community-blocked horse contracts are hidden from horse discovery, race and return totals, and pending HORSE. The audited Neighwatch #7 drop to wallets with no prior originated Tezos transactions remains visible but is excluded from race, return rides, and pending HORSE; other batches count normally. Escrow deposits do not count. Only direct pairwise sends create return rides.",
     leaderboard,
     currentUser,
   };

@@ -9,11 +9,13 @@ import {
 } from "./open-range-cache";
 
 const CONTRACT = "KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton";
+const BLOCKED_CONTRACT = "KT197dhTw8LfwtfpVnBYyES24xf2rZAazSuh";
 const BLOCK_MS = 6_000;
 
-function page(tokenIds: string[], nextCursor: string | null, hasMore: boolean, label = "Horse"): OpenRangeMintPage {
+function page(tokenIds: string[], nextCursor: string | null, hasMore: boolean, label = "Horse",
+  contract = CONTRACT): OpenRangeMintPage {
   return {
-    items: tokenIds.map((tokenId) => ({ contract: CONTRACT, tokenId,
+    items: tokenIds.map((tokenId) => ({ contract, tokenId,
       name: `${label} ${tokenId}`, description: null, image: null, artifactUri: null, mime: null,
       mintedAt: "2026-11-03T00:00:00.000Z", creatorAddress: null, eligibility: "auto" as const })),
     nextCursor, hasMore, asOf: "2026-11-03T00:00:00.000Z", sourceRows: tokenIds.length, mediaVersion: 1,
@@ -52,7 +54,8 @@ test("a discovered page survives a new cache instance without another source loo
 
 test("a legacy cached page is replaced by the current eligibility policy", async () => {
   const { store, rows, key } = memoryStore();
-  const old = page(["180", "181"], null, false);
+  const old = page(["0", "180", "181"], null, false, "Horseshit", BLOCKED_CONTRACT);
+  old.eligibilityVersion = 2;
   delete (old as Partial<typeof old>).mediaVersion;
   for (const item of old.items) {
     delete (item as Partial<typeof item>).artifactUri;
@@ -71,7 +74,7 @@ test("a legacy cached page is replaced by the current eligibility policy", async
   assert.equal(result.cacheStatus, "refreshed");
   assert.equal(result.items.find((item) => item.tokenId === "181")?.artifactUri, "https://ipfs.fileship.xyz/QmHorseVideo");
   assert.deepEqual(result.items.map((item) => item.tokenId), ["181"]);
-  assert.equal(result.eligibilityVersion, 2);
+  assert.equal(result.eligibilityVersion, 3);
   assert.equal((await cached("all-horse-search", "0")).cacheStatus, "cached");
   assert.equal(lookups, 1);
 });

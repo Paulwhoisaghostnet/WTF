@@ -883,7 +883,7 @@ export const DOMAIN_WORKFLOWS = [
     ],
   },
   {
-    name: "horf welcome, gated race, and horse market loop",
+    name: "horf welcome, filtered race, and horse market loop",
     domain: "Market, Exchange, Inventory, and Commerce",
     routes: ["/horf", "/horf/race", "/horf/horse-market"],
     uiHandles: ["data-horf-neighvember-banner", "data-horf-horse-market-open", "data-horf-wanted-mint", "data-horf-season-art", "data-horf-race-closed", "data-horf-lane"],
@@ -893,7 +893,7 @@ export const DOMAIN_WORKFLOWS = [
     ],
   },
   {
-    name: "horf open range public search and owner offer loop",
+    name: "horf open range public search, community contract blocks, and owner offer loop",
     domain: "Market, Exchange, Inventory, and Commerce",
     routes: ["/horf/open-range"],
     uiHandles: ["data-horf-open-range-for-trade-now", "data-horf-open-range-filter", "data-horf-open-range-featured-mint"],
@@ -1061,7 +1061,7 @@ export const DOMAIN_WORKFLOWS = [
     ],
   },
   {
-    name: "horf HORSE distribution and posse loop",
+    name: "horf HORSE distribution, filtered rewards, and posse loop",
     domain: "Market, Exchange, Inventory, and Commerce",
     routes: ["/horf/send-horse", "/horf/posse"],
     eventHandles: [

@@ -9,6 +9,7 @@ const sender = "tz1Qi77tcJn9foeHHP1QHj6UX1m1vLVLMbuY";
 const recipient = "tz1VSUr8wwNhLAzempoch5d6hLRiTh8Cjcjb";
 const horseArt = "KT1XaCf6gkjFnKg3QmPfn6gep53moMvjkj1E";
 const horseCurrency = "KT1E9s2ncE5vXjofmzqwE6gEg9JPruTRBdrM";
+const blockedHorse = "KT197dhTw8LfwtfpVnBYyES24xf2rZAazSuh";
 const stableV2 = "KT1Rg7ippRJGrFgKBDCGUyiFG7jKdcU7Dmsg";
 const stableV3 = "KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton";
 
@@ -78,6 +79,18 @@ test("self sends and HORSE currency transfers never produce entitlement rows", (
     { kind: "direct", sourceKey: "currency", from: sender, to: recipient, units: "1", tokenContract: horseCurrency, tokenId: "0" },
     { kind: "direct", sourceKey: "zero", from: sender, to: recipient, units: "0", tokenContract: horseArt, tokenId: "1" },
   ], horseCurrency), []);
+});
+
+test("a community-blocked FA2 creates no race reward entitlement from any trade source", () => {
+  const rows = buildHorfRewardEntitlements([
+    ...(["direct", "stable", "market", "objkt"] as const).map((kind, index) => ({
+      kind, sourceKey: `horseshit-${index}`, from: sender, to: recipient, units: "1",
+      tokenContract: blockedHorse, tokenId: String(index),
+    })),
+    { kind: "direct", sourceKey: "real-horse", from: sender, to: recipient,
+      units: "1", tokenContract: horseArt, tokenId: "1" },
+  ], horseCurrency);
+  assert.deepEqual(rows.map((row) => row.sourceKey), ["real-horse"]);
 });
 
 test("a return send is a new outbound award for its own sender", () => {

@@ -3,6 +3,7 @@ import { approvedHorseTags, HORF_CANDIDATE_REGEX, horseTagEvidence, type ObjktTo
 import { HORF_CURRENT_SEASON_KEY, HORF_SEASONS, resolveHorfSeason } from "./seasons";
 import { OBJKT_PAGE_SIZE } from "./source";
 import { horseContractAddress } from "./horse-config";
+import { HORF_BLOCKED_FA2_CONTRACTS, isHorfBlockedContract } from "./integrity";
 import { normalizeIpfsUri } from "@shared/ipfs-gateways";
 
 export const HORF_OPEN_RANGE_QUERY = `query HorfOpenRange($where: token_bool_exp!, $cursor: bigint!, $pageSize: Int!) {
@@ -62,7 +63,10 @@ export function validOpenRangeCursor(mode: OpenRangeMode, cursor: string): boole
 export function openRangeWhere(mode: OpenRangeMode, cursor = "0") {
   // Explicit mint tags qualify regardless of group size. The postfilter
   // applies the >5 rule to broader equine tag groups.
-  const candidate = { tags: { tag: { name: { _iregex: HORF_CANDIDATE_REGEX } } } };
+  const candidate = { _and: [
+    { fa_contract: { _nin: [...HORF_BLOCKED_FA2_CONTRACTS] } },
+    { tags: { tag: { name: { _iregex: HORF_CANDIDATE_REGEX } } } },
+  ] };
   if (mode === "all-horse-search") return candidate;
   const selected = resolveHorfSeason(mode);
   if (mode !== "all-seasons" && !selected) throw new Error("Unknown Horf season");
@@ -125,6 +129,7 @@ export async function fetchOpenRangeMintPage(
       : BigInt(current) <= after)) throw new Error("Objkt mint cursor did not advance");
     after = BigInt(current);
     if (byTime) lastTime = new Date(rowTime).toISOString();
+    if (isHorfBlockedContract(row.fa_contract)) continue;
     if (row.fa_contract === horseContractAddress()) continue;
     if (typeof row.fa_contract !== "string" || !/^KT1[1-9A-HJ-NP-Za-km-z]{33}$/.test(row.fa_contract) ||
         typeof row.token_id !== "string" || !/^\d+$/.test(row.token_id) ||

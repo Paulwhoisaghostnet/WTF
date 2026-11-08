@@ -10,12 +10,12 @@ import { withoutRoomSwapInputDuplicates } from "./room-dedupe";
 import type { StoredRoomSettlement } from "./room-ledger";
 import { horseMarketAddress } from "./horse-market/market";
 import { isTezosWallet } from "./model";
-import { horfExcludedTransferReason } from "./integrity";
+import { horfExcludedTransferReason, isHorfBlockedContract } from "./integrity";
 import { HorfHorseClaimSyncError, readConfiguredHorseClaimVault, readHorseClaimVault, signHorseClaimPermit } from "./horse-claims";
 
 export const HORF_HORSE_REWARD_PER_TRADE = 10n;
 export const HORF_HORSE_REWARD_RAW_PER_TRADE = HORF_HORSE_REWARD_PER_TRADE * 100_000_000n;
-const HORF_REWARD_CALCULATION_VERSION = "2";
+const HORF_REWARD_CALCULATION_VERSION = "3";
 /** @deprecated Kept as a compatibility export; rewards are per trade, not per edition. */
 export const HORF_HORSE_REWARD_PER_UNIT = HORF_HORSE_REWARD_PER_TRADE;
 /** @deprecated Kept as a compatibility export; rewards are per trade, not per edition. */
@@ -61,6 +61,7 @@ export function buildHorfRewardEntitlements(
   for (const event of events) {
     if (!isTezosWallet(event.from) || !isTezosWallet(event.to) || event.from === event.to ||
         !/^\d+$/.test(event.units) || BigInt(event.units) <= 0n ||
+        isHorfBlockedContract(event.tokenContract) ||
         (excludedHorseContract && event.tokenContract === excludedHorseContract) ||
         horfExcludedTransferReason(event.operationHash, event.to, event.tokenContract, event.tokenId) ||
         excludedTokens.has(`${event.tokenContract}/${event.tokenId}`)) continue;

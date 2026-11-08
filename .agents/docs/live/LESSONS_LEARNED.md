@@ -14910,3 +14910,11 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: Counting every recipient leg as a race interaction and sender HORSE award treated a large drop to never-active wallets like 299 trader exchanges. Excluding the whole sender wallet or every multi-recipient transfer would also erase unrelated community trades.
 
 **Rule**: For an audited case, exclude only the confirmed recipient legs from race, return-obligation, and pending-reward calculations; retain the chain event in public history with an uncounted reason. Preserve known active recipients and ordinary batch transfers. Confirm whether activity came from a direct send or recipient claim before describing it, and never infer wallet ownership or intent from a pattern alone. If a correction changes only how cached rows count, recalculate from that cache and version reward reconciliation separately; do not trigger a source re-index.
+
+## 2026-11-08 - Apply community FA2 blocks across horse discovery and derived ledgers
+
+**What happened**: One FA2 contract minted 78 near-identical `horseshit` tokens with horse-related tags. The generic mint-tag classifier admitted every token into Open Range, and cached historical transfer rows were later counted by the race and reward reducers without rechecking the contract policy.
+
+**Why it mattered**: Per-token tag checks could not suppress an entire known-bad collection, while stale discovery pages and pending reward entitlements survived a newly applied contract exclusion.
+
+**Rule**: Check the contract block before mint tags or Marshal approval, filter persisted transfers again when summarizing, filter every reward source during reconciliation, and version both the Open Range cache and reward fingerprint when this policy changes. Keep raw chain evidence for audit; already claimed on-chain awards remain final.

@@ -1,5 +1,5 @@
 import { normalizeIpfsUri } from "@shared/ipfs-gateways";
-import { horfExcludedTransferReason } from "./integrity";
+import { horfExcludedTransferReason, isHorfBlockedContract } from "./integrity";
 
 export const HORF_SEASON_START = "2026-11-01T00:00:00.000Z";
 export const HORF_SEASON_LABEL = "Neighvember 2026";
@@ -113,6 +113,7 @@ export function isHorseRelatedTag(name: unknown): boolean {
 
 /** Mint tags are the only horse evidence. A lone HAHA tag needs Marshal review. */
 export function horseTagEvidence(token: ObjktToken, approvedTags: ReadonlySet<string>): "horse" | "haha-review" | "none" {
+  if (isHorfBlockedContract(token.fa_contract)) return "none";
   let hahaTag = false;
   for (const item of token.tags || []) {
     const tag = normalizedTag(item?.tag?.name);
@@ -281,6 +282,7 @@ export function summarizeSeason(transfers: HorfTransfer[], address: string | nul
     riderConnections.set(right, rightLinks);
   };
   for (const transfer of [...transfers].sort((a, b) => a.timestamp.localeCompare(b.timestamp) || a.id - b.id)) {
+    if (isHorfBlockedContract(transfer.token.contract)) continue;
     const excludedReason = horfExcludedTransferReason(transfer.operationHash, transfer.to,
       transfer.token.contract, transfer.token.tokenId);
     if (excludedReason) {

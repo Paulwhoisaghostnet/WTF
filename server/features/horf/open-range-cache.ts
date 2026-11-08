@@ -6,7 +6,7 @@ import { fetchOpenRangeMintPage, type OpenRangeMode } from "./open-range-source"
 // A classifier change must replace old discovery pages. Their historical
 // union deliberately retains prior matches, including tokens no longer
 // eligible under the new rule.
-const HORF_ELIGIBILITY_CACHE_VERSION = 2;
+const HORF_ELIGIBILITY_CACHE_VERSION = 3;
 export type OpenRangeMintPage = Awaited<ReturnType<typeof fetchOpenRangeMintPage>> & {
   eligibilityVersion?: number;
 };

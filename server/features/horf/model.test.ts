@@ -16,6 +16,7 @@ const alice = "tz1Qi77tcJn9foeHHP1QHj6UX1m1vLVLMbuY";
 const bob = "tz1fjdv69hHYx457eLfdWh4n3n4xzmJF9j7T";
 const carol = "tz1LNDLoU3Juoc6sWeKbHRsoCNtP1GTJXvRQ";
 const contract = "KT1L7PSeJpnj79MEaybcEiDtbHM43g5DZe12";
+const blockedContract = "KT197dhTw8LfwtfpVnBYyES24xf2rZAazSuh";
 
 function event(overrides: Partial<ObjktTransferEvent> = {}): ObjktTransferEvent {
   return {
@@ -74,6 +75,25 @@ test("a HAHA-only mint tag waits for a Marshal and a horse tag wins independentl
     tags: [{ tag: { name: "haha", token_count: 100 } }] } });
   assert.equal(normalizeHorfTransfer(hahaTransfer, new Set()), null);
   assert.ok(normalizeHorfTransfer(hahaTransfer, new Set(), HORF_SEASON_START, null, null, true));
+});
+
+test("a community-blocked contract never qualifies, even with Marshal approval or cached transfers", () => {
+  const blockedToken = { ...event().token!, fa_contract: blockedContract,
+    tags: [{ tag: { name: "horse", token_count: 1 } }] };
+  assert.equal(horseTagEvidence(blockedToken, new Set()), "none");
+  assert.equal(tokenQualifies(blockedToken, new Set(), true), false);
+  assert.equal(normalizeHorfTransfer(event({ token: blockedToken }), new Set(),
+    HORF_SEASON_START, null, null, true), null);
+
+  const accepted = normalizeHorfTransfer(event(), new Set())!;
+  const hiddenCachedTransfer: HorfTransfer = { ...accepted,
+    token: { ...accepted.token, contract: blockedContract, tokenId: "0", name: "horseshit" } };
+  const summary = summarizeSeason([hiddenCachedTransfer], alice);
+  assert.deepEqual(summary.leaderboard, []);
+  assert.equal(summary.currentUser?.received, 0);
+  assert.equal(summary.currentUser?.sent, 0);
+  assert.deepEqual(summary.currentUser?.recent, []);
+  assert.deepEqual(summary.currentUser?.owedTo, []);
 });
 
 test("additional horse-family Objkt tags require more than five indexed tokens", () => {

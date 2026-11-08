@@ -4,16 +4,29 @@ import { fetchOpenRangeMintPage, HORF_OPEN_RANGE_QUERY, HORF_OPEN_RANGE_TIME_QUE
 import { HORF_CANDIDATE_REGEX } from "./model";
 
 const contract = "KT1XaCf6gkjFnKg3QmPfn6gep53moMvjkj1E";
+const blockedContract = "KT197dhTw8LfwtfpVnBYyES24xf2rZAazSuh";
 
 test("Open Range keeps horse filters and bounds historical scans by date", () => {
   const allHorse = openRangeWhere("all-horse-search") as Record<string, unknown>;
-  assert.deepEqual(allHorse, { tags: { tag: { name: { _iregex: HORF_CANDIDATE_REGEX } } } });
+  assert.deepEqual(allHorse, { _and: [
+    { fa_contract: { _nin: [blockedContract] } },
+    { tags: { tag: { name: { _iregex: HORF_CANDIDATE_REGEX } } } },
+  ] });
   assert.equal("_or" in allHorse, false);
-  assert.equal("_and" in allHorse, false);
+  assert.equal("_and" in allHorse, true);
   const archive = openRangeWhere("all-seasons") as { _and: Array<Record<string, unknown>> };
   assert.deepEqual(archive._and[1], { timestamp: { _gte: "2023-07-30T00:00:00.000Z" } });
   const current = openRangeWhere("current-2026") as { _and: Array<Record<string, unknown>> };
   assert.deepEqual(current._and[1], { timestamp: { _gte: "2026-11-01T00:00:00.000Z" } });
+});
+
+test("Open Range excludes a community-blocked contract despite horse mint tags", async () => {
+  const result = await fetchOpenRangeMintPage("all-horse-search", "0", async () => [
+    { pk: "1", fa_contract: blockedContract, token_id: "0", name: "horseshit", timestamp: null,
+      tags: [{ tag: { name: "horse", token_count: 100 } }] },
+  ]);
+  assert.deepEqual(result.items, []);
+  assert.equal(result.nextCursor, "1");
 });
 
 test("historical timestamp and PK cursor crosses gaps and equal timestamps without losing mints", async () => {
