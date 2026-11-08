@@ -23,7 +23,7 @@
 
 ## Canonical Counts
 
-Total: **788** · Open: **10** · Claimed: **42** · In Progress: **19** · Blocked: **5** · Fixed: **159** · Verified: **548** · Archived: **5**
+Total: **788** · Open: **10** · Claimed: **42** · In Progress: **19** · Blocked: **5** · Fixed: **158** · Verified: **549** · Archived: **5**
 
 ## Canonical Board
 
@@ -188,7 +188,6 @@ Total: **788** · Open: **10** · Claimed: **42** · In Progress: **19** · Bloc
 | WTF-BB-040 | Fixed | Swarm A7 | 2026-04-28 | TV microapp / background jobs | P1 | 12 | 288 | 3 | 4 | 1 | Auto-refresh can be called concurrently from stream read-path traffic |
 | WTF-BB-036 | Fixed | Codex TV integrity pass | 2026-05-04 | TV microapp / data integrity | P1 | 12 | 288 | 3 | 4 | 1 | Channel-video insert path is non-atomic with concurrent requests |
 | WTF-BB-029 | Fixed | Codex modular architecture refactor | 2026-05-05 | Data quality / scalability | P1 | 12 | 288 | 3 | 4 | 1 | `/api/w/timeline` loads all verified users before paging or cursoring |
-| WTF-BB-822 | Fixed | Codex HORF token integrity | 2026-11-08 | HORF / horse eligibility, race, and rewards | P1 | 11 | 403 | 2 | 4 | 1 | Near-identical horseshit mints from one FA2 contract inflate HORF discovery and activity |
 | WTF-BB-794 | Fixed | Codex Horf Marshal one-click review | 2026-11-04 | Horf / Marshal horse moderation | P1 | 11 | 403 | 2 | 4 | 1 | Marshal That’s not a horse click only queues a report and leaves the token displayed |
 | WTF-BB-791 | Fixed | Codex Horf mint-tag eligibility correction | 2026-11-04 | Horf / false horse token eligibility | P1 | 11 | 403 | 2 | 4 | 1 | Description laughter can classify non-horse art as a tradeable horse |
 | WTF-BB-786 | Fixed | Codex Horf escrow quantity review | 2026-11-04 | Horf / escrow listing quantity confirmation | P1 | 11 | 403 | 1 | 4 | 2 | Escrow listing starts at one edition and reaches wallet signing without an exact quantity review |
@@ -530,6 +529,7 @@ Total: **788** · Open: **10** · Claimed: **42** · In Progress: **19** · Bloc
 | WTF-BB-030 | Verified | Codex platform-settings concurrency verification | 2026-09-01 | Data integrity / config | P1 | 12 | 288 | 3 | 3 | 2 | `platform_settings` updates are prone to lost updates across concurrent actors |
 | WTF-BB-007 | Verified | Codex deploy hardening pass | 2026-05-03 | Runtime / supply chain | P1 | 12 | 288 | 2 | 3 | 3 | Production runtime image includes DB schema mutation tooling |
 | WTF-BB-002 | Verified | Codex deploy hardening pass | 2026-05-03 | Startup / background jobs | P1 | 12 | 288 | 3 | 4 | 1 | App starts production jobs before deploy-time migrations complete |
+| WTF-BB-822 | Verified | Codex HORF token integrity | 2026-11-08 | HORF / horse eligibility, race, and rewards | P1 | 11 | 403 | 2 | 4 | 1 | Near-identical horseshit mints from one FA2 contract inflate HORF discovery and activity |
 | WTF-BB-782 | Verified | Codex starter welcome DM sender validation | 2026-11-04 | Auth / administrative welcome DM | P1 | 11 | 403 | 1 | 3 | 3 | A non-admin account named wtf-admin could author automated welcomes |
 | WTF-BB-762 | Verified | Codex Horf Stables wallet operation pass | 2026-11-03 | Tezos wallet / explicit send network binding | P1 | 11 | 403 | 1 | 4 | 2 | Explicit Mainnet sends can initialize Octez Connect from a stored Shadownet default |
 | WTF-BB-740 | Verified | Codex Pasta alpha remaining release gates | 2026-10-27 | Macaroni V3.5 / duplicate CID launch preflight | P1 | 11 | 403 | 2 | 4 | 1 | Privacy-preserving Objkt full scan hits a live 429 rate limit and blocks sale activation |
@@ -4131,19 +4131,6 @@ Total: **788** · Open: **10** · Claimed: **42** · In Progress: **19** · Bloc
 - Verification:
   - `npm run check` exited 0 on 2026-05-05.
   - `npx tsx -e "import('./server/lib/timeline-db.ts').then(async (m) => { const w = await m.loadWTimelineAuthorWindow(5); console.log(JSON.stringify({ accounts: w.accounts.length, handles: w.handlesLower, totalHandles: w.totalHandles, skippedAccounts: w.skippedAccounts, rowLimit: w.rowLimit })); process.exit(0); }).catch((err) => { console.error(err); process.exit(1); });"` exited 0 against the local sandbox DB and returned a bounded `rowLimit`.
-
-### WTF-BB-822 - Near-identical horseshit mints from one FA2 contract inflate HORF discovery and activity
-
-- Category: HORF / horse eligibility, race, and rewards
-- Priority: P1
-- Status: Fixed
-- Owner/Session: Codex HORF token integrity
-- Last touched: 2026-11-08
-- Score: C2 + F4 + S1 + P1(4) = 11
-- Evidence (2026-11-08): Objkt indexes 78 token IDs (0–77) from FA2 `KT197dhTw8LfwtfpVnBYyES24xf2rZAazSuh`, all with identical `horseshit` metadata, artwork, and horse-related mint tags. Live HORF data showed the contract's transfers appearing in Open Range and adding 78 outgoing interactions to skllzrmy's season count (127 total, versus 49 after removing these legs). The reward endpoint was syncing during inspection, so the exact unclaimed HORSE amount was not established.
-- Why it matters: An eligible mint-tag classifier alone allows one near-duplicate contract to clutter horse discovery and inflate the race and pending community awards.
-- Correction: Exclude this exact FA2 contract before horse-tag or Marshal checks, from persisted race and return summaries, and from all pending reward source kinds. Open Range query and post-filter both exclude it; the cache eligibility version and reward calculation fingerprint were bumped so old cards are replaced and stale unclaimed entitlements are voided on reconciliation. Preserve raw chain records for audit. Already claimed on-chain HORSE cannot be clawed back.
-- Verification (2026-11-08): Four focused server suites pass 34/34; HORF Open Range browser checks pass 16/16; inventory coverage passes for 288 rows, 1,077 handles, 139 routes, and 33 workflows; a live Objkt query returned 60 rows and no blocked contract card. `NODE_OPTIONS=--max-old-space-size=6144 npm run check` and `npm run build` pass. The full 1,016-test inventory run was interrupted after 62 route tests and one interrupted race route; the focused HORF browser suite passed 16/16. Production deployment and public endpoint verification remain pending.
 
 ### WTF-BB-794 - Marshal That’s not a horse click only queues a report and leaves the token displayed
 
@@ -11598,6 +11585,19 @@ Copy this when adding a new issue:
 - Local fix note: Added `scripts/server-deploy.sh` so production deploy now builds first, ensures Postgres is healthy, stops the app, applies migrations, and only then starts the new app container. The GitHub Hetzner workflow now calls that script instead of starting the app before schema work.
 - Verification: live Hetzner deploy via `bash scripts/server-deploy.sh`; production app restarted only after migration step completed, then returned healthy `/api/health`.
 - Verification idea: Deploy logs show migration completion before first production app boot and background-job start.
+
+### WTF-BB-822 - Near-identical horseshit mints from one FA2 contract inflate HORF discovery and activity
+
+- Category: HORF / horse eligibility, race, and rewards
+- Priority: P1
+- Status: Verified
+- Owner/Session: Codex HORF token integrity
+- Last touched: 2026-11-08
+- Score: C2 + F4 + S1 + P1(4) = 11
+- Evidence (2026-11-08): Objkt indexes 78 token IDs (0–77) from FA2 `KT197dhTw8LfwtfpVnBYyES24xf2rZAazSuh`, all with identical `horseshit` metadata, artwork, and horse-related mint tags. Before correction, the contract added 78 outgoing interactions to skllzrmy (127 total versus 49 after exclusion).
+- Why it matters: Mint-tag matching alone let repeated near-identical tokens clutter Open Range and inflate race and pending HORSE awards.
+- Correction: Exclude this exact FA2 contract before horse-tag or Marshal checks, from persisted race and return summaries, and from every pending reward source. Open Range query and post-filter both exclude it; cache and reward fingerprints were bumped so stale cards are replaced and unclaimed entitlements are voided at reconciliation. Chain records remain auditable. Already claimed HORSE is final.
+- Verification (2026-11-08): Focused server suites pass 34/34; HORF Open Range browser checks pass 16/16; inventory coverage passes (288 rows, 1,077 handles, 139 routes, 33 workflows); `NODE_OPTIONS=--max-old-space-size=6144 npm run check` and `npm run build` pass. Production health reports commit `e0a47d97` ready. Live current-season Open Range returns 51 cards and zero from the blocked FA2; all-seasons and all-horse-search first pages also return zero blocked cards. Live race reports skllzrmy at 49 sends (down from 127); opeculiar is 80 interactions. Reward reconciliation is complete for claim safety (`sourceComplete: true`): skllzrmy has 49 accrued units (48 direct, 1 stable), 490 HORSE accrued, 0 claimable, and 1,190 HORSE already claimed (700 HORSE remains prior paid balance above current accrual and cannot be clawed back). Race snapshot labels itself syncing while refreshing. Full 1,016-test inventory run was interrupted after 62 route tests; focused HORF browser checks passed.
 
 ### WTF-BB-782 - A non-admin account named wtf-admin could author automated welcomes
 
