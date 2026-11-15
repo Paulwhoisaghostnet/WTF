@@ -195,3 +195,11 @@ kiln.wtfgameshow.app {
 		header_up X-Forwarded-Proto {scheme}
 	}
 }
+
+# Dedicated Hidden Lakes beta; existing WTF host routes remain untouched.
+hidden-lakes-beta.wtfos.app {
+	encode gzip zstd
+	reverse_proxy hidden-lakes-beta-web:8780 {
+		header_up Host {host}
+	}
+}
