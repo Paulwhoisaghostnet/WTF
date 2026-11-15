@@ -27,6 +27,12 @@ assert.match(
   "upload.wtfos.app must proxy only the ticket-authenticated Macaroni upload endpoint",
 );
 
+assert.match(
+  caddyfile,
+  /hidden-lakes-beta\.wtfos\.app\s*\{\s*encode gzip zstd\s*reverse_proxy hidden-lakes-beta-web:8780/s,
+  "Hidden Lakes must have an isolated beta host and proxy target without changing existing WTF routes",
+);
+
 const servedBlockHeaders = [...caddyfile.matchAll(/^([^{\n]+)\{\s*\n\s*encode/gm)].map((match) =>
   match[1].trim()
 );
