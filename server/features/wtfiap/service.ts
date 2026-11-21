@@ -125,7 +125,7 @@ export function getWtfiapOpenDuel() {
         const constants: any = await response.json();
         const minimalBlockDelaySeconds = Number(constants.minimal_block_delay);
         if (!Number.isSafeInteger(minimalBlockDelaySeconds) || minimalBlockDelaySeconds <= 0) return;
-        monitors.push(monitorFundingHeads({ network: lane.network, rpcUrl: lane.rpc, minimalBlockDelaySeconds } as any,
+        monitors.push(monitorFundingHeads({ network: lane.network, chainId: lane.chainId, rpcUrl: lane.rpc, minimalBlockDelaySeconds },
           () => { void runJob(OPEN_JOB_NAME); }, { headStreamConnected: false, error: null }));
       })().catch(() => undefined);
     }
@@ -169,7 +169,7 @@ export function getWtfiapSponsorFunding() {
           const delay = Number(constants.minimal_block_delay);
           if (!Number.isSafeInteger(delay) || delay <= 0) continue;
           monitors.push(monitorFundingHeads({ ...lane,
-            minimalBlockDelaySeconds: delay } as any,
+            minimalBlockDelaySeconds: delay },
             () => sponsorFunding?.kick(), sponsorFunding!.health));
         } catch { sponsorFunding!.health.error = "Sponsor chain-head monitoring is unavailable."; }
       }

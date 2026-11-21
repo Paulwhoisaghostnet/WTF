@@ -174,8 +174,9 @@ test.describe("interaction inventory - WTFIAP native game", () => {
     await page.locator("#class").selectOption(hero.classId);
     const card = page.locator(".hero").filter({ has: page.getByRole("heading", { name: hero.name, exact: true }) });
     await expect(card).toBeVisible();
-    await card.getByRole("button", { name: "Add to lineup" }).click();
+    await card.getByRole("button", { name: "Add to lineup" }).press("Enter");
     await expect(card).toHaveClass(/chosen/);
+    await expect(card.getByRole("button", { name: "Remove from lineup" })).toBeFocused();
     await expect(page.locator("#selection li")).toHaveCount(1);
     await page.locator("#plan-name").fill("Opening formation");
     await page.reload();
@@ -232,6 +233,56 @@ test.describe("interaction inventory - WTFIAP native game", () => {
     expect(errors).toEqual([]);
   });
 
+  test("Learn follows the actual board when players act out of order", async ({ page }) => {
+    await page.goto("/games/installed/wtfiap/learn.html");
+    const game = await gameFrame(page, "#arena");
+    const title = page.locator("#title");
+    await page.locator("#next").click();
+    await expect(title).toHaveText("Inspect a shop hero");
+
+    await hit(page, game, "shop-card-buy-0");
+    await expect(title).toHaveText("Place your hero");
+    const tile = await game.evaluate(() => window.AB_UI.grid().tiles.find(tile => tile.col === 0 && tile.row === window.AB_GAME().board.rows - 1));
+    await clickGamePoint(page, game, tile);
+    await hit(page, game, "shop-toggle");
+    await expect(title).toHaveText("Read team bonuses");
+
+    await game.locator("#items-toggle").click();
+    await page.keyboard.press("Escape");
+    await expect(game.locator("#items-panel")).toBeHidden();
+    await game.locator("#traits-icon").click();
+    await game.locator("#details-icon").click();
+    await expect(title).toHaveText("Find named controls");
+
+    await hit(page, game, "battle");
+    await expect(title).toHaveText("You know the basics");
+    await page.getByRole("button", { name: "Restart lesson" }).click();
+    const restartedGame = await gameFrame(page, "#arena");
+    await restartedGame.waitForFunction(() => window.AB_MATCH()?.players.player.gold === 1 && window.AB_GAME().field.length === 0);
+    await expect(title).toHaveText("Welcome to the arena");
+  });
+
+  test("Learn recognizes the portrait board after recruitment", async ({ browser }) => {
+    const context = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+    try {
+      const page = await context.newPage();
+      await page.goto("/games/installed/wtfiap/learn.html");
+      const game = await gameFrame(page, "#arena");
+      await game.locator("#portrait-continue").tap();
+      await page.locator("#next").tap();
+      await game.locator(".mobile-offer-buy").first().tap();
+      await expect(page.locator("#title")).toHaveText("Place your hero");
+      const tile = await game.evaluate(() => window.AB_UI.grid().tiles.find(tile => tile.col === 0 && tile.row === window.AB_GAME().board.rows - 1));
+      const canvas = game.locator("#game");
+      const bounds = await canvas.boundingBox();
+      const resolution = await canvas.evaluate(element => ({ width: element.width, height: element.height }));
+      await page.touchscreen.tap(bounds.x + tile.x * bounds.width / resolution.width, bounds.y + tile.y * bounds.height / resolution.height);
+      await expect(page.locator("#title")).toHaveText("Read team bonuses");
+    } finally {
+      await context.close();
+    }
+  });
+
   test("mobile splash and Team Builder keep their choices within the viewport", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/games/installed/wtfiap/welcome.html");
@@ -244,6 +295,31 @@ test.describe("interaction inventory - WTFIAP native game", () => {
     expect(await page.locator(".hero").first().evaluate(hero => hero.getBoundingClientRect().top)).toBeLessThan(844);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.screenshot({ path: test.info().outputPath("team-builder-mobile.png") });
+  });
+
+  test("Welcome intro supports keyboard skip and stays dismissed on return", async ({ page }) => {
+    await page.goto("/games/installed/wtfiap/welcome.html", { waitUntil: "domcontentloaded" });
+    const intro = page.getByRole("dialog", { name: "coLILseum studio introduction" });
+    const skip = intro.getByRole("button", { name: "Skip intro" });
+    const practice = page.locator('.choices a[href="index.html"]');
+    await expect(skip).toBeFocused();
+    await page.keyboard.press("Tab");
+    await expect(practice).not.toBeFocused();
+    await skip.focus();
+    await page.keyboard.press("Enter");
+    await expect(intro).toBeHidden();
+    await expect(practice).toBeFocused();
+
+    await page.goto("/games/installed/wtfiap/welcome.html");
+    await expect(intro).toBeHidden();
+    await expect(practice).toBeVisible();
+
+    await page.evaluate(() => sessionStorage.removeItem("colilseum:welcome-intro-seen"));
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.reload();
+    await expect(intro).toBeHidden();
+    await page.keyboard.press("Tab");
+    await expect(practice).toBeFocused();
   });
 
   test("landscape phone shop marks lineup offers and opens the plan picker", async ({ browser }) => {
@@ -264,6 +340,32 @@ test.describe("interaction inventory - WTFIAP native game", () => {
       await expect(page.locator("#lineup-dialog")).toBeVisible();
       await expect(page.locator("#lineup-options")).toContainText("Phone plan");
     } finally { await context.close(); }
+  });
+
+  test("practice shows a per-hero report from the completed combat", async ({ page }) => {
+    await page.goto("/games/installed/wtfiap/generator.html?mode=match&boardMode=standard&seed=practice-combat-report", { waitUntil: "domcontentloaded" });
+    await page.waitForFunction(() => document.documentElement.dataset.ready === "true" && window.AB_MATCH());
+    await hit(page, page, "shop-buy-0");
+    const unit = await page.evaluate(() => window.AB_GAME().bench[0]);
+    await clickGamePoint(page, page, await page.evaluate(() => window.AB_UI.grid().tiles.find(tile => tile.col === 0 && tile.row === window.AB_GAME().board.rows - 1)));
+    await page.waitForFunction(() => window.AB_GAME().field.length === 1);
+    if ((await gameState(page)).shop.visible) await hit(page, page, "shop-toggle");
+    await hit(page, page, "battle");
+    await page.evaluate(() => {
+      while (window.AB_MATCH().phase === "combat") window.advanceTime(1000);
+    });
+    await hit(page, page, "combat-report");
+    const dialog = page.getByRole("dialog", { name: "Round 1 combat report" });
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole("table", { name: "Your team" })).toBeVisible();
+    const name = await page.evaluate(heroId => window.AB.heroById(heroId).name, unit.heroId);
+    const row = dialog.getByRole("table", { name: "Your team" }).getByRole("row").filter({ hasText: name });
+    await expect(row.getByRole("cell").first()).not.toHaveText("0");
+    await expect(dialog.getByRole("table", { name: "Opponent" })).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(dialog).toBeHidden();
+    await hit(page, page, "next-round");
+    await expect.poll(async () => (await gameState(page)).match.roundNumber).toBe(2);
   });
 
   test("Lil Guy Studio Cherub yields an equipable component in practice", async ({ page }) => {
@@ -792,6 +894,32 @@ test.describe("interaction inventory - WTFIAP native game", () => {
     await context.close();
   });
 
+  test("a short landscape arena keeps every friendly tile tappable with the shop open", async ({ browser }) => {
+    const context = await browser.newContext({ viewport: { width: 844, height: 246 }, isMobile: true, hasTouch: true });
+    try {
+      const page = await context.newPage();
+      await page.goto("/games/installed/wtfiap/generator.html?mode=match&boardMode=standard&seed=short-landscape");
+      await page.waitForFunction(() => document.documentElement.dataset.ready === "true");
+      await page.locator(".mobile-offer-buy").first().tap();
+      const tiles = await page.evaluate(() => {
+        const board = AB_UI.grid();
+        const box = document.getElementById("game").getBoundingClientRect();
+        return board.tiles.filter(tile => tile.row >= board.playerStartRow).map(tile => {
+          const x = box.left + tile.x * box.width / 1440;
+          const y = box.top + tile.y * box.height / 1000;
+          return { coordinate: tile.coordinate, x, y, reachable: document.elementFromPoint(x, y)?.id === "game" };
+        });
+      });
+      expect(tiles.length).toBeGreaterThan(1);
+      expect(tiles.filter(tile => !tile.reachable)).toEqual([]);
+      const home = tiles.find(tile => tile.coordinate === "A1");
+      await page.touchscreen.tap(home.x, home.y);
+      expect((await gameState(page)).field.map(hero => hero.coordinate)).toContain("A1");
+    } finally {
+      await context.close();
+    }
+  });
+
   test("Stuffs Games opens splash then Lobby, creates a real room and reloads its purchased formation", async ({ page }) => {
     const errors = [];
     page.on("pageerror", (error) => errors.push(error.message));
@@ -888,6 +1016,45 @@ test.describe("interaction inventory - WTFIAP native game", () => {
     expect(await invitation.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await mobile.screenshot({ path: test.info().outputPath("mobile-tournament-invitation.png"), fullPage: true });
     await guest.close();
+  });
+
+  test("both commanders can ready early in a timed coLILseum Duel", async ({ page, browser }) => {
+    await page.goto("/games/installed/wtfiap/party.html?mode=duel", { waitUntil: "domcontentloaded" });
+    await page.locator("#create-name").fill("Timed host");
+    await page.locator("#prep-time").selectOption("3600");
+    await page.locator("#create-room").click();
+    await expect(page.locator("#invite-code")).not.toHaveValue("");
+    const code = await page.locator("#invite-code").inputValue();
+    const guestContext = await browser.newContext();
+    try {
+      const guest = await guestContext.newPage();
+      // This harness shares account state, so use a real bearer-only seat for
+      // the guest before restoring the signed-in host for the room commands.
+      expect((await guest.request.post("/__test/state", { data: { userRole: "anonymous" } })).ok()).toBeTruthy();
+      await guest.goto(`/games/installed/wtfiap/party.html?room=${code}`, { waitUntil: "domcontentloaded" });
+      await guest.locator("#join-name").fill("Timed challenger");
+      await guest.locator("#join-room").click();
+      await expect(page.locator("#alive-count")).toContainText("2 / 2 seats");
+      expect((await page.request.post("/__test/state", { data: { userRole: "admin" } })).ok()).toBeTruthy();
+      await page.locator("#start-room").click();
+      const [hostArena, guestArena] = await Promise.all([gameFrame(page, "#arena-frame"), gameFrame(guest, "#arena-frame")]);
+      await buyAndDeploy(page, hostArena);
+      await buyAndDeploy(guest, guestArena);
+
+      await hit(page, hostArena, "battle");
+      await expect.poll(async () => (await gameState(hostArena)).party.ready).toBe(true);
+      expect((await gameState(hostArena)).match.phase).toBe("preparation");
+      await hit(page, hostArena, "battle");
+      await expect.poll(async () => (await gameState(hostArena)).party.ready).toBe(false);
+      await hit(page, hostArena, "battle");
+      await expect.poll(async () => (await gameState(hostArena)).party.ready).toBe(true);
+
+      await hit(guest, guestArena, "battle");
+      await expect.poll(async () => {
+        const { match } = await gameState(hostArena);
+        return match.phase !== "preparation" || match.roundNumber > 1;
+      }).toBe(true);
+    } finally { await guestContext.close(); }
   });
 
   test("two people can create and start a free coLILseum duel", async ({ page, browser }) => {

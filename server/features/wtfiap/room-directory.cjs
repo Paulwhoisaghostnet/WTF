@@ -42,13 +42,48 @@ function roomSummary(room) {
   };
 }
 
-function listRooms(dataDir) {
-  return fs.readdirSync(dataDir, { withFileTypes: true })
-    .filter(entry => entry.isFile() && /^[0-9a-f-]{36}\.json$/i.test(entry.name))
-    .flatMap(entry => {
-      try { const summary = roomSummary(JSON.parse(fs.readFileSync(path.join(dataDir, entry.name), 'utf8'))); return summary ? [summary] : []; }
-      catch { return []; }
-    }).sort((a, b) => b.createdAtMs - a.createdAtMs);
+function createRoomDirectory(dataDir) {
+  let cache = new Map();
+  let inFlight;
+
+  async function refresh() {
+    const files = await fs.promises.readdir(dataDir, { withFileTypes: true });
+    const nextCache = new Map();
+    const rooms = [];
+    // Read one changed document at a time so a cold listing never buffers
+    // the entire archive or opens all of its files at once.
+    for (const entry of files) {
+      if (!entry.isFile() || !/^[0-9a-f-]{36}\.json$/i.test(entry.name)) continue;
+      const filename = path.join(dataDir, entry.name);
+      try {
+        const stat = await fs.promises.lstat(filename, { bigint: true });
+        if (!stat.isFile()) continue;
+        // Room writes use atomic replacement. Identity plus timestamps also
+        // handle edits or a remove-and-recreate between directory requests.
+        const identity = `${stat.dev}:${stat.ino}:${stat.size}:${stat.mtimeNs}:${stat.ctimeNs}`;
+        let saved = cache.get(entry.name);
+        if (saved?.identity !== identity) {
+          const payload = await fs.promises.readFile(filename, 'utf8');
+          let summary = null;
+          try { summary = roomSummary(JSON.parse(payload)); } catch { /* ignore malformed room files */ }
+          saved = { identity, summary };
+        }
+        nextCache.set(entry.name, saved);
+        if (saved.summary) rooms.push(saved.summary);
+      } catch { /* a transient filesystem error must not turn into a cached miss */ }
+    }
+    cache = nextCache;
+    return rooms.sort((a, b) => b.createdAtMs - a.createdAtMs);
+  }
+
+  return {
+    list() {
+      // Multiple lobby requests can share one scan without delaying other
+      // room activity or holding onto private saved match documents.
+      inFlight ??= refresh().finally(() => { inFlight = undefined; });
+      return inFlight;
+    },
+  };
 }
 
-module.exports = { roomSummary, listRooms };
+module.exports = { roomSummary, createRoomDirectory };

@@ -90,7 +90,10 @@ export function mainnetXtzFundingConfig(env: NodeJS.ProcessEnv = process.env): F
   config.houseFeeAtomic = "500000"; // Owner-requested 0.5 XTZ, six atomic decimals.
   return config;
 }
-export const rpcEndpoints = (config: FundingConfig) => config.rpcUrl.replace(/\/$/, "") === NETWORKS[config.network].rpc.replace(/\/$/, "")
+type FundingRpc = Pick<FundingConfig, "network" | "rpcUrl">;
+type FundingHeadMonitorConfig = FundingRpc & Pick<FundingConfig, "chainId" | "minimalBlockDelaySeconds">;
+
+export const rpcEndpoints = (config: FundingRpc) => config.rpcUrl.replace(/\/$/, "") === NETWORKS[config.network].rpc.replace(/\/$/, "")
   ? [config.rpcUrl, NETWORKS[config.network].fallback] : [config.rpcUrl];
 const nat = (v: any) => String(v?.toFixed ? v.toFixed() : v);
 const option = (v: any): string | null => v == null || v.None !== undefined ? null : String(v.Some ?? v);
@@ -204,7 +207,7 @@ export function fundingMonitorConfigs(current: FundingConfig | FundingConfig[], 
 
 // Native head events wake reconciliation; no new polling cadence. After a
 // stream disconnect, reconnection waits the chain's own minimal block delay.
-export function monitorFundingHeads(config: FundingConfig, onHead: () => void, health: { headStreamConnected: boolean; error: string | null }) {
+export function monitorFundingHeads(config: FundingHeadMonitorConfig, onHead: () => void, health: { headStreamConnected: boolean; error: string | null }) {
   const controller = new AbortController();
   const done = (async () => {
     // The caller chooses configured current or saved-room networks; saved

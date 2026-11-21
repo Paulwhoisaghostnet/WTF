@@ -14918,3 +14918,9 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: Per-token tag checks could not suppress an entire known-bad collection, while stale discovery pages and pending reward entitlements survived a newly applied contract exclusion.
 
 **Rule**: Check the contract block before mint tags or Marshal approval, filter persisted transfers again when summarizing, filter every reward source during reconciliation, and version both the Open Range cache and reward fingerprint when this policy changes. Keep raw chain evidence for audit; already claimed on-chain awards remain final.
+
+## 2026-11-21 — Test the space left for the board and verify the chain monitor input
+
+**What happened**: In a short landscape iframe the coLILseum shop and reserves were visible, but the board's CSS transform put friendly tiles outside the hit area. The lesson tracked only the current scripted event, which made an early legal purchase impossible to repeat. Separately, open-seat reconciliation passed a typed monitor configuration without its required chain ID by casting it to `any`.
+
+**Correction and proof**: Size the logical board rectangle against the available grid area and hit-test actual tile centers. Read the tutorial's live formation and combat state so a legal action still counts if done early. Pass the verified chain ID with the RPC URL and require both in the monitor type. The regression suite checks touch placement, the scripted and out-of-order lesson, and funded-room compatibility. Both configured networks emitted a head through the revised monitor during a read-only probe.

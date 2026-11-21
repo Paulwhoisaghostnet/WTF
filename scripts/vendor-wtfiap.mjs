@@ -35,6 +35,10 @@ if (sourceFlag !== -1) {
     assert.equal(digest(fs.readFileSync(path.join(source, "dist/hero-art", name))), art.sha256, `Stale hero art: ${name}`);
     copy(`dist/hero-art/${name}`, `${assets}/hero-art/${name}`);
   }
+  const cherub = build.sourceFiles.find((entry) => entry.path === "assets/cherub/cherub.png");
+  assert(cherub, "Missing Cherub source artwork");
+  assert.equal(digest(fs.readFileSync(path.join(source, "dist/hero-art/cherub.png"))), cherub.sha256, "Stale Cherub gallery art");
+  copy("dist/hero-art/cherub.png", `${assets}/hero-art/cherub.png`);
   copy("dist/party.html", `${assets}/party.html`, (html) => {
     const marker = "<!--WTFIAP_HOST_BOOTSTRAP-->";
     assert.equal(html.split(marker).length, 2, "Party host bootstrap marker must occur exactly once");

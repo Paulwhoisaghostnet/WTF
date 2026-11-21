@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "title": "coLILseum",
   "appKey": "wtfiap",
-  "generatorSha256": "f7693d5211f3910ba80971a76a3e1e2430feee84479c6df2d96c060e4c460593",
+  "generatorSha256": "dae16bc42dea84e7620ffe740d057db08a9645a3cdafed76a09682265fab70eb",
   "sourceProject": "lil-guys-autobattler",
   "sourceCast": "CAST-v2.md / Lil-Guys-Hero-Cast-v2.pdf",
   "castHeroes": 50,
@@ -19,37 +19,37 @@
     {
       "path": "public/games/installed/wtfiap/generator.html",
       "sourcePath": "dist/generator.html",
-      "sourceSha256": "f7693d5211f3910ba80971a76a3e1e2430feee84479c6df2d96c060e4c460593",
-      "sha256": "f7693d5211f3910ba80971a76a3e1e2430feee84479c6df2d96c060e4c460593",
-      "bytes": 12948881
+      "sourceSha256": "dae16bc42dea84e7620ffe740d057db08a9645a3cdafed76a09682265fab70eb",
+      "sha256": "dae16bc42dea84e7620ffe740d057db08a9645a3cdafed76a09682265fab70eb",
+      "bytes": 4711957
     },
     {
       "path": "public/games/installed/wtfiap/cast.html",
       "sourcePath": "dist/cast.html",
-      "sourceSha256": "b5c5eb88b6d341a3db424ab023a4977b9c698abb9cf8b012fa64b7e4ce902a00",
-      "sha256": "b5c5eb88b6d341a3db424ab023a4977b9c698abb9cf8b012fa64b7e4ce902a00",
-      "bytes": 12278004
+      "sourceSha256": "c9f56df5f39b2a1b27e1d05bb7e10a68f400dc830afc581b1c66be73a0064a34",
+      "sha256": "c9f56df5f39b2a1b27e1d05bb7e10a68f400dc830afc581b1c66be73a0064a34",
+      "bytes": 29962
     },
     {
       "path": "public/games/installed/wtfiap/welcome.html",
       "sourcePath": "dist/welcome.html",
-      "sourceSha256": "05946fa54808b64b3c2e3244366d4ec5aaa9c011da7a2d9fd75e1e7253fadf28",
-      "sha256": "05946fa54808b64b3c2e3244366d4ec5aaa9c011da7a2d9fd75e1e7253fadf28",
-      "bytes": 4719
+      "sourceSha256": "20dffd48a438a3b8c9fa22664b64b4a1f43ec50bd6bc511c6f3496c713c74922",
+      "sha256": "20dffd48a438a3b8c9fa22664b64b4a1f43ec50bd6bc511c6f3496c713c74922",
+      "bytes": 5257
     },
     {
       "path": "public/games/installed/wtfiap/learn.html",
       "sourcePath": "dist/learn.html",
-      "sourceSha256": "cf5e0a8046cc6e0671fb4f49310c9ccdce8f14584e837a5b17eaae4de0470b57",
-      "sha256": "cf5e0a8046cc6e0671fb4f49310c9ccdce8f14584e837a5b17eaae4de0470b57",
-      "bytes": 6332
+      "sourceSha256": "2f29f5736dce32602048d406ebdec0dc7111fb6d6b73fc4d935d548a6fd0434b",
+      "sha256": "2f29f5736dce32602048d406ebdec0dc7111fb6d6b73fc4d935d548a6fd0434b",
+      "bytes": 10530
     },
     {
       "path": "public/games/installed/wtfiap/team-builder.html",
       "sourcePath": "dist/team-builder.html",
-      "sourceSha256": "54cc0b70f4e2faa269c947924c93e2413027531bad899233ef5151f014d6d381",
-      "sha256": "54cc0b70f4e2faa269c947924c93e2413027531bad899233ef5151f014d6d381",
-      "bytes": 29247
+      "sourceSha256": "5dc17f7d704d0cd4ba0640e5ecc1f0a7991d11ec79cd1a8e46e49533b9ab15e9",
+      "sha256": "5dc17f7d704d0cd4ba0640e5ecc1f0a7991d11ec79cd1a8e46e49533b9ab15e9",
+      "bytes": 29851
     },
     {
       "path": "public/games/installed/wtfiap/colilseum-brand.svg",
@@ -61,9 +61,9 @@
     {
       "path": "public/games/installed/wtfiap/party-client.js",
       "sourcePath": "dist/party-client.js",
-      "sourceSha256": "1cc83e6b8432533025703d51b0b940ea07d652d48d47c048f17ef2d6e0c44e76",
-      "sha256": "1cc83e6b8432533025703d51b0b940ea07d652d48d47c048f17ef2d6e0c44e76",
-      "bytes": 83275
+      "sourceSha256": "68544432aab1d1699538d1a6613ab98c4d2775aa0f032c531d671cbffa5513d0",
+      "sha256": "68544432aab1d1699538d1a6613ab98c4d2775aa0f032c531d671cbffa5513d0",
+      "bytes": 83709
     },
     {
       "path": "public/games/installed/wtfiap/tournament.js",
@@ -423,11 +423,18 @@
       "bytes": 224825
     },
     {
+      "path": "public/games/installed/wtfiap/hero-art/cherub.png",
+      "sourcePath": "dist/hero-art/cherub.png",
+      "sourceSha256": "9e3887f88b95a3dfdb82df25e8e52e610188f6d27f54104699f5740774cdc26b",
+      "sha256": "9e3887f88b95a3dfdb82df25e8e52e610188f6d27f54104699f5740774cdc26b",
+      "bytes": 85810
+    },
+    {
       "path": "public/games/installed/wtfiap/party.html",
       "sourcePath": "dist/party.html",
-      "sourceSha256": "d73231deee6301824a2d079b4fe07b4877920e615728236acff317d03b842995",
-      "sha256": "9b5029e37a3139a51d5e149c33317d29aa0bd4fb324064a9ce6ccbd1c5cfbefb",
-      "bytes": 641387
+      "sourceSha256": "1d045e8eb871a16b614b5152daac659c425e1c50a342117784e00daa608c23a2",
+      "sha256": "04f0141d36acc9512a617107d2f5778a5201e9011bd48a315fbe955692d32546",
+      "bytes": 245506
     },
     {
       "path": "public/games/installed/wtfiap/host-config.js",

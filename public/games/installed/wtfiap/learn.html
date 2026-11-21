@@ -1,21 +1,199 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>coLILseum · Learn</title><style>
-:root{color-scheme:dark;--gold:#e8bf71;--cream:#eee9d9}*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;background:#0b171a;color:var(--cream);font:14px/1.4 system-ui,sans-serif}body{display:flex;flex-direction:column;overflow:hidden}header{display:flex;align-items:center;gap:15px;padding:7px 14px;border-bottom:1px solid #47625d;background:#14282b}header strong{color:var(--gold);font-size:19px}header a{margin-left:auto;color:var(--cream);text-decoration:none}.lesson{display:flex;align-items:center;gap:14px;padding:9px 14px;border-bottom:2px solid var(--gold);background:#1d3432}.chapter{flex:1;min-width:0}.chapter small{display:block;color:var(--gold);font-weight:800;letter-spacing:.12em;text-transform:uppercase}.chapter h1{margin:0;font:22px Georgia,serif}.chapter p{margin:3px 0 0;line-height:1.35}.lesson button,.lesson a{flex:none;min-height:44px;padding:8px 15px;border:1px solid var(--gold);border-radius:5px;background:#e8bf71;color:#102123;font:700 14px system-ui;cursor:pointer;text-decoration:none}.lesson button:disabled{opacity:.45;cursor:default}.lesson button:focus-visible,.lesson a:focus-visible,header a:focus-visible{outline:3px solid #fff;outline-offset:2px}iframe{flex:1;min-height:0;width:100%;border:0}#progress{color:#b6c7bd;white-space:nowrap}@media(max-width:650px){header{padding:4px 8px}.lesson{gap:6px;padding:5px 8px}.chapter h1{font-size:17px}.chapter p{font-size:12px}.lesson button{padding:5px 8px}#progress{display:none}}
-</style></head><body><header><strong>Learn coLILseum</strong><span>Play through a guided first round on the real game board.</span><a href="welcome.html">Home</a></header><section class="lesson" aria-label="Guided lesson"><div class="chapter"><small id="progress"></small><h1 id="title"></h1><p id="instruction"></p></div><button id="next" type="button"></button></section><iframe id="arena" src="generator.html?mode=match&amp;boardMode=standard&amp;seed=coLILseum-learn-v1&amp;tutorial=1" title="Interactive coLILseum tutorial game board" allow="fullscreen; orientation-lock"></iframe>
-<script>
-const steps=[
-  {title:'Welcome to the arena',body:'You start at commander level 1 with one field slot and one gold. The shop, board, bench, and battle controls all live in this real practice match.',action:null,button:'Start lesson'},
-  {title:'Inspect a shop hero',body:'Select a hero offer to preview their cost, faction, class, ability, and three stat bars. On a phone, use Shop to open the offers.',action:'preview',focus:'shop-preview-',button:'Preview a hero'},
-  {title:'Recruit your first hero',body:'Press Buy on a 1-gold hero. It moves to your bench. Planned heroes from Team Builder have a gold glow when drawn.',action:'buy',focus:'shop-card-buy-',button:'Buy a hero'},
-  {title:'Place your hero',body:'Your new hero is selected. Click or drag them to a friendly board tile. If needed, open Controls for named keyboard actions.',action:'deploy',focus:'tile-',button:'Place a hero'},
-  {title:'Reveal the whole board',body:'Press Hide shop. The board becomes the focus again; you can reopen the same offers with Open shop whenever preparation is active.',action:'hide-shop',focus:'shop-toggle',button:'Hide shop'},
-  {title:'Read team bonuses',body:'Open the ✦ Traits icon. It shows only factions and classes your fielded heroes are working toward. Extra heroes can unlock bonuses.',action:'traits',focus:'traits-icon',button:'Open Traits'},
-  {title:'Read hero details',body:'Open the ⓘ Details icon to inspect the selected hero, ability, stats, and active effects. Controls also exposes named actions.',action:'details',focus:'details-icon',button:'Open Details'},
-  {title:'Explore items',body:'Open the ◇ Items icon to see each component and completed item by its own symbol. The item dock keeps the battlefield in view while you equip a hero or choose a reward.',action:'items',focus:'items-toggle',button:'Open Items'},
-  {title:'Return to the arena',body:'Close the Items panel. Any equipped item stays with its hero until you change it during preparation.',action:'items-close',focus:'items-toggle',button:'Close Items'},
-  {title:'Find named controls',body:'Expand Controls for keyboard and screen-reader actions, named board spaces, and the currently selected hero’s description.',action:'controls',focus:'accessible-controls',button:'Open Controls'},
-  {title:'Close the control panel',body:'Collapse Controls when you want the full arena back. You can reopen it any time for named actions.',action:'controls-close',focus:'accessible-controls',button:'Close Controls'},
-  {title:'Plan your economy',body:'Gold buys heroes or refreshes shop offers. Later rounds grant income and XP; the +4 XP button near the shop spends 4 gold. Your level sets your field limit and improves your chances of seeing higher-cost heroes.',action:null,button:'I understand'},
-  {title:'Start combat',body:'Press Begin round. Heroes move, attack, and cast on their own. Surviving enemies damage commander HP; a commander at zero loses.',action:'battle',focus:'battle',button:'Begin round'},
-  {title:'You know the basics',body:'Practice and room matches use this same board. Return to the lobby to join people, or use Team Builder to plan your next roster.',action:null,button:'Finish'}
-];let step=0;const frame=document.getElementById('arena'),next=document.getElementById('next');function render(){const s=steps[step];document.getElementById('progress').textContent=`STEP ${step+1} OF ${steps.length}`;document.getElementById('title').textContent=s.title;document.getElementById('instruction').textContent=s.body;next.textContent=s.action?s.button:s.button;next.disabled=!!s.action;frame.contentWindow?.postMessage({type:'colilseum-tutorial-focus',focus:s.focus||null},location.origin)}next.onclick=()=>{if(step===steps.length-1){location.href='welcome.html';return;}step++;render();};addEventListener('message',event=>{if(event.origin!==location.origin||event.source!==frame.contentWindow||event.data?.type!=='colilseum-tutorial-event')return;if(event.data.action===steps[step].action){step++;render();}});frame.addEventListener('load',render);render();
-</script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>coLILseum · Learn</title>
+  <style>
+    :root{color-scheme:dark;--gold:#e8bf71;--cream:#eee9d9;--ink:#0b171a}
+    *{box-sizing:border-box}
+    html,body{margin:0;width:100%;height:100%;background:var(--ink);color:var(--cream);font:14px/1.4 system-ui,sans-serif}
+    body{display:flex;flex-direction:column;overflow:hidden}
+    header,.lesson{display:flex;align-items:center;justify-content:space-between;gap:8px 14px;padding:0 14px}
+    header{border-bottom:1px solid #47625d;background:#14282b}
+    header strong{color:var(--gold);font-size:15px;white-space:nowrap}
+    header nav{display:flex;flex-wrap:wrap;gap:0 12px;justify-content:flex-end}
+    header a,header button{display:inline-flex;min-height:36px;align-items:center;color:var(--cream);font:inherit;text-decoration:underline;text-underline-offset:3px}
+    header button{padding:0;border:0;background:none;cursor:pointer}
+    .lesson{padding-block:8px;border-bottom:2px solid var(--gold);background:#1d3432}
+    .chapter{flex:1;min-width:0}
+    .chapter-heading{display:flex;align-items:baseline;flex-wrap:wrap;gap:0 10px}
+    .chapter h1{margin:0;font:21px Georgia,serif}
+    #progress{color:var(--gold);font-size:11px;font-weight:800;white-space:nowrap}
+    .chapter p{margin:3px 0 0;line-height:1.35}
+    .lesson button{flex:none;min-height:44px;padding:4px 12px;border:1px solid var(--gold);border-radius:5px;background:var(--gold);color:#102123;font:700 14px system-ui;cursor:pointer}
+    .lesson button:disabled{opacity:.55;cursor:default}
+    :is(button,a):focus-visible{outline:3px solid #fff;outline-offset:2px}
+    iframe{flex:1;min-height:0;width:100%;border:0}
+    @media(max-width:650px),(orientation:landscape) and (max-height:500px){
+      header,.lesson{padding-inline:8px;gap:6px}
+      header nav{gap:0 10px}
+      header a,header button{font-size:12px}
+      .lesson{padding-block:6px}
+      .chapter h1{font-size:17px}
+      .chapter p{font-size:12px}
+      .lesson button{padding:4px 7px;font-size:12px}
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <strong>Learn coLILseum</strong>
+    <nav aria-label="Lesson options">
+      <button id="restart" type="button">Restart lesson</button>
+      <a href="index.html">Practice</a>
+      <a href="welcome.html">Home</a>
+    </nav>
+  </header>
+  <section class="lesson" aria-label="Guided lesson">
+    <div class="chapter" role="status" aria-live="polite" aria-atomic="true">
+      <div class="chapter-heading"><small id="progress"></small><h1 id="title"></h1></div>
+      <p id="instruction"></p>
+    </div>
+    <button id="next" type="button"></button>
+  </section>
+  <iframe id="arena" src="generator.html?mode=match&amp;boardMode=standard&amp;seed=coLILseum-learn-v1&amp;tutorial=1" title="Interactive coLILseum tutorial game board" allow="fullscreen; orientation-lock"></iframe>
+  <script>
+    const steps = [
+      {id:'welcome', title:'Welcome to the arena', body:'Spend your first gold, place a hero, and watch them fight.', button:'Start lesson'},
+      {id:'preview', title:'Inspect a shop hero', body:'Open Shop and select an offer to see the hero’s ability, faction, and class.', focus:'shop-preview-'},
+      {id:'buy', title:'Recruit your first hero', body:'Choose Buy on a 1-gold offer. Your recruit is selected on the bench.', focus:'shop-card-buy-'},
+      {id:'deploy', title:'Place your hero', body:'Select your recruit if needed, then choose a friendly tile. You can also drag the hero onto it.', focus:'tile-'},
+      {id:'hide-shop', title:'Reveal the whole board', body:'Choose Hide shop or switch to Board. You can open the same offers again during preparation.', focus:'shop-toggle'},
+      {id:'traits', title:'Read team bonuses', body:'On the board, open Traits (✦). Field more distinct heroes of the same faction or class to unlock bonuses.', focus:'traits-icon'},
+      {id:'details', title:'Read hero details', body:'Select your fielded hero, then open Details (ⓘ) to inspect their stats and ability.', focus:'details-icon'},
+      {id:'items', title:'Explore items', body:'Open Equipment using the anvil icon. This is where you claim components and equip heroes.', focus:'items-toggle'},
+      {id:'items-close', title:'Return to the arena', body:'Close Equipment when you’re ready. Equipped items stay with their heroes.', focus:'items-toggle'},
+      {id:'controls', title:'Find named controls', body:'Open Controls for keyboard and screen reader actions, including named board spaces.', focus:'accessible-controls'},
+      {id:'controls-close', title:'Close the control panel', body:'Collapse Controls for a full arena view. Reopen it whenever you need it.', focus:'accessible-controls'},
+      {id:'economy', title:'Plan your economy', body:'Spend gold on recruits, rerolls, or XP. Leveling gives you more field slots and improves your chances of finding higher-cost heroes.', button:'Continue'},
+      {id:'battle', title:'Start combat', body:'Choose Begin round. Heroes fight automatically. A commander loses when their HP reaches zero.', focus:'battle'},
+      {id:'complete', title:'You know the basics', body:'Watch your heroes finish the round, then use Practice to play on your own.', button:'Finish'},
+    ];
+    const frame = document.getElementById('arena');
+    const arenaUrl = frame.getAttribute('src');
+    const next = document.getElementById('next');
+    const recruitStep = steps.findIndex(step => step.id === 'buy');
+    const deployStep = steps.findIndex(step => step.id === 'deploy');
+    const finalStep = steps.findIndex(step => step.id === 'complete');
+    const completed = new Set();
+    let current = 0;
+    let lessonDocument;
+    let observer;
+    let rendered;
+
+    function readBoard() {
+      if (lessonDocument?.documentElement.dataset.ready !== 'true') return null;
+      const match = frame.contentWindow.AB_MATCH();
+      const board = lessonDocument.querySelector('.visual-board');
+      const fielded = match.game.field.length > 0;
+      const recruited = fielded || match.game.bench.length > 0;
+      return {
+        fielded, recruited,
+        combatStarted: match.roundNumber > 1 || match.phase !== 'preparation',
+        boardVisible: board.dataset.shopVisible === 'false' ||
+          (board.dataset.mobileView === 'board' && !!lessonDocument.querySelector('.portrait-play')),
+      };
+    }
+
+    function observeDisclosure(id, action, closeAction) {
+      const section = lessonDocument.getElementById(id);
+      const open = section.matches('details') ? section.open : section.getAttribute('aria-expanded') === 'true';
+      if (open) completed.add(action);
+      else if (closeAction && completed.has(action)) completed.add(closeAction);
+    }
+
+    function reached(id, board) {
+      if (id === 'buy') return board.recruited;
+      if (id === 'deploy') return board.fielded;
+      if (id === 'preview' && board.recruited) return true;
+      if (id === 'hide-shop' && board.boardVisible) return true;
+      return completed.has(id);
+    }
+
+    function synchronize() {
+      const board = readBoard();
+      if (board && current < finalStep) {
+        observeDisclosure('traits-icon', 'traits');
+        observeDisclosure('details-icon', 'details');
+        observeDisclosure('items-toggle', 'items', 'items-close');
+        observeDisclosure('accessible-controls', 'controls', 'controls-close');
+        if (current && (board.combatStarted || completed.has('battle'))) {
+          current = finalStep;
+        } else {
+          // Preparation actions can undo earlier accomplishments. Teach the next
+          // action that is possible on the current board.
+          if (current > recruitStep && !board.recruited) current = recruitStep;
+          else if (current > deployStep && !board.fielded) current = deployStep;
+          while (!steps[current].button && reached(steps[current].id, board)) current++;
+        }
+      }
+      render();
+    }
+
+    function render() {
+      const step = steps[current];
+      const state = lessonDocument?.documentElement.dataset;
+      const ready = state?.ready === 'true';
+      const failed = state?.artError === 'true';
+      const key = `${current}/${ready}/${failed}`;
+      if (rendered === key) return;
+      rendered = key;
+      document.getElementById('progress').textContent = `${current + 1} / ${steps.length}`;
+      document.getElementById('title').textContent = step.title;
+      document.getElementById('instruction').textContent = failed ? 'The arena could not load. Choose Restart lesson to try again.' :
+        ready ? step.body : 'Loading the practice arena…';
+      next.hidden = !step.button;
+      next.disabled = !ready;
+      next.textContent = step.button || '';
+      if (ready) frame.contentWindow.postMessage({type:'colilseum-tutorial-focus', focus:step.focus || null}, location.origin);
+    }
+
+    next.addEventListener('click', () => {
+      if (current === finalStep) {
+        location.href = 'welcome.html';
+        return;
+      }
+      current++;
+      synchronize();
+    });
+    document.getElementById('restart').addEventListener('click', () => {
+      observer?.disconnect();
+      lessonDocument = undefined;
+      completed.clear();
+      current = 0;
+      render();
+      frame.src = arenaUrl;
+    });
+    window.addEventListener('message', event => {
+      if (!lessonDocument || event.origin !== location.origin || event.source !== frame.contentWindow ||
+          event.data?.type !== 'colilseum-tutorial-event') return;
+      completed.add(event.data.action);
+      synchronize();
+    });
+    frame.addEventListener('load', () => {
+      observer?.disconnect();
+      lessonDocument = frame.contentDocument;
+      if (!lessonDocument?.getElementById('game')) {
+        lessonDocument = undefined;
+        return;
+      }
+      observer = new MutationObserver(synchronize);
+      const targets = [
+        ['html', ['data-ready', 'data-art-error']],
+        ['.visual-board', ['data-mobile-view', 'data-shop-visible']],
+        ['#traits-icon', ['aria-expanded']],
+        ['#details-icon', ['aria-expanded']],
+        ['#items-toggle', ['aria-expanded']],
+        ['#accessible-controls', ['open']],
+      ];
+      for (const [selector, attributeFilter] of targets) {
+        observer.observe(lessonDocument.querySelector(selector), {attributes:true, attributeFilter});
+      }
+      rendered = undefined;
+      synchronize();
+    });
+    render();
+  </script>
+</body>
+</html>

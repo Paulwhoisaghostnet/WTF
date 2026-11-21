@@ -1,6 +1,6 @@
 'use strict';
 const path = require('node:path');
-const { listRooms } = require('./room-directory.cjs');
+const { createRoomDirectory } = require('./room-directory.cjs');
 const API_PREFIX = '/api/wtfiap/party';
 
 // Loaded as a runtime module by both the host and its real-domain browser harness.
@@ -14,6 +14,7 @@ function createWtfiapAuthority({ dataDir, isEnabled, canAccess = () => true,
   const { createServer } = require(runtimePath);
   const authority = createServer({ dataDir, listen: false, apiPrefix: API_PREFIX,
     sharePath: '/wtfiap', staticFiles: false, resolveActor, onRoomChanged, onPreparationOpened, openDuelNetworks, ...(clock ? { clock } : {}) });
+  const directory = createRoomDirectory(authority.dataDir);
   let closing = false;
   const handler = async (request, response, next) => {
     const pathname = new URL(request.url, 'http://localhost').pathname;
@@ -26,7 +27,7 @@ function createWtfiapAuthority({ dataDir, isEnabled, canAccess = () => true,
       if (request.method === 'GET' && pathname === API_PREFIX + '/rooms') {
         response.setHeader('Cache-Control', 'no-store');
         const accountId = request.user?.id == null ? null : String(request.user.id);
-        const rooms = listRooms(authority.dataDir).map(table => {
+        const rooms = (await directory.list()).map(table => {
           let playerId = null;
           if (accountId) {
             const record = authority.funding.inspect(table.roomCode);
