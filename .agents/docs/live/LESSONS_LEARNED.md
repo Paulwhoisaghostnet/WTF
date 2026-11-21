@@ -14924,3 +14924,11 @@ When shop and board are visible together, contextual help must prioritize a sele
 **What happened**: In a short landscape iframe the coLILseum shop and reserves were visible, but the board's CSS transform put friendly tiles outside the hit area. The lesson tracked only the current scripted event, which made an early legal purchase impossible to repeat. Separately, open-seat reconciliation passed a typed monitor configuration without its required chain ID by casting it to `any`.
 
 **Correction and proof**: Size the logical board rectangle against the available grid area and hit-test actual tile centers. Read the tutorial's live formation and combat state so a legal action still counts if done early. Pass the verified chain ID with the RPC URL and require both in the monitor type. The regression suite checks touch placement, the scripted and out-of-order lesson, and funded-room compatibility. Both configured networks emitted a head through the revised monitor during a read-only probe.
+
+## 2026-11-21 — Separate directory reads from the funded room authority
+
+**What happened**: The active funded Duel had no timer. A regular deploy would have stopped its sole room authority. A per-room escrow reconcile would also be insufficient isolation because persisting that room can wake the existing global sweep.
+
+**Correction and proof**: A read-only lobby worker delegates access and identity to the running app and reads its saved match directory. Only the canonical browser lobby GET is routed to it. Isolated HTTP/1.1 and HTTP/2 streams survived the proxy route reload and rollback. Production stayed on the same room authority and returned the same listing. Separate PostgreSQL ownership allowed the corrected chain head watcher to reconcile a new fixture room without selecting the legacy record.
+
+**Rule**: Keep a protected funded game on the original process. Treat any new funding path that shares its global reconciliation sweep as part of that same authority. Prove storage isolation, routing, and signer idempotency before accepting real funds in a separate lane.

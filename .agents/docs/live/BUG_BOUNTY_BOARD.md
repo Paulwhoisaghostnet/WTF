@@ -5279,7 +5279,7 @@ Total: **794** · Open: **10** · Claimed: **42** · In Progress: **19** · Bloc
 - Score: C2 + F3 + S0 + P2(3) = 8
 - Evidence: A 365-match archive made directory listing occupy the event loop for about 1.6 seconds, even when archives were unchanged between requests.
 - Correction: Read files asynchronously, coalesce simultaneous scans, and cache public summaries by file identity.
-- Verification: Check atomic updates, removals and concurrent directory requests, and rerun the same serialized archive benchmark.
+- Verification: Check atomic updates, removals and concurrent directory requests, and rerun the same serialized archive benchmark. Live wtfos.app GET now uses the cache in a read-only process through the existing gate. Production response parity and unchanged active Duel checkpoint verified.
 
 ### WTF-BB-825 - Learn can get stuck and intro permits focus behind credits
 

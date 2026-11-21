@@ -12523,7 +12523,7 @@
       "points": 8,
       "rank": 661,
       "title": "Room directory blocks the server while rereading history",
-      "body": "- Evidence: A 365-match archive made directory listing occupy the event loop for about 1.6 seconds, even when archives were unchanged between requests.\n- Correction: Read files asynchronously, coalesce simultaneous scans, and cache public summaries by file identity.\n- Verification: Check atomic updates, removals and concurrent directory requests, and rerun the same serialized archive benchmark."
+      "body": "- Evidence: A 365-match archive made directory listing occupy the event loop for about 1.6 seconds, even when archives were unchanged between requests.\n- Correction: Read files asynchronously, coalesce simultaneous scans, and cache public summaries by file identity.\n- Verification: Check atomic updates, removals and concurrent directory requests, and rerun the same serialized archive benchmark. Live wtfos.app GET now uses the cache in a read-only process through the existing gate. Production response parity and unchanged active Duel checkpoint verified."
     },
     {
       "id": "WTF-BB-828",

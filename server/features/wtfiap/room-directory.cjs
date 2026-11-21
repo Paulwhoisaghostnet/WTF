@@ -42,9 +42,10 @@ function roomSummary(room) {
   };
 }
 
-function createRoomDirectory(dataDir) {
+function createRoomDirectory(dataDir, { accountBindings = false } = {}) {
   let cache = new Map();
   let inFlight;
+  const playerIdsByRoom = new WeakMap();
 
   async function refresh() {
     const files = await fs.promises.readdir(dataDir, { withFileTypes: true });
@@ -65,7 +66,23 @@ function createRoomDirectory(dataDir) {
         if (saved?.identity !== identity) {
           const payload = await fs.promises.readFile(filename, 'utf8');
           let summary = null;
-          try { summary = roomSummary(JSON.parse(payload)); } catch { /* ignore malformed room files */ }
+          try {
+            const room = JSON.parse(payload);
+            summary = roomSummary(room);
+            if (summary && accountBindings) {
+              // Match authority.funding.inspect() without exposing account IDs
+              // or keeping command journals in the directory cache.
+              const accountsByPlayer = new Map(Object.values(room.sessions || {})
+                .map(session => [session?.playerId, session?.accountId]));
+              const ownedPlayers = new Map();
+              for (const player of room.players) {
+                const accountId = accountsByPlayer.get(player.playerId);
+                if (!player.isAI && typeof accountId === 'string' && !ownedPlayers.has(accountId))
+                  ownedPlayers.set(accountId, player.playerId);
+              }
+              playerIdsByRoom.set(summary, ownedPlayers);
+            }
+          } catch { /* ignore malformed room files */ }
           saved = { identity, summary };
         }
         nextCache.set(entry.name, saved);
@@ -76,14 +93,21 @@ function createRoomDirectory(dataDir) {
     return rooms.sort((a, b) => b.createdAtMs - a.createdAtMs);
   }
 
-  return {
-    list() {
-      // Multiple lobby requests can share one scan without delaying other
-      // room activity or holding onto private saved match documents.
-      inFlight ??= refresh().finally(() => { inFlight = undefined; });
-      return inFlight;
-    },
-  };
+  function list() {
+    // Multiple lobby requests can share one scan without delaying other
+    // room activity or holding onto private saved match documents.
+    inFlight ??= refresh().finally(() => { inFlight = undefined; });
+    return inFlight;
+  }
+  async function listForAccount(accountId) {
+    const rooms = await list();
+    if (!accountId) return rooms;
+    return rooms.map(room => {
+      const myPlayerId = playerIdsByRoom.get(room)?.get(accountId);
+      return myPlayerId ? { ...room, myPlayerId } : room;
+    });
+  }
+  return { list, listForAccount };
 }
 
 module.exports = { roomSummary, createRoomDirectory };
