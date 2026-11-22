@@ -115,4 +115,4 @@ if (require.main === module) {
   http.createServer(handler).listen(port, process.env.WTFIAP_LIVE_LOBBY_HOST || '127.0.0.1');
 }
 
-module.exports = { createLobbyHandler };
+module.exports = { createLobbyHandler, legacyGet };

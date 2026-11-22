@@ -10,7 +10,7 @@ coLILseum is the original autobattler hosted in a native wtfOS window at `/colil
 
 Tournament rooms require eight human entrants. The host selects XTZ or WTF and an entry amount; the prize preview assigns 50% / 35% / 15% to the top three places in that currency. Same-round eliminations rank by final raw HP, then gold, then the last fielded team's total maximum HP. Exact ties split the combined prizes for their occupied places equally, including exact fractions where an atomic unit is indivisible.
 
-**Tournament amounts are accounting previews. No funds are collected or paid.** This release has no wallet payment, escrow, transfer, or prize-claim flow.
+**The tournament preview shows the prize split before funding.** Configured wagered rooms use escrow for deposits and payouts.
 
 ## Runtime and recovery
 
@@ -19,5 +19,15 @@ Tournament rooms require eight human entrants. The host selects XTZ or WTF and a
 - The hosted Party authority is `/api/wtfiap/party`. Room credentials remain private; invitation links contain room identifiers only.
 - Runtime sources live in `server/features/wtfiap/runtime/`; packaged browser assets live in `public/games/installed/wtfiap/`. These are maintained game artifacts, not remote third-party iframe destinations.
 - Preserve the server's room store during a deploy or rollback. Reloading a room URL in the same browser recovers its saved seat.
+
+## Isolated funded Duels
+
+The isolated runtime accepts new open-seat XTZ Duels only on networks named in its mounted admission policy. It uses the ordinary wtfOS session, CSRF, wallet-ownership and bearer-token checks. Its escrow database and writable match directory are separate. The runtime holds the database writer lease and refuses startup if its room directory or privileges fail the isolation checks.
+
+The gateway routes a created room by its durable file, including after admission for its network is paused. The protected legacy Duel bypasses the gateway. The lobby combines both read-only directories. A shared signer serializes wallet operations and applies its durable request journal, while each authority computes results only from rooms it owns.
+
+Keep both room stores, the isolated database, and the active ingress through restarts. A normal wtfOS replacement rebuilds the proxy configuration. Carry the scoped ingress into that deployment or coordinate migration of the isolated room and escrow records before replacing it. An empty admission policy sends new rooms back to the legacy path and preserves routing for every already-owned isolated room. Restoring the previous ingress while any isolated room is in use would make that room unreachable.
+
+The guarded Shadownet proof script checks the deployed chain ID and contract, uses the standard wallets and gameplay routes, and verifies automatic start and payout without calling a reconcile or claim endpoint. Run the actual funded proof on Shadownet before adding Mainnet to the admission policy.
 
 See the [registry](./wtfiap-registry.md) for installation and verification ownership.

@@ -12538,7 +12538,7 @@
       "points": 9,
       "rank": 580,
       "title": "Open-seat duel monitor omits the chain ID used by its own verification",
-      "body": "- Evidence: A missing chain ID prevents the open-duel head listener from validating its configured endpoint. Reconciliation can wait on a separate trigger.\n- Correction: Pass the configured chain ID through the narrow typed monitor input.\n- Verification: Observe a real head callback through the monitor for both configured production Tezos networks without signing."
+      "body": "- Evidence: A missing chain ID prevents the open-duel head listener from validating its configured endpoint. Reconciliation can wait on a separate trigger.\n- Correction: Pass the configured chain ID through the narrow typed monitor input.\n- Verification: Observe a real head callback through the monitor for both configured production Tezos networks without signing. The separate authority is now live. The funded Shadownet Duel verified automatic start and payout after 13 rounds. Mainnet then passed unfunded creation and closure with its expected chain and contract."
     }
   ]
 }

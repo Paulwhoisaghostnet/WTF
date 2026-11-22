@@ -14932,3 +14932,11 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Correction and proof**: A read-only lobby worker delegates access and identity to the running app and reads its saved match directory. Only the canonical browser lobby GET is routed to it. Isolated HTTP/1.1 and HTTP/2 streams survived the proxy route reload and rollback. Production stayed on the same room authority and returned the same listing. Separate PostgreSQL ownership allowed the corrected chain head watcher to reconcile a new fixture room without selecting the legacy record.
 
 **Rule**: Keep a protected funded game on the original process. Treat any new funding path that shares its global reconciliation sweep as part of that same authority. Prove storage isolation, routing, and signer idempotency before accepting real funds in a separate lane.
+
+## 2026-11-21 — Route only newly admitted XTZ Duels into the separate authority
+
+**What happened**: Transferring a funded room or calling the legacy reconciliation route could have woken a sweep of the protected live Duel. A second full app would also have registered unrelated background workers.
+
+**Correction and proof**: A minimal authority owns an initially empty mounted room store and a separate PostgreSQL database, with a single-writer lease. Its platform identity role cannot read legacy escrow. The existing proxy routes newly admitted XTZ Duels by network and sends subsequent requests by durable room ownership. It bypasses the gateway for the protected UUID. Scope, identity, room events, and head-driven reconciliation were verified in local fixtures and the Shadownet deployment.
+
+**Rule**: Change the admission policy without moving existing rooms or restarting their writer. Keep the proxy route and both volumes available until all owned rooms and payouts can be migrated. Treat an uncertain wager action as potentially durable and inspect it before retrying.

@@ -4589,7 +4589,7 @@ Total: **794** · Open: **10** · Claimed: **42** · In Progress: **19** · Bloc
 - Score: C1 + F4 + S0 + P1(4) = 9
 - Evidence: A missing chain ID prevents the open-duel head listener from validating its configured endpoint. Reconciliation can wait on a separate trigger.
 - Correction: Pass the configured chain ID through the narrow typed monitor input.
-- Verification: Observe a real head callback through the monitor for both configured production Tezos networks without signing.
+- Verification: Observe a real head callback through the monitor for both configured production Tezos networks without signing. The separate authority is now live. The funded Shadownet Duel verified automatic start and payout after 13 rounds. Mainnet then passed unfunded creation and closure with its expected chain and contract.
 
 ### WTF-BB-796 - Edited applied Horf migration blocks Hetzner deployment
 
