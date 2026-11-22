@@ -127,11 +127,16 @@ async function main() {
       console.log(`[wtfiap-deploy] Funded-room compatibility verified for rules ${incomingRules}; admission gate held during replacement.`);
       await new Promise((resolve, reject) => {
         const child = spawn(command, args, { stdio: 'inherit' });
-        child.on('error', reject); child.on('exit', code => code === 0 ? resolve() : reject(new Error(`App replacement failed (${code})`)));
+        child.on('error', reject);
+        child.on('exit', code => {
+          if (code === 0) resolve();
+          else if (code === 75) reject(Object.assign(new Error('An open room deferred app replacement.'), { exitCode: 75 }));
+          else reject(new Error(`App replacement failed (${code})`));
+        });
       });
     },
   });
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  main().catch(error => { console.error(`[wtfiap-deploy] ${error.message}`); process.exitCode = 1; });
+  main().catch(error => { console.error(`[wtfiap-deploy] ${error.message}`); process.exitCode = error.exitCode ?? 1; });
 }

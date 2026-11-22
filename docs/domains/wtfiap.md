@@ -26,7 +26,13 @@ The isolated runtime accepts new open-seat XTZ Duels only on networks named in i
 
 The gateway routes a created room by its durable file, including after admission for its network is paused. The protected legacy Duel bypasses the gateway. The lobby combines both read-only directories. A shared signer serializes wallet operations and applies its durable request journal, while each authority computes results only from rooms it owns.
 
-Keep both room stores, the isolated database, and the active ingress through restarts. A normal wtfOS replacement rebuilds the proxy configuration. Carry the scoped ingress into that deployment or coordinate migration of the isolated room and escrow records before replacing it. An empty admission policy sends new rooms back to the legacy path and preserves routing for every already-owned isolated room. Restoring the previous ingress while any isolated room is in use would make that room unreachable.
+Keep both room stores, the isolated database, and the ingress through restarts. An empty admission policy sends new rooms back to the legacy path and preserves routing for every already-owned isolated room.
+
+## wtfOS deployments
+
+The Hetzner deploy workflow checks both room stores before it uploads a release or updates the signer. Waiting rooms, active matches, and rooms with unsettled escrow defer the deploy. Look for the deferral in the workflow summary and rerun the latest main-branch deploy when the rooms finish.
+
+The host reads `/etc/wtf/wtfiap-duel-deploy.json` to verify the protected legacy room UUID and cross-checks the reader and writer mounts. During an eligible cutover, Caddy temporarily blocks new admissions and starts. The deploy rechecks both room stores and restores the previous ingress if replacement is deferred. The adapted startup file lives on the attached volume under `/mnt/wtf-data/config/wtfiap-caddy`. The deploy verifies the gateway route, legacy bypass, and both isolated containers after replacement.
 
 The guarded Shadownet proof script checks the deployed chain ID and contract, uses the standard wallets and gameplay routes, and verifies automatic start and payout without calling a reconcile or claim endpoint. Run the actual funded proof on Shadownet before adding Mainnet to the admission policy.
 

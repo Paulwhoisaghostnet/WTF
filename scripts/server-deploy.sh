@@ -4,6 +4,10 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
+if [[ -z "${WTFIAP_DEPLOY_FENCE:-}" ]]; then
+  exec flock /tmp/wtf-app-deploy.lock bash scripts/wtfiap/with-deploy-ingress-fence.sh -- bash "$ROOT_DIR/scripts/server-deploy.sh"
+fi
+
 if [[ ! -f .env ]]; then
   echo "[server-deploy] ERROR: .env is missing"
   exit 1
@@ -53,6 +57,7 @@ if [[ -n "$runtime_env" && -r "$runtime_env" ]]; then
   export WTF_ENV_FILE="$runtime_env"
 fi
 set +a
+export COMPOSE_REMOVE_ORPHANS=0
 
 require_runtime_secret() {
   local name="$1"
@@ -175,6 +180,29 @@ require_min_free_disk "${WTF_DEPLOY_DISK_PATH:-/}" "${WTF_DEPLOY_MIN_FREE_KB:-12
 COMMIT_SHA="$(git rev-parse --short HEAD)"
 export COMMIT_SHA
 
+if [[ -n "${WTFIAP_DEPLOY_PROTECTED_ROOM:-}" ]]; then
+  isolated_service_ids="$(docker inspect --format '{{.Id}}' wtfiap-duel-authority wtfiap-duel-gateway)"
+  caddy_stage="$(mktemp)"
+  trap 'rm -f -- "$caddy_stage"; cleanup' EXIT
+  cp Caddyfile "$caddy_stage"
+  node scripts/wtfiap/carry-isolated-duel-route.cjs "$caddy_stage" "$WTFIAP_DEPLOY_PROTECTED_ROOM" \
+    -- docker exec -i wtf-app-caddy-1 caddy adapt --config - --adapter caddyfile
+
+  # Keep the verified file outside the Git checkout so future resets cannot
+  # overwrite the startup route of the running proxy.
+  startup_dir="/mnt/wtf-data/config/wtfiap-caddy/$(git rev-parse HEAD)"
+  sudo install -d -m 0755 "$startup_dir"
+  export WTFIAP_CADDYFILE_HOST="$startup_dir/Caddyfile"
+  if [[ -e "$WTFIAP_CADDYFILE_HOST" ]]; then
+    cmp -s "$caddy_stage" "$WTFIAP_CADDYFILE_HOST" || {
+      echo "[server-deploy] A different startup proxy configuration is already staged for this release."
+      exit 1
+    }
+  else
+    sudo install -m 0644 "$caddy_stage" "$WTFIAP_CADDYFILE_HOST"
+  fi
+fi
+
 echo "[server-deploy] building app image for ${COMMIT_SHA}"
 docker compose build \
   --build-arg COMMIT_SHA="$COMMIT_SHA" \
@@ -192,26 +220,27 @@ done
 echo "[server-deploy] applying production migrations"
 bash "$ROOT_DIR/scripts/apply-production-migrations.sh"
 
+for service in app caddy; do
+  expected_container="$(docker inspect --type container --format '{{.Id}}' "wtf-app-${service}-1")"
+  if [[ "$(docker compose ps --all --quiet "$service")" != "$expected_container" ]]; then
+    echo "[server-deploy] The Compose $service selection does not match its expected container."
+    exit 1
+  fi
+done
+
 node scripts/wtfiap/deploy-guard.mjs -- bash -s <<'WTFIAP_REPLACE'
 set -euo pipefail
+source scripts/wtfiap/check-wtfos-room-deploy.sh
+wtfiap_assert_ingress_fence
+wtfiap_discover_room_authorities
+wtfiap_check_saved_rooms scripts/wtfiap/assert-room-deploy-safe.cjs
+
 echo "[server-deploy] migrations passed; replacing app"
 docker compose stop app >/dev/null 2>&1 || true
 docker compose rm -f app >/dev/null 2>&1 || true
 
 echo "[server-deploy] starting app + caddy"
-compose_up_output=""
-if ! compose_up_output="$(docker compose up -d --remove-orphans --force-recreate app caddy 2>&1)"; then
-  echo "$compose_up_output"
-  if grep -q "already in use" <<<"$compose_up_output"; then
-    echo "[server-deploy] docker compose hit a transient recreate-name conflict; retrying once"
-    sleep 3
-    docker compose up -d --remove-orphans --force-recreate app caddy
-  else
-    exit 1
-  fi
-else
-  echo "$compose_up_output"
-fi
+docker compose up -d --force-recreate app caddy
 WTFIAP_REPLACE
 
 echo "[server-deploy] waiting for readiness"
@@ -226,6 +255,12 @@ for _ in 1 2 3 4 5 6 7 8 9 10; do
 done
 
 if [[ "$health_ok" == "1" ]]; then
+  if [[ -n "${WTFIAP_DEPLOY_PROTECTED_ROOM:-}" ]]; then
+    [[ "$(docker inspect --format '{{if .State.Running}}{{.Id}}{{end}}' wtfiap-duel-authority wtfiap-duel-gateway)" == "$isolated_service_ids" ]]
+    [[ "$(docker inspect --format '{{range .Mounts}}{{if eq .Destination "/etc/caddy/Caddyfile"}}{{.Source}}{{end}}{{end}}' wtf-app-caddy-1)" == "$WTFIAP_CADDYFILE_HOST" ]]
+    docker exec wtf-app-caddy-1 wget -qO- http://127.0.0.1:2019/config/ |
+      node scripts/wtfiap/verify-isolated-duel-ingress.cjs "$WTFIAP_DEPLOY_PROTECTED_ROOM"
+  fi
   echo "[server-deploy] readiness check passed"
   echo "[server-deploy] verifying repo doctor heartbeat timer"
   sudo WTF_APP_DIR="$ROOT_DIR" bash scripts/install-systemd-timers.sh repo-doctor-heartbeat.timer

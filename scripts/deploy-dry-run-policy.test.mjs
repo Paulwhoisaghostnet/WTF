@@ -34,7 +34,7 @@ test("LAW.DR2/04 deploy dry-run evidence has no interactive schema prompt path",
 test("LAW.DR3/04 deploy dry-run evidence starts app only after schema readiness", () => {
   assert.match(
     deploy,
-    /docker compose up -d postgres[\s\S]*pg_isready[\s\S]*apply-production-migrations\.sh[\s\S]*docker compose stop app[\s\S]*docker compose up -d --remove-orphans --force-recreate app caddy/
+    /docker compose up -d postgres[\s\S]*pg_isready[\s\S]*apply-production-migrations\.sh[\s\S]*docker compose stop app[\s\S]*docker compose up -d --force-recreate app caddy/
   );
   assert.match(deploy, /if curl -fsS http:\/\/localhost:3000\/api\/health/);
   assert.doesNotMatch(deploy, /exit 0/);
@@ -69,9 +69,25 @@ test("deploy preflight checks free disk space before image build or app restart"
 test("Hetzner deploys queue and hold one host-side lock instead of orphaning cancelled builds", () => {
   assert.match(deployWorkflow, /group: hetzner-deploy-main/);
   assert.match(deployWorkflow, /cancel-in-progress: false/);
-  assert.match(deployWorkflow, /exec 9>\/tmp\/wtf-app-deploy\.lock/);
+  assert.match(deployWorkflow, /exec 9<>\/tmp\/wtf-app-deploy\.lock/);
   assert.match(deployWorkflow, /flock 9[\s\S]*git fetch "\$DEPLOY_BUNDLE" HEAD[\s\S]*server-deploy\.sh/);
   assert.doesNotMatch(deployWorkflow, /cancel-in-progress: true/);
+});
+
+test("Hetzner keeps room admission fenced before signer sync and app replacement", () => {
+  const preflight = deployWorkflow.indexOf("id: room-preflight");
+  const signer = deployWorkflow.indexOf("name: Package operator signer");
+  const fenced = deployWorkflow.indexOf("with-deploy-ingress-fence.sh\" -- bash");
+  const install = deployWorkflow.indexOf("--install-package");
+  const checkout = deployWorkflow.indexOf("git reset --hard");
+  assert.ok(preflight >= 0 && signer > preflight && fenced > signer && install > fenced && checkout > install);
+  assert.match(deployWorkflow, /name: Deploy on server\s+id: server-deploy\s+if: steps\.room-preflight\.outputs\.eligible == 'true'/);
+  assert.match(deployWorkflow, /name: Health check\s+if: steps\.server-deploy\.outputs\.replaced == 'true'/);
+  assert.match(deploy, /wtfiap_assert_ingress_fence[\s\S]*wtfiap_check_saved_rooms[\s\S]*docker compose stop app/);
+  assert.match(deploy, /export COMPOSE_REMOVE_ORPHANS=0/);
+  assert.doesNotMatch(deploy, /--remove-orphans/);
+  assert.match(compose, /WTFIAP_CADDYFILE_HOST:-\.\/Caddyfile/);
+  assert.match(deploy, /\/mnt\/wtf-data\/config\/wtfiap-caddy\/\$\(git rev-parse HEAD\)/);
 });
 
 test("Hetzner deploy transports the exact checked-out commit without server GitHub credentials", () => {
@@ -131,7 +147,7 @@ test("LAW.DR5/04 production app fails closed on placeholder commit metadata", ()
   assert.match(entrypoint, /\$\{#commit_ref\}.*-gt 40/);
   assert.match(
     deploy,
-    /COMMIT_SHA="\$\(git rev-parse --short HEAD\)"[\s\S]*export COMMIT_SHA[\s\S]*docker compose build[\s\S]*docker compose up -d --remove-orphans --force-recreate app caddy/
+    /COMMIT_SHA="\$\(git rev-parse --short HEAD\)"[\s\S]*export COMMIT_SHA[\s\S]*docker compose build[\s\S]*docker compose up -d --force-recreate app caddy/
   );
 });
 

@@ -14940,3 +14940,9 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Correction and proof**: A minimal authority owns an initially empty mounted room store and a separate PostgreSQL database, with a single-writer lease. Its platform identity role cannot read legacy escrow. The existing proxy routes newly admitted XTZ Duels by network and sends subsequent requests by durable room ownership. It bypasses the gateway for the protected UUID. Scope, identity, room events, and head-driven reconciliation were verified in local fixtures and the Shadownet deployment.
 
 **Rule**: Change the admission policy without moving existing rooms or restarting their writer. Keep the proxy route and both volumes available until all owned rooms and payouts can be migrated. Treat an uncertain wager action as potentially durable and inspect it before retrying.
+
+## 2026-11-21 — Guard the deploy that replaces a live room writer
+
+**What happened**. A manual Caddy route was active and present on disk. The normal deployment still reset the tracked Caddyfile before recreating the app and proxy. The compatibility check did not cover ordinary open rooms, and signer sync preceded that check.
+
+**Rule**. Inspect both mounted room stores before sync or replacement. With both stores clear, fence new admissions and recheck before cutover. Carry the verified Duel route in a startup file outside Git. Confirm the Compose service selection before stopping containers because a standalone container can inherit project and service labels from its image.

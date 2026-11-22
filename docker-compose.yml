@@ -380,7 +380,7 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ${WTFIAP_CADDYFILE_HOST:-./Caddyfile}:/etc/caddy/Caddyfile:ro
       # Staged wtfOS AT vhosts (S1.4). Mounted so `import Caddyfile.wtfos-atproto`
       # in ./Caddyfile can be enabled without recreating the container. Inactive
       # until that import line is uncommented.

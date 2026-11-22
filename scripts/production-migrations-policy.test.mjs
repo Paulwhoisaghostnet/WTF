@@ -65,7 +65,7 @@ test("LAW.TT1/10 deploy starts the app only after production migrations pass", (
   assert.match(deploy, /set -euo pipefail/);
   assert.match(
     deploy,
-    /bash "\$ROOT_DIR\/scripts\/apply-production-migrations\.sh"[\s\S]*docker compose stop app[\s\S]*docker compose up -d --remove-orphans --force-recreate app caddy/
+    /bash "\$ROOT_DIR\/scripts\/apply-production-migrations\.sh"[\s\S]*docker compose stop app[\s\S]*docker compose up -d --force-recreate app caddy/
   );
   assert.doesNotMatch(deploy, /npm run db:push/);
   assert.doesNotMatch(deploy, /drizzle-kit push/);

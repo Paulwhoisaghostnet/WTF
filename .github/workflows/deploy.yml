@@ -16,6 +16,7 @@ jobs:
     env:
       DEPLOY_COMMIT: ${{ github.sha }}
       DEPLOY_BUNDLE: /tmp/wtf-app-${{ github.run_id }}-${{ github.run_attempt }}.bundle
+      SIGNER_PACKAGE: /tmp/wtf-signer-${{ github.run_id }}-${{ github.run_attempt }}.tar.gz
 
     steps:
       - name: Checkout repo
@@ -47,7 +48,27 @@ jobs:
           SSHCFG
           chmod 600 ~/.ssh/config
 
+      - name: Check for open coLILseum rooms before deploying
+        id: room-preflight
+        run: |
+          result=0
+          tar -cf - scripts/wtfiap/check-wtfos-room-deploy.sh scripts/wtfiap/assert-room-deploy-safe.cjs | \
+            ssh -i ~/.ssh/id_ed25519 "${{ secrets.HETZNER_USER }}@${{ secrets.HETZNER_HOST }}" '
+              set -eu
+              stage="$(mktemp -d)"
+              trap '\''rm -rf -- "$stage"'\'' EXIT
+              tar -xf - -C "$stage"
+              bash "$stage/scripts/wtfiap/check-wtfos-room-deploy.sh"
+            ' || result=$?
+          if [ "$result" -eq 75 ]; then
+            echo "Deployment deferred. coLILseum has open rooms or unresolved escrow." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          if [ "$result" -ne 0 ]; then exit "$result"; fi
+          echo "eligible=true" >> "$GITHUB_OUTPUT"
+
       - name: Package exact source commit
+        if: steps.room-preflight.outputs.eligible == 'true'
         run: |
           set -euo pipefail
           LOCAL_BUNDLE="${RUNNER_TEMP}/wtf-app.bundle"
@@ -74,24 +95,31 @@ jobs:
           scp -i ~/.ssh/id_ed25519 "$LOCAL_BUNDLE" \
             "${{ secrets.HETZNER_USER }}@${{ secrets.HETZNER_HOST }}:${DEPLOY_BUNDLE}"
 
-      - name: Sync operator signer before funded-room admission
-        env:
-          HETZNER_SSH_HOST: ${{ secrets.HETZNER_HOST }}
-          HETZNER_SSH_USER: ${{ secrets.HETZNER_USER }}
+      - name: Package operator signer
+        if: steps.room-preflight.outputs.eligible == 'true'
         run: |
-          HETZNER_SSH_KEY="$HOME/.ssh/id_ed25519" \
-            bash extensions/wtf-operator-signer/deploy/server-deploy.sh
+          LOCAL_SIGNER_PACKAGE="${RUNNER_TEMP}/wtf-operator-signer.tar.gz"
+          bash extensions/wtf-operator-signer/deploy/server-deploy.sh --package "$LOCAL_SIGNER_PACKAGE"
+          SIGNER_SHA="$(sha256sum "$LOCAL_SIGNER_PACKAGE" | cut -d' ' -f1)"
+          echo "SIGNER_SHA=$SIGNER_SHA" >> "$GITHUB_ENV"
+          scp -i ~/.ssh/id_ed25519 "$LOCAL_SIGNER_PACKAGE" \
+            "${{ secrets.HETZNER_USER }}@${{ secrets.HETZNER_HOST }}:${SIGNER_PACKAGE}"
 
       - name: Deploy on server
+        id: server-deploy
+        if: steps.room-preflight.outputs.eligible == 'true'
         run: |
+          result=0
           ssh -i ~/.ssh/id_ed25519 "${{ secrets.HETZNER_USER }}@${{ secrets.HETZNER_HOST }}" \
-            "DEPLOY_COMMIT='$DEPLOY_COMMIT' DEPLOY_BUNDLE='$DEPLOY_BUNDLE' bash -s" << 'EOF'
+            "DEPLOY_COMMIT='$DEPLOY_COMMIT' DEPLOY_BUNDLE='$DEPLOY_BUNDLE' SIGNER_PACKAGE='$SIGNER_PACKAGE' SIGNER_SHA='$SIGNER_SHA' bash -s" << 'EOF' || result=$?
             set -euo pipefail
-            cleanup_bundle() {
-              rm -f "$DEPLOY_BUNDLE"
+            stage="$(mktemp -d)"
+            cleanup() {
+              rm -f "$DEPLOY_BUNDLE" "$SIGNER_PACKAGE"
+              rm -rf -- "$stage"
             }
-            trap cleanup_bundle EXIT
-            exec 9>/tmp/wtf-app-deploy.lock
+            trap cleanup EXIT
+            exec 9<>/tmp/wtf-app-deploy.lock
             flock 9
             cd /opt/platform/repos/wtf-app
 
@@ -106,24 +134,34 @@ jobs:
               echo "ERROR: transferred bundle resolved to $BUNDLED_COMMIT instead of $DEPLOY_COMMIT"
               exit 1
             fi
+            git archive "$BUNDLED_COMMIT" \
+              extensions/wtf-operator-signer/deploy/server-deploy.sh \
+              scripts/wtfiap/check-wtfos-room-deploy.sh \
+              scripts/wtfiap/assert-room-deploy-safe.cjs \
+              scripts/wtfiap/fence-deploy-ingress.cjs \
+              scripts/wtfiap/with-deploy-ingress-fence.sh | tar -xf - -C "$stage"
+
+            install -m 0600 "$SIGNER_PACKAGE" "$stage/signer.tar.gz"
+            printf '%s  %s\n' "$SIGNER_SHA" "$stage/signer.tar.gz" | sha256sum --check --status
+            export BUNDLED_COMMIT stage
+            bash "$stage/scripts/wtfiap/with-deploy-ingress-fence.sh" -- bash -s <<'REPLACE'
+            set -euo pipefail
+            bash "$stage/extensions/wtf-operator-signer/deploy/server-deploy.sh" --install-package "$stage/signer.tar.gz"
             git reset --hard
             git checkout -B main "$BUNDLED_COMMIT"
             git reset --hard "$BUNDLED_COMMIT"
-
-            # ── Kill any rogue standalone caddy containers ──────────────
-            for cid in $(docker ps -aq --filter "name=^caddy$" 2>/dev/null); do
-              NAME=$(docker inspect --format '{{.Name}}' "$cid" 2>/dev/null || true)
-              if [ "$NAME" != "/wtf-app-caddy-1" ]; then
-                echo "Removing rogue caddy container: $cid ($NAME)"
-                docker stop "$cid" 2>/dev/null || true
-                docker rm -f "$cid" 2>/dev/null || true
-              fi
-            done
-
             bash scripts/server-deploy.sh
+          REPLACE
           EOF
+          if [ "$result" -eq 75 ]; then
+            echo "Deployment deferred. coLILseum received an open room before replacement." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          if [ "$result" -ne 0 ]; then exit "$result"; fi
+          echo "replaced=true" >> "$GITHUB_OUTPUT"
 
       - name: Health check
+        if: steps.server-deploy.outputs.replaced == 'true'
         run: |
           echo "Waiting 15s for app restart..."
           sleep 15
