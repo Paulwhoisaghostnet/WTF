@@ -56,6 +56,23 @@ gh run watch <deploy-run-id> --exit-status
 
 `Quality Gates` must pass typecheck, build, inventory coverage, inventory Playwright smoke, external link safety, and SmartPy contract tests. `Deploy to Hetzner` must pass its server deploy and health check.
 
+### Clyde static art demos
+
+Adrift ([source issue](https://github.com/Paulwhoisaghostnet/Neon-experiments/issues/3)) and Before the Shovels ([source issue](https://github.com/JoshuaFarnworth/TheOrangeGhostisClyde/issues/7)) are public static sites, independent of the wtfOS app router. The default host bundles are `demos/adrift/index.html` and `demos/bts/index.html` in this checkout. The Compose Caddy service binds each directory read-only at `/srv/demos/adrift` and `/srv/demos/bts`. If the bundles live elsewhere on the server, set `WTFOS_ADRIFT_DEMO_HOST_DIR` and `WTFOS_BTS_DEMO_HOST_DIR` to those existing directories before the normal deploy. Missing directories cause Caddy startup to fail instead of silently serving empty pages.
+
+Both exact Caddy hostnames use automatic HTTPS. The existing Cloudflare wildcard DNS covers the two subdomains; Caddy manages the origin certificates through its existing ACME storage and port 80 challenge path. No separate Cloudflare origin certificate or DNS challenge is configured for these hosts. Before promotion, verify both `index.html` files are present in the source commit or in the configured mounted directories.
+
+The room preflight can intentionally defer the release while a coLILseum room is open. GitHub can still label that workflow run successful because the deferral exits zero and skips packaging, server replacement, and health check. Inspect the deploy job's step conclusions and the live `version.commitRef`; a green run alone is not proof of deployment. Keep the room guard in place, wait for its safe state, then dispatch the current `main` workflow again. The protected Duel route is carried from the tracked Caddyfile into the verified startup Caddyfile by `scripts/server-deploy.sh` during normal replacement.
+
+After an eligible deploy, verify each host at the origin and through Cloudflare, then reload each page in a browser and confirm that its `?hash=` query parameter changes and the art still renders. Confirm that neither demo exposes mint or purchase controls:
+
+```bash
+curl -fsSI https://adrift.wtfos.app/
+curl -fsSI https://bts.wtfos.app/
+```
+
+On the Hetzner host, `curl --resolve adrift.wtfos.app:443:127.0.0.1 https://adrift.wtfos.app/` (and the corresponding `bts.wtfos.app` command) checks the origin certificate and static response directly, independent of Cloudflare.
+
 ## Live Verification
 
 Verify the deployed commit and readiness:

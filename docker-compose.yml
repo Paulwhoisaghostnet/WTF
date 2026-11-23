@@ -381,6 +381,19 @@ services:
       - "443:443"
     volumes:
       - ${WTFIAP_CADDYFILE_HOST:-./Caddyfile}:/etc/caddy/Caddyfile:ro
+      # Published demo bundles are read-only and must exist before Caddy starts.
+      - type: bind
+        source: ${WTFOS_ADRIFT_DEMO_HOST_DIR:-./demos/adrift}
+        target: /srv/demos/adrift
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${WTFOS_BTS_DEMO_HOST_DIR:-./demos/bts}
+        target: /srv/demos/bts
+        read_only: true
+        bind:
+          create_host_path: false
       # Staged wtfOS AT vhosts (S1.4). Mounted so `import Caddyfile.wtfos-atproto`
       # in ./Caddyfile can be enabled without recreating the container. Inactive
       # until that import line is uncommented.

@@ -14946,3 +14946,11 @@ When shop and board are visible together, contextual help must prioritize a sele
 **What happened**. A manual Caddy route was active and present on disk. The normal deployment still reset the tracked Caddyfile before recreating the app and proxy. The compatibility check did not cover ordinary open rooms, and signer sync preceded that check.
 
 **Rule**. Inspect both mounted room stores before sync or replacement. With both stores clear, fence new admissions and recheck before cutover. Carry the verified Duel route in a startup file outside Git. Confirm the Compose service selection before stopping containers because a standalone container can inherit project and service labels from its image.
+
+## 2026-11-23 — Confirm host activation and the actual deploy steps
+
+**What happened**: Adrift and Before the Shovels resolved through Cloudflare but returned 525 because the origin Caddyfile did not name either hostname and had no origin certificates for them. A later GitHub deploy run was marked successful even though its open-room preflight intentionally deferred the release and skipped packaging, replacement, and health check.
+
+**Why it mattered**: DNS and a green workflow badge could both look ready while no new art site existed at the origin. Replacing the app to fix a static host while a protected coLILseum room remains open would also violate the room continuity gate.
+
+**Rule**: Put each public static host in the exact Caddy site list, mount its bundle read-only, and verify Caddy adaptation before release. Inspect deploy step conclusions and the live commit, respect the room guard, then verify the origin certificate, Cloudflare response, and browser reload behavior after an eligible deploy.

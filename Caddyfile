@@ -203,3 +203,17 @@ hidden-lakes-beta.wtfos.app {
 		header_up Host {host}
 	}
 }
+
+# Public, self-contained Clyde art demos. Exact hostnames use Caddy's normal
+# automatic HTTPS, including origin certificates behind Cloudflare.
+adrift.wtfos.app {
+	encode gzip zstd
+	root * /srv/demos/adrift
+	file_server
+}
+
+bts.wtfos.app {
+	encode gzip zstd
+	root * /srv/demos/bts
+	file_server
+}
