@@ -14954,3 +14954,11 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Why it mattered**: DNS and a green workflow badge could both look ready while no new art site existed at the origin. Replacing the app to fix a static host while a protected coLILseum room remains open would also violate the room continuity gate.
 
 **Rule**: Put each public static host in the exact Caddy site list, mount its bundle read-only, and verify Caddy adaptation before release. Inspect deploy step conclusions and the live commit, respect the room guard, then verify the origin certificate, Cloudflare response, and browser reload behavior after an eligible deploy.
+
+## 2026-11-23 — Keep generated Adrift shader bytes intact
+
+**What happened**: The self-contained Adrift demo build includes Three.js shader text with intentional trailing spaces and mixed indentation. The staged Git whitespace check flagged those generated lines.
+
+**Correction and proof**: Exempt only `demos/adrift/index.html` from Git whitespace diagnostics. The copied bundle still matches the source demo build by SHA-256, and the staged diff check passes.
+
+**Rule**: When a verified generated art bundle contains vendor shader whitespace, scope any Git whitespace exception to that exact artifact path. Preserve the build bytes and continue checking authored files normally.
