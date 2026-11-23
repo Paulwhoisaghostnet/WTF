@@ -58,13 +58,13 @@ gh run watch <deploy-run-id> --exit-status
 
 ### Clyde static art demos
 
-Adrift ([source issue](https://github.com/Paulwhoisaghostnet/Neon-experiments/issues/3)) and Before the Shovels ([source issue](https://github.com/JoshuaFarnworth/TheOrangeGhostisClyde/issues/7)) are public static sites, independent of the wtfOS app router. The default host bundles are `demos/adrift/index.html` and `demos/bts/index.html` in this checkout. The Compose Caddy service binds each directory read-only at `/srv/demos/adrift` and `/srv/demos/bts`. If the bundles live elsewhere on the server, set `WTFOS_ADRIFT_DEMO_HOST_DIR` and `WTFOS_BTS_DEMO_HOST_DIR` to those existing directories before the normal deploy. Missing directories cause Caddy startup to fail instead of silently serving empty pages.
+Adrift ([source issue](https://github.com/Paulwhoisaghostnet/Neon-experiments/issues/3)) and Before the Shovels ([source issue](https://github.com/JoshuaFarnworth/TheOrangeGhostisClyde/issues/7)) are public static sites, independent of the wtfOS app router. The default host bundles are `demos/adrift/index.html`, `demos/bts/index.html`, and the nine-render BTS contact sheet at `demos/bts/contact/index.html` in this checkout. The Compose Caddy service binds each directory read-only at `/srv/demos/adrift` and `/srv/demos/bts`. On BTS, Caddy rewrites exact `/contact` to `/contact/index.html` and paths matching `/(ar/)?<width>x<height>` to `/index.html`, retaining the requested URLs and a 200 response for valid ratios. The renderer validates the numbers; Caddy only recognizes their syntax. If the bundles live elsewhere on the server, set `WTFOS_ADRIFT_DEMO_HOST_DIR` and `WTFOS_BTS_DEMO_HOST_DIR` to those existing directories before the normal deploy. Missing directories cause Caddy startup to fail instead of silently serving empty pages.
 
 Both exact Caddy hostnames use automatic HTTPS. The existing Cloudflare wildcard DNS covers the two subdomains; Caddy manages the origin certificates through its existing ACME storage and port 80 challenge path. No separate Cloudflare origin certificate or DNS challenge is configured for these hosts. Before promotion, verify both `index.html` files are present in the source commit or in the configured mounted directories.
 
 The room preflight can intentionally defer the release while a coLILseum room is open. GitHub can still label that workflow run successful because the deferral exits zero and skips packaging, server replacement, and health check. Inspect the deploy job's step conclusions and the live `version.commitRef`; a green run alone is not proof of deployment. Keep the room guard in place, wait for its safe state, then dispatch the current `main` workflow again. The protected Duel route is carried from the tracked Caddyfile into the verified startup Caddyfile by `scripts/server-deploy.sh` during normal replacement.
 
-After an eligible deploy, verify each host at the origin and through Cloudflare, then reload each page in a browser and confirm that its `?hash=` query parameter changes and the art still renders. Confirm that neither demo exposes mint or purchase controls:
+After an eligible deploy, verify each host at the origin and through Cloudflare, then reload each page in a browser and confirm that its `?hash=` query parameter changes and the art still renders. Check BTS `/contact`, `/ar/9x16`, `/4x5`, and `/2x3` as well. Confirm that neither demo exposes mint or purchase controls:
 
 ```bash
 curl -fsSI https://adrift.wtfos.app/
@@ -72,6 +72,29 @@ curl -fsSI https://bts.wtfos.app/
 ```
 
 On the Hetzner host, `curl --resolve adrift.wtfos.app:443:127.0.0.1 https://adrift.wtfos.app/` (and the corresponding `bts.wtfos.app` command) checks the origin certificate and static response directly, independent of Cloudflare.
+
+### Static-only preview while the room preflight defers
+
+Use `scripts/deploy-clyde-static-demos.mjs` only when the normal workflow remains deferred by an open room and the artist wants the static demos available before the app can be replaced. The script does not reset Git, rebuild the app, restart any container, change the protected Duel gateway, or change the current lobby reader. It copies validated art bundles into a versioned directory under Caddy's existing persistent `/data` volume and appends exact-host file-server routes to the **running Caddy JSON**. The live on-disk Caddyfile currently lacks a runtime-only coLILseum lobby-reader route, so loading that file or recreating Caddy from it would remove the route.
+
+Prepare BTS from the checked source only after its `contact/index.html`, nine renders, and aspect route bootstrap are present. `prepare` reads the live runtime and container identities but writes only the local private state directory. Use a fresh path outside the Git checkout for each plan:
+
+```bash
+clyde_state_dir="$HOME/clyde-bts-plan-$(date +%Y%m%dT%H%M%S)"
+node scripts/deploy-clyde-static-demos.mjs prepare --ssh wtf --site bts --state-dir "$clyde_state_dir"
+node scripts/deploy-clyde-static-demos.mjs apply --state-dir "$clyde_state_dir"
+node scripts/deploy-clyde-static-demos.mjs verify --state-dir "$clyde_state_dir"
+```
+
+After Adrift's checked source revision is ready, run the same three commands with `--site adrift` and a different new state directory. Each `prepare` captures the latest running JSON, so the Adrift plan retains an already active BTS route. The plan snapshots the bundle, hashes every file, adapts the checked Caddy site block with the running Caddy binary, and proves that removing the new routes from its candidate yields the exact original JSON. `apply` uses the ordinary `/tmp/wtf-app-deploy.lock`; it aborts if Caddy, app, Duel authority, gateway, lobby reader, app commit, or runtime config changed since preparation. It stages files first, validates the candidate, reloads through Caddy's admin API, and checks both origin and Cloudflare HTTPS/HTML responses. BTS verification includes exact `/contact` and representative aspect routes `/ar/9x16`, `/4x5`, and `/2x3`. Browser verification must still confirm different `?hash=` values on successive root-page and aspect-route reloads and that no mint or purchase control appears.
+
+`apply` reports `verified` only when origin and Cloudflare checks pass. If its reload succeeded but ACME or the edge is still catching up, it reports `active_host_verification_pending`; the configuration stays active and the command does not present that pending state as a failed reload. Rerun `verify` after checking Caddy's certificate logs, and require its `verified` result before calling the host live. To restore the exact captured runtime JSON, use:
+
+```bash
+node scripts/deploy-clyde-static-demos.mjs rollback --state-dir "$clyde_state_dir"
+```
+
+Rollback refuses to overwrite a Caddy config changed by another operator and leaves the inert versioned bundle in `/data`. Caddy's normal config reload avoids an HTTP listener restart, but its default reverse proxy closes existing WebSockets on reload; coordinate around live connections. The current Caddy container starts from `/etc/caddy/Caddyfile`, so a later container restart would lose this temporary runtime-only preview and the existing runtime-only lobby route. If restart durability is required before the room clears, first verify the autosaved JSON, then use a separately reviewed Caddy-only Compose override with `command: ["caddy", "run", "--resume"]` and `up -d --no-deps --no-build --force-recreate caddy`; this interrupts proxy connections briefly while retaining the app and Duel processes and certificate volumes. When the room guard clears, promote the committed demo bundles through the normal main deploy and verify its exact live commit.
 
 ## Live Verification
 

@@ -14955,6 +14955,14 @@ When shop and board are visible together, contextual help must prioritize a sele
 
 **Rule**: Put each public static host in the exact Caddy site list, mount its bundle read-only, and verify Caddy adaptation before release. Inspect deploy step conclusions and the live commit, respect the room guard, then verify the origin certificate, Cloudflare response, and browser reload behavior after an eligible deploy.
 
+## 2026-11-23 — Preserve runtime-only Caddy routes during static previews
+
+**What happened**: The live Caddy admin JSON contains a read-only coLILseum lobby-reader route that is absent from its bind-mounted Caddyfile. Reloading that file to add the art demo hosts would silently remove the lobby route while the protected Duel remains open. The container starts from that file after a restart rather than from its autosaved JSON.
+
+**Why it mattered**: A static art preview could alter an unrelated live room path even without restarting the app or the Duel authority. A green reload response would not prove the new origin certificate had finished issuing.
+
+**Rule**: For a room-fenced static-only preview, snapshot the running Caddy JSON and container identities, add only exact host routes after proving no earlier catchall shadows them, and compare the candidate against the complete baseline. Stage verified bytes in the existing persistent Caddy data volume, reload under the deploy lock, and check the runtime, protected routes, app identity, origin TLS, and Cloudflare separately. Treat certificate issuance as a pending verification state and keep the captured JSON as the rollback authority.
+
 ## 2026-11-23 — Keep generated Adrift shader bytes intact
 
 **What happened**: The self-contained Adrift demo build includes Three.js shader text with intentional trailing spaces and mixed indentation. The staged Git whitespace check flagged those generated lines.

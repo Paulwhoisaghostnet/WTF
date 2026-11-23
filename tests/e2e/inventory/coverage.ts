@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, statSync } from "node:fs";
 import { PAGE_DEFS } from "../../../client/src/routes/page-defs";
 import {
   ALL_ADMIN_SURFACES,
@@ -37,10 +37,33 @@ const inventoryMarkdown = readFileSync(".agents/docs/live/user-interaction-inven
 const caddyfile = readFileSync("Caddyfile", "utf8");
 const compose = readFileSync("docker-compose.yml", "utf8");
 for (const host of PUBLIC_STATIC_HOSTS) {
+  for (const relativeFile of ["index.html", ...(host.exactPaths ?? []).map((entry) => entry.file)]) {
+    const file = `${host.sourceDir}/${relativeFile}`;
+    try {
+      if (!statSync(file).isFile() || statSync(file).size === 0) throw new Error();
+    } catch {
+      fail(`Public static host ${host.hostname} is missing nonempty ${file}.`);
+    }
+  }
   const escapedHostname = host.hostname.replace(/\./g, "\\.");
   const site = caddyfile.match(new RegExp(`^${escapedHostname} \\{([\\s\\S]*?)^\\}`, "m"))?.[1];
   if (!site || !site.includes(`root * ${host.mountTarget}`) || !site.includes("file_server")) {
     fail(`Public static host ${host.hostname} is missing its Caddy file server.`);
+  }
+  for (const exactPath of host.exactPaths ?? []) {
+    if (!site.includes(`rewrite ${exactPath.path} /${exactPath.file}`) ||
+        !inventoryMarkdown.includes(`https://${host.hostname}${exactPath.path}`) ||
+        !inventoryMarkdown.includes(`\`${exactPath.interactionHandle}\``)) {
+      fail(`Public static host ${host.hostname}${exactPath.path} is missing its exact path contract.`);
+    }
+  }
+  if (host.aspectPaths) {
+    if (!site.includes(host.aspectPaths.matcher) || !site.includes(host.aspectPaths.rewrite) ||
+        !inventoryMarkdown.includes(`\`${host.aspectPaths.interactionHandle}\``) ||
+        host.aspectPaths.examples.some((path) =>
+          !inventoryMarkdown.includes(`https://${host.hostname}${path}`))) {
+      fail(`Public static host ${host.hostname} is missing its aspect path contract.`);
+    }
   }
   if (!compose.includes(`source: ${host.mountSource}`) ||
       !compose.includes(`target: ${host.mountTarget}`)) {
