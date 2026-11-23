@@ -14962,3 +14962,11 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Correction and proof**: Exempt only `demos/adrift/index.html` from Git whitespace diagnostics. The copied bundle still matches the source demo build by SHA-256, and the staged diff check passes.
 
 **Rule**: When a verified generated art bundle contains vendor shader whitespace, scope any Git whitespace exception to that exact artifact path. Preserve the build bytes and continue checking authored files normally.
+
+## 2026-11-23 — Regenerate the environment inventory for demo mounts
+
+**What happened**: The two optional Compose variables for the Adrift and Before the Shovels bundle paths made the checked-in environment inventory stale. The first Quality Gates run stopped at `env:inventory:check` before build or browser tests.
+
+**Correction and proof**: `npm run env:inventory` added those two variable records to the generated reference; `npm run env:inventory:check` now passes. The diff contains only the generated count and entries for those variables.
+
+**Rule**: Any new Compose environment variable must be followed by regenerating the environment reference before pushing a release branch.
