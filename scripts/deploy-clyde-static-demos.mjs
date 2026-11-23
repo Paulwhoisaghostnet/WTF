@@ -21,6 +21,10 @@ const containerNames = [
   "wtfiap-duel-gateway",
   "wtfiap-lobby-reader",
 ];
+const roomGuardFiles = [
+  "scripts/wtfiap/check-wtfos-room-deploy.sh",
+  "scripts/wtfiap/assert-room-deploy-safe.cjs",
+];
 
 function digest(value) {
   return createHash("sha256").update(value).digest("hex");
@@ -122,6 +126,27 @@ function readRuntime(host) {
   return runtime;
 }
 
+function readRoomGuard(host, archive) {
+  // Run the exact deploy scanner from this checkout; the remote staging
+  // directory is ephemeral and the scanner only reads room storage.
+  const command = String.raw`set -eu
+stage="$(mktemp -d)"
+trap 'rm -rf -- "$stage"' EXIT
+tar -xf - -C "$stage"
+result=0
+bash "$stage/scripts/wtfiap/check-wtfos-room-deploy.sh" || result=$?
+printf '__room_guard_exit=%s\n' "$result"`;
+  const output = ssh(host, command, fs.readFileSync(archive));
+  const lines = output.trim().split("\n");
+  const marker = lines.pop();
+  assert(marker === "__room_guard_exit=0" || marker === "__room_guard_exit=75",
+    "The saved-room guard could not be verified.");
+  const report = JSON.parse(lines.join("\n"));
+  assert(report.status === (marker.endsWith("=0") ? "safe" : "deferred"),
+    "The saved-room guard returned inconsistent status.");
+  return report;
+}
+
 function exactHostRoute(route, hostname) {
   return route.match?.some((matcher) => matcher.host?.length === 1 && matcher.host[0] === hostname);
 }
@@ -177,6 +202,11 @@ function prepare(options) {
   run("tar", ["-C", payloadRoot, "-cf", archive, ...options.selected],
     { env: { ...process.env, COPYFILE_DISABLE: "1" } });
 
+  const roomGuardArchive = path.join(options.stateDir, "room-guard.tar");
+  run("tar", ["-C", repoRoot, "-cf", roomGuardArchive, ...roomGuardFiles],
+    { env: { ...process.env, COPYFILE_DISABLE: "1" } });
+  const roomGuard = readRoomGuard(options.host, roomGuardArchive);
+
   const topology = readTopology(options.host);
   const baseline = readRuntime(options.host);
   const serverName = findServer(baseline);
@@ -222,6 +252,8 @@ function prepare(options) {
     roots,
     files: entries,
     archiveSha256: digest(fs.readFileSync(archive)),
+    roomGuardArchiveSha256: digest(fs.readFileSync(roomGuardArchive)),
+    roomGuardStatusAtPrepare: roomGuard.status,
     baselineSha256: digest(JSON.stringify(baseline)),
     candidateSha256: digest(JSON.stringify(candidate)),
     topology,
@@ -233,7 +265,8 @@ function prepare(options) {
     "manifest.json": manifest,
   })) fs.writeFileSync(path.join(options.stateDir, name), `${JSON.stringify(value)}\n`, { mode: 0o600 });
   console.log(JSON.stringify({ mode: "prepared-read-only", stateDir: options.stateDir,
-    planId: manifest.planId, sites: manifest.sites, releaseId, baselineCommit: topology.ready.commitRef }, null, 2));
+    planId: manifest.planId, sites: manifest.sites, releaseId, baselineCommit: topology.ready.commitRef,
+    roomGuard: roomGuard.status, roomCounts: roomGuard.counts }, null, 2));
 }
 
 const remoteWorker = String.raw`
@@ -256,7 +289,23 @@ assert.equal(hash(JSON.stringify(checkPlan)), planId, 'Plan manifest changed.');
 assert.equal(hash(JSON.stringify(baseline)), manifest.baselineSha256, 'Baseline changed.');
 assert.equal(hash(JSON.stringify(candidate)), manifest.candidateSha256, 'Candidate changed.');
 assert.equal(hash(fs.readFileSync(path.join(state, 'payload.tar'))), manifest.archiveSha256, 'Bundle archive changed.');
+assert.equal(hash(fs.readFileSync(path.join(state, 'room-guard.tar'))), manifest.roomGuardArchiveSha256,
+  'Saved-room guard archive changed.');
 const names = ['wtf-app-caddy-1','wtf-app-app-1','wtfiap-duel-authority','wtfiap-duel-gateway','wtfiap-lobby-reader'];
+function assertRoomSafe() {
+  const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'clyde-room-guard-'));
+  try {
+    execFileSync('tar', ['-xf',path.join(state,'room-guard.tar'),'-C',scratch], {stdio:'ignore'});
+    const guard = spawnSync('bash', [path.join(scratch,'scripts/wtfiap/check-wtfos-room-deploy.sh')],
+      {encoding:'utf8'});
+    if (guard.error || ![0,75].includes(guard.status))
+      throw Error('Saved-room inspection failed; Caddy reload refused.');
+    const report = JSON.parse(guard.stdout);
+    assert.equal(report.status, guard.status === 0 ? 'safe' : 'deferred',
+      'Saved-room guard returned inconsistent status.');
+    assert.equal(guard.status, 0, 'Saved-room guard deferred: an open room or escrow blocks Caddy reload.');
+  } finally { fs.rmSync(scratch, {recursive:true, force:true}); }
+}
 function docker(args, input) {
   const result = spawnSync('docker', ['exec', ...(input ? ['-i'] : []), 'wtf-app-caddy-1', ...args],
     { input, encoding: null });
@@ -339,10 +388,12 @@ function verifyCandidate() {
 if (action === 'apply') {
   assertTopology();
   assert.deepEqual(currentConfig(), baseline, 'Live Caddy config changed after prepare; prepare again.');
+  assertRoomSafe();
   stageFiles();
   docker(['caddy','validate','--config','-'], Buffer.from(JSON.stringify(candidate)));
   assertTopology();
   assert.deepEqual(currentConfig(), baseline, 'Live Caddy config changed before reload.');
+  assertRoomSafe();
   docker(['caddy','reload','--config','-'], Buffer.from(JSON.stringify(candidate)));
   assertTopology();
   assert.deepEqual(currentConfig(), candidate, 'Reload returned but runtime Caddy config differs.');
@@ -365,6 +416,7 @@ if (action === 'apply') {
     console.log('Baseline Caddy configuration is already active.');
   } else {
     assert.deepEqual(active, candidate, 'Runtime Caddy config changed; automatic rollback refused.');
+    assertRoomSafe();
     docker(['caddy','reload','--config','-'], Buffer.from(JSON.stringify(baseline)));
     assert.deepEqual(currentConfig(), baseline, 'Rollback did not restore baseline Caddy config.');
     assert.deepEqual(savedConfig(), baseline, 'Rollback did not restore Caddy autosave.');
@@ -382,8 +434,11 @@ function usePlan(options) {
   assert(host === manifest.sshHost, "Plan is bound to its prepared SSH host.");
   const remoteRelative = `.local/state/wtfos/clyde-static/${manifest.planId}`;
   if (options.action === "apply") {
+    const roomGuard = readRoomGuard(host, path.join(options.stateDir, "room-guard.tar"));
+    assert(roomGuard.status === "safe",
+      "Saved-room guard deferred: an open room or escrow blocks Caddy reload.");
     ssh(host, `install -d -m 0700 "$HOME/${remoteRelative}"`);
-    run("scp", ["-q", ...["manifest.json", "baseline.json", "candidate.json", "payload.tar"]
+    run("scp", ["-q", ...["manifest.json", "baseline.json", "candidate.json", "payload.tar", "room-guard.tar"]
       .map((name) => path.join(options.stateDir, name)), `${host}:${remoteRelative}/`]);
     ssh(host, `chmod 0600 "$HOME/${remoteRelative}"/*`);
   }
