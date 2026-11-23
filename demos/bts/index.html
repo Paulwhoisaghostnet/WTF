@@ -9,12 +9,40 @@
 <body>
 <script>
 (function () {
+  var path = location.pathname;
+  var match = path.match(/^\/(?:ar\/)?([1-9]\d*)x([1-9]\d*)\/?$/);
+  var ratio = null;
+  if (match) {
+    var w = Number(match[1]), h = Number(match[2]);
+    var larger = Math.max(w, h), smaller = Math.min(w, h);
+    var allowed = Number.isSafeInteger(w) && Number.isSafeInteger(h) &&
+      larger <= 8000 && (smaller === 1 ? larger <= 3 : larger <= 2 * smaller);
+    if (allowed) {
+      var a = w, b = h;
+      while (b) { var next = a % b; a = b; b = next; }
+      ratio = { w: w / a, h: h / a };
+      allowed = Math.max(ratio.w, ratio.h) <= 1600;
+    }
+    if (!allowed) ratio = false;
+  } else if (path !== '/' && path !== '/index.html') {
+    ratio = false;
+  }
+  window.__btsRatio = ratio;
+  if (ratio === false) {
+    document.title = 'Unsupported aspect ratio';
+    document.body.style.cssText = 'margin:0;min-height:100vh;display:grid;place-items:center;background:#0d0f12;color:#eef0ee;font:16px sans-serif';
+    document.body.textContent = 'Unsupported aspect ratio';
+    return;
+  }
   var q = new URLSearchParams(location.search);
-  var b = new Uint8Array(32), h = '0x';   // every page load receives a fresh hash before the artwork initializes
-  (window.crypto || window.msCrypto).getRandomValues(b);
-  for (var i = 0; i < 32; i++) h += (b[i] < 16 ? '0' : '') + b[i].toString(16);
-  q.delete('seed'); q.delete('payload'); q.set('hash', h);
+  var bytes = new Uint8Array(32), hash = '0x';   // every page load receives a fresh hash before the artwork initializes
+  (window.crypto || window.msCrypto).getRandomValues(bytes);
+  for (var i = 0; i < 32; i++) hash += (bytes[i] < 16 ? '0' : '') + bytes[i].toString(16);
+  q.delete('seed'); q.delete('payload'); q.set('hash', hash);
   history.replaceState(null, '', location.pathname + '?' + q.toString() + location.hash);
+  window.addEventListener('pageshow', function (event) {
+    if (event.persisted) window.location.reload();
+  });
 })();
 </script>
 <script>
@@ -229,7 +257,13 @@
     longSide = Math.max(400, Math.min(8000, longSide));
     var k = longSide / Math.max(VW, VH);
     var cv = document.createElement('canvas');
-    cv.width = Math.round(VW * k); cv.height = Math.round(VH * k);
+    if (W.__btsRatio) {
+      var unit = Math.max(1, Math.floor(longSide / Math.max(W.__btsRatio.w, W.__btsRatio.h)));
+      cv.width = W.__btsRatio.w * unit; cv.height = W.__btsRatio.h * unit;
+      k = cv.width / VW;
+    } else {
+      cv.width = Math.round(VW * k); cv.height = Math.round(VH * k);
+    }
     document.body.style.cssText = 'margin:0;height:100vh;display:flex;align-items:center;justify-content:center;background:' + (bg || '#111') + ';overflow:hidden';
     document.body.appendChild(cv);
     function fit() {
@@ -306,10 +340,17 @@
  * heightfield (depth, wind drift, compaction, displaced rims), and a raking-light renderer
  * (exact line-sweep sun shadows, sky ambient occlusion, lamp pools, sparkle, film grain). */
 (function () {
+  if (window.__btsRatio === false) return;
   var C = window.CLYDE, R = C.rng('main');
   var RW = R.fork('world'), RS = R.fork('walkers'), RL = R.fork('light'), RX = R.fork('texture'), RI = R.fork('incident');
   var NZ = C.noise(RX.fork('noise'));
   var WM = 20, HM = 25, VW = 1000, VH = 1250;   // world in metres; virtual canvas
+  if (window.__btsRatio) {
+    var ar = window.__btsRatio;
+    var worldUnit = Math.max(WM / ar.w, HM / ar.h);
+    WM = ar.w * worldUnit; HM = ar.h * worldUnit;
+    VW = WM * 50; VH = HM * 50;
+  }
   var PI = Math.PI, TAU = PI * 2;
   function clamp(x, a, b) { return x < a ? a : x > b ? b : x; }
   function sstep(a, b, x) { x = clamp((x - a) / (b - a), 0, 1); return x * x * (3 - 2 * x); }

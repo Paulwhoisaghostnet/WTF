@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0d0f12">
+<title>Before the Shovels — Contact Sheet</title>
+<style>
+  html, body { width: 100%; height: 100%; margin: 0; background: #0d0f12; }
+  body { display: grid; place-items: center; min-height: 100vh; min-height: 100svh; }
+  #sheet {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-rows: repeat(3, minmax(0, 1fr));
+    gap: clamp(2px, 0.5vmin, 6px);
+    width: min(calc(100vw - 24px), calc((100svh - 24px) * 0.8));
+    aspect-ratio: 4 / 5;
+  }
+  .tile { min-width: 0; min-height: 0; overflow: hidden; }
+  iframe { display: block; width: 100%; height: 100%; border: 0; opacity: 0; }
+  iframe.ready { opacity: 1; transition: opacity 220ms ease; }
+  @media (prefers-reduced-motion: reduce) { iframe.ready { transition: none; } }
+</style>
+</head>
+<body>
+<main id="sheet" aria-label="Nine Before the Shovels variations"></main>
+<script>
+(function () {
+  var sheet = document.getElementById('sheet'), frames = [];
+  for (var i = 0; i < 9; i++) {
+    var tile = document.createElement('div'), frame = document.createElement('iframe');
+    tile.className = 'tile';
+    frame.title = 'Before the Shovels variation ' + (i + 1);
+    frame.loading = 'eager';
+    tile.appendChild(frame);
+    sheet.appendChild(tile);
+    frames.push(frame);
+  }
+
+  function renderNext(index) {
+    if (index === frames.length) return;
+    var frame = frames[index];
+    frame.addEventListener('load', function () {
+      if (!frame.contentWindow.__clyde || !frame.contentWindow.__clyde.done) return;
+      frame.classList.add('ready');
+      renderNext(index + 1);
+    });
+    frame.src = '../index.html?res=400';
+  }
+
+  window.addEventListener('pageshow', function (event) {
+    if (event.persisted) window.location.reload();
+  });
+  renderNext(0);
+})();
+</script>
+</body>
+</html>
