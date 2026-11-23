@@ -14978,3 +14978,11 @@ When shop and board are visible together, contextual help must prioritize a sele
 **Correction and proof**: `npm run env:inventory` added those two variable records to the generated reference; `npm run env:inventory:check` now passes. The diff contains only the generated count and entries for those variables.
 
 **Rule**: Any new Compose environment variable must be followed by regenerating the environment reference before pushing a release branch.
+
+## 2026-11-23 — Keep runtime-only lobby routing through a guarded Caddy replacement
+
+**What happened**: The running Caddy JSON has a read-only coLILseum lobby-reader route with a scoped transport-error fallback to the app. The checked Caddyfile and previously staged startup Caddyfile lacked it, so a normal Caddy recreation would silently return that path to the legacy app. The saved-room guard was still deferred for one room in preparation.
+
+**Why it mattered**: A static demo release could regress an unrelated lobby path, and a route-only Caddy reload while the room is open would close existing WebSocket streams under the current proxy configuration. The previous static-preview lesson did not account for the project rule that an active room blocks even a proxy reload.
+
+**Rule**: Do not reload or recreate Caddy while the exact saved-room guard is deferred. After it is safe, adapt the verified startup Caddyfile to native JSON, carry forward the live lobby-reader route only if it matches the expected route and fallback exactly, and verify the route and sidecar identity after replacement. Publish static hosts through that ordinary guarded deployment and verify their origin certificates separately.

@@ -373,6 +373,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.caddy
+    # Caddy selects its adapter from the file name: Caddyfile normally, native
+    # JSON for the room-guarded startup that retains the exact lobby route.
+    command: ["caddy", "run", "--config", "${WTFIAP_CADDY_CONFIG_PATH:-/etc/caddy/Caddyfile}"]
     restart: unless-stopped
     depends_on:
       - app
@@ -381,6 +384,9 @@ services:
       - "443:443"
     volumes:
       - ${WTFIAP_CADDYFILE_HOST:-./Caddyfile}:/etc/caddy/Caddyfile:ro
+      # The JSON source defaults to the same checked file but is unused in
+      # Caddyfile mode. Guarded releases stage and select native startup JSON.
+      - ${WTFIAP_CADDYJSON_HOST:-./Caddyfile}:/etc/caddy/startup.json:ro
       # Published demo bundles are read-only and must exist before Caddy starts.
       - type: bind
         source: ${WTFOS_ADRIFT_DEMO_HOST_DIR:-./demos/adrift}

@@ -179,27 +179,47 @@ require_min_free_disk "${WTF_DEPLOY_DISK_PATH:-/}" "${WTF_DEPLOY_MIN_FREE_KB:-12
 
 COMMIT_SHA="$(git rev-parse --short HEAD)"
 export COMMIT_SHA
+export WTFIAP_CADDY_CONFIG_PATH=/etc/caddy/Caddyfile
 
 if [[ -n "${WTFIAP_DEPLOY_PROTECTED_ROOM:-}" ]]; then
-  isolated_service_ids="$(docker inspect --format '{{.Id}}' wtfiap-duel-authority wtfiap-duel-gateway)"
-  caddy_stage="$(mktemp)"
-  trap 'rm -f -- "$caddy_stage"; cleanup' EXIT
+  isolated_service_ids="$(docker inspect --format '{{if .State.Running}}{{.Id}}{{end}}' wtfiap-duel-authority wtfiap-duel-gateway wtfiap-lobby-reader)"
+  [[ "$(printf '%s\n' "$isolated_service_ids" | sed '/^$/d' | wc -l | tr -d ' ')" == 3 ]] || {
+    echo "[server-deploy] Protected Duel and lobby reader sidecars must be running."
+    exit 1
+  }
+  caddy_stage_dir="$(mktemp -d)"
+  caddy_stage="$caddy_stage_dir/Caddyfile"
+  caddy_json_stage="$caddy_stage_dir/config.json"
+  trap 'rm -rf -- "$caddy_stage_dir"; cleanup' EXIT
   cp Caddyfile "$caddy_stage"
   node scripts/wtfiap/carry-isolated-duel-route.cjs "$caddy_stage" "$WTFIAP_DEPLOY_PROTECTED_ROOM" \
     -- docker exec -i wtf-app-caddy-1 caddy adapt --config - --adapter caddyfile
+  node scripts/wtfiap/carry-live-lobby-startup.cjs "$caddy_stage" "$WTFIAP_DEPLOY_FENCE" "$caddy_json_stage" \
+    -- docker exec -i wtf-app-caddy-1 caddy adapt --config - --adapter caddyfile
+  docker exec -i wtf-app-caddy-1 caddy validate --config - < "$caddy_json_stage"
 
-  # Keep the verified file outside the Git checkout so future resets cannot
-  # overwrite the startup route of the running proxy.
+  # Keep the verified native JSON outside the Git checkout so future resets
+  # cannot overwrite the exact protected Duel and lobby routes at startup.
   startup_dir="/mnt/wtf-data/config/wtfiap-caddy/$(git rev-parse HEAD)"
   sudo install -d -m 0755 "$startup_dir"
   export WTFIAP_CADDYFILE_HOST="$startup_dir/Caddyfile"
+  export WTFIAP_CADDYJSON_HOST="$startup_dir/config.json"
+  export WTFIAP_CADDY_CONFIG_PATH=/etc/caddy/startup.json
   if [[ -e "$WTFIAP_CADDYFILE_HOST" ]]; then
     cmp -s "$caddy_stage" "$WTFIAP_CADDYFILE_HOST" || {
-      echo "[server-deploy] A different startup proxy configuration is already staged for this release."
+      echo "[server-deploy] A different startup Caddyfile is already staged for this release."
       exit 1
     }
   else
     sudo install -m 0644 "$caddy_stage" "$WTFIAP_CADDYFILE_HOST"
+  fi
+  if [[ -e "$WTFIAP_CADDYJSON_HOST" ]]; then
+    cmp -s "$caddy_json_stage" "$WTFIAP_CADDYJSON_HOST" || {
+      echo "[server-deploy] A different startup Caddy JSON is already staged for this release."
+      exit 1
+    }
+  else
+    sudo install -m 0644 "$caddy_json_stage" "$WTFIAP_CADDYJSON_HOST"
   fi
 fi
 
@@ -256,10 +276,13 @@ done
 
 if [[ "$health_ok" == "1" ]]; then
   if [[ -n "${WTFIAP_DEPLOY_PROTECTED_ROOM:-}" ]]; then
-    [[ "$(docker inspect --format '{{if .State.Running}}{{.Id}}{{end}}' wtfiap-duel-authority wtfiap-duel-gateway)" == "$isolated_service_ids" ]]
+    [[ "$(docker inspect --format '{{if .State.Running}}{{.Id}}{{end}}' wtfiap-duel-authority wtfiap-duel-gateway wtfiap-lobby-reader)" == "$isolated_service_ids" ]]
     [[ "$(docker inspect --format '{{range .Mounts}}{{if eq .Destination "/etc/caddy/Caddyfile"}}{{.Source}}{{end}}{{end}}' wtf-app-caddy-1)" == "$WTFIAP_CADDYFILE_HOST" ]]
+    [[ "$(docker inspect --format '{{range .Mounts}}{{if eq .Destination "/etc/caddy/startup.json"}}{{.Source}}{{end}}{{end}}' wtf-app-caddy-1)" == "$WTFIAP_CADDYJSON_HOST" ]]
     docker exec wtf-app-caddy-1 wget -qO- http://127.0.0.1:2019/config/ |
       node scripts/wtfiap/verify-isolated-duel-ingress.cjs "$WTFIAP_DEPLOY_PROTECTED_ROOM"
+    docker exec wtf-app-caddy-1 wget -qO- http://127.0.0.1:2019/config/ |
+      node scripts/wtfiap/carry-live-lobby-startup.cjs --verify "$WTFIAP_DEPLOY_FENCE"
   fi
   echo "[server-deploy] readiness check passed"
   echo "[server-deploy] verifying repo doctor heartbeat timer"

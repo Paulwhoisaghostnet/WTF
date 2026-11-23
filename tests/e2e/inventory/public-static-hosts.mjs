@@ -15,7 +15,7 @@ export const PUBLIC_STATIC_HOSTS = [
     interactionHandle: "art_demo.bts.viewed",
     exactPaths: [{ path: "/contact", file: "contact/index.html", interactionHandle: "art_demo.bts.contact_viewed" }],
     aspectPaths: {
-      matcher: "@aspect path_regexp ^/(?:ar/)?[0-9]+x[0-9]+$",
+      matcher: "@aspect path_regexp ^/(?:ar/)?[1-9][0-9]*x[1-9][0-9]*/?$",
       rewrite: "rewrite @aspect /index.html",
       examples: ["/ar/9x16", "/4x5", "/2x3"],
       interactionHandle: "art_demo.bts.aspect_viewed",
