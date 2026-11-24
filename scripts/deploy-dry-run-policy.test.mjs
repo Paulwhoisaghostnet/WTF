@@ -90,6 +90,21 @@ test("Hetzner keeps room admission fenced before signer sync and app replacement
   assert.match(deploy, /\/mnt\/wtf-data\/config\/wtfiap-caddy\/\$\(git rev-parse HEAD\)/);
 });
 
+test("guarded Caddy recreation retains the exact live lobby reader in native startup JSON", () => {
+  const carryDuel = deploy.indexOf("carry-isolated-duel-route.cjs");
+  const carryLobby = deploy.indexOf("carry-live-lobby-startup.cjs \"$caddy_stage\"");
+  const validateJson = deploy.indexOf('caddy validate --config - < "$caddy_json_stage"');
+  const replace = deploy.indexOf("docker compose up -d --force-recreate app caddy");
+  const verifyLobby = deploy.lastIndexOf("carry-live-lobby-startup.cjs --verify");
+  assert.ok(carryDuel >= 0 && carryLobby > carryDuel && validateJson > carryLobby &&
+    replace > validateJson && verifyLobby > replace);
+  assert.match(deploy, /WTFIAP_CADDYJSON_HOST="\$startup_dir\/config\.json"/);
+  assert.match(deploy, /WTFIAP_CADDY_CONFIG_PATH=\/etc\/caddy\/startup\.json/);
+  assert.match(compose, /WTFIAP_CADDYJSON_HOST:-\.\/Caddyfile/);
+  assert.match(compose, /WTFIAP_CADDY_CONFIG_PATH:-\/etc\/caddy\/Caddyfile/);
+  assert.match(compose, /\/etc\/caddy\/startup\.json:ro/);
+});
+
 test("Hetzner deploy transports the exact checked-out commit without server GitHub credentials", () => {
   assert.match(deployWorkflow, /fetch-depth: 0/);
   assert.match(deployWorkflow, /DEPLOY_COMMIT: \$\{\{ github\.sha \}\}/);

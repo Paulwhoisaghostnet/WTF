@@ -14946,3 +14946,43 @@ When shop and board are visible together, contextual help must prioritize a sele
 **What happened**. A manual Caddy route was active and present on disk. The normal deployment still reset the tracked Caddyfile before recreating the app and proxy. The compatibility check did not cover ordinary open rooms, and signer sync preceded that check.
 
 **Rule**. Inspect both mounted room stores before sync or replacement. With both stores clear, fence new admissions and recheck before cutover. Carry the verified Duel route in a startup file outside Git. Confirm the Compose service selection before stopping containers because a standalone container can inherit project and service labels from its image.
+
+## 2026-11-23 — Confirm host activation and the actual deploy steps
+
+**What happened**: Adrift and Before the Shovels resolved through Cloudflare but returned 525 because the origin Caddyfile did not name either hostname and had no origin certificates for them. A later GitHub deploy run was marked successful even though its open-room preflight intentionally deferred the release and skipped packaging, replacement, and health check.
+
+**Why it mattered**: DNS and a green workflow badge could both look ready while no new art site existed at the origin. Replacing the app to fix a static host while a protected coLILseum room remains open would also violate the room continuity gate.
+
+**Rule**: Put each public static host in the exact Caddy site list, mount its bundle read-only, and verify Caddy adaptation before release. Inspect deploy step conclusions and the live commit, respect the room guard, then verify the origin certificate, Cloudflare response, and browser reload behavior after an eligible deploy.
+
+## 2026-11-23 — Preserve runtime-only Caddy routes during static previews
+
+**What happened**: The live Caddy admin JSON contains a read-only coLILseum lobby-reader route that is absent from its bind-mounted Caddyfile. Reloading that file to add the art demo hosts would silently remove the lobby route while the protected Duel remains open. The container starts from that file after a restart rather than from its autosaved JSON.
+
+**Why it mattered**: A static art preview could alter an unrelated live room path even without restarting the app or the Duel authority. A green reload response would not prove the new origin certificate had finished issuing.
+
+**Rule**: For a room-fenced static-only preview, snapshot the running Caddy JSON and container identities, add only exact host routes after proving no earlier catchall shadows them, and compare the candidate against the complete baseline. Stage verified bytes in the existing persistent Caddy data volume, reload under the deploy lock, and check the runtime, protected routes, app identity, origin TLS, and Cloudflare separately. Treat certificate issuance as a pending verification state and keep the captured JSON as the rollback authority.
+
+## 2026-11-23 — Keep generated Adrift shader bytes intact
+
+**What happened**: The self-contained Adrift demo build includes Three.js shader text with intentional trailing spaces and mixed indentation. The staged Git whitespace check flagged those generated lines.
+
+**Correction and proof**: Exempt only `demos/adrift/index.html` from Git whitespace diagnostics. The copied bundle still matches the source demo build by SHA-256, and the staged diff check passes.
+
+**Rule**: When a verified generated art bundle contains vendor shader whitespace, scope any Git whitespace exception to that exact artifact path. Preserve the build bytes and continue checking authored files normally.
+
+## 2026-11-23 — Regenerate the environment inventory for demo mounts
+
+**What happened**: The two optional Compose variables for the Adrift and Before the Shovels bundle paths made the checked-in environment inventory stale. The first Quality Gates run stopped at `env:inventory:check` before build or browser tests.
+
+**Correction and proof**: `npm run env:inventory` added those two variable records to the generated reference; `npm run env:inventory:check` now passes. The diff contains only the generated count and entries for those variables.
+
+**Rule**: Any new Compose environment variable must be followed by regenerating the environment reference before pushing a release branch.
+
+## 2026-11-23 — Keep runtime-only lobby routing through a guarded Caddy replacement
+
+**What happened**: The running Caddy JSON has a read-only coLILseum lobby-reader route with a scoped transport-error fallback to the app. The checked Caddyfile and previously staged startup Caddyfile lacked it, so a normal Caddy recreation would silently return that path to the legacy app. The saved-room guard was still deferred for one room in preparation.
+
+**Why it mattered**: A static demo release could regress an unrelated lobby path, and a route-only Caddy reload while the room is open would close existing WebSocket streams under the current proxy configuration. The previous static-preview lesson did not account for the project rule that an active room blocks even a proxy reload.
+
+**Rule**: Do not reload or recreate Caddy while the exact saved-room guard is deferred. After it is safe, adapt the verified startup Caddyfile to native JSON, carry forward the live lobby-reader route only if it matches the expected route and fallback exactly, and verify the route and sidecar identity after replacement. Publish static hosts through that ordinary guarded deployment and verify their origin certificates separately.
